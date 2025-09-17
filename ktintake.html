@@ -46,13 +46,14 @@ Anchors present:
   html,body{height:100%;}
   body{
     margin:0; background:var(--bg); color:var(--ink);
-    font:14px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;
+    font-family:"SF Pro Text","SF Pro Display",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:15px; line-height:1.6; letter-spacing:-0.01em;
   }
   header{
     max-width:1240px; margin:22px auto 8px; padding:0 12px;
     display:flex; gap:12px; align-items:center; justify-content:space-between;
   }
-  h1#docTitle{font-size:22px; font-weight:800; margin:0; letter-spacing:.1px; white-space:pre-wrap;}
+  h1#docTitle{font-size:22px; font-weight:800; margin:0; letter-spacing:-0.01em; white-space:pre-wrap;}
   .subtle{color:var(--muted); font-size:12px;}
   .btn{
     appearance:none; border:1px solid var(--line); background:var(--accent); color:#fff;
@@ -72,6 +73,7 @@ Anchors present:
   .grid{ display:grid; gap:12px; }
   .grid.cols-2{ grid-template-columns:1fr 1fr; }
   .grid.cols-3{ grid-template-columns:1fr 1fr 1fr; }
+  .gap-24{ gap:24px; }
   .field label{display:block; font-weight:700; margin-bottom:6px;}
   .field small{display:block; color:var(--muted); margin-top:4px;}
   .field textarea, .field input[type="text"]{
@@ -87,7 +89,42 @@ Anchors present:
   .field textarea:focus, .field input:focus{border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,122,255,.18); background:#fff;}
 
   /* Impact strip */
-  .impact h3{ margin:0 0 8px; font-size:14px; color:#2a3957; }
+  .impact{ padding:18px; }
+  .impact > h3{
+    margin:0 0 18px;
+    font-size:17px;
+    font-weight:700;
+    letter-spacing:-0.02em;
+    color:#1f2b40;
+    font-family:"SF Pro Display","SF Pro Text",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  .impact .field{padding:4px 0;}
+  .impact .field h3{
+    margin:0 0 6px;
+    font-size:15px;
+    font-weight:600;
+    letter-spacing:-0.015em;
+    color:#22324b;
+    font-family:"SF Pro Display","SF Pro Text",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  .impact .field label{
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:-0.01em;
+    color:#3b4962;
+    margin-bottom:8px;
+  }
+  .impact .field small{
+    font-size:12px;
+    line-height:1.55;
+    letter-spacing:0;
+  }
+  .impact textarea{
+    font-family:"SF Pro Text","SF Pro Display",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size:14px;
+    line-height:1.6;
+    letter-spacing:-0.01em;
+  }
 
   /* Table */
   table{
@@ -187,18 +224,21 @@ Anchors present:
     <!-- [section:impact] start -->
     <div class="card impact">
       <h3>Impact</h3>
-      <div class="grid cols-3">
+      <div class="grid cols-3 gap-24">
         <div class="field">
+          <h3>Current Impact</h3>
           <label for="impactNow">Current Impact</label>
           <small>Who/what is affected now? Quantify: users/tenants/regions, transactions failing, SLI/SLO deltas (avail %, p95/p99, error %), data at risk (loss/corruption/exposure), workarounds.</small>
           <textarea id="impactNow" placeholder="e.g., 18% of US checkouts failing; ~$5–7k/min revenue at risk; PCI scope unaffected; manual retry mitigates for 50% of users."></textarea>
         </div>
         <div class="field">
+          <h3>Future Impact</h3>
           <label for="impactFuture">Future Impact</label>
           <small>If unresolved (1h/24h/7d), what happens? Blast radius growth, SLO/SLA breach, revenue/penalties, compliance, backlog/consumer lag, churn, on-call fatigue.</small>
           <textarea id="impactFuture" placeholder="e.g., SLO breach in 45m; cart abandonment ↑; SLA credits possible; backlog exceeds consumer capacity by EOD."></textarea>
         </div>
         <div class="field">
+          <h3>Timeframe</h3>
           <label for="impactTime">Timeframe</label>
           <small>Start & detection; duration so far; forecast; maint windows; deadlines; RTO/RPO.</small>
           <textarea id="impactTime" placeholder="Started 13:02Z, detected 13:04Z, ongoing 28m; likely until rollback; RTO 1h, RPO 0."></textarea>
