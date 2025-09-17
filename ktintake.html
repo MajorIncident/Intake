@@ -67,8 +67,14 @@ Anchors present:
 
   .card{
     background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);
-    padding:14px; margin:10px 0 18px;
+    padding:20px 22px 24px; margin:0 0 32px;
   }
+  .card h3{
+    margin:0 0 16px;
+    font-family:"SF Pro Display","SF Pro Text",-apple-system,system-ui,ui-sans-serif;
+    font-size:15px; font-weight:700; letter-spacing:.32px; text-transform:uppercase; color:#1d2845;
+  }
+  .preface-stack{display:flex; flex-direction:column;}
   .grid{ display:grid; gap:12px; }
   .grid.cols-2{ grid-template-columns:1fr 1fr; }
   .grid.cols-3{ grid-template-columns:1fr 1fr 1fr; }
@@ -144,40 +150,49 @@ Anchors present:
 
   <div class="wrap">
     <!-- [section:preface] start -->
-    <div class="card">
-      <div class="grid">
-        <div class="field">
-          <label for="oneLine">In one sentence, what is broken for you right now?</label>
-          <textarea id="oneLine" placeholder="e.g., Checkout API returns 500 for US customers using Apple Pay."></textarea>
+    <section class="preface-stack">
+      <div class="card">
+        <h3>Problem Summary</h3>
+        <div class="grid">
+          <div class="field">
+            <label for="oneLine">In one sentence, what is broken for you right now?</label>
+            <textarea id="oneLine" placeholder="e.g., Checkout API returns 500 for US customers using Apple Pay."></textarea>
+          </div>
         </div>
       </div>
 
-      <div class="grid cols-2">
-        <div class="field">
-          <label for="proof">What proves a deviation exists?</label>
-          <small>Examples: alerts fired, metric spikes/drops, log lines, screenshots, error codes, reproducible steps.</small>
-          <textarea id="proof" placeholder="PagerDuty P1 at 13:04Z; error_rate{svc=checkout} rose from 0.2%→12%; logs show ERR-1298 &quot;token invalid&quot;; reproduce with POST /v1/checkout ..."></textarea>
-        </div>
-        <div class="field">
-          <label for="objectPrefill">What is the specific object being affected?</label>
-          <small>Service/API, container/VM/function/module/method, datastore/volume/bucket/table, network element, identity/policy/role, pipeline/job.</small>
-          <textarea id="objectPrefill" placeholder="e.g., Service: checkout-api (image sha256:...), in cluster prod-us-east-1, namespace commerce."></textarea>
+      <div class="card">
+        <h3>Evidence &amp; Object</h3>
+        <div class="grid cols-2">
+          <div class="field">
+            <label for="proof">What proves a deviation exists?</label>
+            <small>Examples: alerts fired, metric spikes/drops, log lines, screenshots, error codes, reproducible steps.</small>
+            <textarea id="proof" placeholder="PagerDuty P1 at 13:04Z; error_rate{svc=checkout} rose from 0.2%→12%; logs show ERR-1298 &quot;token invalid&quot;; reproduce with POST /v1/checkout ..."></textarea>
+          </div>
+          <div class="field">
+            <label for="objectPrefill">What is the specific object being affected?</label>
+            <small>Service/API, container/VM/function/module/method, datastore/volume/bucket/table, network element, identity/policy/role, pipeline/job.</small>
+            <textarea id="objectPrefill" placeholder="e.g., Service: checkout-api (image sha256:...), in cluster prod-us-east-1, namespace commerce."></textarea>
+          </div>
         </div>
       </div>
 
-      <div class="grid cols-2">
-        <div class="field">
-          <label id="labelHealthy" for="healthy">What does healthy look like here?</label>
-          <small>State an SLI/SLO baseline for the same subject: latency p95, error rate %, throughput, success %, CPU/mem, queue depth, etc.</small>
-          <textarea id="healthy" placeholder="e.g., p95 latency &lt; 250ms, error rate &lt; 0.5%, 300 rps sustained, no retries above baseline."></textarea>
-        </div>
-        <div class="field">
-          <label id="labelNow" for="now">What is happening now?</label>
-          <small>Current measurements vs the same baseline (same metrics as above) or what users are experiencing.</small>
-          <textarea id="now" placeholder="e.g., p95 1.8s, error rate 12–18%, retries 30/s, saturation ~80%, users see 500 after auth."></textarea>
+      <div class="card">
+        <h3>Baseline vs Current</h3>
+        <div class="grid cols-2">
+          <div class="field">
+            <label id="labelHealthy" for="healthy">What does healthy look like here?</label>
+            <small>State an SLI/SLO baseline for the same subject: latency p95, error rate %, throughput, success %, CPU/mem, queue depth, etc.</small>
+            <textarea id="healthy" placeholder="e.g., p95 latency &lt; 250ms, error rate &lt; 0.5%, 300 rps sustained, no retries above baseline."></textarea>
+          </div>
+          <div class="field">
+            <label id="labelNow" for="now">What is happening now?</label>
+            <small>Current measurements vs the same baseline (same metrics as above) or what users are experiencing.</small>
+            <textarea id="now" placeholder="e.g., p95 1.8s, error rate 12–18%, retries 30/s, saturation ~80%, users see 500 after auth."></textarea>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
     <!-- [section:preface] end -->
 
     <!-- [subtitle] start -->
