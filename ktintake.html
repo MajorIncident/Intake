@@ -495,6 +495,33 @@ function fillTokens(text){
   const dev = firstSnippet(deviationIS?.value) || firstSnippet(getDeviationFull()) || 'the deviation';
   return (text||'').replace(/\{OBJECT\}/g, '“'+obj+'”').replace(/\{DEVIATION\}/g, '“'+dev+'”');
 }
+function mkIsNotPH(baseCopy, isVal){
+  const base = (baseCopy||'').trim();
+  const isSnippet = firstSnippet(isVal);
+  if(isSnippet){
+    const prompt = fillTokens(`Mirror cases like “${isSnippet}” where {DEVIATION} is absent.`);
+    return base ? `${prompt}\n\n${base}` : prompt;
+  }
+  return base || fillTokens('List comparable situations where {DEVIATION} does not occur.');
+}
+function mkDistPH(isVal, notVal){
+  const base = fillTokens('List crisp traits separating IS vs IS NOT cases. One per line.');
+  const isSnippet = firstSnippet(isVal);
+  const notSnippet = firstSnippet(notVal);
+  const parts = [];
+  if(isSnippet){ parts.push(`What is uniquely true about “${isSnippet}”?`); }
+  if(notSnippet){ parts.push(`How does “${notSnippet}” differ?`); }
+  const lead = parts.length ? parts.join(' ') + '\n• Capture concrete signals, context, or conditions.' : '';
+  return lead ? `${lead}\n${base}` : base;
+}
+function mkChangePH(distText){
+  const base = fillTokens('Tie each distinction to what changed for {OBJECT}.');
+  const distSnippet = firstSnippet(distText);
+  if(distSnippet){
+    return `For distinction “${distSnippet}”, what changed?\n${base}`;
+  }
+  return base;
+}
 function refreshAllTokenizedText(){
   rowsBuilt.forEach(({th, def, isTA, notTA})=>{
     th.textContent = fillTokens(def.q);
