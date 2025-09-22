@@ -263,16 +263,16 @@ Anchors present:
     <!-- [section:impact] end -->
 
     <!-- [section:table] start -->
-    <p class="subtle">Data Gathering - As you enter details the prompts will coach you</p>
+    <p class="subtle">Problem Analysis</p>
 
     <table id="ktTable" aria-label="KT IS / IS NOT intake table">
       <thead>
         <tr>
           <th scope="col">KT Question</th>
           <th scope="col">IS <span class="subtle">— facts only</span></th>
-          <th scope="col">IS NOT <span class="subtle">— similar &amp; reasonable but not</span></th>
-          <th scope="col">Distinctions <span class="subtle">— one per line</span></th>
-          <th scope="col">Changes <span class="subtle">— mapped to distinctions</span></th>
+          <th scope="col">IS NOT <span class="subtle">— similar &amp; reasonable and could be but is not occuring</span></th>
+          <th scope="col">Distinctions <span class="subtle">— Unique characteristics about the IS</span></th>
+          <th scope="col">Changes <span class="subtle">— Changes that happened in on around or about each Distinction</span></th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -285,76 +285,99 @@ Anchors present:
 <!-- [script] start -->
 <script>
 /* [rows] start */
-/* =================== Core data & prompts =================== */
+/* =================== Core data & prompts (KT Problem Analysis) =================== */
 /* Use {OBJECT} / {DEVIATION} tokens anywhere you want auto-fill. */
 const ROWS = [
-  { band: "WHAT", note: "State & specify the problem (object + deviation)." },
+  { band: "WHAT", note: "Define the problem precisely (Object & Deviation)." },
 
   {
-    q: "WHAT — Object (identity & build)",
-    isPH: "What specific object(s) has the deviation?\n• Service/app/workload name\n• Version/image/commit/OS/patch level\n• Endpoint/protocol (e.g., POST /v1/...)\n• Dependencies (DB/cache/queue/API)\n• Env/stage (prod/stage/dev)",
-    notPH:"Select items similar to the IS case, closely related, and that could reasonably show the deviation — but do not.\n• Same build in other node/AZ/cluster\n• Other tenants/namespaces\n• Other LB pool/pod/instance",
+    q: "WHAT — Object / Thing",
+    isPH:
+      "What specific object has {DEVIATION}?\n• Name/ID (service/app/workload)\n• Version/build/OS/patch\n• Endpoint/feature/module\n• Key dependencies (DB/cache/queue/API)\n• Environment (prod/stage/dev)",
+    notPH:
+      "What similar objects do NOT have {DEVIATION}?\n• Same build in other node/AZ/cluster\n• Other tenants/namespaces\n• Other instances/pods/LB pools"
   },
   {
-    q:"WHAT — Deviation (symptom & evidence)",
-    isPH:"What is the specific deviation?\nWhat tells us the deviation exists?\n• Error text/code & timestamp\n• Key log line / trace span IDs\n• Health check/probe results\n• What should have happened vs what did",
-    notPH:"Choose comparable symptoms you might reasonably expect—similar context as IS—but which are not observed.\n• No timeouts? No 5xx? No OOM?\n• No CPU/disk/network saturation",
-  },
-
-  { band: "WHERE", note: "Location in geography/topology and on the object." },
-
-  {
-    q:"WHERE — Geography / Topology (map pin)",
-    isPH:"Where is {OBJECT} when {DEVIATION} is observed (geographically/topologically)?\n• Cloud/Region/AZ / VPC/Subnet\n• Hop that fails: client→edge/CDN→WAF/LB→mesh→app→DB",
-    notPH:"Select locations/topology closely related to the IS location for {OBJECT} that could reasonably show {DEVIATION} — but do not.\n• Other Region/AZ/VPC\n• Other node pool/namespace\n• Other ISP/branch/site",
-  },
-  {
-    q:"WHERE — On {OBJECT} (module / table / step)",
-    isPH:"Where is {DEVIATION} on {OBJECT}?\n• Module/class/handler\n• Screen/step/endpoint\n• Table/index/partition / topic shard\n• Log file+line / span location",
-    notPH:"Choose nearby modules/steps on {OBJECT} similar to the IS spot that could reasonably show {DEVIATION} — but do not.\n• Other layers/steps\n• Auth passes; reads OK vs writes fail",
+    q: "WHAT — Deviation or Symptom does the {OBJECT} have?",
+    isPH:
+      "What exactly is the deviation?\n• Symptom (error text/code), timestamp\n• Evidence (log line, trace/span IDs, health checks)\n• Expected vs actual result",
+    notPH:
+      "What close-by symptoms are NOT present?\n• No timeouts? No 5xx? No OOM?\n• No CPU/disk/network saturation"
   },
 
-  { band: "WHEN", note: "Clock & calendar; since then; life-cycle moment (‘what changed’ lives here)." },
+  { band: "WHERE", note: "Locate the problem (geography/topology and on the object)." },
 
   {
-    q:"WHEN — First seen (clock & calendar time)",
-    isPH:"When was {DEVIATION} observed first for {OBJECT}? (date & time with timezone)\nHas it ever worked before?\nLast known good (build/commit + timestamp).",
-    notPH:"Consider first-seen times closely related to the IS timeline for {OBJECT} that could reasonably have been first — but were not.",
+    q: "WHERE — is the {OBJECT} Geographically / Topology",
+    isPH:
+      "Where is {OBJECT} when {DEVIATION} occurs?\n• Cloud/Region/AZ, VPC/Subnet\n• Failing hop (client→edge/CDN→WAF/LB→mesh→app→DB)",
+    notPH:
+      "Where would you reasonably expect {DEVIATION} but do NOT see it?\n• Other Region/AZ/VPC\n• Other node pool/namespace\n• Other ISP/branch/site"
   },
   {
-    q:"WHEN — Since then (occurrences & pattern)",
-    isPH:"Since first occurrence, when has {DEVIATION} been observed on/with {OBJECT}?\nList all windows with start/stop times.\nPattern: continuous / periodic / sporadic; bursts; top-of-hour; load/time correlation.",
-    notPH:"Consider time windows/patterns similar to IS for {OBJECT} that reasonably could occur — but do not.",
-  },
-  {
-    q:"WHEN — Life-cycle moment (history of {OBJECT})",
-    isPH:"When, in {OBJECT}’s history or life cycle, was {DEVIATION} observed first?\n• Deploy/rollback/feature flag\n• Config/secret/cert rotation\n• Autoscale/startup/cache warm\n• GC/compaction/failover/rebalancing\nAlso: What changed near first occurrence or between IS and IS NOT?",
-    notPH:"Consider adjacent life-cycle moments for {OBJECT} that could reasonably show {DEVIATION} — but do not.",
+    q: "WHERE — On the {OBJECT}",
+    isPH:
+      "Where on {OBJECT} is {DEVIATION} seen?\n• Module/class/handler\n• Screen/step/endpoint\n• Table/index/partition/topic shard\n• Log file+line / span location",
+    notPH:
+      "What neighboring parts do NOT show {DEVIATION}?\n• Other layers/steps\n• Auth passes; reads OK vs writes fail"
   },
 
-  { band: "EXTENT", note: "Magnitude, severity, multiplicity, and trend." },
+  { band: "WHEN", note: "Timing and change (first seen, pattern, life-cycle; what changed)." },
 
   {
-    q:"EXTENT — Objects with deviation & trend",
-    isPH:"How many {OBJECT}s have {DEVIATION}? What is the trend* in the number of objects? (*increasing/decreasing/stable)\n• Affected pods/hosts/tenants/users\n• Which versions/builds",
-    notPH:"Pick comparable object sets (same family/versions/envs) for {OBJECT} that reasonably could be affected by {DEVIATION} — but are not.",
+    q: "WHEN — Was the {DEVIATION} First seen",
+    isPH:
+      "When was {DEVIATION} first observed for {OBJECT}? (date/time/zone)\nHas it worked before?\n• Last known good (build/commit + timestamp)",
+    notPH:
+      "When might it reasonably have appeared but did NOT?"
   },
   {
-    q:"EXTENT — Size of a single deviation & trend",
-    isPH:"What is the size of a single {DEVIATION} on {OBJECT}? (latency delta, error rate %, throughput/availability impact)\nWhat is the trend* in the size?",
-    notPH:"Choose similar size metrics on {OBJECT} that could reasonably be worse — but are not.",
+    q: "WHEN — Since was the {DEVIATION} logged? What Pattern?",
+    isPH:
+      "Since first occurrence, when does {DEVIATION} appear?\n• All windows (start/stop)\n• Pattern (continuous/periodic/sporadic; bursts; top-of-hour; load/time correlation)",
+    notPH:
+      "Similar windows/patterns that do NOT occur"
   },
   {
-    q:"EXTENT — Instances per object & trend",
-    isPH:"How many instances of {DEVIATION} occur on each {OBJECT}? (e.g., errors/min per instance)\nWhat is the trend* in the number of instances?",
-    notPH:"Consider comparable instance counts/rates on {OBJECT} that reasonably could occur — but do not.",
+    q: "WHEN — Describe using words When the {DEVIATION} was first seen",
+    isPH:
+      "At what point in {OBJECT}’s life-cycle did {DEVIATION} appear?\n• Deploy/rollback/feature flag\n• Config/secret/cert rotation\n• Autoscale/startup/cache warm\n• GC/compaction/failover/rebalance\nWhat changed near first occurrence or between IS and IS NOT?",
+    notPH:
+      "Adjacent life-cycle moments without {DEVIATION}"
+  },
+
+  { band: "EXTENT", note: "How big is it? Magnitude, count, scope, trend." },
+
+  {
+    q: "EXTENT — What is the population or size of {OBJECT} affected?",
+    isPH:
+      "How many {OBJECT}s have {DEVIATION}? Trend (↑/↓/stable)?\n• Affected pods/hosts/tenants/users\n• Which versions/builds",
+    notPH:
+      "Comparable object sets not affected"
   },
   {
-    q:"EXTENT — Boundaries (crisp IS vs IS NOT)",
-    isPH:"What portion of {OBJECT}’s surface is affected by {DEVIATION}?\n• Endpoints/roles/tenants/shards/regions/AZs\n• Only POST /v1/orders in AZ-a; only IPv6; only shard-3, etc.",
-    notPH:"Identify close boundary neighbors around {OBJECT} that reasonably could be impacted by {DEVIATION} — but are not.",
+    q: "EXTENT — What is the size of a single {DEVIATION}?",
+    isPH:
+      "How big is a single {DEVIATION} on {OBJECT}?\n• Latency delta, error %, throughput/availability impact\nTrend (↑/↓/stable)?",
+    notPH:
+      "Similar metrics that are NOT worse/not changing"
+  },
+  {
+    q: "EXTENT — How many {DEVIATION} are occuring on each {OBJECT}?",
+    isPH:
+      "How many instances per {OBJECT}? (e.g., errors/min per instance)\nTrend (↑/↓/stable)?",
+    notPH:
+      "Comparable rates that do NOT occur"
+  },
+  {
+    q: "EXTENT — Boundaries (IS vs IS NOT)",
+    isPH:
+      "What portion is affected?\n• Endpoints/roles/tenants/shards/regions/AZs\n• e.g., only POST /v1/orders in AZ-a; only IPv6; only shard-3",
+    notPH:
+      "Close boundary neighbors NOT affected"
   }
 ];
+
 /* [rows] end */
 
 /* [script:table-build] start */
@@ -540,14 +563,14 @@ function updateTitlesAndLabels(){
     docSubtitle.textContent = `What is happening now to ${objAnch}: ${devFull}`;
     document.title = `${compactOneLine(objFull, 50)} — ${compactOneLine(devFull, 50)} · KT Intake`;
   }else{
-    docTitle.textContent = "KT Intake — add Specific Object & What’s happening now to set the title";
-    docSubtitle.textContent = "Describe Problem — awaiting Specific Object & What’s happening now…";
+    docTitle.textContent = "KT Intake";
+    docSubtitle.textContent = "Describe Problem";
     document.title = "KT Intake";
   }
 
   // Dynamic labels for Healthy/Now
   labelNow.textContent = objAnch ? `What is happening now to ${objAnch}?` : "What is happening now?";
-  labelHealthy.textContent = objAnch ? `What does healthy look like here for ${objAnch}?` : "What does healthy look like here?";
+  labelHealthy.textContent = objAnch ? `What does healthy look like here for ${objAnch}?` : "What does healthy look like?";
 
   // (Optional) adjust placeholders subtly to reflect anchor
   if(objAnch){
@@ -678,14 +701,73 @@ function toAscii(){
 }
 async function copyAscii(){
   const ascii = toAscii();
+
+  // Helper: legacy fallback that works on HTTP and older browsers
+  const legacyCopy = () => {
+    try{
+      const ta = document.createElement('textarea');
+      ta.value = ascii;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if(ok){ showToast('Copied as ASCII. Paste into your ticket ✨'); return true; }
+      return false;
+    }catch(_){ return false; }
+  };
+
   try{
-    await navigator.clipboard.writeText(ascii);
-    showToast('Copied as ASCII. Paste into your ticket ✨');
+    if(window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(ascii);
+      showToast('Copied as ASCII. Paste into your ticket ✨');
+      return;
+    }
+    // Not secure or API missing → try legacy
+    if(legacyCopy()) return;
+    // Last resort: render in-page for manual copy (no popup windows)
+    const pre = document.createElement('pre');
+    pre.style.whiteSpace='pre-wrap';
+    pre.style.font='13px/1.5 monospace';
+    pre.style.margin='0';
+    pre.style.padding='16px';
+    pre.style.maxHeight='60vh';
+    pre.style.overflow='auto';
+    pre.textContent = ascii;
+
+    const modal = document.createElement('div');
+    modal.style.position='fixed';
+    modal.style.inset='24px';
+    modal.style.background='rgba(0,0,0,.35)';
+    modal.style.backdropFilter='blur(2px)';
+    modal.style.zIndex='9999';
+    modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+
+    const card = document.createElement('div');
+    card.style.background='#fff';
+    card.style.border='1px solid #e6eaf2';
+    card.style.borderRadius='12px';
+    card.style.boxShadow='0 8px 24px rgba(12,18,32,.12)';
+    card.style.maxWidth='960px';
+    card.style.margin='auto';
+    card.style.padding='12px';
+    card.style.height='70vh';
+    card.style.display='flex';
+    card.style.flexDirection='column';
+    card.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 8px 12px 8px;"><strong style="font:600 14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;">KT — ASCII Export (manual copy)</strong><button id="closeAscii" class="btn" style="padding:6px 10px;border-radius:8px;">Close</button></div>';
+    card.appendChild(pre);
+    modal.appendChild(card);
+    document.body.appendChild(modal);
+    document.getElementById('closeAscii').addEventListener('click', ()=>modal.remove());
+    showToast('Clipboard blocked. Showing text to copy manually.');
   }catch(e){
-    const w = window.open('', '_blank', 'width=900,height=650');
-    w.document.write('<pre style="white-space:pre-wrap;font:13px/1.5 monospace;margin:0;padding:16px;">'+
-      ascii.replace(/[&<>]/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[s])) +'</pre>');
-    w.document.title = 'KT — ASCII Export';
+    // If anything unexpected happens, try legacy then bail gracefully
+    if(legacyCopy()) return;
+    showToast('Couldn’t access clipboard. Are you on HTTPS and not inside a sandbox?');
+    console.error('Copy failed:', e);
   }
 }
 document.getElementById('copyBtn').addEventListener('click', copyAscii);
