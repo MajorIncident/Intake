@@ -295,7 +295,7 @@ const ROWS = [
     isPH:
       "What specific object has {DEVIATION}?\n• Name/ID (service/app/workload)\n• Version/build/OS/patch\n• Endpoint/feature/module\n• Key dependencies (DB/cache/queue/API)\n• Environment (prod/stage/dev)",
     notPH:
-      "What similar objects do NOT have {DEVIATION}?\n• Same build in other node/AZ/cluster\n• Other tenants/namespaces\n• Other instances/pods/LB pools"
+      "What similar objects could do NOT have {DEVIATION}?\n• Same build in other node/AZ/cluster\n• Other tenants/namespaces\n• Other instances/pods/LB pools"
   },
   {
     q: "WHAT — Deviation or Symptom does the {OBJECT} have?",
@@ -515,26 +515,26 @@ function mkIsNotPH(baseCopy, isVal){
   const base = (baseCopy||'').trim();
   const isSnippet = firstSnippet(isVal);
   if(isSnippet){
-    const prompt = fillTokens(`Mirror cases like “${isSnippet}” where {DEVIATION} is absent.`);
+    const prompt = fillTokens(``);
     return base ? `${prompt}\n\n${base}` : prompt;
   }
-  return base || fillTokens('List comparable situations where {DEVIATION} does not occur.');
+  return base || fillTokens('');
 }
 function mkDistPH(isVal, notVal){
-  const base = fillTokens('List crisp traits separating IS vs IS NOT cases. One per line.');
+  const base = fillTokens('');
   const isSnippet = firstSnippet(isVal);
   const notSnippet = firstSnippet(notVal);
   const parts = [];
-  if(isSnippet){ parts.push(`What is uniquely true about “${isSnippet}”?`); }
-  if(notSnippet){ parts.push(`How does “${notSnippet}” differ?`); }
-  const lead = parts.length ? parts.join(' ') + '\n• Capture concrete signals, context, or conditions.' : '';
+  if(isSnippet){ parts.push(`What is different, odd, special, or uniquely true about “${isSnippet}”?`); }
+  if(notSnippet){ parts.push(`Only list traits that are not shared by “${notSnippet}”`); }
+  const lead = parts.length ? parts.join(' ') + '' : '';
   return lead ? `${lead}\n${base}` : base;
 }
 function mkChangePH(distText){
-  const base = fillTokens('Tie each distinction to what changed for {OBJECT}.');
+  const base = fillTokens('');
   const distSnippet = firstSnippet(distText);
   if(distSnippet){
-    return `For distinction “${distSnippet}”, what changed?\n${base}`;
+    return `What changed in, on, around, or about “${distSnippet}”, Ask this question for each distinction listed.\n${base}`;
   }
   return base;
 }
