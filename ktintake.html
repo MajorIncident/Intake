@@ -291,59 +291,59 @@ const ROWS = [
   { band: "WHAT", note: "Define the problem precisely (Object & Deviation)." },
 
   {
-    q: "WHAT — Object / Thing",
+    q: "WHAT — Specific Object/Thing is having the {DEVIATION}",
     isPH:
-      "What specific object has {DEVIATION}?\n• Name/ID (service/app/workload)\n• Version/build/OS/patch\n• Endpoint/feature/module\n• Key dependencies (DB/cache/queue/API)\n• Environment (prod/stage/dev)",
+      "What specific object has {DEVIATION}?",
     notPH:
-      "What similar objects could do NOT have {DEVIATION}?\n• Same build in other node/AZ/cluster\n• Other tenants/namespaces\n• Other instances/pods/LB pools"
+      "What similar objects could reasonably have, but do NOT have {DEVIATION}?"
   },
   {
-    q: "WHAT — Deviation or Symptom does the {OBJECT} have?",
+    q: "WHAT — Specific Deviation does the {OBJECT} have?",
     isPH:
-      "What exactly is the deviation?\n• Symptom (error text/code), timestamp\n• Evidence (log line, trace/span IDs, health checks)\n• Expected vs actual result",
+      "What exactly is the deviation that has been confirmed?",
     notPH:
-      "What close-by symptoms are NOT present?\n• No timeouts? No 5xx? No OOM?\n• No CPU/disk/network saturation"
+      "What reasonable symptoms could the {OBJECT} have had, but we have verified are NOT present?"
   },
 
   { band: "WHERE", note: "Locate the problem (geography/topology and on the object)." },
 
   {
-    q: "WHERE — is the {OBJECT} Geographically / Topology",
+    q: "WHERE — is the {OBJECT} geographically/topology when the {DEVIATION} occurs?",
     isPH:
-      "Where is {OBJECT} when {DEVIATION} occurs?\n• Cloud/Region/AZ, VPC/Subnet\n• Failing hop (client→edge/CDN→WAF/LB→mesh→app→DB)",
+      "Where is {OBJECT} when {DEVIATION} occurs?",
     notPH:
-      "Where would you reasonably expect {DEVIATION} but do NOT see it?\n• Other Region/AZ/VPC\n• Other node pool/namespace\n• Other ISP/branch/site"
+      "Where would you reasonably expect the {OBJECT} could have been when the {DEVIATION} was observed but we do NOT see it?"
   },
   {
-    q: "WHERE — On the {OBJECT}",
+    q: "WHERE — On the {OBJECT} is the {DEVIATION} observed?",
     isPH:
-      "Where on {OBJECT} is {DEVIATION} seen?\n• Module/class/handler\n• Screen/step/endpoint\n• Table/index/partition/topic shard\n• Log file+line / span location",
+      "Where on {OBJECT} is {DEVIATION} observed?",
     notPH:
-      "What neighboring parts do NOT show {DEVIATION}?\n• Other layers/steps\n• Auth passes; reads OK vs writes fail"
+      "What neighboring parts on the {OBJECT} do NOT show {DEVIATION}?"
   },
 
-  { band: "WHEN", note: "Timing and change (first seen, pattern, life-cycle; what changed)." },
+  { band: "WHEN", note: "Timing and Description" },
 
   {
-    q: "WHEN — Was the {DEVIATION} First seen",
+    q: "WHEN — Was the {DEVIATION} First observed for {OBJECT}",
     isPH:
-      "When was {DEVIATION} first observed for {OBJECT}? (date/time/zone)\nHas it worked before?\n• Last known good (build/commit + timestamp)",
+      "When was {DEVIATION} first observed for {OBJECT}? (date/time/zone)",
     notPH:
-      "When might it reasonably have appeared but did NOT?"
+      "When was the last known good for {OBJECT}? When reasonably could we have observed other {DEVIATION} on {OBJECT} but we did not?"
   },
   {
-    q: "WHEN — Since was the {DEVIATION} logged? What Pattern?",
+    q: "WHEN — Since was the first time has {DEVIATION} been logged? What Pattern?",
     isPH:
-      "Since first occurrence, when does {DEVIATION} appear?\n• All windows (start/stop)\n• Pattern (continuous/periodic/sporadic; bursts; top-of-hour; load/time correlation)",
+      "Since first occurrence, when does {DEVIATION} re-occur?\n• What Pattern (continuous/periodic/sporadic/one time)",
     notPH:
-      "Similar windows/patterns that do NOT occur"
+      "What Similar windows/patterns of times is the {OBJECT} not having {DEVIATION}?"
   },
   {
     q: "WHEN — Describe using words When the {DEVIATION} was first seen",
     isPH:
-      "At what point in {OBJECT}’s life-cycle did {DEVIATION} appear?\n• Deploy/rollback/feature flag\n• Config/secret/cert rotation\n• Autoscale/startup/cache warm\n• GC/compaction/failover/rebalance\nWhat changed near first occurrence or between IS and IS NOT?",
+      "At what point in {OBJECT}’s life-cycle did {DEVIATION} appear?\n• Use words like before, during, or after to describe these times and consider multiple lifecycles",
     notPH:
-      "Adjacent life-cycle moments without {DEVIATION}"
+      "What Adjacent life-cycle moments could we have reasonably caught or observed the {DEVIATION} but we did not?"
   },
 
   { band: "EXTENT", note: "How big is it? Magnitude, count, scope, trend." },
@@ -351,23 +351,23 @@ const ROWS = [
   {
     q: "EXTENT — What is the population or size of {OBJECT} affected?",
     isPH:
-      "How many {OBJECT}s have {DEVIATION}? Trend (↑/↓/stable)?\n• Affected pods/hosts/tenants/users\n• Which versions/builds",
+      "How many {OBJECT}s have {DEVIATION}?\nTrend (↑/↓/stable)?",
     notPH:
-      "Comparable object sets not affected"
+      "What population or Comparable object sets have not been affected"
   },
   {
     q: "EXTENT — What is the size of a single {DEVIATION}?",
     isPH:
-      "How big is a single {DEVIATION} on {OBJECT}?\n• Latency delta, error %, throughput/availability impact\nTrend (↑/↓/stable)?",
+      "How big is a single {DEVIATION} on {OBJECT}?\nTrend (↑/↓/stable)?",
     notPH:
-      "Similar metrics that are NOT worse/not changing"
+      "What sizes could the {DEVIATION} reasonably have been but were not?"
   },
   {
     q: "EXTENT — How many {DEVIATION} are occuring on each {OBJECT}?",
     isPH:
-      "How many instances per {OBJECT}? (e.g., errors/min per instance)\nTrend (↑/↓/stable)?",
+      "How many instances of {DEVIATION} per {OBJECT}?\nTrend (↑/↓/stable)?",
     notPH:
-      "Comparable rates that do NOT occur"
+      "Reasonably, how many instances of {DEVIATION} could have occured per {OBJECT} but did not?"
   },
 ];
 
