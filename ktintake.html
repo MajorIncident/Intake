@@ -134,10 +134,15 @@ Anchors present:
 
   /* Table */
   table{
+    table-layout:fixed;
+    
     width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border-radius:var(--radius);
     background:var(--panel); border:1px solid var(--line); box-shadow:var(--shadow);
   }
   thead th{
+    word-wrap:break-word;
+    white-space:normal;
+    
     position:sticky; top:0; z-index:3;
     background:linear-gradient(180deg, #ffffff, #fafbfe);
     color:#0c1220; text-align:left; font-size:12px; letter-spacing:.4px;
@@ -181,7 +186,7 @@ Anchors present:
   <!-- [header] start -->
   <header>
     <h1 id="docTitle">KT Intake</h1>
-    <button class="btn" id="copyBtn">Copy as Text</button>
+    <button class="btn" id="genSummaryBtn" onclick="onGenerateSummary()">Generate Summary</button>
   </header>
   <!-- [header] end -->
 
@@ -266,6 +271,14 @@ Anchors present:
     <p class="subtle">Problem Analysis</p>
 
     <table id="ktTable" aria-label="KT IS / IS NOT intake table">
+<colgroup>
+  <col style="width:18%;">
+  <col style="width:21%;">
+  <col style="width:21%;">
+  <col style="width:20%;">
+  <col style="width:20%;">
+</colgroup>
+
       <thead>
         <tr>
           <th scope="col">KT Question</th>
@@ -278,6 +291,15 @@ Anchors present:
       <tbody id="tbody"></tbody>
     </table>
     <!-- [section:table] end -->
+
+
+    <!-- [section:summary] start -->
+    <div class="card" id="summaryCard" style="display:none;">
+      <h3>Copy &amp; Paste Summary</h3>
+      <pre id="summaryPre" style="white-space:pre-wrap;font:13px/1.6 monospace;margin:0;"></pre>
+    </div>
+    <!-- [section:summary] end -->
+
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -379,6 +401,8 @@ const tbody = document.getElementById('tbody');
 const rowsBuilt = [];
 let objectIS = null;     // first WHAT → IS
 let deviationIS = null;  // second WHAT → IS
+let objectISDirty = false;
+let deviationISDirty = false;
 
 function mkBand(title, note){
   const tr = document.createElement('tr'); tr.className='band';
@@ -437,6 +461,8 @@ function initTable(){
 
   [objectIS, deviationIS].forEach(el=>{
     el.addEventListener('input', ()=>{
+      if(el===objectIS) objectISDirty = true;
+      if(el===deviationIS) deviationISDirty = true;
       refreshAllTokenizedText();
       updateTitlesAndLabels();
       saveToStorage();
@@ -481,6 +507,8 @@ const impactTime = document.getElementById('impactTime');
     updateTitlesAndLabels();
     saveToStorage();
   });
+  el.addEventListener('keyup', syncMirror);
+  el.addEventListener('change', ()=>syncMirror(true));
 });
 /* [script:preface-refs] end */
 
@@ -488,7 +516,9 @@ const impactTime = document.getElementById('impactTime');
 function firstSnippet(v){
   const s = (v||'').trim();
   if(!s) return '';
-  return s.split(/\n|\. /)[0].slice(0,120);
+  // Return the first line or sentence, up to 120 chars (not just one char)
+  const first = s.split(/\n|\. /)[0];
+  return first.length > 120 ? first.slice(0,120) : first;
 }
 function compactOneLine(str, max=90){
   const s = (str||'').trim().replace(/\s+/g,' ');
@@ -573,6 +603,43 @@ function updateTitlesAndLabels(){
 }
 /* [script:tokens] end */
 
+
+/* ===== Mirror Sync (robust against extensions/overlays) ===== */
+let _mirrorTick = null;
+let _lastPrefObj = "";
+let _lastPrefNow = "";
+function syncMirror(force=false){
+  try{
+    const curObj = getObjectFull();
+    const curNow = getDeviationFull();
+    let changed = false;
+    if(force || curObj !== _lastPrefObj){
+      _lastPrefObj = curObj;
+      if(objectIS && !objectISDirty){
+        if(objectIS.value !== curObj){
+          objectIS.value = curObj;
+          autoResize(objectIS);
+          changed = true;
+        }
+      }
+    }
+    if(force || curNow !== _lastPrefNow){
+      _lastPrefNow = curNow;
+      if(deviationIS && !deviationISDirty){
+        if(deviationIS.value !== curNow){
+          deviationIS.value = curNow;
+          autoResize(deviationIS);
+          changed = true;
+        }
+      }
+    }
+    if(changed || force){
+      refreshAllTokenizedText();
+      updateTitlesAndLabels();
+      saveToStorage();
+    }
+  }catch(e){ /* no-op */ }
+}
 /* [script:init] start */
 function autoResize(el){
   el.style.height = 'auto';
@@ -584,186 +651,137 @@ function init(){
   restoreFromStorage();
   refreshAllTokenizedText();
   updateTitlesAndLabels();
+  // Kick off periodic sync to capture extension-driven edits (e.g., Grammarly)
+  if(!_mirrorTick){ _mirrorTick = setInterval(syncMirror, 300); }
+  // Do an immediate sync so existing values populate
+  syncMirror(true);
 }
 init();
 /* [script:init] end */
 
 /* [script:export] start */
-/* =================== ASCII export =================== */
-function wrapAt(str, width){
-  if(!str) return '';
-  const words = str.split(/\s+/); let line = '', out = [];
-  words.forEach(w=>{
-    if((line + ' ' + w).trim().length > width){ if(line) out.push(line); line = w; }
-    else{ line = (line? line+' ' : '') + w; }
-  });
-  if(line) out.push(line);
-  return out.join('\n');
+
+/* =================== Summary Export (re-written) =================== */
+
+function ensureSummaryCard(){
+  let card = document.getElementById('summaryCard');
+  if(!card){
+    const wrap = document.querySelector('.wrap');
+    card = document.createElement('div');
+    card.className = 'card';
+    card.id = 'summaryCard';
+    const h = document.createElement('h3'); h.textContent = 'Copy & Paste Summary';
+    const pre = document.createElement('pre'); pre.id='summaryPre'; pre.style.whiteSpace='pre-wrap'; pre.style.font='13px/1.6 monospace'; pre.style.margin='0';
+    card.appendChild(h); card.appendChild(pre);
+    wrap.appendChild(card);
+  }
+  return card;
 }
-function asciiBlock(title, body){
-  let b = (body||'—').trim();
-  return `> ${title}\n${b}\n\n`;
+
+function valOrDash(s){ const v=(s||'').trim(); return v? v : '—'; }
+function linesOrDash(s){
+  const v=(s||'').trim();
+  if(!v) return '—';
+  return v.split('\\n').map(x=>x.trim()).filter(Boolean).join('\\n');
 }
-function toAscii(){
-  /* Titles built from FULL object + FULL now */
+function buildSummaryText(){
   const title = document.getElementById('docTitle').textContent.trim();
   const subtitle = document.getElementById('docSubtitle').textContent.trim();
 
-  /* Preface fields */
+  // Preface
   const preface = [
-    asciiBlock('One-sentence', oneLine.value),
-    asciiBlock('Evidence / Proof', proof.value),
-    asciiBlock('Specific Object', objectPrefill.value || (objectIS?.value||'')),
-    asciiBlock('Healthy Baseline', healthy.value),
-    asciiBlock('Current State (What is happening now?)', now.value),
-  ].join('');
+    `• One-line: ${valOrDash(oneLine.value)}`,
+    `• Evidence/Proof:
+${linesOrDash(proof.value)}`,
+    `• Specific Object:
+${linesOrDash(objectPrefill.value || (objectIS?.value||''))}`,
+    `• Healthy Baseline:
+${linesOrDash(healthy.value)}`,
+    `• Current State (What is happening now?):
+${linesOrDash(now.value)}`,
+  ].join('\n');
 
-  /* Impact table */
-  const impactHeaders = ["Current Impact","Future Impact","Timeframe"];
-  const impactCells = [impactNow.value.trim()||"—", impactFuture.value.trim()||"—", impactTime.value.trim()||"—"];
-  const impW = [0,0,0];
-  impactHeaders.forEach((h,i)=>impW[i]=Math.max(impW[i], h.length));
-  impactCells.forEach((c,i)=>c.split('\n').forEach(l=>impW[i]=Math.max(impW[i], l.length)));
-  const pad=(s,w)=> s + ' '.repeat(w - s.length);
-  const barImp='+'+impW.map(w=>'-'.repeat(w+2)).join('+')+'+';
-  let impactOut = barImp+'\n';
-  impactOut += '|' + impactHeaders.map((h,i)=>' '+pad(h,impW[i])+' ').join('|') + '|\n';
-  impactOut += barImp+'\n';
-  const maxLines = Math.max(...impactCells.map(c=>c.split('\n').length));
-  for(let i=0;i<maxLines;i++){
-    impactOut += '|' + [0,1,2].map(ci=>{
-      const lines = impactCells[ci].split('\n');
-      return ' '+pad(lines[i]||'', impW[ci])+' ';
-    }).join('|') + '|\n';
-  }
-  impactOut += barImp+'\n\n';
+  // Impact
+  const imp = [
+    `Current Impact:
+${linesOrDash(impactNow.value)}`,
+    `Future Impact:
+${linesOrDash(impactFuture.value)}`,
+    `Timeframe:
+${linesOrDash(impactTime.value)}`
+  ].join('\n');
 
-  /* KT table */
-  const headers = ["KT Question","IS","IS NOT","Distinctions","Changes"];
-  const rows = [];
+  // KT Table
+  const rowsOut = [];
   [...tbody.querySelectorAll('tr')].forEach(tr=>{
     if(tr.classList.contains('band')){
-      rows.push({band: tr.textContent.trim()});
+      rowsOut.push(`
+== ${tr.textContent.trim()} ==
+`);
       return;
     }
     const q = tr.querySelector('th').textContent.trim();
     const t = tr.querySelectorAll('textarea');
-    const is = t[0].value.trim(), no = t[1].value.trim(), di = t[2].value.trim(), ch = t[3].value.trim();
-    const dLines = di.split('\n').map(s=>s.trim()).filter(Boolean);
-    let cLines = ch.split('\n').map(s=>s.trim()).filter(Boolean);
-    if(dLines.length && cLines.length < dLines.length){
-      const missing = dLines.slice(cLines.length);
-      cLines = cLines.concat(missing.map(s=>`[TODO] What changed re: ${s}?`));
-    }
-    rows.push({
-      q: wrapAt(q, 26),
-      is: is || "—",
-      no: no || "—",
-      di: dLines.length ? dLines.join('\n') : "—",
-      ch: cLines.length ? cLines.join('\n') : (dLines.length ? "[TODO] Map changes to each distinction above" : "—"),
-    });
+    const is = linesOrDash(t[0].value);
+    const no = linesOrDash(t[1].value);
+    const di = linesOrDash(t[2].value);
+    const ch = linesOrDash(t[3].value);
+    rowsOut.push([
+      `Q: ${q}`,
+      `  • IS:
+${is}`,
+      `  • IS NOT:
+${no}`,
+      `  • Distinctions:
+${di}`,
+      `  • Changes:
+${ch}`
+    ].join('\\n'));
   });
+  const ktOut = rowsOut.join('\n');
 
-  const colW = [0,0,0,0,0];
-  const widen=(i,s)=>s.split('\n').forEach(l=>colW[i]=Math.max(colW[i], l.length));
-  headers.forEach((h,i)=>widen(i,h));
-  rows.forEach(r=>{ if(r.band) return; widen(0,r.q); widen(1,r.is); widen(2,r.no); widen(3,r.di); widen(4,r.ch); });
-  const bar='+'+colW.map(w=>'-'.repeat(w+2)).join('+')+'+';
-
-  let ktOut = bar+'\n';
-  ktOut += '|' + headers.map((h,i)=>' '+pad(h,colW[i])+' ').join('|') + '|\n';
-  ktOut += bar+'\n';
-  rows.forEach(r=>{
-    if(r.band){ ktOut += bar+'\n' + `== ${r.band} ==\n` + bar+'\n'; return; }
-    const cells=[r.q.split('\n'), r.is.split('\n'), r.no.split('\n'), r.di.split('\n'), r.ch.split('\n')];
-    const max=Math.max(...cells.map(c=>c.length));
-    for(let i=0;i<max;i++){
-      ktOut+='|' + [0,1,2,3,4].map(ci=>' '+pad(cells[ci][i]||'', colW[ci])+' ').join('|') + '|\n';
-    }
-    ktOut+=bar+'\n';
-  });
-
-  /* Combine */
-  let out = '';
-  out += title + '\n';
-  out += subtitle + '\n\n';
-  out += preface;
-  out += 'IMPACT\n' + impactOut;
-  out += 'KT IS / IS NOT — Details\n' + ktOut;
-  return out;
+  // Compose
+  return [
+    title,
+    subtitle,
+    '',
+    '— Preface —',
+    preface,
+    '',
+    '— Impact —',
+    imp,
+    '',
+    '— KT IS / IS NOT —',
+    ktOut
+  ].join('\\n');
 }
-async function copyAscii(){
-  const ascii = toAscii();
 
-  // Helper: legacy fallback that works on HTTP and older browsers
-  const legacyCopy = () => {
-    try{
-      const ta = document.createElement('textarea');
-      ta.value = ascii;
-      ta.setAttribute('readonly', '');
-      ta.style.position = 'fixed';
-      ta.style.top = '-9999px';
-      document.body.appendChild(ta);
-      ta.select();
-      ta.setSelectionRange(0, ta.value.length);
-      const ok = document.execCommand('copy');
-      document.body.removeChild(ta);
-      if(ok){ showToast('Copied as ASCII. Paste into your ticket ✨'); return true; }
-      return false;
-    }catch(_){ return false; }
-  };
+async function onGenerateSummary(){
+  const text = buildSummaryText();
 
+  // Always render at bottom for manual copy
+  const card = ensureSummaryCard();
+  const pre = document.getElementById('summaryPre');
+  pre.textContent = text;
+  card.style.display = 'block';
+  // Try clipboard copy (best effort)
   try{
     if(window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText){
-      await navigator.clipboard.writeText(ascii);
-      showToast('Copied as ASCII. Paste into your ticket ✨');
-      return;
+      await navigator.clipboard.writeText(text);
+      if(typeof showToast==='function'){ showToast('Summary updated & copied. It’s also shown below.'); }
+    }else{
+      if(typeof showToast==='function'){ showToast('Summary updated. Clipboard blocked — copy it from the bottom.'); }
     }
-    // Not secure or API missing → try legacy
-    if(legacyCopy()) return;
-    // Last resort: render in-page for manual copy (no popup windows)
-    const pre = document.createElement('pre');
-    pre.style.whiteSpace='pre-wrap';
-    pre.style.font='13px/1.5 monospace';
-    pre.style.margin='0';
-    pre.style.padding='16px';
-    pre.style.maxHeight='60vh';
-    pre.style.overflow='auto';
-    pre.textContent = ascii;
-
-    const modal = document.createElement('div');
-    modal.style.position='fixed';
-    modal.style.inset='24px';
-    modal.style.background='rgba(0,0,0,.35)';
-    modal.style.backdropFilter='blur(2px)';
-    modal.style.zIndex='9999';
-    modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
-
-    const card = document.createElement('div');
-    card.style.background='#fff';
-    card.style.border='1px solid #e6eaf2';
-    card.style.borderRadius='12px';
-    card.style.boxShadow='0 8px 24px rgba(12,18,32,.12)';
-    card.style.maxWidth='960px';
-    card.style.margin='auto';
-    card.style.padding='12px';
-    card.style.height='70vh';
-    card.style.display='flex';
-    card.style.flexDirection='column';
-    card.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 8px 12px 8px;"><strong style="font:600 14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;">KT — ASCII Export (manual copy)</strong><button id="closeAscii" class="btn" style="padding:6px 10px;border-radius:8px;">Close</button></div>';
-    card.appendChild(pre);
-    modal.appendChild(card);
-    document.body.appendChild(modal);
-    document.getElementById('closeAscii').addEventListener('click', ()=>modal.remove());
-    showToast('Clipboard blocked. Showing text to copy manually.');
-  }catch(e){
-    // If anything unexpected happens, try legacy then bail gracefully
-    if(legacyCopy()) return;
-    showToast('Couldn’t access clipboard. Are you on HTTPS and not inside a sandbox?');
-    console.error('Copy failed:', e);
+  }catch(_){
+    if(typeof showToast==='function'){ showToast('Summary updated. Clipboard blocked — copy it from the bottom.'); }
   }
 }
-document.getElementById('copyBtn').addEventListener('click', copyAscii);
+
+document.addEventListener('DOMContentLoaded', function(){
+  var btn = document.getElementById('genSummaryBtn');
+  if(btn){ btn.addEventListener('click', onGenerateSummary); }
+});
+
 /* [script:export] end */
 
 /* [script:storage] start */
