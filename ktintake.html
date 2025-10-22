@@ -79,9 +79,27 @@ Anchors present:
   .grid{ display:grid; gap:12px; }
   .grid.cols-2{ grid-template-columns:1fr 1fr; }
   .grid.cols-3{ grid-template-columns:1fr 1fr 1fr; }
+  .containment-grid .contain-status{ grid-column:span 2; }
+  .containment-radios{ display:flex; flex-wrap:wrap; gap:12px; }
+  .radio-option{ display:flex; align-items:center; gap:6px; }
+  .comm-grid{ grid-template-columns:1fr 1fr auto; align-items:end; }
+  .comm-grid .field{ margin:0; }
+  .comm-grid .field label{ margin-bottom:4px; }
+  .comm-grid.comm-grid--single{ grid-template-columns:1fr; }
+  .inline{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .chipset{ display:flex; gap:8px; flex-wrap:wrap; }
+  .chipset .chip{ position:relative; display:flex; align-items:center; gap:6px; }
+  .chipset .chip label{ display:inline-flex; align-items:center; justify-content:center; padding:8px 12px; border-radius:999px; border:1px solid #dfe5f2; background:#f7f9ff; font-weight:600; font-size:13px; color:#1d2845; cursor:pointer; transition:border-color var(--speed), box-shadow var(--speed), background var(--speed); }
+  .chipset .chip input[type="checkbox"]{ position:absolute; top:0; left:0; opacity:0; pointer-events:none; width:1px; height:1px; }
+  .chipset .chip input[type="checkbox"]:focus + label{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,122,255,.18); }
+  .chipset .chip input[type="checkbox"]:checked + label{ border-color:var(--accent); background:rgba(0,122,255,.1); color:var(--accent); }
+  .chip-label{ font-weight:700; color:#1d2845; min-width:150px; flex:0 0 auto; }
+  .caption{ margin:-6px 0 16px; font-size:12px; color:var(--muted); }
   .gap-24{ gap:24px; }
   .field label{display:block; font-weight:700; margin-bottom:6px;}
   .field small{display:block; color:var(--muted); margin-top:4px;}
+  fieldset.field{border:0; padding:0; margin:0;}
+  fieldset.field legend{font-weight:700; margin-bottom:6px; font-size:14px; color:#1d2845;}
   .field textarea, .field input[type="text"]{
     width:100%; box-sizing:border-box;
     font:15px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
@@ -91,6 +109,23 @@ Anchors present:
   }
   .field textarea{min-height:140px; resize:vertical;}
   .field input[type="text"]{height:44px;}
+  .field input[readonly]{background:#f4f6fb; color:#3b4962;}
+  .field input[type="time"], .field select{
+    width:100%; box-sizing:border-box; height:44px;
+    font:15px/1.55 "SF Pro Text","SF Pro Display",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    color:var(--ink); background:#f9fbff;
+    border:1px solid #dfe5f2; border-radius:12px; padding:8px 12px; outline:none;
+    transition:border-color var(--speed), box-shadow var(--speed), background var(--speed);
+  }
+  .field input[type="time"]:focus, .field select:focus{border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,122,255,.18); background:#fff;}
+  .btn-mini{
+    appearance:none; border:1px solid #dfe5f2; background:#eef3ff; color:var(--accent);
+    padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:600; font-size:13px;
+    transition:transform var(--speed), box-shadow var(--speed), border-color var(--speed);
+    box-shadow:0 4px 12px rgba(0,122,255,.12);
+  }
+  .btn-mini:hover{transform:translateY(-1px);}
+  .btn-mini:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,122,255,.18);}
   .field textarea::placeholder, .field input::placeholder{color:#8b93a4;}
   .field textarea:focus, .field input:focus{border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,122,255,.18); background:#fff;}
 
@@ -194,6 +229,47 @@ Anchors present:
     <!-- [section:preface] start -->
     <section class="preface-stack">
       <div class="card">
+        <h3>Bridge Activation</h3>
+        <p class="caption">Capture only what’s needed to activate the bridge and set comms cadence.</p>
+        <div class="grid cols-3">
+          <div class="field">
+            <label for="bridgeOpenedUtc">Bridge opened (UTC)</label>
+            <div class="inline">
+              <input type="text" id="bridgeOpenedUtc" readonly aria-readonly="true" />
+              <button type="button" class="btn-mini" id="bridgeSetNowBtn" aria-label="Stamp bridge opened time">Set Now</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="icName">Incident Commander</label>
+            <input type="text" id="icName" placeholder="" />
+          </div>
+          <div class="field">
+            <label for="bcName">Bridge Coordinator</label>
+            <input type="text" id="bcName" placeholder="" />
+          </div>
+        </div>
+        <div class="grid cols-3">
+          <div class="field">
+            <label for="semOpsName">SEM/Ops Lead</label>
+            <input type="text" id="semOpsName" placeholder="" />
+          </div>
+          <div class="field">
+            <label for="severity">Severity</label>
+            <select id="severity">
+              <option value="">Select severity</option>
+              <option value="S1">S1</option>
+              <option value="S2">S2</option>
+              <option value="S3">S3</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="nextUpdateDue">Next update due</label>
+            <input type="time" id="nextUpdateDue" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
         <h3>Problem Summary</h3>
         <div class="grid">
           <div class="field">
@@ -205,6 +281,52 @@ Anchors present:
 
       <div class="card">
         <h3>Evidence &amp; Object</h3>
+        <div class="inline">
+          <span class="chip-label">Detection Source</span>
+          <div class="chipset" role="group" aria-label="Detection Source">
+            <div class="chip">
+              <input type="checkbox" id="detectMonitoring" />
+              <label for="detectMonitoring">Monitoring</label>
+            </div>
+            <div class="chip">
+              <input type="checkbox" id="detectUserReport" />
+              <label for="detectUserReport">User Report</label>
+            </div>
+            <div class="chip">
+              <input type="checkbox" id="detectAutomation" />
+              <label for="detectAutomation">Automation</label>
+            </div>
+            <div class="chip">
+              <input type="checkbox" id="detectOther" />
+              <label for="detectOther">Other</label>
+            </div>
+          </div>
+        </div>
+        <div class="inline">
+          <span class="chip-label">Evidence Collected</span>
+          <div class="chipset" role="group" aria-label="Evidence Collected">
+            <div class="chip">
+              <input type="checkbox" id="evScreenshot" />
+              <label for="evScreenshot">Screenshot</label>
+            </div>
+            <div class="chip">
+              <input type="checkbox" id="evLogs" />
+              <label for="evLogs">Logs</label>
+            </div>
+            <div class="chip">
+              <input type="checkbox" id="evMetrics" />
+              <label for="evMetrics">Metrics</label>
+            </div>
+            <div class="chip">
+              <input type="checkbox" id="evRepro" />
+              <label for="evRepro">Repro</label>
+            </div>
+            <div class="chip">
+              <input type="checkbox" id="evOther" />
+              <label for="evOther">Other</label>
+            </div>
+          </div>
+        </div>
         <div class="grid cols-2">
           <div class="field">
             <label for="proof">What proves a deviation exists?</label>
@@ -244,6 +366,29 @@ Anchors present:
     <!-- [section:impact] start -->
     <div class="card impact">
       <h3>Impact</h3>
+      <div class="grid cols-3 containment-grid">
+        <fieldset class="field contain-status">
+          <legend>Containment Status</legend>
+          <div class="containment-radios" role="radiogroup" aria-label="Containment Status">
+            <div class="radio-option">
+              <input type="radio" id="containNone" name="containStatus" value="none" />
+              <label for="containNone">No action yet</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" id="containMitigation" name="containStatus" value="mitigation" />
+              <label for="containMitigation">Temporary mitigation applied</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" id="containRestore" name="containStatus" value="restore" />
+              <label for="containRestore">Full restoration in progress</label>
+            </div>
+          </div>
+        </fieldset>
+        <div class="field">
+          <label for="containDesc">Containment Description</label>
+          <input type="text" id="containDesc" placeholder="What immediate step reduces risk?" />
+        </div>
+      </div>
       <div class="grid cols-3 gap-24">
         <div class="field">
           <h3>Current Impact</h3>
@@ -266,6 +411,44 @@ Anchors present:
       </div>
     </div>
     <!-- [section:impact] end -->
+
+    <div class="card">
+      <h3>Communication Snapshot</h3>
+      <div class="grid comm-grid">
+        <div class="field">
+          <label for="commInternalSent">Internal update sent?</label>
+          <input type="checkbox" id="commInternalSent" />
+        </div>
+        <div class="field">
+          <label for="commInternalTs">Timestamp (UTC)</label>
+          <input type="text" id="commInternalTs" readonly aria-readonly="true" />
+        </div>
+        <div class="field">
+          <span class="subtle" aria-hidden="true">&nbsp;</span>
+          <button type="button" class="btn-mini" id="commInternalStampBtn" aria-label="Stamp Internal Update Time">Stamp Now</button>
+        </div>
+      </div>
+      <div class="grid comm-grid">
+        <div class="field">
+          <label for="commExternalSent">External customer update sent?</label>
+          <input type="checkbox" id="commExternalSent" />
+        </div>
+        <div class="field">
+          <label for="commExternalTs">Timestamp (UTC)</label>
+          <input type="text" id="commExternalTs" readonly aria-readonly="true" />
+        </div>
+        <div class="field">
+          <span class="subtle" aria-hidden="true">&nbsp;</span>
+          <button type="button" class="btn-mini" id="commExternalStampBtn" aria-label="Stamp External Update Time">Stamp Now</button>
+        </div>
+      </div>
+      <div class="grid comm-grid comm-grid--single">
+        <div class="field">
+          <label for="commNextUpdateTime">Next update scheduled for</label>
+          <input type="time" id="commNextUpdateTime" />
+        </div>
+      </div>
+    </div>
 
     <!-- [section:table] start -->
     <p class="subtle">Problem Analysis</p>
@@ -479,6 +662,25 @@ const objectPrefill = document.getElementById('objectPrefill');
 const healthy = document.getElementById('healthy');
 const now = document.getElementById('now');
 
+const bridgeOpenedUtc = document.getElementById('bridgeOpenedUtc');
+const bridgeSetNowBtn = document.getElementById('bridgeSetNowBtn');
+const icName = document.getElementById('icName');
+const bcName = document.getElementById('bcName');
+const semOpsName = document.getElementById('semOpsName');
+const severity = document.getElementById('severity');
+const nextUpdateDue = document.getElementById('nextUpdateDue');
+
+const detectMonitoring = document.getElementById('detectMonitoring');
+const detectUserReport = document.getElementById('detectUserReport');
+const detectAutomation = document.getElementById('detectAutomation');
+const detectOther = document.getElementById('detectOther');
+
+const evScreenshot = document.getElementById('evScreenshot');
+const evLogs = document.getElementById('evLogs');
+const evMetrics = document.getElementById('evMetrics');
+const evRepro = document.getElementById('evRepro');
+const evOther = document.getElementById('evOther');
+
 const labelHealthy = document.getElementById('labelHealthy');
 const labelNow = document.getElementById('labelNow');
 
@@ -488,6 +690,19 @@ const docSubtitle = document.getElementById('docSubtitle');
 const impactNow = document.getElementById('impactNow');
 const impactFuture = document.getElementById('impactFuture');
 const impactTime = document.getElementById('impactTime');
+
+const containNone = document.getElementById('containNone');
+const containMitigation = document.getElementById('containMitigation');
+const containRestore = document.getElementById('containRestore');
+const containDesc = document.getElementById('containDesc');
+
+const commInternalSent = document.getElementById('commInternalSent');
+const commInternalTs = document.getElementById('commInternalTs');
+const commInternalStampBtn = document.getElementById('commInternalStampBtn');
+const commExternalSent = document.getElementById('commExternalSent');
+const commExternalTs = document.getElementById('commExternalTs');
+const commExternalStampBtn = document.getElementById('commExternalStampBtn');
+const commNextUpdateTime = document.getElementById('commNextUpdateTime');
 
 [oneLine, proof, objectPrefill, healthy, now].forEach(el=>{
   el.addEventListener('input', ()=>{
@@ -510,6 +725,58 @@ const impactTime = document.getElementById('impactTime');
   el.addEventListener('keyup', syncMirror);
   el.addEventListener('change', ()=>syncMirror(true));
 });
+
+[icName, bcName, semOpsName].forEach(el=>{
+  if(el){ el.addEventListener('input', saveToStorage); }
+});
+[severity, nextUpdateDue, commNextUpdateTime].forEach(el=>{
+  if(el){ el.addEventListener('change', saveToStorage); }
+});
+
+[
+  detectMonitoring,
+  detectUserReport,
+  detectAutomation,
+  detectOther,
+  evScreenshot,
+  evLogs,
+  evMetrics,
+  evRepro,
+  evOther,
+  commInternalSent,
+  commExternalSent,
+  containNone,
+  containMitigation,
+  containRestore
+].forEach(el=>{ if(el){ el.addEventListener('change', saveToStorage); } });
+
+if(containDesc){ containDesc.addEventListener('input', saveToStorage); }
+
+if(bridgeSetNowBtn){
+  bridgeSetNowBtn.addEventListener('click', ()=>{
+    bridgeOpenedUtc.value = new Date().toISOString();
+    saveToStorage();
+    bridgeOpenedUtc.focus();
+  });
+}
+
+if(commInternalStampBtn){
+  commInternalStampBtn.addEventListener('click', ()=>{
+    commInternalTs.value = new Date().toISOString();
+    if(commInternalSent && !commInternalSent.checked){ commInternalSent.checked = true; }
+    saveToStorage();
+    commInternalTs.focus();
+  });
+}
+
+if(commExternalStampBtn){
+  commExternalStampBtn.addEventListener('click', ()=>{
+    commExternalTs.value = new Date().toISOString();
+    if(commExternalSent && !commExternalSent.checked){ commExternalSent.checked = true; }
+    saveToStorage();
+    commExternalTs.focus();
+  });
+}
 /* [script:preface-refs] end */
 
 /* [script:tokens] start */
@@ -642,13 +909,18 @@ function syncMirror(force=false){
 }
 /* [script:init] start */
 function autoResize(el){
+  if(!el || el.tagName !== 'TEXTAREA') return;
   el.style.height = 'auto';
-  const minH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ta-min-h'));
-  el.style.height = Math.max(minH, el.scrollHeight, el.tagName==='TEXTAREA' ? 140 : 44) + 'px';
+  const minH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ta-min-h')) || 140;
+  el.style.height = Math.max(minH, el.scrollHeight, 140) + 'px';
 }
 function init(){
   initTable();
   restoreFromStorage();
+  if(bridgeOpenedUtc && !bridgeOpenedUtc.value.trim()){
+    bridgeOpenedUtc.value = new Date().toISOString();
+    saveToStorage();
+  }
   refreshAllTokenizedText();
   updateTitlesAndLabels();
   // Kick off periodic sync to capture extension-driven edits (e.g., Grammarly)
@@ -688,6 +960,25 @@ function inlineText(s){
     .map(x=>x.trim())
     .filter(Boolean)
     .join(' · ');
+}
+
+function formatChipsetSelections(list){
+  const selected = list.filter(item=>item.el?.checked).map(item=>item.label);
+  return selected.length ? selected.join(', ') : '—';
+}
+
+function containmentStatusText(){
+  const status = getContainmentStatus();
+  if(status==='mitigation') return 'Temporary mitigation applied';
+  if(status==='restore') return 'Full restoration in progress';
+  if(status==='none') return 'No action yet';
+  return '—';
+}
+
+function formatCommLine(sentEl, tsEl, label){
+  const sent = sentEl?.checked;
+  const ts = valOrDash(tsEl?.value);
+  return `${label}: ${sent ? 'Sent' : 'Not sent'}${ts && ts !== '—' ? ` @ ${ts}` : ''}`;
 }
 
 /* ---------- ASCII table helpers ---------- */
@@ -741,20 +1032,58 @@ function buildSummaryText(){
   const title = document.getElementById('docTitle').textContent.trim();
   const subtitle = document.getElementById('docSubtitle').textContent.trim();
 
+  const bridge = [
+    `Bridge Opened (UTC): ${valOrDash(bridgeOpenedUtc?.value)}`,
+    `Incident Commander: ${valOrDash(icName?.value)}`,
+    `Bridge Coordinator: ${valOrDash(bcName?.value)}`,
+    `SEM/Ops Lead: ${valOrDash(semOpsName?.value)}`,
+    `Severity: ${valOrDash(severity?.value)}`,
+    `Next Update Due: ${valOrDash(nextUpdateDue?.value)}`
+  ].join('\n');
+
+  const detectionSummary = formatChipsetSelections([
+    {el: detectMonitoring, label: 'Monitoring'},
+    {el: detectUserReport, label: 'User Report'},
+    {el: detectAutomation, label: 'Automation'},
+    {el: detectOther, label: 'Other'}
+  ]);
+
+  const evidenceSummary = formatChipsetSelections([
+    {el: evScreenshot, label: 'Screenshot'},
+    {el: evLogs, label: 'Logs'},
+    {el: evMetrics, label: 'Metrics'},
+    {el: evRepro, label: 'Repro'},
+    {el: evOther, label: 'Other'}
+  ]);
+
   // === Preface (inline answers) ===
-  const preface = [
+  const prefaceLines = [
     `• One-line: ${valOrDash(oneLine.value)}`,
     `• Evidence/Proof: ${inlineText(proof.value)}`,
     `• Specific Object: ${inlineText(objectPrefill.value || (objectIS?.value||''))}`,
     `• Healthy Baseline: ${inlineText(healthy.value)}`,
-    `• Current State (What is happening now?): ${inlineText(now.value)}`
-  ].join('\n');
+    `• Current State (What is happening now?): ${inlineText(now.value)}`,
+    `• Detection Source: ${detectionSummary}`,
+    `• Evidence Collected: ${evidenceSummary}`
+  ];
+  const preface = prefaceLines.join('\n');
 
   // === Impact (inline answers) ===
   const imp = [
     `Current Impact: ${inlineText(impactNow.value)}`,
     `Future Impact: ${inlineText(impactFuture.value)}`,
     `Timeframe: ${inlineText(impactTime.value)}`
+  ].join('\n');
+
+  const containment = [
+    `Status: ${containmentStatusText()}`,
+    `Description: ${valOrDash(containDesc?.value)}`
+  ].join('\n');
+
+  const communications = [
+    formatCommLine(commInternalSent, commInternalTs, 'Internal Update'),
+    formatCommLine(commExternalSent, commExternalTs, 'External Update'),
+    `Next Update: ${valOrDash(commNextUpdateTime?.value)}`
   ].join('\n');
 
   // === KT Table as ASCII tables per question ===
@@ -788,11 +1117,20 @@ function buildSummaryText(){
     title,
     subtitle,
     '',
+    '— Bridge Activation —',
+    bridge,
+    '',
     '— Preface —',
     preface,
     '',
+    '— Containment —',
+    containment,
+    '',
     '— Impact —',
     imp,
+    '',
+    '— Communications —',
+    communications,
     '',
     '— KT IS / IS NOT —',
     ktOut
@@ -832,9 +1170,39 @@ document.addEventListener('DOMContentLoaded', function(){
 /* [script:storage] start */
 /* =================== Autosave =================== */
 const STORAGE_KEY='kt-intake-full-v2';
+function getContainmentStatus(){
+  if(containMitigation?.checked) return 'mitigation';
+  if(containRestore?.checked) return 'restore';
+  if(containNone?.checked) return 'none';
+  return '';
+}
 function saveToStorage(){
   const data={ pre:{ oneLine:oneLine.value, proof:proof.value, objectPrefill:objectPrefill.value, healthy:healthy.value, now:now.value },
                impact:{ now:impactNow.value, future:impactFuture.value, time:impactTime.value },
+               ops:{
+                 bridgeOpenedUtc:bridgeOpenedUtc?.value||'',
+                 icName:icName?.value||'',
+                 bcName:bcName?.value||'',
+                 semOpsName:semOpsName?.value||'',
+                 severity:severity?.value||'',
+                 nextUpdateDue:nextUpdateDue?.value||'',
+                 detectMonitoring:!!detectMonitoring?.checked,
+                 detectUserReport:!!detectUserReport?.checked,
+                 detectAutomation:!!detectAutomation?.checked,
+                 detectOther:!!detectOther?.checked,
+                 evScreenshot:!!evScreenshot?.checked,
+                 evLogs:!!evLogs?.checked,
+                 evMetrics:!!evMetrics?.checked,
+                 evRepro:!!evRepro?.checked,
+                 evOther:!!evOther?.checked,
+                 containStatus:getContainmentStatus(),
+                 containDesc:containDesc?.value||'',
+                 commInternalSent:!!commInternalSent?.checked,
+                 commInternalTs:commInternalTs?.value||'',
+                 commExternalSent:!!commExternalSent?.checked,
+                 commExternalTs:commExternalTs?.value||'',
+                 commNextUpdateTime:commNextUpdateTime?.value||''
+               },
                table:[] };
   [...tbody.querySelectorAll('tr')].forEach(tr=>{
     if(tr.classList.contains('band')){ data.table.push({band: tr.textContent.trim()}); return; }
@@ -857,6 +1225,35 @@ function restoreFromStorage(){
   if(data.impact){
     impactNow.value=data.impact.now||''; impactFuture.value=data.impact.future||''; impactTime.value=data.impact.time||'';
     [impactNow,impactFuture,impactTime].forEach(autoResize);
+  }
+  if(data.ops){
+    if(bridgeOpenedUtc){ bridgeOpenedUtc.value=data.ops.bridgeOpenedUtc||''; }
+    if(icName){ icName.value=data.ops.icName||''; }
+    if(bcName){ bcName.value=data.ops.bcName||''; }
+    if(semOpsName){ semOpsName.value=data.ops.semOpsName||''; }
+    if(severity){ severity.value=data.ops.severity||''; }
+    if(nextUpdateDue){ nextUpdateDue.value=data.ops.nextUpdateDue||''; }
+    if(detectMonitoring){ detectMonitoring.checked=!!data.ops.detectMonitoring; }
+    if(detectUserReport){ detectUserReport.checked=!!data.ops.detectUserReport; }
+    if(detectAutomation){ detectAutomation.checked=!!data.ops.detectAutomation; }
+    if(detectOther){ detectOther.checked=!!data.ops.detectOther; }
+    if(evScreenshot){ evScreenshot.checked=!!data.ops.evScreenshot; }
+    if(evLogs){ evLogs.checked=!!data.ops.evLogs; }
+    if(evMetrics){ evMetrics.checked=!!data.ops.evMetrics; }
+    if(evRepro){ evRepro.checked=!!data.ops.evRepro; }
+    if(evOther){ evOther.checked=!!data.ops.evOther; }
+    if(containDesc){ containDesc.value=data.ops.containDesc||''; }
+    if(typeof data.ops.containStatus==='string'){
+      const status = data.ops.containStatus;
+      if(containNone){ containNone.checked = status==='none'; }
+      if(containMitigation){ containMitigation.checked = status==='mitigation'; }
+      if(containRestore){ containRestore.checked = status==='restore'; }
+    }
+    if(commInternalSent){ commInternalSent.checked=!!data.ops.commInternalSent; }
+    if(commInternalTs){ commInternalTs.value=data.ops.commInternalTs||''; }
+    if(commExternalSent){ commExternalSent.checked=!!data.ops.commExternalSent; }
+    if(commExternalTs){ commExternalTs.value=data.ops.commExternalTs||''; }
+    if(commNextUpdateTime){ commNextUpdateTime.value=data.ops.commNextUpdateTime||''; }
   }
   if(Array.isArray(data.table)){
     let i=0;
