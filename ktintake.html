@@ -933,7 +933,7 @@ init();
 
 /* [script:export] start */
 
-/* =================== Summary Export (executive style with ASCII tables) =================== */
+/* =================== Summary Export (executive style, chat-friendly) =================== */
 
 function ensureSummaryCard(){
   let card = document.getElementById('summaryCard');
@@ -962,6 +962,36 @@ function inlineText(s){
     .join(' · ');
 }
 
+function splitLines(text){
+  const v=(text||'').trim();
+  if(!v) return [];
+  return v.split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
+}
+
+function formatLabeledList(label, lines){
+  if(!lines.length) return `${label}: —`;
+  if(lines.length === 1) return `${label}: ${lines[0]}`;
+  const bullets = lines.map(line=>`  • ${line}`).join('\n');
+  return `${label}:\n${bullets}`;
+}
+
+function formatDistinctionChanges(distLines, changeLines){
+  const len = Math.max(distLines.length, changeLines.length);
+  if(len === 0) return 'Distinctions → Changes: —';
+  if(len === 1){
+    const left = distLines[0] || '—';
+    const right = changeLines[0] || '—';
+    return `Distinctions → Changes: ${left} → ${right}`;
+  }
+  const pairs = [];
+  for(let i=0;i<len;i++){
+    const left = distLines[i] || '—';
+    const right = changeLines[i] || '—';
+    pairs.push(`  • ${left} → ${right}`);
+  }
+  return ['Distinctions → Changes:', ...pairs].join('\n');
+}
+
 function formatChipsetSelections(list){
   const selected = list.filter(item=>item.el?.checked).map(item=>item.label);
   return selected.length ? selected.join(', ') : '—';
@@ -979,52 +1009,6 @@ function formatCommLine(sentEl, tsEl, label){
   const sent = sentEl?.checked;
   const ts = valOrDash(tsEl?.value);
   return `${label}: ${sent ? 'Sent' : 'Not sent'}${ts && ts !== '—' ? ` @ ${ts}` : ''}`;
-}
-
-/* ---------- ASCII table helpers ---------- */
-function wrapCell(text, max){
-  // Word-wrap a single cell to a list of lines not exceeding 'max' characters
-  if(!text) return ['—'];
-  const words = String(text).split(/\s+/);
-  const lines = [];
-  let cur = '';
-  words.forEach(w=>{
-    if(!cur.length){ cur = w; return; }
-    if((cur + ' ' + w).length <= max){ cur += ' ' + w; }
-    else { lines.push(cur); cur = w; }
-  });
-  if(cur.length) lines.push(cur);
-  return lines.length ? lines : ['—'];
-}
-
-function buildAsciiTable(headers, cells, maxColWidth=28){
-  // 'cells' is an array of 4 strings: [IS, IS NOT, Distinctions, Changes]
-  const H = headers.map(h=>String(h));
-  const C = cells.map((c,i)=>wrapCell(c || '—', maxColWidth));
-
-  // Column widths = min(maxColWidth, max(header length, longest wrapped line per column))
-  const colW = H.map((h,i)=>{
-    const contentMax = Math.max(...C[i].map(s=>s.length));
-    return Math.min(maxColWidth, Math.max(h.length, contentMax));
-  });
-
-  const bar = '+' + colW.map(w=>'-'.repeat(w+2)).join('+') + '+';
-  const rowLine = (arr)=>'|' + arr.map((s,i)=>' ' + (s || '').padEnd(colW[i], ' ') + ' ').join('|') + '|';
-
-  // Header
-  let out = '';
-  out += bar + '\n';
-  out += rowLine(H) + '\n';
-  out += bar + '\n';
-
-  // Body (print as many lines as the tallest column)
-  const maxLines = Math.max(...C.map(col=>col.length));
-  for(let i=0;i<maxLines;i++){
-    const lineCells = [0,1,2,3].map(ci => C[ci][i] || '');
-    out += rowLine(lineCells) + '\n';
-  }
-  out += bar;
-  return out;
 }
 
 /* ---------- Executive summary builder ---------- */
@@ -1086,10 +1070,8 @@ function buildSummaryText(){
     `Next Update: ${valOrDash(commNextUpdateTime?.value)}`
   ].join('\n');
 
-  // === KT Table as ASCII tables per question ===
+  // === KT Table as chat-friendly blocks per question ===
   const rowsOut = [];
-  const TABLE_HEADERS = ['IS', 'IS NOT', 'Distinctions', 'Changes'];
-  const MAX_COL = 28; // tweak if you prefer wider/narrower columns
 
   [...tbody.querySelectorAll('tr')].forEach(tr=>{
     if(tr.classList.contains('band')){
@@ -1099,15 +1081,16 @@ function buildSummaryText(){
     }
     const q = tr.querySelector('th').textContent.trim();
     const t = tr.querySelectorAll('textarea');
-    const is = inlineText(t[0].value);
-    const no = inlineText(t[1].value);
-    const di = inlineText(t[2].value);
-    const ch = inlineText(t[3].value);
+    const isLines = splitLines(t[0].value);
+    const notLines = splitLines(t[1].value);
+    const distLines = splitLines(t[2].value);
+    const changeLines = splitLines(t[3].value);
 
     // Question header
     rowsOut.push(`Q: ${q}`);
-    // ASCII table
-    rowsOut.push(buildAsciiTable(TABLE_HEADERS, [is, no, di, ch], MAX_COL));
+    rowsOut.push(formatLabeledList('IS', isLines));
+    rowsOut.push(formatLabeledList('IS NOT', notLines));
+    rowsOut.push(formatDistinctionChanges(distLines, changeLines));
   });
 
   const ktOut = rowsOut.join('\n\n'); // clear breathing room between tables
