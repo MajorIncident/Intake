@@ -86,6 +86,7 @@ Anchors present:
   .comm-grid .field{ margin:0; }
   .comm-grid .field label{ margin-bottom:4px; }
   .comm-grid.comm-grid--single{ grid-template-columns:1fr; }
+  .comm-grid.comm-grid--snapshot{ grid-template-columns:1fr 1fr; }
   .inline{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
   .chipset{ display:flex; gap:8px; flex-wrap:wrap; }
   .chipset .chip{ position:relative; display:flex; align-items:center; gap:6px; }
@@ -128,6 +129,27 @@ Anchors present:
   .btn-mini:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,122,255,.18);}
   .field textarea::placeholder, .field input::placeholder{color:#8b93a4;}
   .field textarea:focus, .field input:focus{border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,122,255,.18); background:#fff;}
+
+  .card.communication-due{ border-color:#ff9a8a; background:linear-gradient(180deg,#fff4f2 0%,#ffffff 35%); box-shadow:0 10px 28px rgba(255,107,74,.18); }
+  .communication-due .countdown{ color:#d91f11; }
+
+  .cadence-group{ display:flex; gap:8px; flex-wrap:wrap; }
+  .cadence-option{ position:relative; }
+  .cadence-option input[type="radio"]{ position:absolute; inset:0; opacity:0; }
+  .cadence-option span{ display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; border-radius:999px; border:1px solid #dfe5f2; background:#f7f9ff; font-weight:600; font-size:13px; color:#1d2845; cursor:pointer; transition:border-color var(--speed), box-shadow var(--speed), background var(--speed); }
+  .cadence-option input[type="radio"]:focus + span{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,122,255,.18); }
+  .cadence-option input[type="radio"]:checked + span{ border-color:var(--accent); background:rgba(0,122,255,.1); color:var(--accent); }
+
+  .comm-actions{ gap:10px; justify-content:flex-start; }
+  .comm-actions .countdown{ font-weight:600; color:#2a3957; min-width:96px; }
+
+  .comm-alert{ margin-top:10px; padding:10px 12px; border-radius:12px; background:#fff2f0; border:1px solid #ffd0c7; color:#b71c1c; font-weight:600; display:flex; align-items:center; gap:8px; }
+
+  .comm-log{ list-style:none; padding:0; margin:12px 0 0; display:flex; flex-direction:column; gap:8px; }
+  .comm-log li{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 12px; border-radius:12px; background:#f7f9ff; border:1px solid #e2e7f3; font-size:13px; }
+  .comm-log__type{ font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#1d2845; }
+  .comm-log__time{ font-variant-numeric:tabular-nums; color:#2a3957; }
+  .comm-log__empty{ justify-content:flex-start; color:#7a8398; font-style:italic; }
 
   /* Impact strip */
   .impact{ padding:18px; }
@@ -412,9 +434,9 @@ Anchors present:
     </div>
     <!-- [section:impact] end -->
 
-    <div class="card">
+    <div class="card" id="commSnapshotCard">
       <h3>Communication Snapshot</h3>
-      <div class="grid comm-grid">
+      <div class="grid comm-grid comm-grid--snapshot">
         <div class="field">
           <label for="commInternalSent">Internal update sent?</label>
           <input type="checkbox" id="commInternalSent" />
@@ -423,12 +445,8 @@ Anchors present:
           <label for="commInternalTs">Timestamp (UTC)</label>
           <input type="text" id="commInternalTs" readonly aria-readonly="true" />
         </div>
-        <div class="field">
-          <span class="subtle" aria-hidden="true">&nbsp;</span>
-          <button type="button" class="btn-mini" id="commInternalStampBtn" aria-label="Stamp Internal Update Time">Stamp Now</button>
-        </div>
       </div>
-      <div class="grid comm-grid">
+      <div class="grid comm-grid comm-grid--snapshot">
         <div class="field">
           <label for="commExternalSent">External customer update sent?</label>
           <input type="checkbox" id="commExternalSent" />
@@ -437,16 +455,52 @@ Anchors present:
           <label for="commExternalTs">Timestamp (UTC)</label>
           <input type="text" id="commExternalTs" readonly aria-readonly="true" />
         </div>
-        <div class="field">
-          <span class="subtle" aria-hidden="true">&nbsp;</span>
-          <button type="button" class="btn-mini" id="commExternalStampBtn" aria-label="Stamp External Update Time">Stamp Now</button>
-        </div>
       </div>
       <div class="grid comm-grid comm-grid--single">
         <div class="field">
           <label for="commNextUpdateTime">Next update scheduled for</label>
           <input type="time" id="commNextUpdateTime" />
         </div>
+      </div>
+    </div>
+
+    <div class="card" id="commControlsCard">
+      <h3>Communication Cadence &amp; Log</h3>
+      <fieldset class="field">
+        <legend id="commCadenceLegend">Communication cadence</legend>
+        <div class="cadence-group" id="commCadenceGroup" role="radiogroup" aria-labelledby="commCadenceLegend">
+          <label class="cadence-option">
+            <input type="radio" name="commCadence" value="10" />
+            <span>10 min</span>
+          </label>
+          <label class="cadence-option">
+            <input type="radio" name="commCadence" value="15" />
+            <span>15 min</span>
+          </label>
+          <label class="cadence-option">
+            <input type="radio" name="commCadence" value="20" />
+            <span>20 min</span>
+          </label>
+          <label class="cadence-option">
+            <input type="radio" name="commCadence" value="30" />
+            <span>30 min</span>
+          </label>
+          <label class="cadence-option">
+            <input type="radio" name="commCadence" value="60" />
+            <span>Hourly</span>
+          </label>
+        </div>
+        <small>Pick how often updates should be broadcast. Logging a communication restarts the timer and reminder.</small>
+      </fieldset>
+      <div class="inline comm-actions">
+        <button type="button" class="btn-mini" id="commInternalStampBtn" aria-label="Log internal communication">Log internal update</button>
+        <button type="button" class="btn-mini" id="commExternalStampBtn" aria-label="Log external communication">Log external update</button>
+        <span class="countdown" id="commCountdown" aria-live="polite"></span>
+      </div>
+      <div class="comm-alert" id="commDueAlert" role="alert" hidden></div>
+      <div class="field">
+        <label for="commLogList">Communication log</label>
+        <ul id="commLogList" class="comm-log" aria-live="polite" aria-label="Communication log"></ul>
       </div>
     </div>
 
@@ -703,6 +757,19 @@ const commExternalSent = document.getElementById('commExternalSent');
 const commExternalTs = document.getElementById('commExternalTs');
 const commExternalStampBtn = document.getElementById('commExternalStampBtn');
 const commNextUpdateTime = document.getElementById('commNextUpdateTime');
+const commSnapshotCard = document.getElementById('commSnapshotCard');
+const commControlsCard = document.getElementById('commControlsCard');
+const commCadenceGroup = document.getElementById('commCadenceGroup');
+const commCadenceRadios = commCadenceGroup ? [...commCadenceGroup.querySelectorAll('input[name="commCadence"]')] : [];
+const commCountdown = document.getElementById('commCountdown');
+const commDueAlert = document.getElementById('commDueAlert');
+const commLogList = document.getElementById('commLogList');
+
+let commLog = [];
+let commCadence = '';
+let commNextDueIso = '';
+let cadenceTimerId = null;
+let dueToastShown = false;
 
 [oneLine, proof, objectPrefill, healthy, now].forEach(el=>{
   el.addEventListener('input', ()=>{
@@ -729,9 +796,48 @@ const commNextUpdateTime = document.getElementById('commNextUpdateTime');
 [icName, bcName, semOpsName].forEach(el=>{
   if(el){ el.addEventListener('input', saveToStorage); }
 });
-[severity, nextUpdateDue, commNextUpdateTime].forEach(el=>{
+[severity].forEach(el=>{
   if(el){ el.addEventListener('change', saveToStorage); }
 });
+
+if(nextUpdateDue){
+  nextUpdateDue.addEventListener('change', ()=>{
+    applyManualDueValue(nextUpdateDue.value);
+    saveToStorage();
+  });
+}
+
+if(commNextUpdateTime){
+  commNextUpdateTime.addEventListener('change', ()=>{
+    applyManualDueValue(commNextUpdateTime.value);
+    saveToStorage();
+  });
+}
+
+if(commCadenceRadios.length){
+  commCadenceRadios.forEach(radio=>{
+    radio.addEventListener('change', ()=>{
+      if(!radio.checked) return;
+      commCadence = radio.value;
+      dueToastShown = false;
+      if(commLog.length){
+        const lastIso = commLog[0]?.ts;
+        if(lastIso){
+          const base = new Date(lastIso);
+          if(!Number.isNaN(base.valueOf())){
+            const mins = getCadenceMinutes();
+            if(mins){
+              base.setMinutes(base.getMinutes() + mins);
+              setNextDue(base);
+            }
+          }
+        }
+      }
+      scheduleCadenceTick();
+      saveToStorage();
+    });
+  });
+}
 
 [
   detectMonitoring,
@@ -761,23 +867,204 @@ if(bridgeSetNowBtn){
 }
 
 if(commInternalStampBtn){
-  commInternalStampBtn.addEventListener('click', ()=>{
-    commInternalTs.value = new Date().toISOString();
-    if(commInternalSent && !commInternalSent.checked){ commInternalSent.checked = true; }
-    saveToStorage();
-    commInternalTs.focus();
-  });
+  commInternalStampBtn.addEventListener('click', ()=>logCommunication('internal'));
 }
 
 if(commExternalStampBtn){
-  commExternalStampBtn.addEventListener('click', ()=>{
-    commExternalTs.value = new Date().toISOString();
-    if(commExternalSent && !commExternalSent.checked){ commExternalSent.checked = true; }
-    saveToStorage();
-    commExternalTs.focus();
+  commExternalStampBtn.addEventListener('click', ()=>logCommunication('external'));
+}
+
+updateCommLogUI();
+scheduleCadenceTick();
+/* [script:preface-refs] end */
+
+function getCadenceMinutes(){
+  const mins = parseInt(commCadence, 10);
+  return Number.isFinite(mins) ? mins : null;
+}
+
+function updateCadenceRadios(){
+  if(!commCadenceRadios.length) return;
+  commCadenceRadios.forEach(radio=>{
+    radio.checked = radio.value === commCadence;
   });
 }
-/* [script:preface-refs] end */
+
+function toTimeValue(date){
+  if(!(date instanceof Date) || Number.isNaN(date.valueOf())) return '';
+  const h = String(date.getHours()).padStart(2,'0');
+  const m = String(date.getMinutes()).padStart(2,'0');
+  return `${h}:${m}`;
+}
+
+function isoFromTimeValue(value){
+  if(!value) return '';
+  const parts = value.split(':');
+  if(parts.length < 2) return '';
+  const [hh, mm] = parts.map(Number);
+  if(Number.isNaN(hh) || Number.isNaN(mm)) return '';
+  const now = new Date();
+  const candidate = new Date(now);
+  candidate.setHours(hh, mm, 0, 0);
+  if(candidate.getTime() <= now.getTime()){
+    candidate.setDate(candidate.getDate() + 1);
+  }
+  return candidate.toISOString();
+}
+
+function toggleCommDue(isDue){
+  [commSnapshotCard, commControlsCard].forEach(card=>{
+    if(card){ card.classList.toggle('communication-due', !!isDue); }
+  });
+  if(commDueAlert){
+    if(isDue){
+      commDueAlert.textContent = 'Next communication is due now. Reconfirm updates.';
+      commDueAlert.hidden = false;
+    }else{
+      commDueAlert.textContent = '';
+      commDueAlert.hidden = true;
+    }
+  }
+}
+
+function formatCountdown(ms){
+  const totalSeconds = Math.max(0, Math.round(ms/1000));
+  const mins = Math.floor(totalSeconds/60);
+  const secs = totalSeconds % 60;
+  if(mins >= 60){
+    const hours = Math.floor(mins/60);
+    const rem = mins % 60;
+    return `${hours}h ${rem}m`;
+  }
+  if(mins > 0){
+    return `${mins}m ${String(secs).padStart(2,'0')}s`;
+  }
+  return `${secs}s`;
+}
+
+function updateCommLogUI(){
+  if(!commLogList) return;
+  commLogList.innerHTML = '';
+  if(!commLog.length){
+    const li = document.createElement('li');
+    li.className = 'comm-log__empty';
+    li.textContent = 'No communications logged yet.';
+    commLogList.appendChild(li);
+    return;
+  }
+  commLog.slice(0, 12).forEach(entry=>{
+    const li = document.createElement('li');
+    const typeSpan = document.createElement('span');
+    typeSpan.className = 'comm-log__type';
+    typeSpan.textContent = entry.type === 'external' ? 'External' : 'Internal';
+    const timeEl = document.createElement('time');
+    timeEl.className = 'comm-log__time';
+    if(entry.ts){
+      const d = new Date(entry.ts);
+      if(!Number.isNaN(d.valueOf())){
+        timeEl.dateTime = entry.ts;
+        timeEl.textContent = d.toLocaleString([], { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false });
+      }else{
+        timeEl.textContent = entry.ts;
+      }
+    }
+    li.appendChild(typeSpan);
+    li.appendChild(timeEl);
+    commLogList.appendChild(li);
+  });
+}
+
+function setNextDue(date){
+  if(!(date instanceof Date) || Number.isNaN(date.valueOf())) return;
+  commNextDueIso = date.toISOString();
+  const val = toTimeValue(date);
+  if(commNextUpdateTime){ commNextUpdateTime.value = val; }
+  if(nextUpdateDue){ nextUpdateDue.value = val; }
+  dueToastShown = false;
+  scheduleCadenceTick();
+}
+
+function applyManualDueValue(value){
+  if(!value){
+    commNextDueIso = '';
+    dueToastShown = false;
+    if(commNextUpdateTime){ commNextUpdateTime.value = ''; }
+    if(nextUpdateDue){ nextUpdateDue.value = ''; }
+    toggleCommDue(false);
+    if(commCountdown){ commCountdown.textContent = ''; }
+    return;
+  }
+  const iso = isoFromTimeValue(value);
+  if(!iso) return;
+  commNextDueIso = iso;
+  if(commNextUpdateTime){ commNextUpdateTime.value = value; }
+  if(nextUpdateDue){ nextUpdateDue.value = value; }
+  toggleCommDue(false);
+  dueToastShown = false;
+  scheduleCadenceTick();
+  updateCadenceState();
+}
+
+function updateCadenceState(){
+  if(!commCountdown) return;
+  if(!commNextDueIso){
+    commCountdown.textContent = '';
+    toggleCommDue(false);
+    return;
+  }
+  const now = new Date();
+  const due = new Date(commNextDueIso);
+  if(Number.isNaN(due.valueOf())){
+    commCountdown.textContent = '';
+    toggleCommDue(false);
+    return;
+  }
+  const diff = due.getTime() - now.getTime();
+  if(diff <= 0){
+    commCountdown.textContent = 'Due now';
+    toggleCommDue(true);
+    if(!dueToastShown){
+      const internalWasChecked = !!commInternalSent?.checked;
+      const externalWasChecked = !!commExternalSent?.checked;
+      if(commInternalSent && internalWasChecked){ commInternalSent.checked = false; }
+      if(commExternalSent && externalWasChecked){ commExternalSent.checked = false; }
+      dueToastShown = true;
+      saveToStorage();
+      if(typeof showToast === 'function'){ showToast('Next communication is due now.'); }
+    }
+    return;
+  }
+  commCountdown.textContent = `Next in ${formatCountdown(diff)}`;
+  toggleCommDue(false);
+}
+
+function scheduleCadenceTick(){
+  if(cadenceTimerId){ clearInterval(cadenceTimerId); }
+  cadenceTimerId = setInterval(updateCadenceState, 15000);
+  updateCadenceState();
+}
+
+function logCommunication(type){
+  const now = new Date();
+  const iso = now.toISOString();
+  if(type === 'internal'){
+    if(commInternalTs){ commInternalTs.value = iso; commInternalTs.focus(); }
+    if(commInternalSent){ commInternalSent.checked = true; }
+  }else if(type === 'external'){
+    if(commExternalTs){ commExternalTs.value = iso; commExternalTs.focus(); }
+    if(commExternalSent){ commExternalSent.checked = true; }
+  }
+  commLog.unshift({ type, ts: iso });
+  commLog = commLog.slice(0, 20);
+  updateCommLogUI();
+  const mins = getCadenceMinutes();
+  if(mins){
+    const due = new Date(now);
+    due.setMinutes(due.getMinutes() + mins);
+    setNextDue(due);
+  }
+  saveToStorage();
+}
 
 /* [script:tokens] start */
 function firstSnippet(v){
@@ -1184,7 +1471,10 @@ function saveToStorage(){
                  commInternalTs:commInternalTs?.value||'',
                  commExternalSent:!!commExternalSent?.checked,
                  commExternalTs:commExternalTs?.value||'',
-                 commNextUpdateTime:commNextUpdateTime?.value||''
+                 commNextUpdateTime:commNextUpdateTime?.value||'',
+                 commCadence:commCadence||'',
+                 commLog:commLog.slice(0,20),
+                 commNextDueIso:commNextDueIso||''
                },
                table:[] };
   [...tbody.querySelectorAll('tr')].forEach(tr=>{
@@ -1237,6 +1527,28 @@ function restoreFromStorage(){
     if(commExternalSent){ commExternalSent.checked=!!data.ops.commExternalSent; }
     if(commExternalTs){ commExternalTs.value=data.ops.commExternalTs||''; }
     if(commNextUpdateTime){ commNextUpdateTime.value=data.ops.commNextUpdateTime||''; }
+    commCadence = typeof data.ops.commCadence==='string' ? data.ops.commCadence : commCadence;
+    if(Array.isArray(data.ops.commLog)){
+      commLog = data.ops.commLog.filter(entry=>entry && typeof entry.type==='string' && typeof entry.ts==='string');
+    }
+    commNextDueIso = typeof data.ops.commNextDueIso==='string' ? data.ops.commNextDueIso : commNextDueIso;
+    dueToastShown = false;
+    updateCadenceRadios();
+    updateCommLogUI();
+    if(commNextDueIso){
+      const due = new Date(commNextDueIso);
+      if(!Number.isNaN(due.valueOf())){
+        const val = toTimeValue(due);
+        if(val){
+          if(commNextUpdateTime){ commNextUpdateTime.value = val; }
+          if(nextUpdateDue){ nextUpdateDue.value = val; }
+        }
+      }
+    }else if(commNextUpdateTime && commNextUpdateTime.value){
+      applyManualDueValue(commNextUpdateTime.value);
+    }else{
+      updateCadenceState();
+    }
   }
   if(Array.isArray(data.table)){
     let i=0;
@@ -1249,6 +1561,7 @@ function restoreFromStorage(){
       t.forEach(autoResize);
     });
   }
+  scheduleCadenceTick();
 }
 /* [script:storage] end */
 
