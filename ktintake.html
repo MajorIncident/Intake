@@ -284,10 +284,6 @@ Anchors present:
               <option value="S3">S3</option>
             </select>
           </div>
-          <div class="field">
-            <label for="nextUpdateDue">Next update due</label>
-            <input type="time" id="nextUpdateDue" />
-          </div>
         </div>
       </div>
 
@@ -699,7 +695,6 @@ const icName = document.getElementById('icName');
 const bcName = document.getElementById('bcName');
 const semOpsName = document.getElementById('semOpsName');
 const severity = document.getElementById('severity');
-const nextUpdateDue = document.getElementById('nextUpdateDue');
 
 const detectMonitoring = document.getElementById('detectMonitoring');
 const detectUserReport = document.getElementById('detectUserReport');
@@ -773,13 +768,6 @@ let commShowAll = false;
 [severity].forEach(el=>{
   if(el){ el.addEventListener('change', saveToStorage); }
 });
-
-if(nextUpdateDue){
-  nextUpdateDue.addEventListener('change', ()=>{
-    applyManualDueValue(nextUpdateDue.value);
-    saveToStorage();
-  });
-}
 
 if(commNextUpdateTime){
   commNextUpdateTime.addEventListener('change', ()=>{
@@ -974,7 +962,6 @@ function setNextDue(date){
   commNextDueIso = date.toISOString();
   const val = toTimeValue(date);
   if(commNextUpdateTime){ commNextUpdateTime.value = val; }
-  if(nextUpdateDue){ nextUpdateDue.value = val; }
   dueToastShown = false;
   scheduleCadenceTick();
 }
@@ -984,7 +971,6 @@ function applyManualDueValue(value){
     commNextDueIso = '';
     dueToastShown = false;
     if(commNextUpdateTime){ commNextUpdateTime.value = ''; }
-    if(nextUpdateDue){ nextUpdateDue.value = ''; }
     toggleCommDue(false);
     if(commCountdown){ commCountdown.textContent = ''; }
     return;
@@ -993,7 +979,6 @@ function applyManualDueValue(value){
   if(!iso) return;
   commNextDueIso = iso;
   if(commNextUpdateTime){ commNextUpdateTime.value = value; }
-  if(nextUpdateDue){ nextUpdateDue.value = value; }
   toggleCommDue(false);
   dueToastShown = false;
   scheduleCadenceTick();
@@ -1302,7 +1287,10 @@ function nextUpdateSummaryLine(){
     }
     return `Next Update: ${commNextDueIso}`;
   }
-  return `Next Update: ${valOrDash(nextUpdateDue?.value)}`;
+  if(commNextUpdateTime?.value){
+    return `Next Update: ${commNextUpdateTime.value}`;
+  }
+  return 'Next Update: —';
 }
 
 /* ---------- Executive summary builder ---------- */
@@ -1315,8 +1303,7 @@ function buildSummaryText(){
     `Incident Commander: ${valOrDash(icName?.value)}`,
     `Bridge Coordinator: ${valOrDash(bcName?.value)}`,
     `SEM/Ops Lead: ${valOrDash(semOpsName?.value)}`,
-    `Severity: ${valOrDash(severity?.value)}`,
-    `Next Update Due: ${valOrDash(nextUpdateDue?.value)}`
+    `Severity: ${valOrDash(severity?.value)}`
   ].join('\n');
 
   const detectionSummary = formatChipsetSelections([
@@ -1462,7 +1449,6 @@ function saveToStorage(){
                  bcName:bcName?.value||'',
                  semOpsName:semOpsName?.value||'',
                  severity:severity?.value||'',
-                 nextUpdateDue:nextUpdateDue?.value||'',
                  detectMonitoring:!!detectMonitoring?.checked,
                  detectUserReport:!!detectUserReport?.checked,
                  detectAutomation:!!detectAutomation?.checked,
@@ -1508,7 +1494,6 @@ function restoreFromStorage(){
     if(bcName){ bcName.value=data.ops.bcName||''; }
     if(semOpsName){ semOpsName.value=data.ops.semOpsName||''; }
     if(severity){ severity.value=data.ops.severity||''; }
-    if(nextUpdateDue){ nextUpdateDue.value=data.ops.nextUpdateDue||''; }
     if(detectMonitoring){ detectMonitoring.checked=!!data.ops.detectMonitoring; }
     if(detectUserReport){ detectUserReport.checked=!!data.ops.detectUserReport; }
     if(detectAutomation){ detectAutomation.checked=!!data.ops.detectAutomation; }
@@ -1540,7 +1525,6 @@ function restoreFromStorage(){
         const val = toTimeValue(due);
         if(val){
           if(commNextUpdateTime){ commNextUpdateTime.value = val; }
-          if(nextUpdateDue){ nextUpdateDue.value = val; }
         }
       }
     }else if(commNextUpdateTime && commNextUpdateTime.value){
