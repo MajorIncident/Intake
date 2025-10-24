@@ -794,6 +794,8 @@ const commCountdown = document.getElementById('commCountdown');
 const commDueAlert = document.getElementById('commDueAlert');
 const commLogList = document.getElementById('commLogList');
 const commLogToggleBtn = document.getElementById('commLogToggleBtn');
+let causeList = document.getElementById('causeList');
+let addCauseBtn = document.getElementById('addCauseBtn');
 const causeList = document.getElementById('causeList');
 const addCauseBtn = document.getElementById('addCauseBtn');
 
@@ -1228,6 +1230,56 @@ function makeRemoveButton(cause){
   });
   return btn;
 }
+function ensurePossibleCausesUI(){
+  let card = document.getElementById('possibleCausesCard');
+  if(!card){
+    const wrap = document.querySelector('.wrap');
+    if(!wrap) return;
+    card = document.createElement('div');
+    card.className = 'card';
+    card.id = 'possibleCausesCard';
+    const heading = document.createElement('h3');
+    heading.textContent = 'Possible Causes';
+    const caption = document.createElement('p');
+    caption.className = 'caption';
+    caption.textContent = 'Capture hypotheses and pressure test them against the KT IS / IS NOT evidence. Start with the suspect, accusation, and impact; then walk each cause through the table.';
+    const list = document.createElement('div');
+    list.className = 'cause-list';
+    list.id = 'causeList';
+    list.setAttribute('aria-live', 'polite');
+    const controls = document.createElement('div');
+    controls.className = 'cause-controls';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn-mini';
+    btn.id = 'addCauseBtn';
+    btn.textContent = 'Add Possible Cause';
+    controls.appendChild(btn);
+    card.append(heading, caption, list, controls);
+    const summaryCard = document.getElementById('summaryCard');
+    if(summaryCard?.parentNode){
+      summaryCard.parentNode.insertBefore(card, summaryCard);
+    }else if(wrap){
+      wrap.appendChild(card);
+    }
+  }
+  causeList = document.getElementById('causeList');
+  addCauseBtn = document.getElementById('addCauseBtn');
+  if(addCauseBtn && !addCauseBtn.dataset.bound){
+    addCauseBtn.dataset.bound = 'true';
+    addCauseBtn.addEventListener('click', ()=>{
+      const newCause = createEmptyCause();
+      possibleCauses.push(newCause);
+      renderCauses();
+      saveToStorage();
+      focusFirstEditableCause();
+    });
+  }
+}
+function renderCauses(){
+  if(!causeList){
+    ensurePossibleCausesUI();
+  }
 function renderCauses(){
   if(!causeList) return;
   causeList.innerHTML = '';
@@ -1703,6 +1755,7 @@ function autoResize(el){
 }
 function init(){
   initTable();
+  ensurePossibleCausesUI();
   renderCauses();
   restoreFromStorage();
   if(bridgeOpenedUtc && !bridgeOpenedUtc.value.trim()){
@@ -1825,6 +1878,46 @@ function nextUpdateSummaryLine(){
   return 'Next Update: —';
 }
 
+function causeProgressSummary(cause){
+  const total = rowsBuilt.length;
+  if(total === 0) return 'No KT evidence captured yet';
+  const answered = countCompletedEvidence(cause);
+  return `${answered}/${total} evidence checks complete`;
+}
+
+function formatCauseFindingsSummary(cause){
+  if(!rowsBuilt.length || !cause || !cause.findings) return '';
+  const sections = [];
+  rowsBuilt.forEach((row, index)=>{
+    const key = getRowKeyByIndex(index);
+    const entry = cause.findings[key];
+    if(!entry) return;
+    const explainIs = typeof entry.explainIs === 'string' ? entry.explainIs.trim() : '';
+    const explainNot = typeof entry.explainNot === 'string' ? entry.explainNot.trim() : '';
+    if(!explainIs && !explainNot) return;
+    const label = row?.th?.textContent?.trim() || fillTokens(row?.def?.q || `Row ${index+1}`);
+    const lines = [`  • ${label}`];
+    if(explainIs){ lines.push(`    - Explains IS: ${inlineText(explainIs)}`); }
+    if(explainNot){ lines.push(`    - Fits IS NOT: ${inlineText(explainNot)}`); }
+    sections.push(lines.join('\n'));
+  });
+  return sections.length ? ['Evidence walkthrough:', ...sections].join('\n') : '';
+}
+
+function formatPossibleCausesSummary(){
+  if(!possibleCauses.length){
+    return 'No possible causes captured.';
+  }
+  const blocks = possibleCauses.map((cause, index)=>{
+    const header = `• Possible Cause ${index+1}: ${buildHypothesisSentence(cause)}`;
+    const status = `  Status: ${causeStatusLabel(cause)}`;
+    const progress = `  Progress: ${causeProgressSummary(cause)}`;
+    const evidence = formatCauseFindingsSummary(cause);
+    return [header, status, progress, evidence].filter(Boolean).join('\n');
+  });
+  return blocks.join('\n\n');
+}
+
 /* ---------- Executive summary builder ---------- */
 function buildSummaryText(){
   const title = document.getElementById('docTitle').textContent.trim();
@@ -1927,6 +2020,9 @@ function buildSummaryText(){
     '',
     '— Communications —',
     communications,
+    '',
+    '— Possible Causes —',
+    formatPossibleCausesSummary(),
     '',
     '— KT IS / IS NOT —',
     ktOut
@@ -2082,6 +2178,7 @@ function restoreFromStorage(){
   }else{
     possibleCauses = [];
   }
+  ensurePossibleCausesUI();
   renderCauses();
   if(possibleCauses.some(cause=>cause && cause.editing)){
     focusFirstEditableCause();
