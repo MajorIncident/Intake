@@ -127,6 +127,14 @@ Anchors present:
   }
   .btn-mini:hover{transform:translateY(-1px);}
   .btn-mini:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,122,255,.18);}
+  .btn-mini.btn-ghost{
+    background:#f7f9ff; color:#3b4962; border-color:#e2e7f3; box-shadow:none;
+  }
+  .btn-mini.btn-ghost:hover{background:#eef3ff;}
+  .btn-mini.btn-danger{
+    background:#ffeceb; color:#c0362c; border-color:#ffc3bb; box-shadow:0 4px 12px rgba(255,107,74,.12);
+  }
+  .btn-mini.btn-danger:hover{background:#ffdcd4;}
   .field textarea::placeholder, .field input::placeholder{color:#8b93a4;}
   .field textarea:focus, .field input:focus{border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,122,255,.18); background:#fff;}
 
@@ -213,6 +221,41 @@ Anchors present:
   tbody th{
     width:var(--qcol-w); max-width:var(--qcol-w); min-width:var(--qcol-w);
     white-space:normal; word-break:break-word; font-weight:700; color:#0c1220;
+  }
+  .cause-list{display:flex; flex-direction:column; gap:16px; margin-top:12px; margin-bottom:18px;}
+  .cause-empty{padding:18px; border:1px dashed #dfe5f2; border-radius:12px; background:#f9fbff; color:#5b6475; font-style:italic;}
+  .cause-card{
+    border:1px solid #e2e7f3; border-radius:14px; background:linear-gradient(180deg,#ffffff 0%,#f8faff 100%);
+    padding:18px 20px; display:flex; flex-direction:column; gap:12px;
+  }
+  .cause-card[data-editing="true"]{border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,122,255,.12);}
+  .cause-card__header{display:flex; justify-content:space-between; align-items:flex-start; gap:12px;}
+  .cause-card__meta{display:flex; flex-direction:column; gap:4px;}
+  .cause-card__title{font-weight:700; font-size:14px; color:#1d2845; letter-spacing:.02em;}
+  .cause-card__status{font-size:12px; color:var(--muted); letter-spacing:.02em;}
+  .cause-card__chip{display:inline-flex; align-items:center; justify-content:center; padding:6px 12px; border-radius:999px; font-weight:600; font-size:12px; letter-spacing:.03em; text-transform:uppercase; border:1px solid transparent; background:#f2f4fb; color:#3b4962;}
+  .cause-card__chip[data-status="not-tested"]{background:#f2f4fb; color:#3b4962; border-color:#dfe5f2;}
+  .cause-card__chip[data-status="testing"]{background:#fff6e6; color:#7b4b00; border-color:#f3d2a2;}
+  .cause-card__chip[data-status="explained"]{background:#e6f9ef; color:#0f5b2f; border-color:#b8e8cd;}
+  .cause-card__chip[data-status="draft"]{background:#f5f7fb; color:#6b768a; border-color:#e2e7f3;}
+  .cause-card__chip[data-status="no-evidence"]{background:#eef3ff; color:#1d2845; border-color:#d5def5;}
+  .cause-card__summary{margin:0; font-size:14px; line-height:1.6; color:#1f2b40;}
+  .cause-card__helper{margin-top:-6px;}
+  .cause-card__form{display:grid; gap:14px;}
+  .cause-card__form .field textarea{min-height:120px;}
+  .cause-controls{display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;}
+  .cause-test{border-top:1px solid #e2e7f3; padding-top:14px; display:flex; flex-direction:column; gap:12px;}
+  .cause-test__intro{margin:0; font-size:13px; color:#3b4962;}
+  .cause-eval-row{border:1px solid #e3e8f5; border-radius:12px; background:#f9fbff; padding:14px; display:flex; flex-direction:column; gap:12px;}
+  .cause-eval-question-text{font-weight:600; font-size:13px; color:#1f2b40;}
+  .cause-evidence-wrap{display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(180px,1fr));}
+  .cause-evidence-block{display:flex; flex-direction:column; gap:4px; padding:10px; border-radius:10px; background:#ffffff; border:1px solid #e6ebf5;}
+  .cause-evidence-label{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#7a8398; font-weight:700;}
+  .cause-evidence-text{font-size:13px; line-height:1.5; color:#22324b; white-space:pre-line;}
+  .cause-eval-inputs{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
+  .cause-eval-inputs .field textarea{min-height:120px;}
+  @media (max-width:720px){
+    .cause-card{padding:16px;}
   }
   .band th{
     padding:12px; font-weight:800; color:#2a3957;
@@ -503,6 +546,16 @@ Anchors present:
     <!-- [section:table] end -->
 
 
+    <div class="card" id="possibleCausesCard">
+      <h3>Possible Causes</h3>
+      <p class="caption">Capture hypotheses and pressure test them against the KT IS / IS NOT evidence. Start with the suspect, accusation, and impact; then walk each cause through the table.</p>
+      <div id="causeList" class="cause-list" aria-live="polite"></div>
+      <div class="cause-controls">
+        <button type="button" class="btn-mini" id="addCauseBtn">Add Possible Cause</button>
+      </div>
+    </div>
+
+
     <!-- [section:summary] start -->
     <div class="card" id="summaryCard" style="display:none;">
       <h3>Copy &amp; Paste Summary</h3>
@@ -609,6 +662,7 @@ const ROWS = [
 /* =================== Build table & dynamic tokens =================== */
 const tbody = document.getElementById('tbody');
 const rowsBuilt = [];
+let possibleCauses = [];
 let objectIS = null;     // first WHAT → IS
 let deviationIS = null;  // second WHAT → IS
 let objectISDirty = false;
@@ -642,14 +696,22 @@ function mkRow(def, i){
   const refreshDistPH  = ()=> distTA.placeholder = mkDistPH(isTA.value, notTA.value);
   const refreshChgPH   = ()=> chgTA.placeholder  = mkChangePH(distTA.value);
 
-  [isTA,notTA,distTA].forEach(t=>t.addEventListener('input', ()=>{
+  [isTA,notTA,distTA,chgTA].forEach(t=>{
     autoResize(t);
-    if(t===isTA){ refreshIsNotPH(); refreshDistPH(); }
-    if(t===notTA){ refreshDistPH(); }
-    if(t===distTA){ refreshChgPH(); }
-    saveToStorage();
-  }));
-  [isTA,notTA,distTA,chgTA].forEach(t=>{ autoResize(t); t.addEventListener('input', saveToStorage); });
+    t.addEventListener('input', ()=>{
+      autoResize(t);
+      if(t===isTA){
+        refreshIsNotPH();
+        refreshDistPH();
+      }else if(t===notTA){
+        refreshDistPH();
+      }else if(t===distTA){
+        refreshChgPH();
+      }
+      saveToStorage();
+      updateCauseEvidencePreviews();
+    });
+  });
 
   tdIS.appendChild(isTA); tdNOT.appendChild(notTA); tdDIST.appendChild(distTA); tdCHG.appendChild(chgTA);
   tr.append(th, tdIS, tdNOT, tdDIST, tdCHG);
@@ -732,6 +794,8 @@ const commCountdown = document.getElementById('commCountdown');
 const commDueAlert = document.getElementById('commDueAlert');
 const commLogList = document.getElementById('commLogList');
 const commLogToggleBtn = document.getElementById('commLogToggleBtn');
+const causeList = document.getElementById('causeList');
+const addCauseBtn = document.getElementById('addCauseBtn');
 
 let commLog = [];
 let commCadence = '';
@@ -838,6 +902,16 @@ if(commLogToggleBtn){
   commLogToggleBtn.addEventListener('click', ()=>{
     commShowAll = !commShowAll;
     updateCommLogUI();
+  });
+}
+
+if(addCauseBtn){
+  addCauseBtn.addEventListener('click', ()=>{
+    const newCause = createEmptyCause();
+    possibleCauses.push(newCause);
+    renderCauses();
+    saveToStorage();
+    focusFirstEditableCause();
   });
 }
 
@@ -1035,6 +1109,458 @@ function logCommunication(type){
   saveToStorage();
 }
 
+/* ===== Possible causes (hypotheses) ===== */
+function generateCauseId(){
+  return 'cause-' + Math.random().toString(36).slice(2,8) + '-' + Date.now().toString(36);
+}
+function createEmptyCause(){
+  return {
+    id: generateCauseId(),
+    suspect: '',
+    accusation: '',
+    impact: '',
+    findings: {},
+    editing: true,
+    testingOpen: false
+  };
+}
+function hasCompleteHypothesis(cause){
+  if(!cause) return false;
+  return ['suspect','accusation','impact'].every(key=>typeof cause[key]==='string' && cause[key].trim().length);
+}
+function buildHypothesisSentence(cause){
+  if(!cause) return '';
+  const suspect = (cause.suspect||'').trim();
+  const accusation = (cause.accusation||'').trim();
+  const impact = (cause.impact||'').trim();
+  if(!suspect && !accusation && !impact){
+    return 'Add suspect, accusation, and impact to craft a strong hypothesis.';
+  }
+  const fallback = text=> (text && text.trim()) ? text.trim() : '…';
+  return `We suspect ${fallback(suspect)} because ${fallback(accusation)}, which results in ${fallback(impact)}.`;
+}
+function getRowKeyByIndex(index){
+  const row = rowsBuilt[index];
+  if(row && row.def && row.def.q){
+    return row.def.q;
+  }
+  return `row-${index}`;
+}
+function ensureCauseFindings(cause){
+  if(!cause.findings || typeof cause.findings !== 'object'){
+    cause.findings = {};
+  }
+  return cause.findings;
+}
+function getCauseFinding(cause, key){
+  const map = ensureCauseFindings(cause);
+  if(!map[key]){
+    map[key] = { explainIs:'', explainNot:'' };
+  }else{
+    map[key].explainIs = typeof map[key].explainIs === 'string' ? map[key].explainIs : '';
+    map[key].explainNot = typeof map[key].explainNot === 'string' ? map[key].explainNot : '';
+  }
+  return map[key];
+}
+function setCauseFindingValue(cause, key, prop, value){
+  const entry = getCauseFinding(cause, key);
+  entry[prop] = value;
+}
+function countCompletedEvidence(cause){
+  const map = cause && cause.findings && typeof cause.findings === 'object' ? cause.findings : {};
+  let count = 0;
+  rowsBuilt.forEach((_, index)=>{
+    const key = getRowKeyByIndex(index);
+    const entry = map[key];
+    if(entry){
+      const isVal = typeof entry.explainIs === 'string' ? entry.explainIs.trim() : '';
+      const notVal = typeof entry.explainNot === 'string' ? entry.explainNot.trim() : '';
+      if(isVal && notVal){ count++; }
+    }
+  });
+  return count;
+}
+function causeStatusState(cause, answered, total){
+  if(!hasCompleteHypothesis(cause)) return 'draft';
+  if(total === 0) return 'no-evidence';
+  if(answered === 0) return 'not-tested';
+  if(answered < total) return 'testing';
+  return 'explained';
+}
+function causeStatusLabel(cause){
+  const total = rowsBuilt.length;
+  const answered = countCompletedEvidence(cause);
+  if(cause?.editing) return 'Editing hypothesis';
+  if(!hasCompleteHypothesis(cause)) return 'Draft hypothesis';
+  if(total === 0) return 'Ready to test';
+  if(answered === 0) return 'Not tested yet';
+  if(answered < total) return 'Testing in progress';
+  return 'Explains all evidence';
+}
+function updateCauseProgressChip(chip, cause){
+  if(!chip || !cause) return;
+  const total = rowsBuilt.length;
+  const answered = countCompletedEvidence(cause);
+  chip.textContent = total ? `${answered}/${total} evidence checks` : 'No KT evidence yet';
+  const status = causeStatusState(cause, answered, total);
+  chip.dataset.status = status;
+}
+function updateCauseStatusLabel(el, cause){
+  if(!el) return;
+  el.textContent = causeStatusLabel(cause);
+}
+function previewEvidenceText(value){
+  const lines = splitLines(value);
+  if(!lines.length) return '—';
+  return lines.map(line=>`• ${line}`).join('\n');
+}
+function makeRemoveButton(cause){
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn-mini btn-ghost';
+  btn.textContent = 'Remove';
+  btn.addEventListener('click', ()=>{
+    if(confirm('Remove this possible cause?')){
+      possibleCauses = possibleCauses.filter(item=>item.id !== cause.id);
+      renderCauses();
+      saveToStorage();
+    }
+  });
+  return btn;
+}
+function renderCauses(){
+  if(!causeList) return;
+  causeList.innerHTML = '';
+  if(!possibleCauses.length){
+    const empty = document.createElement('div');
+    empty.className = 'cause-empty';
+    empty.textContent = 'No possible causes captured yet.';
+    causeList.appendChild(empty);
+    updateCauseEvidencePreviews();
+    return;
+  }
+  possibleCauses.forEach((cause, index)=>{
+    if(!cause.id){ cause.id = generateCauseId(); }
+    const card = document.createElement('article');
+    card.className = 'cause-card';
+    card.dataset.causeId = cause.id;
+    if(cause.editing){ card.dataset.editing = 'true'; }
+    const header = document.createElement('div');
+    header.className = 'cause-card__header';
+    const meta = document.createElement('div');
+    meta.className = 'cause-card__meta';
+    const titleEl = document.createElement('span');
+    titleEl.className = 'cause-card__title';
+    titleEl.textContent = `Possible Cause ${index+1}`;
+    const statusEl = document.createElement('span');
+    statusEl.className = 'cause-card__status';
+    meta.append(titleEl, statusEl);
+    const chip = document.createElement('span');
+    chip.className = 'cause-card__chip';
+    header.append(meta, chip);
+    card.append(header);
+    updateCauseStatusLabel(statusEl, cause);
+    updateCauseProgressChip(chip, cause);
+    const summaryEl = document.createElement('p');
+    summaryEl.className = 'cause-card__summary';
+    summaryEl.dataset.role = 'hypothesis';
+    summaryEl.textContent = buildHypothesisSentence(cause);
+    card.append(summaryEl);
+    if(cause.editing){
+      const helper = document.createElement('small');
+      helper.className = 'cause-card__helper subtle';
+      helper.textContent = 'Answer the prompts to refine the hypothesis statement.';
+      card.append(helper);
+      const form = document.createElement('div');
+      form.className = 'cause-card__form';
+      const suspectField = document.createElement('div');
+      suspectField.className = 'field';
+      const suspectLabel = document.createElement('label');
+      suspectLabel.textContent = 'What/Who is the Suspect?';
+      const suspectInput = document.createElement('textarea');
+      suspectInput.value = cause.suspect || '';
+      suspectInput.placeholder = 'Name the component, service, team, or actor you believe is responsible.';
+      suspectInput.setAttribute('data-min-height','120');
+      suspectInput.addEventListener('input', e=>{
+        cause.suspect = e.target.value;
+        autoResize(suspectInput);
+        summaryEl.textContent = buildHypothesisSentence(cause);
+        updateCauseStatusLabel(statusEl, cause);
+        updateCauseProgressChip(chip, cause);
+        saveToStorage();
+      });
+      autoResize(suspectInput);
+      suspectField.append(suspectLabel, suspectInput);
+      const accusationField = document.createElement('div');
+      accusationField.className = 'field';
+      const accusationLabel = document.createElement('label');
+      accusationLabel.textContent = 'What is the Accusation?';
+      const accusationInput = document.createElement('textarea');
+      accusationInput.value = cause.accusation || '';
+      accusationInput.placeholder = 'Describe the behavior, change, or failure you believe is occurring.';
+      accusationInput.setAttribute('data-min-height','120');
+      accusationInput.addEventListener('input', e=>{
+        cause.accusation = e.target.value;
+        autoResize(accusationInput);
+        summaryEl.textContent = buildHypothesisSentence(cause);
+        updateCauseStatusLabel(statusEl, cause);
+        updateCauseProgressChip(chip, cause);
+        saveToStorage();
+      });
+      autoResize(accusationInput);
+      accusationField.append(accusationLabel, accusationInput);
+      const impactField = document.createElement('div');
+      impactField.className = 'field';
+      const impactLabel = document.createElement('label');
+      impactLabel.textContent = 'So What? How does this create the problem?';
+      const impactInput = document.createElement('textarea');
+      impactInput.value = cause.impact || '';
+      impactInput.placeholder = 'Clarify how this cause would produce the customer or system impact.';
+      impactInput.setAttribute('data-min-height','120');
+      impactInput.addEventListener('input', e=>{
+        cause.impact = e.target.value;
+        autoResize(impactInput);
+        summaryEl.textContent = buildHypothesisSentence(cause);
+        updateCauseStatusLabel(statusEl, cause);
+        updateCauseProgressChip(chip, cause);
+        saveToStorage();
+      });
+      autoResize(impactInput);
+      impactField.append(impactLabel, impactInput);
+      form.append(suspectField, accusationField, impactField);
+      card.append(form);
+      const controls = document.createElement('div');
+      controls.className = 'cause-controls';
+      const saveBtn = document.createElement('button');
+      saveBtn.type = 'button';
+      saveBtn.className = 'btn-mini';
+      saveBtn.textContent = 'Save hypothesis';
+      saveBtn.addEventListener('click', ()=>{
+        if(!hasCompleteHypothesis(cause)){
+          if(typeof showToast === 'function'){ showToast('Fill in all three prompts to save this possible cause.'); }
+          return;
+        }
+        cause.editing = false;
+        renderCauses();
+        saveToStorage();
+      });
+      controls.append(saveBtn);
+      controls.append(makeRemoveButton(cause));
+      card.append(controls);
+    }else{
+      const controls = document.createElement('div');
+      controls.className = 'cause-controls';
+      const editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.className = 'btn-mini btn-ghost';
+      editBtn.textContent = 'Edit';
+      editBtn.addEventListener('click', ()=>{
+        cause.editing = true;
+        renderCauses();
+        saveToStorage();
+        focusFirstEditableCause();
+      });
+      const testBtn = document.createElement('button');
+      testBtn.type = 'button';
+      testBtn.className = 'btn-mini';
+      testBtn.textContent = cause.testingOpen ? 'Hide testing' : 'Test this cause';
+      testBtn.addEventListener('click', ()=>{
+        cause.testingOpen = !cause.testingOpen;
+        renderCauses();
+        saveToStorage();
+      });
+      controls.append(editBtn, testBtn, makeRemoveButton(cause));
+      card.append(controls);
+      if(cause.testingOpen){
+        card.append(buildCauseTestPanel(cause, chip, statusEl));
+      }
+    }
+    causeList.appendChild(card);
+  });
+  updateCauseEvidencePreviews();
+}
+function buildCauseTestPanel(cause, progressChip, statusEl){
+  const panel = document.createElement('div');
+  panel.className = 'cause-test';
+  const intro = document.createElement('p');
+  intro.className = 'cause-test__intro';
+  intro.textContent = 'For each KT row, explain how this hypothesis fits the IS evidence and why it does not conflict with the IS NOT column.';
+  panel.appendChild(intro);
+  if(!rowsBuilt.length){
+    const empty = document.createElement('div');
+    empty.className = 'cause-empty';
+    empty.textContent = 'Add IS / IS NOT evidence first to begin testing this cause.';
+    panel.appendChild(empty);
+    return panel;
+  }
+  rowsBuilt.forEach((row, index)=>{
+    const rowKey = getRowKeyByIndex(index);
+    const finding = getCauseFinding(cause, rowKey);
+    const rowEl = document.createElement('section');
+    rowEl.className = 'cause-eval-row';
+    rowEl.dataset.rowIndex = index;
+    rowEl.dataset.rowKey = rowKey;
+    const qText = document.createElement('div');
+    qText.className = 'cause-eval-question-text';
+    qText.dataset.role = 'question';
+    qText.textContent = row?.th?.textContent?.trim() || fillTokens(row?.def?.q || '');
+    rowEl.appendChild(qText);
+    const evidenceWrap = document.createElement('div');
+    evidenceWrap.className = 'cause-evidence-wrap';
+    const isBlock = document.createElement('div');
+    isBlock.className = 'cause-evidence-block';
+    isBlock.dataset.rowIndex = index;
+    isBlock.dataset.type = 'is';
+    const isLabel = document.createElement('span');
+    isLabel.className = 'cause-evidence-label';
+    isLabel.textContent = 'IS evidence';
+    const isValue = document.createElement('div');
+    isValue.className = 'cause-evidence-text';
+    isValue.dataset.role = 'is-value';
+    isValue.textContent = previewEvidenceText(row?.isTA?.value || '');
+    isBlock.append(isLabel, isValue);
+    const notBlock = document.createElement('div');
+    notBlock.className = 'cause-evidence-block';
+    notBlock.dataset.rowIndex = index;
+    notBlock.dataset.type = 'not';
+    const notLabel = document.createElement('span');
+    notLabel.className = 'cause-evidence-label';
+    notLabel.textContent = 'IS NOT evidence';
+    const notValue = document.createElement('div');
+    notValue.className = 'cause-evidence-text';
+    notValue.dataset.role = 'not-value';
+    notValue.textContent = previewEvidenceText(row?.notTA?.value || '');
+    notBlock.append(notLabel, notValue);
+    evidenceWrap.append(isBlock, notBlock);
+    rowEl.appendChild(evidenceWrap);
+    const inputsWrap = document.createElement('div');
+    inputsWrap.className = 'cause-eval-inputs';
+    const explainIsField = document.createElement('div');
+    explainIsField.className = 'field';
+    const explainIsLabel = document.createElement('label');
+    explainIsLabel.textContent = 'If this cause is true, how does it explain the IS evidence?';
+    const explainIsInput = document.createElement('textarea');
+    explainIsInput.value = finding.explainIs || '';
+    explainIsInput.placeholder = 'Connect this hypothesis to the confirmed facts.';
+    explainIsInput.setAttribute('data-min-height','120');
+    explainIsInput.addEventListener('input', e=>{
+      setCauseFindingValue(cause, rowKey, 'explainIs', e.target.value);
+      autoResize(explainIsInput);
+      updateCauseProgressChip(progressChip, cause);
+      updateCauseStatusLabel(statusEl, cause);
+      saveToStorage();
+    });
+    autoResize(explainIsInput);
+    explainIsField.append(explainIsLabel, explainIsInput);
+    const explainNotField = document.createElement('div');
+    explainNotField.className = 'field';
+    const explainNotLabel = document.createElement('label');
+    explainNotLabel.textContent = 'Why does it not conflict with the IS NOT evidence?';
+    const explainNotInput = document.createElement('textarea');
+    explainNotInput.value = finding.explainNot || '';
+    explainNotInput.placeholder = 'Describe why this cause still holds when the IS NOT evidence is true.';
+    explainNotInput.setAttribute('data-min-height','120');
+    explainNotInput.addEventListener('input', e=>{
+      setCauseFindingValue(cause, rowKey, 'explainNot', e.target.value);
+      autoResize(explainNotInput);
+      updateCauseProgressChip(progressChip, cause);
+      updateCauseStatusLabel(statusEl, cause);
+      saveToStorage();
+    });
+    autoResize(explainNotInput);
+    explainNotField.append(explainNotLabel, explainNotInput);
+    inputsWrap.append(explainIsField, explainNotField);
+    rowEl.appendChild(inputsWrap);
+    panel.appendChild(rowEl);
+  });
+  return panel;
+}
+function updateCauseEvidencePreviews(){
+  if(!causeList) return;
+  causeList.querySelectorAll('.cause-eval-row').forEach(rowEl=>{
+    const index = parseInt(rowEl.dataset.rowIndex, 10);
+    if(Number.isNaN(index) || !rowsBuilt[index]) return;
+    const row = rowsBuilt[index];
+    const questionEl = rowEl.querySelector('[data-role="question"]');
+    if(questionEl){ questionEl.textContent = row?.th?.textContent?.trim() || fillTokens(row?.def?.q || ''); }
+    const isValue = rowEl.querySelector('[data-role="is-value"]');
+    if(isValue){ isValue.textContent = previewEvidenceText(row?.isTA?.value || ''); }
+    const notValue = rowEl.querySelector('[data-role="not-value"]');
+    if(notValue){ notValue.textContent = previewEvidenceText(row?.notTA?.value || ''); }
+  });
+  causeList.querySelectorAll('.cause-card__chip').forEach(chip=>{
+    const card = chip.closest('.cause-card');
+    const id = card?.dataset?.causeId;
+    if(!id) return;
+    const cause = possibleCauses.find(item=>item.id === id);
+    if(cause){ updateCauseProgressChip(chip, cause); }
+  });
+  causeList.querySelectorAll('.cause-card__status').forEach(statusEl=>{
+    const card = statusEl.closest('.cause-card');
+    const id = card?.dataset?.causeId;
+    if(!id) return;
+    const cause = possibleCauses.find(item=>item.id === id);
+    if(cause){ updateCauseStatusLabel(statusEl, cause); }
+  });
+}
+function focusFirstEditableCause(){
+  requestAnimationFrame(()=>{
+    const target = causeList?.querySelector('[data-editing="true"] textarea');
+    if(target){
+      target.focus();
+      const end = target.value.length;
+      try{ target.setSelectionRange(end, end); }catch(_){ /* no-op */ }
+    }
+  });
+}
+function serializeCauses(){
+  return possibleCauses.map(cause=>{
+    const findings = {};
+    if(cause.findings && typeof cause.findings === 'object'){
+      Object.keys(cause.findings).forEach(key=>{
+        const entry = cause.findings[key] || {};
+        findings[key] = {
+          explainIs: typeof entry.explainIs === 'string' ? entry.explainIs : '',
+          explainNot: typeof entry.explainNot === 'string' ? entry.explainNot : ''
+        };
+      });
+    }
+    return {
+      id: cause.id || generateCauseId(),
+      suspect: cause.suspect || '',
+      accusation: cause.accusation || '',
+      impact: cause.impact || '',
+      findings,
+      editing: !!cause.editing,
+      testingOpen: !!cause.testingOpen
+    };
+  });
+}
+function deserializeCauses(rawList){
+  if(!Array.isArray(rawList)) return [];
+  return rawList.map(raw=>{
+    const cause = {
+      id: typeof raw.id === 'string' ? raw.id : generateCauseId(),
+      suspect: typeof raw.suspect === 'string' ? raw.suspect : '',
+      accusation: typeof raw.accusation === 'string' ? raw.accusation : '',
+      impact: typeof raw.impact === 'string' ? raw.impact : '',
+      findings: {},
+      editing: !!raw.editing,
+      testingOpen: !!raw.testingOpen
+    };
+    if(raw && raw.findings && typeof raw.findings === 'object'){
+      Object.keys(raw.findings).forEach(key=>{
+        const entry = raw.findings[key] || {};
+        cause.findings[key] = {
+          explainIs: typeof entry.explainIs === 'string' ? entry.explainIs : '',
+          explainNot: typeof entry.explainNot === 'string' ? entry.explainNot : ''
+        };
+      });
+    }
+    return cause;
+  });
+}
+
 /* [script:tokens] start */
 function firstSnippet(v){
   const s = (v||'').trim();
@@ -1097,6 +1623,7 @@ function refreshAllTokenizedText(){
     isTA.placeholder  = fillTokens(def.isPH||"");
     notTA.placeholder = mkIsNotPH(fillTokens(def.notPH||""), isTA.value);
   });
+  updateCauseEvidencePreviews();
 }
 function updateTitlesAndLabels(){
   const objFull = getObjectFull();
@@ -1167,11 +1694,16 @@ function syncMirror(force=false){
 function autoResize(el){
   if(!el || el.tagName !== 'TEXTAREA') return;
   el.style.height = 'auto';
-  const minH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ta-min-h')) || 140;
-  el.style.height = Math.max(minH, el.scrollHeight, 140) + 'px';
+  const attr = parseInt(el.getAttribute('data-min-height') || '', 10);
+  const varMin = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ta-min-h'), 10);
+  const fallback = Number.isFinite(varMin) ? varMin : 140;
+  const minH = Number.isFinite(attr) ? attr : fallback;
+  const base = Number.isFinite(attr) ? attr : 140;
+  el.style.height = Math.max(minH, el.scrollHeight, base) + 'px';
 }
 function init(){
   initTable();
+  renderCauses();
   restoreFromStorage();
   if(bridgeOpenedUtc && !bridgeOpenedUtc.value.trim()){
     bridgeOpenedUtc.value = new Date().toISOString();
@@ -1465,7 +1997,8 @@ function saveToStorage(){
                  commLog:commLog.slice(0,20),
                  commNextDueIso:commNextDueIso||''
                },
-               table:[] };
+               table:[],
+               causes: serializeCauses() };
   [...tbody.querySelectorAll('tr')].forEach(tr=>{
     if(tr.classList.contains('band')){ data.table.push({band: tr.textContent.trim()}); return; }
     const t=tr.querySelectorAll('textarea');
@@ -1544,6 +2077,16 @@ function restoreFromStorage(){
       t.forEach(autoResize);
     });
   }
+  if(Array.isArray(data.causes)){
+    possibleCauses = deserializeCauses(data.causes);
+  }else{
+    possibleCauses = [];
+  }
+  renderCauses();
+  if(possibleCauses.some(cause=>cause && cause.editing)){
+    focusFirstEditableCause();
+  }
+  updateCauseEvidencePreviews();
   scheduleCadenceTick();
 }
 /* [script:storage] end */
