@@ -796,8 +796,6 @@ const commLogList = document.getElementById('commLogList');
 const commLogToggleBtn = document.getElementById('commLogToggleBtn');
 let causeList = document.getElementById('causeList');
 let addCauseBtn = document.getElementById('addCauseBtn');
-const causeList = document.getElementById('causeList');
-const addCauseBtn = document.getElementById('addCauseBtn');
 
 let commLog = [];
 let commCadence = '';
@@ -904,16 +902,6 @@ if(commLogToggleBtn){
   commLogToggleBtn.addEventListener('click', ()=>{
     commShowAll = !commShowAll;
     updateCommLogUI();
-  });
-}
-
-if(addCauseBtn){
-  addCauseBtn.addEventListener('click', ()=>{
-    const newCause = createEmptyCause();
-    possibleCauses.push(newCause);
-    renderCauses();
-    saveToStorage();
-    focusFirstEditableCause();
   });
 }
 
@@ -1280,7 +1268,6 @@ function renderCauses(){
   if(!causeList){
     ensurePossibleCausesUI();
   }
-function renderCauses(){
   if(!causeList) return;
   causeList.innerHTML = '';
   if(!possibleCauses.length){
