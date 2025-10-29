@@ -709,7 +709,11 @@ function mkRow(def, i){
         refreshChgPH();
       }
       saveToStorage();
-      updateCauseEvidencePreviews();
+      if(t===isTA || t===notTA){
+        renderCauses();
+      }else{
+        updateCauseEvidencePreviews();
+      }
     });
   });
 
@@ -1156,10 +1160,26 @@ function setCauseFindingValue(cause, key, prop, value){
   const entry = getCauseFinding(cause, key);
   entry[prop] = value;
 }
-function countCompletedEvidence(cause){
+function rowHasEvidencePair(row){
+  if(!row) return false;
+  const isText = typeof row?.isTA?.value === 'string' ? row.isTA.value.trim() : '';
+  const notText = typeof row?.notTA?.value === 'string' ? row.notTA.value.trim() : '';
+  return Boolean(isText && notText);
+}
+function evidencePairIndexes(){
+  const indexes = [];
+  rowsBuilt.forEach((row, index)=>{
+    if(rowHasEvidencePair(row)){
+      indexes.push(index);
+    }
+  });
+  return indexes;
+}
+function countCompletedEvidence(cause, eligibleIndexes){
   const map = cause && cause.findings && typeof cause.findings === 'object' ? cause.findings : {};
   let count = 0;
-  rowsBuilt.forEach((_, index)=>{
+  const indexes = Array.isArray(eligibleIndexes) ? eligibleIndexes : evidencePairIndexes();
+  indexes.forEach(index=>{
     const key = getRowKeyByIndex(index);
     const entry = map[key];
     if(entry){
@@ -1178,20 +1198,22 @@ function causeStatusState(cause, answered, total){
   return 'explained';
 }
 function causeStatusLabel(cause){
-  const total = rowsBuilt.length;
-  const answered = countCompletedEvidence(cause);
+  const eligibleIndexes = evidencePairIndexes();
+  const total = eligibleIndexes.length;
+  const answered = countCompletedEvidence(cause, eligibleIndexes);
   if(cause?.editing) return 'Editing hypothesis';
   if(!hasCompleteHypothesis(cause)) return 'Draft hypothesis';
-  if(total === 0) return 'Ready to test';
+  if(total === 0) return rowsBuilt.length ? 'Waiting for KT evidence pairs' : 'Ready to test';
   if(answered === 0) return 'Not tested yet';
   if(answered < total) return 'Testing in progress';
   return 'Explains all evidence';
 }
 function updateCauseProgressChip(chip, cause){
   if(!chip || !cause) return;
-  const total = rowsBuilt.length;
-  const answered = countCompletedEvidence(cause);
-  chip.textContent = total ? `${answered}/${total} evidence checks` : 'No KT evidence yet';
+  const eligibleIndexes = evidencePairIndexes();
+  const total = eligibleIndexes.length;
+  const answered = countCompletedEvidence(cause, eligibleIndexes);
+  chip.textContent = total ? `${answered}/${total} evidence checks` : 'No KT evidence pairs yet';
   const status = causeStatusState(cause, answered, total);
   chip.dataset.status = status;
 }
@@ -1432,7 +1454,16 @@ function buildCauseTestPanel(cause, progressChip, statusEl){
     panel.appendChild(empty);
     return panel;
   }
-  rowsBuilt.forEach((row, index)=>{
+  const eligibleIndexes = evidencePairIndexes();
+  if(!eligibleIndexes.length){
+    const empty = document.createElement('div');
+    empty.className = 'cause-empty';
+    empty.textContent = 'Add IS / IS NOT evidence pairs to begin testing this cause.';
+    panel.appendChild(empty);
+    return panel;
+  }
+  eligibleIndexes.forEach(index=>{
+    const row = rowsBuilt[index];
     const rowKey = getRowKeyByIndex(index);
     const finding = getCauseFinding(cause, rowKey);
     const rowEl = document.createElement('section');
@@ -1866,16 +1897,20 @@ function nextUpdateSummaryLine(){
 }
 
 function causeProgressSummary(cause){
-  const total = rowsBuilt.length;
-  if(total === 0) return 'No KT evidence captured yet';
-  const answered = countCompletedEvidence(cause);
+  const eligibleIndexes = evidencePairIndexes();
+  const total = eligibleIndexes.length;
+  if(total === 0) return 'No KT evidence pairs captured yet';
+  const answered = countCompletedEvidence(cause, eligibleIndexes);
   return `${answered}/${total} evidence checks complete`;
 }
 
 function formatCauseFindingsSummary(cause){
-  if(!rowsBuilt.length || !cause || !cause.findings) return '';
+  if(!cause || !cause.findings) return '';
+  const eligibleIndexes = evidencePairIndexes();
+  if(!eligibleIndexes.length) return '';
   const sections = [];
-  rowsBuilt.forEach((row, index)=>{
+  eligibleIndexes.forEach(index=>{
+    const row = rowsBuilt[index];
     const key = getRowKeyByIndex(index);
     const entry = cause.findings[key];
     if(!entry) return;
