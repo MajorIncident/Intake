@@ -1331,7 +1331,7 @@ function updateCauseCardIndicators(card, cause){
   const assumptionEl = card.querySelector('.cause-card__assumptions');
   const failed = causeHasFailure(cause);
   if(failureEl){
-    failureEl.hidden = !failed;
+    failureEl.toggleAttribute('hidden', !failed);
     failureEl.setAttribute('aria-hidden', failed ? 'false' : 'true');
   }
   if(failed){
@@ -1449,7 +1449,7 @@ function renderCauses(){
     const failureTag = document.createElement('span');
     failureTag.className = 'cause-card__failure';
     failureTag.textContent = 'Failed Testing';
-    failureTag.hidden = true;
+    failureTag.setAttribute('hidden','');
     failureTag.setAttribute('aria-hidden','true');
     const chip = document.createElement('span');
     chip.className = 'cause-card__chip';
