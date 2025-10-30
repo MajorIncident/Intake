@@ -1181,6 +1181,7 @@ function peekCauseFinding(cause, key){
 function causeHasFailure(cause){
   if(!cause) return false;
   const indexes = evidencePairIndexes();
+  if(!indexes.length) return false;
   for(let i=0;i<indexes.length;i++){
     const entry = peekCauseFinding(cause, getRowKeyByIndex(indexes[i]));
     if(entry && findingMode(entry) === CAUSE_FINDING_MODES.FAIL){
@@ -2029,7 +2030,6 @@ function ensureSummaryCard(){
   return card;
 }
 
-function valOrDash(s){ const v=(s||'').trim(); return v ? v : '—'; }
 // Normalize user text into a single logical string for table cells (we’ll wrap visually in the table).
 function inlineText(s){
   const v=(s||'').trim();
@@ -2041,6 +2041,40 @@ function inlineText(s){
     .join(' · ');
 }
 
+function inlineSummaryText(s){
+  const lines = splitLines(s);
+  if(!lines.length) return '';
+  return lines.join(' · ');
+}
+
+function summaryLine(label, value){
+  const text = inlineSummaryText(value);
+  if(!text) return '';
+  return `${label}: ${text}`;
+}
+
+function summaryLineRaw(label, value){
+  const text = (value||'').trim();
+  if(!text) return '';
+  return `${label}: ${text}`;
+}
+
+function summaryBullet(label, value){
+  const text = inlineSummaryText(value);
+  if(!text) return '';
+  return `• ${label}: ${text}`;
+}
+
+function summaryBulletRaw(label, value){
+  const text = (value||'').trim();
+  if(!text) return '';
+  return `• ${label}: ${text}`;
+}
+
+function joinSummaryLines(lines){
+  return lines.filter(line=>line && line.trim().length).join('\n');
+}
+
 function splitLines(text){
   const v=(text||'').trim();
   if(!v) return [];
@@ -2048,7 +2082,7 @@ function splitLines(text){
 }
 
 function formatLabeledList(label, lines){
-  if(!lines.length) return `${label}: —`;
+  if(!lines.length) return '';
   if(lines.length === 1) return `${label}: ${lines[0]}`;
   const bullets = lines.map(line=>`  • ${line}`).join('\n');
   return `${label}:\n${bullets}`;
@@ -2056,7 +2090,7 @@ function formatLabeledList(label, lines){
 
 function formatDistinctionChanges(distLines, changeLines){
   const len = Math.max(distLines.length, changeLines.length);
-  if(len === 0) return 'Distinctions → Changes: —';
+  if(len === 0) return '';
   if(len === 1){
     const left = distLines[0] || '—';
     const right = changeLines[0] || '—';
@@ -2073,7 +2107,7 @@ function formatDistinctionChanges(distLines, changeLines){
 
 function formatChipsetSelections(list){
   const selected = list.filter(item=>item.el?.checked).map(item=>item.label);
-  return selected.length ? selected.join(', ') : '—';
+  return selected.length ? selected.join(', ') : '';
 }
 
 function containmentStatusText(){
@@ -2081,7 +2115,7 @@ function containmentStatusText(){
   if(status==='mitigation') return 'Temporary mitigation applied';
   if(status==='restore') return 'Full restoration in progress';
   if(status==='none') return 'No action yet';
-  return '—';
+  return '';
 }
 
 function latestCommEntry(type){
@@ -2098,8 +2132,9 @@ function formatCommTimestamp(ts){
 
 function formatCommSummaryLine(type, label){
   const entry = latestCommEntry(type);
-  if(!entry) return `${label}: —`;
-  return `${label}: ${formatCommTimestamp(entry.ts)}`;
+  if(!entry) return '';
+  const ts = formatCommTimestamp(entry.ts);
+  return ts ? `${label}: ${ts}` : '';
 }
 
 function nextUpdateSummaryLine(){
@@ -2113,7 +2148,7 @@ function nextUpdateSummaryLine(){
   if(commNextUpdateTime?.value){
     return `Next Update: ${commNextUpdateTime.value}`;
   }
-  return 'Next Update: —';
+  return '';
 }
 
 function causeProgressSummary(cause){
@@ -2178,14 +2213,6 @@ function buildSummaryText(){
   const title = document.getElementById('docTitle').textContent.trim();
   const subtitle = document.getElementById('docSubtitle').textContent.trim();
 
-  const bridge = [
-    `Bridge Opened (UTC): ${valOrDash(bridgeOpenedUtc?.value)}`,
-    `Incident Commander: ${valOrDash(icName?.value)}`,
-    `Bridge Coordinator: ${valOrDash(bcName?.value)}`,
-    `SEM/Ops Lead: ${valOrDash(semOpsName?.value)}`,
-    `Severity: ${valOrDash(severity?.value)}`
-  ].join('\n');
-
   const detectionSummary = formatChipsetSelections([
     {el: detectMonitoring, label: 'Monitoring'},
     {el: detectUserReport, label: 'User Report'},
@@ -2203,41 +2230,43 @@ function buildSummaryText(){
 
   // === Preface (inline answers) ===
   const prefaceLines = [
-    `• One-line: ${valOrDash(oneLine.value)}`,
-    `• Evidence/Proof: ${inlineText(proof.value)}`,
-    `• Specific Object: ${inlineText(objectPrefill.value || (objectIS?.value||''))}`,
-    `• Healthy Baseline: ${inlineText(healthy.value)}`,
-    `• Current State (What is happening now?): ${inlineText(now.value)}`,
-    `• Detection Source: ${detectionSummary}`,
-    `• Evidence Collected: ${evidenceSummary}`
+    summaryBullet('One-line', oneLine.value),
+    summaryBullet('Evidence/Proof', proof.value),
+    summaryBullet('Specific Object', objectPrefill.value || (objectIS?.value||'')),
+    summaryBullet('Healthy Baseline', healthy.value),
+    summaryBullet('Current State (What is happening now?)', now.value),
+    summaryBulletRaw('Detection Source', detectionSummary),
+    summaryBulletRaw('Evidence Collected', evidenceSummary)
   ];
-  const preface = prefaceLines.join('\n');
+  const preface = joinSummaryLines(prefaceLines);
 
   // === Impact (inline answers) ===
-  const imp = [
-    `Current Impact: ${inlineText(impactNow.value)}`,
-    `Future Impact: ${inlineText(impactFuture.value)}`,
-    `Timeframe: ${inlineText(impactTime.value)}`
-  ].join('\n');
+  const impactLines = [
+    summaryLine('Current Impact', impactNow.value),
+    summaryLine('Future Impact', impactFuture.value),
+    summaryLine('Timeframe', impactTime.value)
+  ];
+  const imp = joinSummaryLines(impactLines);
 
-  const containment = [
-    `Status: ${containmentStatusText()}`,
-    `Description: ${valOrDash(containDesc?.value)}`
-  ].join('\n');
+  const containmentLines = [
+    summaryLineRaw('Status', containmentStatusText()),
+    summaryLine('Description', containDesc?.value)
+  ];
+  const containment = joinSummaryLines(containmentLines);
 
-  const communications = [
+  const communications = joinSummaryLines([
     formatCommSummaryLine('internal', 'Last Internal Update'),
     formatCommSummaryLine('external', 'Last External Update'),
     nextUpdateSummaryLine()
-  ].join('\n');
+  ]);
 
   // === KT Table as chat-friendly blocks per question ===
   const rowsOut = [];
+  let pendingBand = '';
 
   [...tbody.querySelectorAll('tr')].forEach(tr=>{
     if(tr.classList.contains('band')){
-      rowsOut.push('');
-      rowsOut.push(`== ${tr.textContent.trim()} ==`);
+      pendingBand = `== ${tr.textContent.trim()} ==`;
       return;
     }
     const q = tr.querySelector('th').textContent.trim();
@@ -2248,40 +2277,57 @@ function buildSummaryText(){
     const changeLines = splitLines(t[3].value);
 
     // Question header
+    const sections = [
+      formatLabeledList('IS', isLines),
+      formatLabeledList('IS NOT', notLines),
+      formatDistinctionChanges(distLines, changeLines)
+    ].filter(Boolean);
+    if(!sections.length) return;
+    if(pendingBand){
+      rowsOut.push(pendingBand);
+      pendingBand = '';
+    }
     rowsOut.push(`Q: ${q}`);
-    rowsOut.push(formatLabeledList('IS', isLines));
-    rowsOut.push(formatLabeledList('IS NOT', notLines));
-    rowsOut.push(formatDistinctionChanges(distLines, changeLines));
+    sections.forEach(section=>rowsOut.push(section));
   });
 
-  const ktOut = rowsOut.join('\n\n'); // clear breathing room between tables
+  const ktOut = rowsOut.filter(line=>line && line.trim().length).join('\n\n');
 
   // === Compose (minimal blank lines between major sections) ===
-  return [
-    title,
-    subtitle,
-    '',
-    '— Bridge Activation —',
-    bridge,
-    '',
-    '— Preface —',
-    preface,
-    '',
-    '— Containment —',
-    containment,
-    '',
-    '— Impact —',
-    imp,
-    '',
-    '— Communications —',
-    communications,
-    '',
-    '— Possible Causes —',
-    formatPossibleCausesSummary(),
-    '',
-    '— KT IS / IS NOT —',
-    ktOut
-  ].join('\n');
+  const sectionsOut = [];
+  if(title.trim()){ sectionsOut.push(title.trim()); }
+  if(subtitle.trim()){ sectionsOut.push(subtitle.trim()); }
+  function pushSection(label, body){
+    const content = (body||'').trim();
+    if(!content) return;
+    if(sectionsOut.length){ sectionsOut.push(''); }
+    sectionsOut.push(label);
+    sectionsOut.push(content);
+  }
+
+  const bridgeLines = [
+    summaryLineRaw('Bridge Opened (UTC)', bridgeOpenedUtc?.value),
+    summaryLineRaw('Incident Commander', icName?.value),
+    summaryLineRaw('Bridge Coordinator', bcName?.value),
+    summaryLineRaw('SEM/Ops Lead', semOpsName?.value),
+    summaryLineRaw('Severity', severity?.value)
+  ];
+  const bridge = joinSummaryLines(bridgeLines);
+
+  pushSection('— Bridge Activation —', bridge);
+  pushSection('— Preface —', preface);
+  pushSection('— Containment —', containment);
+  pushSection('— Impact —', imp);
+  pushSection('— Communications —', communications);
+  const causes = formatPossibleCausesSummary();
+  if(causes.trim().length){
+    pushSection('— Possible Causes —', causes);
+  }
+  if(ktOut.trim().length){
+    pushSection('— KT IS / IS NOT —', ktOut);
+  }
+
+  return sectionsOut.join('\n');
 }
 
 
