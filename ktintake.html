@@ -226,19 +226,27 @@ Anchors present:
   .cause-empty{padding:18px; border:1px dashed #dfe5f2; border-radius:12px; background:#f9fbff; color:#5b6475; font-style:italic;}
   .cause-card{
     border:1px solid #e2e7f3; border-radius:14px; background:linear-gradient(180deg,#ffffff 0%,#f8faff 100%);
-    padding:18px 20px; display:flex; flex-direction:column; gap:12px;
+    padding:18px 20px; display:flex; flex-direction:column; gap:12px; position:relative;
   }
   .cause-card[data-editing="true"]{border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,122,255,.12);}
+  .cause-card[data-failed="true"]{border-color:#ffb3a9; box-shadow:0 0 0 4px rgba(255,107,74,.16);}
   .cause-card__header{display:flex; justify-content:space-between; align-items:flex-start; gap:12px;}
   .cause-card__meta{display:flex; flex-direction:column; gap:4px;}
   .cause-card__title{font-weight:700; font-size:14px; color:#1d2845; letter-spacing:.02em;}
   .cause-card__status{font-size:12px; color:var(--muted); letter-spacing:.02em;}
+  .cause-card__indicators{display:flex; flex-direction:column; align-items:flex-end; gap:6px;}
   .cause-card__chip{display:inline-flex; align-items:center; justify-content:center; padding:6px 12px; border-radius:999px; font-weight:600; font-size:12px; letter-spacing:.03em; text-transform:uppercase; border:1px solid transparent; background:#f2f4fb; color:#3b4962;}
   .cause-card__chip[data-status="not-tested"]{background:#f2f4fb; color:#3b4962; border-color:#dfe5f2;}
   .cause-card__chip[data-status="testing"]{background:#fff6e6; color:#7b4b00; border-color:#f3d2a2;}
   .cause-card__chip[data-status="explained"]{background:#e6f9ef; color:#0f5b2f; border-color:#b8e8cd;}
+  .cause-card__chip[data-status="failed"]{background:#ffe8e6; color:#b71c1c; border-color:#ffb3a9;}
   .cause-card__chip[data-status="draft"]{background:#f5f7fb; color:#6b768a; border-color:#e2e7f3;}
   .cause-card__chip[data-status="no-evidence"]{background:#eef3ff; color:#1d2845; border-color:#d5def5;}
+  .cause-card__failure{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-weight:600; font-size:12px; letter-spacing:.02em; background:#ffe8e6; color:#b71c1c; border:1px solid #ffb3a9;}
+  .cause-card__failure[hidden]{display:none !important;}
+  .cause-card__failure::before{content:'✕'; font-size:13px; line-height:1;}
+  .cause-card__assumptions{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-weight:600; font-size:12px; letter-spacing:.02em; background:#f1f4ff; color:#1d2845; border:1px solid #d5def5;}
+  .cause-card__assumptions::before{content:'∑'; font-size:13px; line-height:1; color:#3b4d7a;}
   .cause-card__summary{margin:0; font-size:14px; line-height:1.6; color:#1f2b40;}
   .cause-card__helper{margin-top:-6px;}
   .cause-card__form{display:grid; gap:14px;}
@@ -252,7 +260,14 @@ Anchors present:
   .cause-evidence-block{display:flex; flex-direction:column; gap:4px; padding:10px; border-radius:10px; background:#ffffff; border:1px solid #e6ebf5;}
   .cause-evidence-label{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#7a8398; font-weight:700;}
   .cause-evidence-text{font-size:13px; line-height:1.5; color:#22324b; white-space:pre-line;}
-  .cause-eval-inputs{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
+  .cause-eval-inputs{display:flex; flex-direction:column; gap:12px;}
+  .cause-eval-options{display:flex; flex-wrap:wrap; gap:8px;}
+  .cause-eval-option{appearance:none; border:1px solid #dfe5f2; background:#ffffff; color:#1d2845; font-weight:600; font-size:13px; padding:8px 14px; border-radius:999px; cursor:pointer; transition:background var(--speed), border-color var(--speed), color var(--speed), box-shadow var(--speed);}
+  .cause-eval-option:hover{border-color:var(--accent);}
+  .cause-eval-option:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,122,255,.18);}
+  .cause-eval-option.is-selected{background:rgba(0,122,255,.12); border-color:var(--accent); color:var(--accent); box-shadow:0 6px 16px rgba(0,122,255,.12);}
+  .cause-eval-note{display:flex; flex-direction:column; gap:6px;}
+  .cause-eval-note[hidden]{display:none;}
   .cause-eval-inputs .field textarea{min-height:120px;}
   @media (max-width:720px){
     .cause-card{padding:16px;}
@@ -1104,6 +1119,95 @@ function logCommunication(type){
 }
 
 /* ===== Possible causes (hypotheses) ===== */
+const CAUSE_FINDING_MODES = {
+  ASSUMPTION: 'assumption',
+  YES: 'yes',
+  FAIL: 'fail'
+};
+const CAUSE_FINDING_MODE_VALUES = Object.values(CAUSE_FINDING_MODES);
+
+function isValidFindingMode(mode){
+  return typeof mode === 'string' && CAUSE_FINDING_MODE_VALUES.includes(mode);
+}
+function normalizeFindingEntry(entry){
+  const normalized = { mode:'', note:'' };
+  if(entry && typeof entry === 'object'){
+    if(typeof entry.mode === 'string'){
+      const mode = entry.mode.trim().toLowerCase();
+      if(isValidFindingMode(mode)){ normalized.mode = mode; }
+    }
+    if(typeof entry.note === 'string'){
+      normalized.note = entry.note;
+    }else if(typeof entry.note === 'number'){
+      normalized.note = String(entry.note);
+    }
+    const explainIs = typeof entry.explainIs === 'string' ? entry.explainIs.trim() : '';
+    const explainNot = typeof entry.explainNot === 'string' ? entry.explainNot.trim() : '';
+    if(!normalized.mode && (explainIs || explainNot)){
+      normalized.mode = CAUSE_FINDING_MODES.YES;
+      normalized.note = [explainIs, explainNot].filter(Boolean).join('\n');
+    }else if(normalized.mode && !normalized.note && (explainIs || explainNot)){
+      normalized.note = [explainIs, explainNot].filter(Boolean).join('\n');
+    }
+  }else if(typeof entry === 'string'){
+    normalized.mode = CAUSE_FINDING_MODES.YES;
+    normalized.note = entry;
+  }
+  return normalized;
+}
+function findingMode(entry){
+  if(!entry || typeof entry !== 'object') return '';
+  const mode = typeof entry.mode === 'string' ? entry.mode : '';
+  return isValidFindingMode(mode) ? mode : '';
+}
+function findingNote(entry){
+  if(!entry || typeof entry !== 'object') return '';
+  return typeof entry.note === 'string' ? entry.note : '';
+}
+function findingIsComplete(entry){
+  const mode = findingMode(entry);
+  if(!mode) return false;
+  const note = findingNote(entry).trim();
+  if(!note) return false;
+  return true;
+}
+function peekCauseFinding(cause, key){
+  if(!cause || !cause.findings || typeof cause.findings !== 'object') return null;
+  const existing = cause.findings[key];
+  if(!existing) return null;
+  const normalized = normalizeFindingEntry(existing);
+  cause.findings[key] = normalized;
+  return normalized;
+}
+function causeHasFailure(cause){
+  if(!cause) return false;
+  const indexes = evidencePairIndexes();
+  for(let i=0;i<indexes.length;i++){
+    const entry = peekCauseFinding(cause, getRowKeyByIndex(indexes[i]));
+    if(entry && findingMode(entry) === CAUSE_FINDING_MODES.FAIL){
+      return true;
+    }
+  }
+  return false;
+}
+function countCauseAssumptions(cause){
+  if(!cause) return 0;
+  const indexes = evidencePairIndexes();
+  let total = 0;
+  indexes.forEach(idx=>{
+    const entry = peekCauseFinding(cause, getRowKeyByIndex(idx));
+    if(entry && findingMode(entry) === CAUSE_FINDING_MODES.ASSUMPTION){ total++; }
+  });
+  return total;
+}
+function substituteEvidenceTokens(template, isText, notText){
+  if(typeof template !== 'string') return '';
+  const safeIs = (isText || '').trim() || 'IS column';
+  const safeNot = (notText || '').trim() || 'IS NOT column';
+  return template
+    .replace(/<is\s+not>/gi, safeNot)
+    .replace(/<is>/gi, safeIs);
+}
 function generateCauseId(){
   return 'cause-' + Math.random().toString(36).slice(2,8) + '-' + Date.now().toString(36);
 }
@@ -1148,17 +1252,20 @@ function ensureCauseFindings(cause){
 }
 function getCauseFinding(cause, key){
   const map = ensureCauseFindings(cause);
-  if(!map[key]){
-    map[key] = { explainIs:'', explainNot:'' };
-  }else{
-    map[key].explainIs = typeof map[key].explainIs === 'string' ? map[key].explainIs : '';
-    map[key].explainNot = typeof map[key].explainNot === 'string' ? map[key].explainNot : '';
-  }
+  map[key] = normalizeFindingEntry(map[key]);
   return map[key];
 }
 function setCauseFindingValue(cause, key, prop, value){
   const entry = getCauseFinding(cause, key);
-  entry[prop] = value;
+  if(prop === 'mode'){
+    const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+    entry.mode = isValidFindingMode(normalized) ? normalized : '';
+    if(!entry.mode){ entry.note = ''; }
+  }else if(prop === 'note'){
+    entry.note = typeof value === 'string' ? value : '';
+  }else{
+    entry[prop] = value;
+  }
 }
 function rowHasEvidencePair(row){
   if(!row) return false;
@@ -1176,23 +1283,19 @@ function evidencePairIndexes(){
   return indexes;
 }
 function countCompletedEvidence(cause, eligibleIndexes){
-  const map = cause && cause.findings && typeof cause.findings === 'object' ? cause.findings : {};
   let count = 0;
   const indexes = Array.isArray(eligibleIndexes) ? eligibleIndexes : evidencePairIndexes();
   indexes.forEach(index=>{
     const key = getRowKeyByIndex(index);
-    const entry = map[key];
-    if(entry){
-      const isVal = typeof entry.explainIs === 'string' ? entry.explainIs.trim() : '';
-      const notVal = typeof entry.explainNot === 'string' ? entry.explainNot.trim() : '';
-      if(isVal && notVal){ count++; }
-    }
+    const entry = peekCauseFinding(cause, key);
+    if(entry && findingIsComplete(entry)){ count++; }
   });
   return count;
 }
 function causeStatusState(cause, answered, total){
   if(!hasCompleteHypothesis(cause)) return 'draft';
   if(total === 0) return 'no-evidence';
+  if(causeHasFailure(cause)) return 'failed';
   if(answered === 0) return 'not-tested';
   if(answered < total) return 'testing';
   return 'explained';
@@ -1204,6 +1307,7 @@ function causeStatusLabel(cause){
   if(cause?.editing) return 'Editing hypothesis';
   if(!hasCompleteHypothesis(cause)) return 'Draft hypothesis';
   if(total === 0) return rowsBuilt.length ? 'Waiting for KT evidence pairs' : 'Ready to test';
+  if(causeHasFailure(cause)) return 'Failed testing';
   if(answered === 0) return 'Not tested yet';
   if(answered < total) return 'Testing in progress';
   return 'Explains all evidence';
@@ -1220,6 +1324,30 @@ function updateCauseProgressChip(chip, cause){
 function updateCauseStatusLabel(el, cause){
   if(!el) return;
   el.textContent = causeStatusLabel(cause);
+}
+function updateCauseCardIndicators(card, cause){
+  if(!card || !cause) return;
+  const failureEl = card.querySelector('.cause-card__failure');
+  const assumptionEl = card.querySelector('.cause-card__assumptions');
+  const failed = causeHasFailure(cause);
+  if(failureEl){
+    failureEl.hidden = !failed;
+    failureEl.setAttribute('aria-hidden', failed ? 'false' : 'true');
+  }
+  if(failed){
+    card.dataset.failed = 'true';
+  }else{
+    delete card.dataset.failed;
+  }
+  if(assumptionEl){
+    const count = countCauseAssumptions(cause);
+    if(count > 0){
+      assumptionEl.hidden = false;
+      assumptionEl.textContent = count === 1 ? '1 assumption' : `${count} assumptions`;
+    }else{
+      assumptionEl.hidden = true;
+    }
+  }
 }
 function previewEvidenceText(value){
   const lines = splitLines(value);
@@ -1316,9 +1444,20 @@ function renderCauses(){
     const statusEl = document.createElement('span');
     statusEl.className = 'cause-card__status';
     meta.append(titleEl, statusEl);
+    const indicators = document.createElement('div');
+    indicators.className = 'cause-card__indicators';
+    const failureTag = document.createElement('span');
+    failureTag.className = 'cause-card__failure';
+    failureTag.textContent = 'Failed Testing';
+    failureTag.hidden = true;
+    failureTag.setAttribute('aria-hidden','true');
     const chip = document.createElement('span');
     chip.className = 'cause-card__chip';
-    header.append(meta, chip);
+    const assumptionTag = document.createElement('span');
+    assumptionTag.className = 'cause-card__assumptions';
+    assumptionTag.hidden = true;
+    indicators.append(failureTag, chip, assumptionTag);
+    header.append(meta, indicators);
     card.append(header);
     updateCauseStatusLabel(statusEl, cause);
     updateCauseProgressChip(chip, cause);
@@ -1433,19 +1572,20 @@ function renderCauses(){
       controls.append(editBtn, testBtn, makeRemoveButton(cause));
       card.append(controls);
       if(cause.testingOpen){
-        card.append(buildCauseTestPanel(cause, chip, statusEl));
+        card.append(buildCauseTestPanel(cause, chip, statusEl, card));
       }
     }
     causeList.appendChild(card);
+    updateCauseCardIndicators(card, cause);
   });
   updateCauseEvidencePreviews();
 }
-function buildCauseTestPanel(cause, progressChip, statusEl){
+function buildCauseTestPanel(cause, progressChip, statusEl, card){
   const panel = document.createElement('div');
   panel.className = 'cause-test';
   const intro = document.createElement('p');
   intro.className = 'cause-test__intro';
-  intro.textContent = 'For each KT row, explain how this hypothesis fits the IS evidence and why it does not conflict with the IS NOT column.';
+  intro.textContent = 'For each KT row, choose how this hypothesis handles the IS / IS NOT evidence and document your reasoning.';
   panel.appendChild(intro);
   if(!rowsBuilt.length){
     const empty = document.createElement('div');
@@ -1505,42 +1645,115 @@ function buildCauseTestPanel(cause, progressChip, statusEl){
     rowEl.appendChild(evidenceWrap);
     const inputsWrap = document.createElement('div');
     inputsWrap.className = 'cause-eval-inputs';
-    const explainIsField = document.createElement('div');
-    explainIsField.className = 'field';
-    const explainIsLabel = document.createElement('label');
-    explainIsLabel.textContent = 'If this cause is true, how does it explain the IS evidence?';
-    const explainIsInput = document.createElement('textarea');
-    explainIsInput.value = finding.explainIs || '';
-    explainIsInput.placeholder = 'Connect this hypothesis to the confirmed facts.';
-    explainIsInput.setAttribute('data-min-height','120');
-    explainIsInput.addEventListener('input', e=>{
-      setCauseFindingValue(cause, rowKey, 'explainIs', e.target.value);
-      autoResize(explainIsInput);
+    const optionWrap = document.createElement('div');
+    optionWrap.className = 'cause-eval-options';
+    const noteField = document.createElement('div');
+    noteField.className = 'field cause-eval-note';
+    noteField.hidden = true;
+    const noteLabel = document.createElement('label');
+    noteLabel.dataset.role = 'note-label';
+    const noteInput = document.createElement('textarea');
+    noteInput.dataset.role = 'finding-note';
+    noteInput.value = findingNote(finding);
+    noteInput.placeholder = 'Select an option to describe this relationship.';
+    noteInput.setAttribute('data-min-height','120');
+    noteInput.disabled = true;
+    noteInput.addEventListener('input', e=>{
+      setCauseFindingValue(cause, rowKey, 'note', e.target.value);
+      autoResize(noteInput);
       updateCauseProgressChip(progressChip, cause);
       updateCauseStatusLabel(statusEl, cause);
+      updateCauseCardIndicators(card, cause);
       saveToStorage();
     });
-    autoResize(explainIsInput);
-    explainIsField.append(explainIsLabel, explainIsInput);
-    const explainNotField = document.createElement('div');
-    explainNotField.className = 'field';
-    const explainNotLabel = document.createElement('label');
-    explainNotLabel.textContent = 'Why does it not conflict with the IS NOT evidence?';
-    const explainNotInput = document.createElement('textarea');
-    explainNotInput.value = finding.explainNot || '';
-    explainNotInput.placeholder = 'Describe why this cause still holds when the IS NOT evidence is true.';
-    explainNotInput.setAttribute('data-min-height','120');
-    explainNotInput.addEventListener('input', e=>{
-      setCauseFindingValue(cause, rowKey, 'explainNot', e.target.value);
-      autoResize(explainNotInput);
-      updateCauseProgressChip(progressChip, cause);
-      updateCauseStatusLabel(statusEl, cause);
-      saveToStorage();
-    });
-    autoResize(explainNotInput);
-    explainNotField.append(explainNotLabel, explainNotInput);
-    inputsWrap.append(explainIsField, explainNotField);
+    autoResize(noteInput);
+    noteField.append(noteLabel, noteInput);
+    inputsWrap.append(optionWrap, noteField);
     rowEl.appendChild(inputsWrap);
+
+    const optionDefs = [
+      {
+        mode: CAUSE_FINDING_MODES.ASSUMPTION,
+        buttonLabel: 'Explains Only if…',
+        noteLabel: 'What assumptions are necessary to explain why we see it on the <is> and not the <is not>?',
+        placeholder: 'List the assumptions required so we observe <is> while avoiding <is not>.'
+      },
+      {
+        mode: CAUSE_FINDING_MODES.YES,
+        buttonLabel: 'Yes, because…',
+        noteLabel: 'How does this naturally explain that we see <is> and that we don\'t see <is not>?',
+        placeholder: 'Describe how this cause naturally creates <is> and avoids <is not>.'
+      },
+      {
+        mode: CAUSE_FINDING_MODES.FAIL,
+        buttonLabel: 'Does not explain…',
+        noteLabel: 'Why can\'t we explain the <is> being present, but not the <is not>?',
+        placeholder: 'Explain why this cause cannot produce <is> without contradicting <is not>.'
+      }
+    ];
+    const buttons = [];
+    const rawIs = row?.isTA?.value || '';
+    const rawNot = row?.notTA?.value || '';
+
+    function applyMode(newMode, opts={}){
+      const active = isValidFindingMode(newMode) ? newMode : '';
+      buttons.forEach(btn=>{
+        btn.element.classList.toggle('is-selected', btn.mode === active);
+      });
+      if(active){
+        const config = optionDefs.find(def=>def.mode === active);
+        const labelTemplate = config?.noteLabel || '';
+        const placeholderTemplate = config?.placeholder || '';
+        noteLabel.textContent = substituteEvidenceTokens(labelTemplate, rawIs, rawNot);
+        noteLabel.dataset.template = labelTemplate;
+        noteInput.placeholder = substituteEvidenceTokens(placeholderTemplate, rawIs, rawNot);
+        noteInput.dataset.placeholderTemplate = placeholderTemplate;
+        noteInput.disabled = false;
+        noteField.hidden = false;
+      }else{
+        noteLabel.textContent = '';
+        delete noteLabel.dataset.template;
+        noteInput.placeholder = 'Select an option to describe this relationship.';
+        delete noteInput.dataset.placeholderTemplate;
+        noteInput.value = '';
+        noteInput.disabled = true;
+        noteField.hidden = true;
+        setCauseFindingValue(cause, rowKey, 'note', '');
+      }
+      autoResize(noteInput);
+      if(!opts.silent){
+        updateCauseProgressChip(progressChip, cause);
+        updateCauseStatusLabel(statusEl, cause);
+        updateCauseCardIndicators(card, cause);
+        saveToStorage();
+      }
+    }
+
+    optionDefs.forEach(def=>{
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cause-eval-option';
+      btn.textContent = def.buttonLabel;
+      btn.dataset.mode = def.mode;
+      btn.addEventListener('click', ()=>{
+        const entry = getCauseFinding(cause, rowKey);
+        const current = findingMode(entry);
+        if(current === def.mode){
+          setCauseFindingValue(cause, rowKey, 'mode', '');
+          applyMode('');
+        }else{
+          setCauseFindingValue(cause, rowKey, 'mode', def.mode);
+          applyMode(def.mode);
+        }
+      });
+      optionWrap.appendChild(btn);
+      buttons.push({ element: btn, mode: def.mode });
+    });
+
+    const startingMode = findingMode(finding);
+    noteInput.value = findingNote(finding);
+    autoResize(noteInput);
+    applyMode(startingMode, {silent:true});
     panel.appendChild(rowEl);
   });
   return panel;
@@ -1554,23 +1767,30 @@ function updateCauseEvidencePreviews(){
     const questionEl = rowEl.querySelector('[data-role="question"]');
     if(questionEl){ questionEl.textContent = row?.th?.textContent?.trim() || fillTokens(row?.def?.q || ''); }
     const isValue = rowEl.querySelector('[data-role="is-value"]');
-    if(isValue){ isValue.textContent = previewEvidenceText(row?.isTA?.value || ''); }
+    const rawIs = row?.isTA?.value || '';
+    const rawNot = row?.notTA?.value || '';
+    if(isValue){ isValue.textContent = previewEvidenceText(rawIs); }
     const notValue = rowEl.querySelector('[data-role="not-value"]');
-    if(notValue){ notValue.textContent = previewEvidenceText(row?.notTA?.value || ''); }
+    if(notValue){ notValue.textContent = previewEvidenceText(rawNot); }
+    const noteLabel = rowEl.querySelector('[data-role="note-label"]');
+    if(noteLabel && noteLabel.dataset.template){
+      noteLabel.textContent = substituteEvidenceTokens(noteLabel.dataset.template, rawIs, rawNot);
+    }
+    const noteInput = rowEl.querySelector('textarea[data-role="finding-note"]');
+    if(noteInput && noteInput.dataset.placeholderTemplate){
+      noteInput.placeholder = substituteEvidenceTokens(noteInput.dataset.placeholderTemplate, rawIs, rawNot);
+    }
   });
-  causeList.querySelectorAll('.cause-card__chip').forEach(chip=>{
-    const card = chip.closest('.cause-card');
+  causeList.querySelectorAll('.cause-card').forEach(card=>{
     const id = card?.dataset?.causeId;
     if(!id) return;
     const cause = possibleCauses.find(item=>item.id === id);
-    if(cause){ updateCauseProgressChip(chip, cause); }
-  });
-  causeList.querySelectorAll('.cause-card__status').forEach(statusEl=>{
-    const card = statusEl.closest('.cause-card');
-    const id = card?.dataset?.causeId;
-    if(!id) return;
-    const cause = possibleCauses.find(item=>item.id === id);
-    if(cause){ updateCauseStatusLabel(statusEl, cause); }
+    if(!cause) return;
+    const chip = card.querySelector('.cause-card__chip');
+    if(chip){ updateCauseProgressChip(chip, cause); }
+    const statusEl = card.querySelector('.cause-card__status');
+    if(statusEl){ updateCauseStatusLabel(statusEl, cause); }
+    updateCauseCardIndicators(card, cause);
   });
 }
 function focusFirstEditableCause(){
@@ -1588,11 +1808,15 @@ function serializeCauses(){
     const findings = {};
     if(cause.findings && typeof cause.findings === 'object'){
       Object.keys(cause.findings).forEach(key=>{
-        const entry = cause.findings[key] || {};
-        findings[key] = {
-          explainIs: typeof entry.explainIs === 'string' ? entry.explainIs : '',
-          explainNot: typeof entry.explainNot === 'string' ? entry.explainNot : ''
-        };
+        const normalized = normalizeFindingEntry(cause.findings[key]);
+        const mode = findingMode(normalized);
+        const note = findingNote(normalized);
+        if(mode || note.trim()){
+          findings[key] = { mode, note };
+          cause.findings[key] = normalized;
+        }else{
+          delete cause.findings[key];
+        }
       });
     }
     return {
@@ -1620,11 +1844,12 @@ function deserializeCauses(rawList){
     };
     if(raw && raw.findings && typeof raw.findings === 'object'){
       Object.keys(raw.findings).forEach(key=>{
-        const entry = raw.findings[key] || {};
-        cause.findings[key] = {
-          explainIs: typeof entry.explainIs === 'string' ? entry.explainIs : '',
-          explainNot: typeof entry.explainNot === 'string' ? entry.explainNot : ''
-        };
+        const normalized = normalizeFindingEntry(raw.findings[key]);
+        const mode = findingMode(normalized);
+        const note = findingNote(normalized);
+        if(mode || note.trim()){
+          cause.findings[key] = normalized;
+        }
       });
     }
     return cause;
@@ -1901,6 +2126,9 @@ function causeProgressSummary(cause){
   const total = eligibleIndexes.length;
   if(total === 0) return 'No KT evidence pairs captured yet';
   const answered = countCompletedEvidence(cause, eligibleIndexes);
+  if(causeHasFailure(cause)){
+    return `${answered}/${total} evidence checks • Failed on at least one check`;
+  }
   return `${answered}/${total} evidence checks complete`;
 }
 
@@ -1912,15 +2140,22 @@ function formatCauseFindingsSummary(cause){
   eligibleIndexes.forEach(index=>{
     const row = rowsBuilt[index];
     const key = getRowKeyByIndex(index);
-    const entry = cause.findings[key];
+    const entry = peekCauseFinding(cause, key);
     if(!entry) return;
-    const explainIs = typeof entry.explainIs === 'string' ? entry.explainIs.trim() : '';
-    const explainNot = typeof entry.explainNot === 'string' ? entry.explainNot.trim() : '';
-    if(!explainIs && !explainNot) return;
+    const mode = findingMode(entry);
+    const note = findingNote(entry);
+    if(!mode && !note.trim()) return;
     const label = row?.th?.textContent?.trim() || fillTokens(row?.def?.q || `Row ${index+1}`);
     const lines = [`  • ${label}`];
-    if(explainIs){ lines.push(`    - Explains IS: ${inlineText(explainIs)}`); }
-    if(explainNot){ lines.push(`    - Fits IS NOT: ${inlineText(explainNot)}`); }
+    if(mode === CAUSE_FINDING_MODES.ASSUMPTION){
+      lines.push(`    - Assumptions needed: ${inlineText(note)}`);
+    }else if(mode === CAUSE_FINDING_MODES.YES){
+      lines.push(`    - Explains evidence: ${inlineText(note)}`);
+    }else if(mode === CAUSE_FINDING_MODES.FAIL){
+      lines.push(`    - Fails because: ${inlineText(note)}`);
+    }else if(note.trim()){
+      lines.push(`    - Notes: ${inlineText(note)}`);
+    }
     sections.push(lines.join('\n'));
   });
   return sections.length ? ['Evidence walkthrough:', ...sections].join('\n') : '';
@@ -1934,8 +2169,11 @@ function formatPossibleCausesSummary(){
     const header = `• Possible Cause ${index+1}: ${buildHypothesisSentence(cause)}`;
     const status = `  Status: ${causeStatusLabel(cause)}`;
     const progress = `  Progress: ${causeProgressSummary(cause)}`;
+    const failureLine = causeHasFailure(cause) ? '  Result: Failed testing on at least one evidence check' : '';
+    const assumptionCount = countCauseAssumptions(cause);
+    const assumptionLine = assumptionCount ? `  Assumptions noted: ${assumptionCount}` : '';
     const evidence = formatCauseFindingsSummary(cause);
-    return [header, status, progress, evidence].filter(Boolean).join('\n');
+    return [header, status, progress, failureLine, assumptionLine, evidence].filter(Boolean).join('\n');
   });
   return blocks.join('\n\n');
 }
