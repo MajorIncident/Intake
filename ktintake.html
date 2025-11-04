@@ -2351,21 +2351,24 @@ async function handleSummaryOutput(text){
   }
 }
 
-async function onGenerateSummary(){
-  const text = buildSummaryText();
-  await handleSummaryOutput(text);
-}
-
-async function onGenerateAIPrompt(){
-  const summary = buildSummaryText();
-  const payload = `You are ChatGPT acting as an incident communications specialist.
+const PROMPT_PREAMBLE = `You are ChatGPT acting as an incident communications specialist.
 Following NIST SP 800-61, ISO/IEC 27035, and ITIL major incident best practices, craft two communication log entries:
 one for internal stakeholders and one for external customers.
 Each entry should include recommended tone, key talking points, risk framing, and next steps.
-Use the incident context below to tailor the guidance.
+Use the incident context below to tailor the guidance.`;
 
-${summary}`;
+async function runSummaryFlow({usePromptPreamble=false}={}){
+  const summary = buildSummaryText();
+  const payload = usePromptPreamble ? `${PROMPT_PREAMBLE}\n\n${summary}` : summary;
   await handleSummaryOutput(payload);
+}
+
+async function onGenerateSummary(){
+  await runSummaryFlow({usePromptPreamble:false});
+}
+
+async function onGenerateAIPrompt(){
+  await runSummaryFlow({usePromptPreamble:true});
 }
 
 document.addEventListener('DOMContentLoaded', function(){
