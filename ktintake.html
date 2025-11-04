@@ -2357,30 +2357,30 @@ async function onGenerateSummary(){
 async function onGenerateAIPrompt(){
   const summary = buildSummaryText();
 
-  // Keep the summary card in sync for manual review
-  const card = ensureSummaryCard();
-  const pre = document.getElementById('summaryPre');
-  pre.textContent = summary;
-  card.style.display = 'block';
-
-  const prompt = [
+  const promptInstructions = [
     'You are ChatGPT acting as an incident communications specialist.',
     'Following NIST SP 800-61, ISO/IEC 27035, and ITIL major incident best practices, craft two communication log entries:',
     'one for internal stakeholders and one for external customers.',
     'Each entry should include recommended tone, key talking points, risk framing, and next steps.',
     'Use the incident context below to tailor the guidance.'
   ].join(' ');
-  const payload = `${prompt}\n\n${summary}`;
+  const payload = `"${promptInstructions}\n\n${summary}"`;
+
+  // Keep the summary card in sync for manual copy when clipboard fails
+  const card = ensureSummaryCard();
+  const pre = document.getElementById('summaryPre');
+  pre.textContent = payload;
+  card.style.display = 'block';
 
   try{
     if(window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText){
       await navigator.clipboard.writeText(payload);
-      if(typeof showToast==='function'){ showToast('AI prompt & summary copied. It’s also shown below.'); }
+      if(typeof showToast==='function'){ showToast('AI prompt updated & copied. Full text is shown below.'); }
     }else{
-      if(typeof showToast==='function'){ showToast('AI prompt ready. Clipboard blocked — copy it from the bottom.'); }
+      if(typeof showToast==='function'){ showToast('AI prompt updated. Clipboard blocked — copy it from the bottom.'); }
     }
   }catch(_){
-    if(typeof showToast==='function'){ showToast('AI prompt ready. Clipboard blocked — copy it from the bottom.'); }
+    if(typeof showToast==='function'){ showToast('AI prompt updated. Clipboard blocked — copy it from the bottom.'); }
   }
 }
 
