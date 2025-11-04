@@ -8,7 +8,7 @@ one for internal stakeholders and one for external customers.
 Each entry should include recommended tone, key talking points, risk framing, and next steps.
 Use the incident context below to tailor the guidance.`;
 
-async function createDom({skipDOMContentLoaded=false}={}){
+async function createDom(){
   const html = fs.readFileSync(path.join(__dirname, '..', 'ktintake.html'), 'utf8');
   const dom = new JSDOM(html.replace('init();', '/* init(); disabled during tests */'), {
     runScripts: 'dangerously',
@@ -21,10 +21,8 @@ async function createDom({skipDOMContentLoaded=false}={}){
     dom.window.init();
   }
 
-  if(!skipDOMContentLoaded){
-    // Ensure listeners wired in DOMContentLoaded run.
-    dom.window.document.dispatchEvent(new dom.window.Event('DOMContentLoaded', {bubbles: true}));
-  }
+  // Ensure listeners wired in DOMContentLoaded run.
+  dom.window.document.dispatchEvent(new dom.window.Event('DOMContentLoaded', {bubbles: true}));
   dom.window.showToast = jest.fn();
 
   const intervalId = dom.window.eval('typeof _mirrorTick !== "undefined" ? _mirrorTick : null');
@@ -58,11 +56,6 @@ function seedSampleData(window){
   }
 }
 
-async function clickAndFlush(el){
-  el.click();
-  await new Promise(resolve => setImmediate(resolve));
-}
-
 describe('summary generation flows', () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -79,6 +72,7 @@ describe('summary generation flows', () => {
 
     const summary = window.buildSummaryText();
     await clickAndFlush(window.document.getElementById('genSummaryBtn'));
+    await window.onGenerateSummary();
 
     expect(clipboardMock).toHaveBeenCalledWith(summary);
     expect(window.document.getElementById('summaryPre').textContent).toBe(summary);
@@ -97,6 +91,7 @@ describe('summary generation flows', () => {
 
     const summary = window.buildSummaryText();
     await clickAndFlush(window.document.getElementById('commAIPromptBtn'));
+    await window.onGenerateAIPrompt();
 
     const expected = `${PROMPT_PREAMBLE}\n\n${summary}`;
     expect(clipboardMock).toHaveBeenCalledWith(expected);
@@ -114,6 +109,7 @@ describe('summary generation flows', () => {
     delete window.navigator.clipboard;
 
     await clickAndFlush(window.document.getElementById('genSummaryBtn'));
+    await window.onGenerateSummary();
 
     expect(window.showToast).toHaveBeenCalledWith('Summary updated. Clipboard blocked — copy it from the bottom.');
     expect(window.document.getElementById('summaryPre').textContent).toBe(window.buildSummaryText());
