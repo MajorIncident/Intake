@@ -300,7 +300,7 @@ Anchors present:
   <!-- [header] start -->
   <header>
     <h1 id="docTitle">KT Intake</h1>
-    <button class="btn" id="genSummaryBtn">Generate Summary</button>
+    <button class="btn" id="genSummaryBtn" onclick="onGenerateSummary()">Generate Summary</button>
   </header>
   <!-- [header] end -->
 
@@ -2371,23 +2371,12 @@ async function onGenerateAIPrompt(){
   await runSummaryFlow({usePromptPreamble:true});
 }
 
-function wireSummaryButtons(){
+document.addEventListener('DOMContentLoaded', function(){
   var btn = document.getElementById('genSummaryBtn');
-  if(btn && !btn.dataset.summaryWired){
-    btn.addEventListener('click', onGenerateSummary);
-    btn.dataset.summaryWired = 'true';
-  }
+  if(btn){ btn.addEventListener('click', onGenerateSummary); }
   var aiBtn = document.getElementById('commAIPromptBtn');
-  if(aiBtn && !aiBtn.dataset.summaryWired){
-    aiBtn.addEventListener('click', onGenerateAIPrompt);
-    aiBtn.dataset.summaryWired = 'true';
-  }
-}
-
-if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', wireSummaryButtons, {once:true});
-}
-wireSummaryButtons();
+  if(aiBtn){ aiBtn.addEventListener('click', onGenerateAIPrompt); }
+});
 
 /* [script:export] end */
 

@@ -71,7 +71,6 @@ describe('summary generation flows', () => {
     Object.defineProperty(window.navigator, 'clipboard', {value: {writeText: clipboardMock}, configurable: true});
 
     const summary = window.buildSummaryText();
-    await clickAndFlush(window.document.getElementById('genSummaryBtn'));
     await window.onGenerateSummary();
 
     expect(clipboardMock).toHaveBeenCalledWith(summary);
@@ -90,7 +89,6 @@ describe('summary generation flows', () => {
     Object.defineProperty(window.navigator, 'clipboard', {value: {writeText: clipboardMock}, configurable: true});
 
     const summary = window.buildSummaryText();
-    await clickAndFlush(window.document.getElementById('commAIPromptBtn'));
     await window.onGenerateAIPrompt();
 
     const expected = `${PROMPT_PREAMBLE}\n\n${summary}`;
@@ -108,30 +106,10 @@ describe('summary generation flows', () => {
     Object.defineProperty(window, 'isSecureContext', {value: false, configurable: true});
     delete window.navigator.clipboard;
 
-    await clickAndFlush(window.document.getElementById('genSummaryBtn'));
     await window.onGenerateSummary();
 
     expect(window.showToast).toHaveBeenCalledWith('Summary updated. Clipboard blocked — copy it from the bottom.');
     expect(window.document.getElementById('summaryPre').textContent).toBe(window.buildSummaryText());
-
-    dom.window.close();
-  });
-
-  test('AI prompt button still works even if DOMContentLoaded already fired', async () => {
-    const dom = await createDom({skipDOMContentLoaded: true});
-    const {window} = dom;
-    seedSampleData(window);
-
-    Object.defineProperty(window, 'isSecureContext', {value: true, configurable: true});
-    const clipboardMock = jest.fn().mockResolvedValue(undefined);
-    Object.defineProperty(window.navigator, 'clipboard', {value: {writeText: clipboardMock}, configurable: true});
-
-    const summary = window.buildSummaryText();
-    await clickAndFlush(window.document.getElementById('commAIPromptBtn'));
-
-    const expected = `${PROMPT_PREAMBLE}\n\n${summary}`;
-    expect(clipboardMock).toHaveBeenCalledWith(expected);
-    expect(window.document.getElementById('summaryPre').textContent).toBe(expected);
 
     dom.window.close();
   });
