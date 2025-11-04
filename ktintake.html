@@ -2333,15 +2333,12 @@ function buildSummaryText(){
 
 
 
-async function onGenerateSummary(){
-  const text = buildSummaryText();
-
-  // Always render at bottom for manual copy
+async function handleSummaryOutput(text){
   const card = ensureSummaryCard();
   const pre = document.getElementById('summaryPre');
   pre.textContent = text;
   card.style.display = 'block';
-  // Try clipboard copy (best effort)
+
   try{
     if(window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText){
       await navigator.clipboard.writeText(text);
@@ -2354,34 +2351,21 @@ async function onGenerateSummary(){
   }
 }
 
+async function onGenerateSummary(){
+  const text = buildSummaryText();
+  await handleSummaryOutput(text);
+}
+
 async function onGenerateAIPrompt(){
   const summary = buildSummaryText();
+  const payload = `You are ChatGPT acting as an incident communications specialist.
+Following NIST SP 800-61, ISO/IEC 27035, and ITIL major incident best practices, craft two communication log entries:
+one for internal stakeholders and one for external customers.
+Each entry should include recommended tone, key talking points, risk framing, and next steps.
+Use the incident context below to tailor the guidance.
 
-  const promptInstructions = [
-    'You are ChatGPT acting as an incident communications specialist.',
-    'Following NIST SP 800-61, ISO/IEC 27035, and ITIL major incident best practices, craft two communication log entries:',
-    'one for internal stakeholders and one for external customers.',
-    'Each entry should include recommended tone, key talking points, risk framing, and next steps.',
-    'Use the incident context below to tailor the guidance.'
-  ].join(' ');
-  const payload = `"${promptInstructions}\n\n${summary}"`;
-
-  // Keep the summary card in sync for manual copy when clipboard fails
-  const card = ensureSummaryCard();
-  const pre = document.getElementById('summaryPre');
-  pre.textContent = payload;
-  card.style.display = 'block';
-
-  try{
-    if(window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText){
-      await navigator.clipboard.writeText(payload);
-      if(typeof showToast==='function'){ showToast('AI prompt updated & copied. Full text is shown below.'); }
-    }else{
-      if(typeof showToast==='function'){ showToast('AI prompt updated. Clipboard blocked — copy it from the bottom.'); }
-    }
-  }catch(_){
-    if(typeof showToast==='function'){ showToast('AI prompt updated. Clipboard blocked — copy it from the bottom.'); }
-  }
+${summary}`;
+  await handleSummaryOutput(payload);
 }
 
 document.addEventListener('DOMContentLoaded', function(){
