@@ -300,7 +300,7 @@ Anchors present:
   <!-- [header] start -->
   <header>
     <h1 id="docTitle">KT Intake</h1>
-    <button class="btn" id="genSummaryBtn" onclick="onGenerateSummary()">Generate Summary</button>
+    <button class="btn" id="genSummaryBtn">Generate Summary</button>
   </header>
   <!-- [header] end -->
 
@@ -518,6 +518,7 @@ Anchors present:
       <div class="inline comm-actions">
         <button type="button" class="btn-mini" id="commInternalStampBtn" aria-label="Log internal communication">Log internal update</button>
         <button type="button" class="btn-mini" id="commExternalStampBtn" aria-label="Log external communication">Log external update</button>
+        <button type="button" class="btn-mini" id="commAIPromptBtn" aria-label="Use AI to draft communications">Use AI to create comms</button>
         <span class="countdown" id="commCountdown" aria-live="polite"></span>
       </div>
       <div class="comm-alert" id="commDueAlert" role="alert" hidden></div>
@@ -2332,15 +2333,12 @@ function buildSummaryText(){
 
 
 
-async function onGenerateSummary(){
-  const text = buildSummaryText();
-
-  // Always render at bottom for manual copy
+async function handleSummaryOutput(text){
   const card = ensureSummaryCard();
   const pre = document.getElementById('summaryPre');
   pre.textContent = text;
   card.style.display = 'block';
-  // Try clipboard copy (best effort)
+
   try{
     if(window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText){
       await navigator.clipboard.writeText(text);
@@ -2353,10 +2351,43 @@ async function onGenerateSummary(){
   }
 }
 
-document.addEventListener('DOMContentLoaded', function(){
+const PROMPT_PREAMBLE = `You are ChatGPT acting as an incident communications specialist.
+Following NIST SP 800-61, ISO/IEC 27035, and ITIL major incident best practices, craft two communication log entries:
+one for internal stakeholders and one for external customers.
+Each entry should include recommended tone, key talking points, risk framing, and next steps.
+Use the incident context below to tailor the guidance.`;
+
+async function runSummaryFlow({usePromptPreamble=false}={}){
+  const summary = buildSummaryText();
+  const payload = usePromptPreamble ? `${PROMPT_PREAMBLE}\n\n${summary}` : summary;
+  await handleSummaryOutput(payload);
+}
+
+async function onGenerateSummary(){
+  await runSummaryFlow({usePromptPreamble:false});
+}
+
+async function onGenerateAIPrompt(){
+  await runSummaryFlow({usePromptPreamble:true});
+}
+
+function wireSummaryButtons(){
   var btn = document.getElementById('genSummaryBtn');
-  if(btn){ btn.addEventListener('click', onGenerateSummary); }
-});
+  if(btn && !btn.dataset.summaryWired){
+    btn.addEventListener('click', onGenerateSummary);
+    btn.dataset.summaryWired = 'true';
+  }
+  var aiBtn = document.getElementById('commAIPromptBtn');
+  if(aiBtn && !aiBtn.dataset.summaryWired){
+    aiBtn.addEventListener('click', onGenerateAIPrompt);
+    aiBtn.dataset.summaryWired = 'true';
+  }
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', wireSummaryButtons, {once:true});
+}
+wireSummaryButtons();
 
 /* [script:export] end */
 
