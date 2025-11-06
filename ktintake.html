@@ -53,6 +53,7 @@ Anchors present:
     max-width:1240px; margin:22px auto 8px; padding:0 12px;
     display:flex; gap:12px; align-items:center; justify-content:space-between;
   }
+  .header-title{display:flex; flex-direction:column; gap:4px; flex:1;}
   h1#docTitle{font-size:22px; font-weight:800; margin:0; letter-spacing:-0.01em; white-space:pre-wrap;}
   .subtle{color:var(--muted); font-size:12px;}
   .btn{
@@ -62,6 +63,203 @@ Anchors present:
     box-shadow:0 6px 18px rgba(0,122,255,.18);
   }
   .btn:hover{transform:translateY(-1px);}
+  .header-actions{display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;}
+  .steps-toggle-btn{
+    appearance:none; border:1px solid #dfe5f2; background:#f6f8ff; color:#1d2845;
+    padding:9px 12px; border-radius:12px; cursor:pointer; font-weight:600; font-size:13px;
+    display:inline-flex; align-items:center; gap:8px;
+    transition:background var(--speed), border-color var(--speed), box-shadow var(--speed), transform var(--speed);
+  }
+  .steps-toggle-btn:hover{background:#eef3ff; transform:translateY(-1px);}
+  .steps-toggle-btn:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,122,255,.18);}
+  .steps-toggle-btn .emoji{font-size:16px; line-height:1;}
+  .steps-chip{
+    appearance:none; border:1px solid #dfe5f2; background:#ffffff; color:#1d2845;
+    padding:9px 14px; border-radius:999px; cursor:pointer; font-weight:600; font-size:13px;
+    display:inline-flex; align-items:center; gap:8px; position:relative;
+    transition:background var(--speed), border-color var(--speed), box-shadow var(--speed), transform var(--speed);
+  }
+  .steps-chip:hover{transform:translateY(-1px);}
+  .steps-chip:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,122,255,.18);}
+  .steps-chip[data-tone="low"]{background:#f6f8ff; color:#1d2845; border-color:#dfe5f2;}
+  .steps-chip[data-tone="mid"]{background:#eef6ff; color:#0b3a6d; border-color:#a9d1ff;}
+  .steps-chip[data-tone="high"]{background:#e6f9ef; color:#0f5b2f; border-color:#a8e2c3;}
+  .steps-chip__progress{display:inline-flex; align-items:center; gap:4px;}
+  .steps-chip__badge{
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:2px 8px; border-radius:999px; background:#ffede9; color:#b0291c;
+    font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+  }
+  .steps-chip__badge[hidden]{display:none;}
+
+  .steps-panel{
+    position:fixed; inset:0; display:flex; justify-content:flex-end;
+    pointer-events:none; z-index:80;
+  }
+  .steps-panel[aria-hidden="true"]{visibility:hidden;}
+  .steps-panel__scrim{
+    flex:1; background:rgba(12,18,32,.24); opacity:0; transition:opacity var(--speed);
+  }
+  .steps-panel__container{
+    width:420px; max-width:calc(100% - 60px); background:#ffffff; border-radius:16px 0 0 16px;
+    border:1px solid #dfe5f2; box-shadow:0 24px 48px rgba(12,18,32,.18);
+    transform:translateX(24px); opacity:0; transition:transform var(--speed), opacity var(--speed);
+    display:flex; flex-direction:column;
+  }
+  .steps-panel[data-open="true"]{pointer-events:auto;}
+  .steps-panel[data-open="true"] .steps-panel__scrim{opacity:1;}
+  .steps-panel[data-open="true"] .steps-panel__container{transform:translateX(0); opacity:1;}
+  .steps-panel__header{
+    padding:20px 24px 16px; display:flex; flex-direction:column; gap:12px;
+    border-bottom:1px solid #ecf0f8; background:linear-gradient(180deg,#f8faff 0%,#ffffff 40%);
+    position:sticky; top:0; z-index:3;
+  }
+  .steps-panel__title-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .steps-panel__title-row h2{margin:0; font-size:18px; font-weight:700; letter-spacing:-0.01em; color:#1d2845;}
+  .steps-panel__progress{font-size:14px; font-weight:600; color:#3b4962;}
+  .steps-panel__search{display:flex; align-items:center; gap:10px;}
+  .steps-panel__search input[type="search"]{
+    flex:1; height:40px; border-radius:12px; border:1px solid #dfe5f2; padding:0 12px;
+    font:14px/1.5 "SF Pro Text","SF Pro Display",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:#f7f9ff; color:#1d2845;
+  }
+  .steps-panel__search input[type="search"]:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,122,255,.18); background:#fff;}
+  .steps-panel__close{
+    appearance:none; border:1px solid #dfe5f2; background:#f6f8ff; color:#1d2845;
+    padding:8px 12px; border-radius:10px; font-weight:600; cursor:pointer;
+  }
+  .steps-panel__close:hover{background:#eef3ff;}
+  .steps-panel__close:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,122,255,.18);}
+  .steps-panel__tabs{display:flex; gap:6px; padding:12px 24px 0; position:sticky; top:96px; background:#ffffff; z-index:2;}
+  .steps-panel__tab{
+    appearance:none; border:0; background:#eef3ff; color:#3b4962; font-weight:600; font-size:13px;
+    padding:8px 14px; border-radius:12px; cursor:pointer; transition:background var(--speed), color var(--speed);
+  }
+  .steps-panel__tab[aria-selected="true"]{background:#1d49a7; color:#ffffff;}
+  .steps-panel__content{flex:1; overflow:auto; padding:12px 24px 24px; display:flex; flex-direction:column; gap:20px;}
+  .steps-panel__section{display:none; flex-direction:column; gap:20px;}
+  .steps-panel__section[role="tabpanel"][data-active="true"]{display:flex;}
+
+  .steps-checklist{display:grid; grid-template-columns:1fr; gap:16px;}
+  @media(min-width:960px){
+    .steps-checklist{grid-template-columns:1.1fr 1fr;}
+  }
+  .steps-list{display:flex; flex-direction:column; gap:12px;}
+  .steps-phase{display:flex; flex-direction:column; gap:8px;}
+  .steps-phase__title{font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#6b768a; padding:0 4px;}
+  .step-row{
+    display:flex; align-items:flex-start; gap:12px; border:1px solid #e2e7f3; border-radius:12px; padding:12px;
+    background:#ffffff; cursor:pointer; transition:border-color var(--speed), box-shadow var(--speed), background var(--speed);
+  }
+  .step-row[data-checked="true"]{border-color:#a8e2c3; background:#f1fbf5;}
+  .step-row[data-selected="true"]{box-shadow:0 0 0 3px rgba(0,122,255,.18); border-color:var(--accent);}
+  .step-row__checkbox{
+    width:20px; height:20px; border-radius:6px; border:2px solid #d0d7eb; display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700; color:#ffffff; background:#ffffff; flex:0 0 20px; margin-top:2px;
+    transition:background var(--speed), border-color var(--speed), color var(--speed);
+  }
+  .step-row[data-checked="true"] .step-row__checkbox{background:#0f864a; border-color:#0f864a;}
+  .step-row__main{flex:1; display:flex; flex-direction:column; gap:6px;}
+  .step-row__label{font-weight:600; font-size:14px; color:#1d2845;}
+  .step-row__meta{display:flex; flex-wrap:wrap; gap:8px; font-size:12px; color:#5b6475;}
+  .step-row__meta .chip{padding:4px 8px; border-radius:999px; background:#eef3ff; font-weight:600; letter-spacing:.02em;}
+  .step-row__timestamp{font-variant-numeric:tabular-nums;}
+  .step-row__note-preview{color:#3b4962; font-style:italic;}
+  .steps-empty{padding:18px; border:1px dashed #dfe5f2; border-radius:12px; text-align:center; color:#6b768a; font-size:13px;}
+
+  .steps-details{border:1px solid #e2e7f3; border-radius:12px; padding:16px; background:#f8faff; display:flex; flex-direction:column; gap:14px; min-height:220px;}
+  .steps-details__header{display:flex; flex-direction:column; gap:6px;}
+  .steps-details__title{font-size:16px; font-weight:700; color:#1d2845;}
+  .steps-details__subtitle{font-size:13px; color:#3b4962;}
+  .steps-details__field{display:flex; flex-direction:column; gap:6px;}
+  .steps-details__field label{font-size:13px; font-weight:600; color:#1d2845;}
+  .steps-details__field input[type="text"],
+  .steps-details__field textarea,
+  .steps-details__field select{
+    border-radius:10px; border:1px solid #dfe5f2; padding:10px 12px;
+    font:14px/1.55 "SF Pro Text","SF Pro Display",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:#ffffff; color:#1d2845;
+  }
+  .steps-details__field textarea{min-height:96px; resize:vertical;}
+  .steps-details__field input:focus,
+  .steps-details__field textarea:focus,
+  .steps-details__field select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,122,255,.18);}
+  .steps-links{display:flex; flex-wrap:wrap; gap:8px;}
+  .steps-link-btn{
+    appearance:none; border:1px solid #dfe5f2; background:#ffffff; color:#1d2845;
+    padding:6px 10px; border-radius:10px; font-weight:600; font-size:12px; cursor:pointer;
+    transition:background var(--speed), border-color var(--speed);
+  }
+  .steps-link-btn:hover{background:#eef3ff; border-color:#a9c4f9;}
+  .steps-link-btn:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,122,255,.18);}
+  .steps-history{display:flex; flex-direction:column; gap:4px; font-size:12px; color:#5b6475;}
+  .steps-history__item{font-variant-numeric:tabular-nums;}
+  .steps-details__actions{display:flex; flex-wrap:wrap; gap:8px;}
+  .steps-details__skip{
+    appearance:none; border:1px dashed #ffb3a9; background:#fff5f3; color:#c0362c;
+    padding:8px 12px; border-radius:10px; font-weight:600; cursor:pointer;
+  }
+  .steps-details__skip:hover{background:#ffe9e5;}
+  .steps-details__status{display:flex; flex-direction:column; gap:4px; font-size:12px; color:#3b4962;}
+
+  .steps-log{display:flex; flex-direction:column; gap:16px;}
+  .steps-log__filters{display:grid; grid-template-columns:repeat(auto-fit, minmax(120px,1fr)); gap:12px;}
+  .steps-log__filters label{display:flex; flex-direction:column; gap:6px; font-size:12px; font-weight:600; color:#1d2845;}
+  .steps-log__filters select{height:40px; border-radius:10px; border:1px solid #dfe5f2; background:#ffffff; padding:0 10px; font:14px/1.5 "SF Pro Text","SF Pro Display",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; color:#1d2845;}
+  .steps-log__filters select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,122,255,.18);}
+  .steps-log__list{display:flex; flex-direction:column; gap:10px;}
+  .steps-log__item{border:1px solid #e2e7f3; border-radius:12px; padding:12px; background:#ffffff; display:flex; flex-direction:column; gap:6px;}
+  .steps-log__item--manual{border-color:#d0d7eb;}
+  .steps-log__item--step{border-color:#a9c4f9;}
+  .steps-log__item--comms{border-color:#ffd0c7;}
+  .steps-log__meta{display:flex; flex-wrap:wrap; gap:10px; font-size:12px; color:#5b6475; align-items:center;}
+  .steps-log__title{font-size:13px; font-weight:600; color:#1d2845;}
+  .steps-log__note{font-size:12px; color:#3b4962; white-space:pre-wrap;}
+  .steps-manual{border:1px solid #dfe5f2; border-radius:12px; padding:14px; background:#f8faff; display:flex; flex-direction:column; gap:10px;}
+  .steps-manual textarea{min-height:96px; border-radius:10px; border:1px solid #dfe5f2; padding:10px 12px; font:14px/1.55 "SF Pro Text","SF Pro Display",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;}
+  .steps-manual textarea:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,122,255,.18);}
+  .steps-manual__row{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px;}
+  .steps-manual__row input,
+  .steps-manual__row select{height:40px; border-radius:10px; border:1px solid #dfe5f2; padding:0 10px; font:14px/1.5 "SF Pro Text","SF Pro Display",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; color:#1d2845;}
+  .steps-manual__row input:focus,
+  .steps-manual__row select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,122,255,.18);}
+  .steps-manual__actions{display:flex; justify-content:flex-end;}
+
+  .steps-suggestion{
+    position:fixed; right:18px; bottom:86px; display:flex; align-items:center; gap:12px;
+    background:#ffffff; border:1px solid #a9c4f9; border-radius:14px; padding:12px 16px;
+    box-shadow:0 12px 28px rgba(29,73,167,.18); z-index:85; max-width:320px;
+  }
+  .steps-suggestion[hidden]{display:none;}
+  .steps-suggestion__text{font-size:13px; color:#1d2845; font-weight:600;}
+  .steps-suggestion__actions{display:flex; gap:8px;}
+  .steps-suggestion__btn{
+    appearance:none; border:1px solid var(--accent); background:var(--accent); color:#ffffff;
+    padding:8px 12px; border-radius:10px; font-weight:600; cursor:pointer;
+  }
+  .steps-suggestion__btn:hover{opacity:.9;}
+  .steps-suggestion__dismiss{
+    appearance:none; border:1px solid #dfe5f2; background:#f6f8ff; color:#1d2845;
+    padding:8px 10px; border-radius:10px; font-weight:600; cursor:pointer;
+  }
+  .steps-suggestion__dismiss:hover{background:#eef3ff;}
+
+  .steps-modal{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:120; background:rgba(12,18,32,.42);}
+  .steps-modal[hidden]{display:none;}
+  .steps-modal__card{background:#ffffff; border-radius:16px; padding:24px; max-width:420px; width:calc(100% - 48px); box-shadow:0 20px 48px rgba(12,18,32,.24); display:flex; flex-direction:column; gap:16px; border:1px solid #dfe5f2;}
+  .steps-modal__title{margin:0; font-size:18px; font-weight:700; color:#1d2845;}
+  .steps-modal__body{display:flex; flex-direction:column; gap:12px; font-size:14px; color:#3b4962;}
+  .steps-modal__field{display:flex; flex-direction:column; gap:6px;}
+  .steps-modal__field label{font-weight:600; font-size:13px;}
+  .steps-modal__field input{height:40px; border-radius:10px; border:1px solid #dfe5f2; padding:0 10px; font:14px/1.5 "SF Pro Text","SF Pro Display",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; color:#1d2845;}
+  .steps-modal__field textarea{min-height:88px; border-radius:10px; border:1px solid #dfe5f2; padding:10px 12px; font:14px/1.5 "SF Pro Text","SF Pro Display",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; color:#1d2845; resize:vertical;}
+  .steps-modal__field input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,122,255,.18);}
+  .steps-modal__field textarea:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,122,255,.18);}
+  .steps-modal__actions{display:flex; justify-content:flex-end; gap:8px;}
+  .steps-modal__actions button{appearance:none; border-radius:10px; font-weight:600; padding:8px 14px; cursor:pointer;}
+  .steps-modal__actions .btn-primary{background:var(--accent); color:#ffffff; border:1px solid var(--accent);}
+  .steps-modal__actions .btn-secondary{background:#f6f8ff; color:#1d2845; border:1px solid #dfe5f2;}
+  .steps-modal__actions .btn-danger{background:#ffe9e5; color:#b0291c; border:1px solid #ffb3a9;}
 
   .wrap{max-width:1240px; margin:0 auto 40px; padding:0 12px;}
   h2#docSubtitle{margin:12px 0 8px; font-size:16px; font-weight:700; color:#2a3957; white-space:pre-wrap;}
@@ -299,9 +497,106 @@ Anchors present:
 <body>
   <!-- [header] start -->
   <header>
-    <h1 id="docTitle">KT Intake</h1>
-    <button class="btn" id="genSummaryBtn" onclick="onGenerateSummary()">Generate Summary</button>
+    <div class="header-title">
+      <h1 id="docTitle">KT Intake</h1>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="steps-toggle-btn" id="stepsToggleBtn" aria-haspopup="dialog" aria-controls="stepsPanel">
+        <span class="emoji" aria-hidden="true">🧭</span>
+        <span>Steps</span>
+        <span class="subtle">Alt+S</span>
+      </button>
+      <button type="button" class="steps-chip" id="stepsProgressChip" data-tone="low" aria-live="polite" aria-label="Steps progress" aria-controls="stepsPanel">
+        <span class="steps-chip__progress"><span id="stepsChipText">Steps · 0/28 ✓</span></span>
+        <span class="steps-chip__badge" id="stepsChipBadge" hidden>Comms due</span>
+      </button>
+      <button class="btn" id="genSummaryBtn" onclick="onGenerateSummary()">Generate Summary</button>
+    </div>
   </header>
+  <div class="steps-panel" id="stepsPanel" aria-hidden="true">
+    <div class="steps-panel__scrim" id="stepsPanelScrim" role="presentation"></div>
+    <aside class="steps-panel__container" id="stepsPanelContainer" role="dialog" aria-modal="false" aria-labelledby="stepsPanelTitle">
+      <header class="steps-panel__header">
+        <div class="steps-panel__title-row">
+          <h2 id="stepsPanelTitle">Steps</h2>
+          <button type="button" class="steps-panel__close" id="stepsPanelCloseBtn" aria-label="Close steps panel">Close</button>
+        </div>
+        <div class="steps-panel__search">
+          <div class="steps-panel__progress" id="stepsPanelProgress">0/28 ✓</div>
+          <input type="search" id="stepsSearchInput" placeholder="Search steps" aria-label="Search steps" />
+        </div>
+      </header>
+      <div class="steps-panel__tabs" role="tablist">
+        <button type="button" class="steps-panel__tab" id="stepsTabChecklist" role="tab" aria-controls="stepsChecklistPanel" aria-selected="true">Checklist</button>
+        <button type="button" class="steps-panel__tab" id="stepsTabLog" role="tab" aria-controls="stepsLogPanel" aria-selected="false">Activity Log</button>
+      </div>
+      <div class="steps-panel__content">
+        <section class="steps-panel__section" id="stepsChecklistPanel" role="tabpanel" aria-labelledby="stepsTabChecklist" data-active="true">
+          <div class="steps-checklist">
+            <div class="steps-list" id="stepsList" role="listbox" aria-label="Incident steps checklist"></div>
+            <div class="steps-details" id="stepsDetails" aria-live="polite">Select a step to view details.</div>
+          </div>
+        </section>
+        <section class="steps-panel__section" id="stepsLogPanel" role="tabpanel" aria-labelledby="stepsTabLog" data-active="false">
+          <div class="steps-log">
+            <div class="steps-log__filters">
+              <label for="stepsLogTypeFilter">Type
+                <select id="stepsLogTypeFilter">
+                  <option value="all">All</option>
+                  <option value="step">Steps</option>
+                  <option value="manual">Manual</option>
+                  <option value="comms">Comms</option>
+                </select>
+              </label>
+              <label for="stepsLogStepFilter">Step
+                <select id="stepsLogStepFilter">
+                  <option value="all">All</option>
+                </select>
+              </label>
+              <label for="stepsLogActorFilter">Actor
+                <select id="stepsLogActorFilter">
+                  <option value="all">All</option>
+                </select>
+              </label>
+            </div>
+            <div class="steps-log__list" id="stepsLogList" role="list"></div>
+            <form class="steps-manual" id="stepsManualForm">
+              <label for="stepsManualNote">Manual log entry
+                <textarea id="stepsManualNote" placeholder="Add note for the activity log" required></textarea>
+              </label>
+              <div class="steps-manual__row">
+                <label for="stepsManualStepSelect">Related Step
+                  <select id="stepsManualStepSelect">
+                    <option value="">None</option>
+                  </select>
+                </label>
+                <label for="stepsManualActor">Actor
+                  <input type="text" id="stepsManualActor" placeholder="Initials" />
+                </label>
+              </div>
+              <div class="steps-manual__actions">
+                <button type="submit" class="btn-mini">Save Log Entry</button>
+              </div>
+            </form>
+          </div>
+        </section>
+      </div>
+    </aside>
+  </div>
+  <div class="steps-suggestion" id="stepsSuggestionBanner" hidden>
+    <div class="steps-suggestion__text" id="stepsSuggestionText">Check Step 16?</div>
+    <div class="steps-suggestion__actions">
+      <button type="button" class="steps-suggestion__btn" id="stepsSuggestionAction">Mark complete</button>
+      <button type="button" class="steps-suggestion__dismiss" id="stepsSuggestionDismiss">Dismiss</button>
+    </div>
+  </div>
+  <div class="steps-modal" id="stepsModal" hidden role="dialog" aria-modal="true" aria-labelledby="stepsModalTitle">
+    <div class="steps-modal__card">
+      <h3 class="steps-modal__title" id="stepsModalTitle"></h3>
+      <div class="steps-modal__body" id="stepsModalBody"></div>
+      <div class="steps-modal__actions" id="stepsModalActions"></div>
+    </div>
+  </div>
   <!-- [header] end -->
 
   <div class="wrap">
@@ -344,7 +639,7 @@ Anchors present:
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" id="problem-summary">
         <h3>Problem Summary</h3>
         <div class="grid">
           <div class="field">
@@ -354,7 +649,7 @@ Anchors present:
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" id="evidence-objects">
         <h3>Evidence &amp; Object</h3>
         <div class="inline">
           <span class="chip-label">Detection Source</span>
@@ -416,7 +711,7 @@ Anchors present:
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" id="baseline-current">
         <h3>Baseline vs Current</h3>
         <div class="grid cols-2">
           <div class="field">
@@ -489,7 +784,7 @@ Anchors present:
 
     <div class="card" id="commControlsCard">
       <h3>Communication Cadence &amp; Log</h3>
-      <fieldset class="field">
+      <fieldset class="field" id="communication-cadence">
         <legend id="commCadenceLegend">Communication cadence</legend>
         <div class="cadence-group" id="commCadenceGroup" role="radiogroup" aria-labelledby="commCadenceLegend">
           <label class="cadence-option">
@@ -529,7 +824,7 @@ Anchors present:
           <input type="time" id="commNextUpdateTime" />
         </div>
       </div>
-      <div class="field">
+      <div class="field" id="communication-log">
         <label for="commLogList">Communication log</label>
         <ul id="commLogList" class="comm-log" aria-live="polite" aria-label="Communication log"></ul>
         <button type="button" class="btn-mini comm-log-toggle" id="commLogToggleBtn" hidden aria-expanded="false">Show all</button>
@@ -537,7 +832,7 @@ Anchors present:
     </div>
 
     <!-- [section:table] start -->
-    <p class="subtle">Problem Analysis</p>
+    <p class="subtle" id="kt-is-is-not">Problem Analysis</p>
 
     <table id="ktTable" aria-label="KT IS / IS NOT intake table">
 <colgroup>
@@ -562,6 +857,7 @@ Anchors present:
     <!-- [section:table] end -->
 
 
+    <div id="possible-causes" tabindex="-1"></div>
     <div class="card" id="possibleCausesCard">
       <h3>Possible Causes</h3>
       <p class="caption">Capture hypotheses and pressure test them against the KT IS / IS NOT evidence. Start with the suspect, accusation, and impact; then walk each cause through the table.</p>
@@ -814,6 +1110,38 @@ const commCountdown = document.getElementById('commCountdown');
 const commDueAlert = document.getElementById('commDueAlert');
 const commLogList = document.getElementById('commLogList');
 const commLogToggleBtn = document.getElementById('commLogToggleBtn');
+const stepsPanel = document.getElementById('stepsPanel');
+const stepsPanelContainer = document.getElementById('stepsPanelContainer');
+const stepsPanelScrim = document.getElementById('stepsPanelScrim');
+const stepsToggleBtn = document.getElementById('stepsToggleBtn');
+const stepsProgressChip = document.getElementById('stepsProgressChip');
+const stepsChipText = document.getElementById('stepsChipText');
+const stepsChipBadge = document.getElementById('stepsChipBadge');
+const stepsPanelCloseBtn = document.getElementById('stepsPanelCloseBtn');
+const stepsPanelProgress = document.getElementById('stepsPanelProgress');
+const stepsSearchInput = document.getElementById('stepsSearchInput');
+const stepsTabChecklist = document.getElementById('stepsTabChecklist');
+const stepsTabLog = document.getElementById('stepsTabLog');
+const stepsChecklistPanel = document.getElementById('stepsChecklistPanel');
+const stepsLogPanel = document.getElementById('stepsLogPanel');
+const stepsListEl = document.getElementById('stepsList');
+const stepsDetailsEl = document.getElementById('stepsDetails');
+const stepsLogTypeFilter = document.getElementById('stepsLogTypeFilter');
+const stepsLogStepFilter = document.getElementById('stepsLogStepFilter');
+const stepsLogActorFilter = document.getElementById('stepsLogActorFilter');
+const stepsLogList = document.getElementById('stepsLogList');
+const stepsManualForm = document.getElementById('stepsManualForm');
+const stepsManualNote = document.getElementById('stepsManualNote');
+const stepsManualStepSelect = document.getElementById('stepsManualStepSelect');
+const stepsManualActor = document.getElementById('stepsManualActor');
+const stepsSuggestionBanner = document.getElementById('stepsSuggestionBanner');
+const stepsSuggestionText = document.getElementById('stepsSuggestionText');
+const stepsSuggestionAction = document.getElementById('stepsSuggestionAction');
+const stepsSuggestionDismiss = document.getElementById('stepsSuggestionDismiss');
+const stepsModal = document.getElementById('stepsModal');
+const stepsModalTitle = document.getElementById('stepsModalTitle');
+const stepsModalBody = document.getElementById('stepsModalBody');
+const stepsModalActions = document.getElementById('stepsModalActions');
 let causeList = document.getElementById('causeList');
 let addCauseBtn = document.getElementById('addCauseBtn');
 
@@ -929,6 +1257,1202 @@ updateCommLogUI();
 scheduleCadenceTick();
 /* [script:preface-refs] end */
 
+/* ===== Steps Checklist & Activity Log ===== */
+const STEPS_VERSION = 1;
+const STEPS_STORAGE_KEY = 'kt-steps-v1';
+const STEP_PHASE_LABELS = {
+  A: 'Activate & Frame',
+  B: 'Hypothesize, Test & Communicate',
+  C: 'Evaluate & Decide',
+  D: 'Restore, Validate & Close Comms Loop',
+  E: 'Handover & Close'
+};
+const STEP_LINK_LABELS = {
+  'problem-summary': 'Problem Summary',
+  'evidence-objects': 'Evidence & Objects',
+  'baseline-current': 'Baseline & Monitoring',
+  'communication-cadence': 'Communication Cadence',
+  'communication-log': 'Communication Log',
+  'kt-is-is-not': 'KT IS / IS NOT',
+  'possible-causes': 'Possible Causes'
+};
+const STEPS_DEFINITIONS = [
+  { id:1, phase:'A', label:'Pre-analysis Completed', fullText:'Complete the KT intake pre-analysis to ensure baseline facts are captured before activation.', required:true, links:[] },
+  { id:2, phase:'A', label:'Incident Commander Assigned', fullText:'Assign an Incident Commander and document ownership for the bridge.', required:true, links:[] },
+  { id:3, phase:'A', label:'Step 1 Reviewed by BC', fullText:'Have the Bridge Coordinator review the initial intake and confirm priorities.', required:true, links:[] },
+  { id:4, phase:'A', label:'Problem Statement Created', fullText:'Create and align on a precise problem statement for the incident.', required:true, links:['problem-summary'] },
+  { id:5, phase:'A', label:'Bridge Options Considered', fullText:'Evaluate bridge options and choose the right channel for responders.', required:true, links:[] },
+  { id:6, phase:'A', label:'Bridges Opened / Responders Invited', fullText:'Open the bridge and invite the right responders to participate.', required:true, links:[] },
+  { id:7, phase:'A', label:'Bridge Etiquette/Roles/Guidelines Outlined', fullText:'Outline etiquette, roles, and guidelines so participants know expectations.', required:true, links:[] },
+  { id:8, phase:'A', label:'Actions (Who/What/When) Documented', fullText:'Document current actions with explicit Who/What/When ownership.', required:true, links:[] },
+  { id:9, phase:'A', label:'Quick Spec Answers Captured', fullText:'Capture quick specification answers and environment details that frame the incident.', required:true, links:['evidence-objects'] },
+  { id:10, phase:'A', label:'Last Changes/Monitoring/Dependencies Investigated', fullText:'Investigate last changes, monitoring signals, and dependency health for context.', required:true, links:['baseline-current'] },
+  { id:11, phase:'A', label:'Attendees Optimized', fullText:'Optimize bridge attendees to keep the right people engaged.', required:true, links:[] },
+  { id:12, phase:'B', label:'Possible Causes Developed', fullText:'Develop possible causes grounded in collected evidence.', required:true, links:[] },
+  { id:13, phase:'B', label:'Actions (Who/What/When) Documented', fullText:'Document planned actions (Who/What/When) for hypothesis testing.', required:true, links:[] },
+  { id:14, phase:'B', label:'Micro-experiments/Tests Conducted', fullText:'Run micro-experiments or tests and capture the outcomes.', required:true, links:[] },
+  { id:15, phase:'B', label:'Containment Options Identified', fullText:'Identify containment options and record the recommendation.', required:true, links:[] },
+  { id:16, phase:'B', label:'Comms Written/Reviewed/Sent', fullText:'Draft, review, and send communications to stakeholders.', required:true, links:['communication-cadence','communication-log'] },
+  { id:17, phase:'B', label:'Attendees Optimized for Next Action', fullText:'Adjust attendees for the next action or experiment.', required:true, links:[] },
+  { id:18, phase:'C', label:'Possible Causes Evaluated / Distinctions Identified', fullText:'Evaluate possible causes and record key distinctions from KT analysis.', required:true, links:['kt-is-is-not'] },
+  { id:19, phase:'C', label:'MPC Identified', fullText:'Identify the most probable cause and document why it fits.', required:true, links:['possible-causes'] },
+  { id:20, phase:'C', label:'Restoration/Rollback/Workaround Selected', fullText:'Select the restoration, rollback, or workaround path and capture rationale.', required:true, links:['possible-causes'] },
+  { id:21, phase:'C', label:'Attendees Optimized', fullText:'Ensure attendees align with the decision path and execution plan.', required:true, links:['possible-causes'] },
+  { id:22, phase:'C', label:'Verification/Risk Plan Created', fullText:'Create a verification and risk plan before restoration proceeds.', required:true, links:['possible-causes'] },
+  { id:23, phase:'D', label:'Actions (Who/What/When) Documented', fullText:'Document restoration or validation actions with Who/What/When clarity.', required:true, links:[] },
+  { id:24, phase:'D', label:'Service Validated (Internal/External)', fullText:'Validate service internally and externally to confirm recovery.', required:true, links:[] },
+  { id:25, phase:'D', label:'Restoration Comms Sent', fullText:'Send restoration communications to stakeholders and confirm distribution.', required:true, links:['communication-log','communication-cadence'] },
+  { id:26, phase:'E', label:'Handover Template Prepared (PIR/Problem)', fullText:'Prepare the handover template or PIR/problem record with essential details.', required:true, links:[] },
+  { id:27, phase:'E', label:'Downstream Issues from Fix Assessed', fullText:'Assess downstream issues that may result from the fix.', required:true, links:[] },
+  { id:28, phase:'E', label:'Participants Released / Bridge Closed', fullText:'Release participants, close the bridge, and confirm follow-up tasks.', required:true, links:[] },
+];
+
+function createStep(def){
+  return {
+    id: def.id,
+    phase: def.phase,
+    label: def.label,
+    fullText: def.fullText,
+    required: def.required !== false,
+    links: Array.isArray(def.links) ? def.links.slice() : [],
+    checked: false,
+    tsIso: null,
+    assignee: null,
+    note: '',
+    history: [],
+    skippedReason: ''
+  };
+}
+
+function generateStepsLogId(){
+  if(typeof crypto !== 'undefined' && crypto.randomUUID){
+    return crypto.randomUUID();
+  }
+  return 'log-' + Math.random().toString(36).slice(2,10) + '-' + Date.now().toString(36);
+}
+
+function nowIso(){
+  return new Date().toISOString();
+}
+
+function formatLocalDateTime(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  if(Number.isNaN(d.valueOf())) return iso;
+  return d.toLocaleString([], { hour12:false, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+
+function normalizeStepRecord(def, record){
+  const base = createStep(def);
+  if(record && typeof record === 'object'){
+    base.checked = !!record.checked;
+    base.tsIso = typeof record.tsIso === 'string' ? record.tsIso : null;
+    base.assignee = typeof record.assignee === 'string' && record.assignee.trim() ? record.assignee.trim() : null;
+    base.note = typeof record.note === 'string' ? record.note : '';
+    if(Array.isArray(record.history)){
+      base.history = record.history.filter(item=>typeof item === 'string').slice(0,3);
+    }
+    base.skippedReason = typeof record.skippedReason === 'string' ? record.skippedReason : '';
+    if(base.skippedReason && !base.checked){
+      base.checked = true;
+    }
+  }
+  return base;
+}
+
+function normalizeLogEntry(entry){
+  if(!entry || typeof entry !== 'object') return null;
+  const type = typeof entry.type === 'string' ? entry.type : '';
+  if(!type) return null;
+  const ts = typeof entry.tsIso === 'string' ? entry.tsIso : (typeof entry.ts === 'string' ? entry.ts : null);
+  if(!ts) return null;
+  return {
+    id: typeof entry.id === 'string' ? entry.id : generateStepsLogId(),
+    tsIso: ts,
+    type,
+    actor: typeof entry.actor === 'string' && entry.actor.trim() ? entry.actor.trim() : null,
+    stepId: Number.isFinite(entry.stepId) ? Number(entry.stepId) : (typeof entry.stepId === 'number' && !Number.isNaN(entry.stepId) ? entry.stepId : undefined),
+    title: typeof entry.title === 'string' ? entry.title : '',
+    note: typeof entry.note === 'string' ? entry.note : '',
+    metadata: entry.metadata && typeof entry.metadata === 'object' ? entry.metadata : {}
+  };
+}
+
+function buildStepsState(raw){
+  const state = { version: STEPS_VERSION, steps: [], log: [] };
+  const rawSteps = Array.isArray(raw?.steps) ? raw.steps : [];
+  const map = new Map();
+  rawSteps.forEach(item=>{
+    if(item && typeof item.id === 'number'){ map.set(item.id, item); }
+  });
+  state.steps = STEPS_DEFINITIONS.map(def=>normalizeStepRecord(def, map.get(def.id)));
+  if(Array.isArray(raw?.log)){
+    raw.log.forEach(entry=>{
+      const normalized = normalizeLogEntry(entry);
+      if(normalized){ state.log.push(normalized); }
+    });
+  }
+  return state;
+}
+
+function exportStepsState(){
+  return {
+    version: STEPS_VERSION,
+    steps: stepsState.steps.map(step=>({
+      id: step.id,
+      checked: !!step.checked,
+      tsIso: step.tsIso,
+      assignee: step.assignee,
+      note: step.note,
+      history: step.history.slice(0,3),
+      skippedReason: step.skippedReason
+    })),
+    log: stepsState.log.map(entry=>({
+      id: entry.id,
+      tsIso: entry.tsIso,
+      type: entry.type,
+      actor: entry.actor,
+      stepId: entry.stepId,
+      title: entry.title,
+      note: entry.note,
+      metadata: entry.metadata
+    }))
+  };
+}
+
+let stepsState = buildStepsState(JSON.parse(localStorage.getItem(STEPS_STORAGE_KEY) || 'null') || {});
+let stepsSearchTerm = '';
+let selectedStepId = (stepsState.steps.find(step=>step.required && !step.checked) || stepsState.steps[0] || {}).id || null;
+let stepsPanelOpen = false;
+let stepsLogFilters = { type:'all', step:'all', actor:'all' };
+let stepsSuggestionTarget = null;
+let stepsSaveTimer = null;
+let stepsCommDue = false;
+let stepsModalResolver = null;
+let stepsModalReturnFocus = null;
+let stepsKeyboardRows = [];
+let stepsPanelReturnFocus = null;
+
+function scheduleStepsSave(){
+  if(stepsSaveTimer){ clearTimeout(stepsSaveTimer); }
+  stepsSaveTimer = setTimeout(()=>{
+    try{
+      localStorage.setItem(STEPS_STORAGE_KEY, JSON.stringify(exportStepsState()));
+    }catch(err){
+      console.warn('Failed to persist steps state', err);
+    }
+  }, 150);
+}
+
+function getStepById(id){
+  return stepsState.steps.find(step=>step.id === id) || null;
+}
+
+function importStepsState(raw){
+  if(!raw) return;
+  const incoming = buildStepsState(raw);
+  let changed = false;
+  if(incoming.steps.some(step=>step.checked || step.note || step.assignee || step.skippedReason)){
+    stepsState.steps = incoming.steps;
+    changed = true;
+  }
+  if(incoming.log.length && incoming.log.length >= stepsState.log.length){
+    stepsState.log = incoming.log;
+    changed = true;
+  }
+  if(changed){
+    refreshManualStepOptions();
+    refreshStepsFilters();
+    renderStepsList();
+    renderStepDetails();
+    renderStepsLog();
+    updateStepsProgressUI();
+  }
+}
+
+function hideStepsSuggestion(){
+  if(stepsSuggestionBanner){ stepsSuggestionBanner.hidden = true; }
+  stepsSuggestionTarget = null;
+}
+
+function showStepsSuggestion(step, message){
+  if(!stepsSuggestionBanner || !stepsSuggestionText || !step) return;
+  stepsSuggestionTarget = { stepId: step.id };
+  stepsSuggestionText.textContent = message;
+  stepsSuggestionBanner.hidden = false;
+}
+
+const STEP_LOG_KIND = {
+  STEP_CHECKED: 'step_checked',
+  STEP_UNCHECKED: 'step_unchecked',
+  STEP_UPDATED: 'step_updated',
+  MANUAL: 'manual',
+  COMMS: 'comms_logged'
+};
+
+function defaultStepLogTitle(type, step, extra){
+  if(type === STEP_LOG_KIND.MANUAL){
+    if(extra?.stepId && step){
+      return `Manual entry – Step ${step.id}: ${step.label}`;
+    }
+    return 'Manual entry';
+  }
+  if(type === STEP_LOG_KIND.COMMS){
+    const commType = (extra?.metadata?.commType || '').toString().toLowerCase();
+    const label = commType === 'external' ? 'External comms' : commType === 'internal' ? 'Internal comms' : 'Communication';
+    return `${label} logged`;
+  }
+  if(step){
+    if(type === STEP_LOG_KIND.STEP_CHECKED){ return `Step ${step.id} checked: ${step.label}`; }
+    if(type === STEP_LOG_KIND.STEP_UNCHECKED){ return `Step ${step.id} unchecked: ${step.label}`; }
+    if(type === STEP_LOG_KIND.STEP_UPDATED){ return `Step ${step.id} updated: ${step.label}`; }
+  }
+  return 'Activity logged';
+}
+
+function addStepsLogEntry(type, step, extra={}){
+  if(!stepsState || !Array.isArray(stepsState.log)){
+    stepsState.log = [];
+  }
+  const entry = {
+    id: generateStepsLogId(),
+    tsIso: nowIso(),
+    type,
+    actor: typeof extra.actor === 'string' && extra.actor.trim() ? extra.actor.trim() : (step?.assignee || null),
+    stepId: extra.stepId !== undefined ? extra.stepId : step?.id,
+    title: typeof extra.title === 'string' && extra.title.trim() ? extra.title : defaultStepLogTitle(type, step, extra),
+    note: extra.note !== undefined ? extra.note : (step ? step.note : ''),
+    metadata: extra.metadata && typeof extra.metadata === 'object' ? extra.metadata : {}
+  };
+  stepsState.log.unshift(entry);
+  if(stepsState.log.length > 400){ stepsState.log.length = 400; }
+  scheduleStepsSave();
+  renderStepsLog();
+  refreshStepsFilters();
+}
+
+function isStepsModalOpen(){
+  return stepsModal && !stepsModal.hidden;
+}
+
+function closeStepsModal(result=null){
+  if(!stepsModal) return;
+  stepsModal.hidden = true;
+  stepsModal.removeAttribute('data-open');
+  const resolver = stepsModalResolver;
+  stepsModalResolver = null;
+  if(stepsModalReturnFocus && typeof stepsModalReturnFocus.focus === 'function'){
+    stepsModalReturnFocus.focus();
+  }
+  stepsModalReturnFocus = null;
+  if(typeof resolver === 'function'){
+    resolver(result);
+  }
+}
+
+function openStepsModal({ title, render, actions }={}){
+  return new Promise(resolve=>{
+    if(!stepsModal || !stepsModalTitle || !stepsModalBody || !stepsModalActions){
+      resolve(null);
+      return;
+    }
+    stepsModalResolver = value=>resolve(value);
+    stepsModalTitle.textContent = title || 'Steps';
+    stepsModalBody.innerHTML = '';
+    let focusTarget = null;
+    if(typeof render === 'function'){
+      focusTarget = render(stepsModalBody) || null;
+    }else if(typeof render === 'string'){
+      const p = document.createElement('p');
+      p.textContent = render;
+      stepsModalBody.appendChild(p);
+    }
+    stepsModalActions.innerHTML = '';
+    (actions || []).forEach(action=>{
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = action.label;
+      let cls = 'btn-secondary';
+      if(action.variant === 'primary'){ cls = 'btn-primary'; }
+      else if(action.variant === 'danger'){ cls = 'btn-danger'; }
+      btn.className = cls;
+      btn.addEventListener('click', ()=>{
+        if(typeof action.onClick === 'function'){
+          const res = action.onClick();
+          if(res === false){ return; }
+          closeStepsModal(res);
+        }else{
+          closeStepsModal(action.value);
+        }
+      });
+      stepsModalActions.appendChild(btn);
+    });
+    stepsModal.hidden = false;
+    stepsModal.setAttribute('data-open', 'true');
+    if(!stepsModal.hasAttribute('tabindex')){ stepsModal.setAttribute('tabindex', '-1'); }
+    stepsModalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setTimeout(()=>{
+      stepsModal.focus({ preventScroll:true });
+      if(focusTarget && typeof focusTarget.focus === 'function'){
+        focusTarget.focus();
+      }
+    }, 10);
+  });
+}
+
+function parseWWWNote(note){
+  const defaults = { who:'', what:'', when:'' };
+  if(typeof note !== 'string' || !note.trim()) return defaults;
+  note.split(/\r?\n/).forEach(line=>{
+    const [rawKey, ...rest] = line.split(':');
+    if(!rawKey) return;
+    const key = rawKey.trim().toLowerCase();
+    const value = rest.join(':').trim();
+    if(key.startsWith('who')){ defaults.who = value; }
+    if(key.startsWith('what')){ defaults.what = value; }
+    if(key.startsWith('when')){ defaults.when = value; }
+  });
+  return defaults;
+}
+
+function formatWWWNote({ who, what, when }){
+  return `Who: ${who}\nWhat: ${what}\nWhen: ${when}`;
+}
+
+async function promptWWW(step){
+  const existing = parseWWWNote(step?.note || '');
+  let whoInput, whatInput, whenInput;
+  const result = await openStepsModal({
+    title: 'WWW checkpoint',
+    render(body){
+      const intro = document.createElement('p');
+      intro.textContent = 'Capture Who, What, and When before marking this step complete.';
+      body.appendChild(intro);
+      const makeField = (labelText, value, id)=>{
+        const field = document.createElement('div'); field.className = 'steps-modal__field';
+        const label = document.createElement('label'); label.setAttribute('for', id); label.textContent = labelText;
+        const input = document.createElement('input'); input.type = 'text'; input.id = id; input.value = value || '';
+        field.appendChild(label); field.appendChild(input); body.appendChild(field);
+        return input;
+      };
+      whoInput = makeField('Who', existing.who, 'stepsWWWWho');
+      whatInput = makeField('What', existing.what, 'stepsWWWWhat');
+      whenInput = makeField('When', existing.when, 'stepsWWWWhen');
+      return whoInput;
+    },
+    actions:[
+      { label:'Cancel', value:null },
+      {
+        label:'Save',
+        variant:'primary',
+        onClick(){
+          const who = (whoInput?.value || '').trim();
+          const what = (whatInput?.value || '').trim();
+          const when = (whenInput?.value || '').trim();
+          if(!who){ whoInput.focus(); return false; }
+          if(!what){ whatInput.focus(); return false; }
+          if(!when){ whenInput.focus(); return false; }
+          return { who, what, when };
+        }
+      }
+    ]
+  });
+  return result && typeof result === 'object' ? result : null;
+}
+
+async function promptStep28Warning(missingStep){
+  const result = await openStepsModal({
+    title: 'Finish checklist?',
+    render(body){
+      const intro = document.createElement('p');
+      intro.textContent = 'Some required steps are still open. Confirm before closing the bridge.';
+      body.appendChild(intro);
+      if(missingStep){
+        const detail = document.createElement('p');
+        detail.textContent = `First missing step: ${missingStep.id} — ${missingStep.label}`;
+        body.appendChild(detail);
+      }
+    },
+    actions:[
+      { label:'Cancel', value:'cancel' },
+      { label: missingStep ? `Go to Step ${missingStep.id}` : 'Review missing steps', value:'goto' },
+      { label:'Mark Step 28 complete', variant:'primary', value:'continue' }
+    ]
+  });
+  return result;
+}
+
+async function promptSkipReason(step){
+  let textarea;
+  const existing = typeof step?.skippedReason === 'string' ? step.skippedReason : '';
+  const result = await openStepsModal({
+    title: existing ? 'Update skip reason' : 'Skip step with reason',
+    render(body){
+      const intro = document.createElement('p');
+      intro.textContent = 'Explain why this step is being treated as completed via skip.';
+      body.appendChild(intro);
+      const field = document.createElement('div'); field.className = 'steps-modal__field';
+      const label = document.createElement('label'); label.setAttribute('for', 'stepsSkipReason'); label.textContent = 'Reason';
+      textarea = document.createElement('textarea');
+      textarea.id = 'stepsSkipReason';
+      textarea.value = existing;
+      field.appendChild(label);
+      field.appendChild(textarea);
+      body.appendChild(field);
+      return textarea;
+    },
+    actions:[
+      { label:'Cancel', value:null },
+      {
+        label: existing ? 'Update skip reason' : 'Skip step',
+        variant:'primary',
+        onClick(){
+          const reason = (textarea?.value || '').trim();
+          if(!reason){ textarea.focus(); return false; }
+          return reason;
+        }
+      }
+    ]
+  });
+  return typeof result === 'string' ? result : null;
+}
+
+async function confirmClearSkip(step){
+  const result = await openStepsModal({
+    title: 'Clear skip reason',
+    render(body){
+      const p = document.createElement('p');
+      p.textContent = `Remove the skip reason for Step ${step.id}?`;
+      body.appendChild(p);
+    },
+    actions:[
+      { label:'Cancel', value:false },
+      { label:'Clear skip', variant:'danger', value:true }
+    ]
+  });
+  return result === true;
+}
+
+function updateStep(stepId, patch={}, { log=true, metadata }={}){
+  const step = getStepById(stepId);
+  if(!step) return;
+  const previous = {
+    assignee: step.assignee,
+    note: step.note,
+    skippedReason: step.skippedReason,
+    checked: step.checked,
+    tsIso: step.tsIso
+  };
+  let changed = false;
+  if(Object.prototype.hasOwnProperty.call(patch, 'assignee')){
+    const value = typeof patch.assignee === 'string' && patch.assignee.trim() ? patch.assignee.trim() : null;
+    if((step.assignee || null) !== value){ step.assignee = value; changed = true; }
+  }
+  if(Object.prototype.hasOwnProperty.call(patch, 'note')){
+    const value = typeof patch.note === 'string' ? patch.note : '';
+    if(step.note !== value){ step.note = value; changed = true; }
+  }
+  if(Object.prototype.hasOwnProperty.call(patch, 'skippedReason')){
+    const value = typeof patch.skippedReason === 'string' ? patch.skippedReason : '';
+    if(step.skippedReason !== value){ step.skippedReason = value; changed = true; }
+    if(value && !step.checked){
+      step.checked = true;
+      step.tsIso = step.tsIso || nowIso();
+    }else if(!value && !patch.keepCompletion){
+      // preserve current checked state but allow manual control elsewhere
+    }
+  }
+  if(Object.prototype.hasOwnProperty.call(patch, 'checked')){
+    const value = !!patch.checked;
+    if(step.checked !== value){ step.checked = value; changed = true; }
+  }
+  if(Object.prototype.hasOwnProperty.call(patch, 'tsIso')){
+    const value = typeof patch.tsIso === 'string' ? patch.tsIso : null;
+    if(step.tsIso !== value){ step.tsIso = value; changed = true; }
+  }
+  if(!changed) return;
+  scheduleStepsSave();
+  updateStepsProgressUI();
+  renderStepsList();
+  renderStepDetails();
+  if(log){
+    addStepsLogEntry(STEP_LOG_KIND.STEP_UPDATED, step, {
+      note: step.note,
+      actor: step.assignee,
+      metadata: Object.assign({ previous }, metadata || {})
+    });
+  }
+  refreshManualStepOptions();
+  saveToStorage();
+}
+
+async function setStepChecked(stepId, checked, { fromSuggestion=false }={}){
+  const step = getStepById(stepId);
+  if(!step || step.checked === checked) return;
+  if(checked){
+    if([8,13,23].includes(step.id)){
+      const www = await promptWWW(step);
+      if(!www) return;
+      updateStep(step.id, { note: formatWWWNote(www), skippedReason:'' });
+    }
+    if(step.id === 28){
+      const missing = firstRequiredIncomplete(step.id);
+      if(missing){
+        const decision = await promptStep28Warning(missing);
+        if(decision === 'goto'){
+          selectStep(missing.id, { focus:true });
+          openStepsPanel(true);
+          return;
+        }
+        if(decision !== 'continue'){ return; }
+      }
+    }
+    step.checked = true;
+    step.skippedReason = step.skippedReason || '';
+    step.tsIso = nowIso();
+  }else{
+    if(step.tsIso){
+      const history = [step.tsIso, ...(step.history || [])].filter(Boolean).slice(0,3);
+      step.history = history;
+    }
+    step.checked = false;
+    step.tsIso = null;
+    step.skippedReason = '';
+  }
+  scheduleStepsSave();
+  updateStepsProgressUI();
+  renderStepsList();
+  renderStepDetails();
+  addStepsLogEntry(checked ? STEP_LOG_KIND.STEP_CHECKED : STEP_LOG_KIND.STEP_UNCHECKED, step, {
+    note: step.note,
+    actor: step.assignee,
+    metadata: { fromSuggestion, history: step.history.slice(0,3) }
+  });
+  if(fromSuggestion){ hideStepsSuggestion(); }
+  if(!checked && stepsSuggestionTarget && stepsSuggestionTarget.stepId === step.id){ hideStepsSuggestion(); }
+  refreshManualStepOptions();
+  saveToStorage();
+}
+
+function stepMatchesSearch(step){
+  if(!stepsSearchTerm) return true;
+  const haystack = [
+    step.label,
+    step.fullText,
+    step.note,
+    step.assignee,
+    step.skippedReason
+  ]
+    .map(value=> (value || '').toString().toLowerCase())
+    .join(' ');
+  return haystack.includes(stepsSearchTerm);
+}
+
+function getVisibleSteps(){
+  return stepsState.steps.filter(step=>stepMatchesSearch(step));
+}
+
+function focusStepRowByIndex(index){
+  if(index < 0 || index >= stepsKeyboardRows.length) return;
+  const row = stepsKeyboardRows[index];
+  if(row){
+    stepsKeyboardRows.forEach(r=>{ if(r !== row) r.tabIndex = -1; });
+    row.tabIndex = 0;
+    row.focus();
+  }
+}
+
+function focusStepRowByStepId(stepId){
+  const index = stepsKeyboardRows.findIndex(row=>Number(row.dataset.stepId) === stepId);
+  if(index >= 0){ focusStepRowByIndex(index); }
+}
+
+function createStepRow(step){
+  const row = document.createElement('div');
+  row.className = 'step-row';
+  row.dataset.stepId = String(step.id);
+  row.setAttribute('role', 'checkbox');
+  row.setAttribute('aria-checked', step.checked ? 'true' : 'false');
+  if(step.checked){ row.setAttribute('data-checked', 'true'); } else { row.removeAttribute('data-checked'); }
+  if(step.id === selectedStepId){ row.setAttribute('data-selected', 'true'); row.tabIndex = 0; }
+  else{ row.removeAttribute('data-selected'); row.tabIndex = -1; }
+
+  const checkbox = document.createElement('div');
+  checkbox.className = 'step-row__checkbox';
+  checkbox.textContent = step.checked ? '✓' : '';
+  checkbox.setAttribute('aria-hidden', 'true');
+
+  const main = document.createElement('div');
+  main.className = 'step-row__main';
+
+  const label = document.createElement('div');
+  label.className = 'step-row__label';
+  label.textContent = step.label;
+
+  const meta = document.createElement('div');
+  meta.className = 'step-row__meta';
+
+  if(step.assignee){
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = step.assignee;
+    meta.appendChild(chip);
+  }
+  if(step.skippedReason){
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = 'Skipped';
+    meta.appendChild(chip);
+  }
+  if(step.tsIso){
+    const time = document.createElement('span');
+    time.className = 'step-row__timestamp';
+    time.textContent = formatLocalDateTime(step.tsIso);
+    meta.appendChild(time);
+  }
+  if(step.note && !step.skippedReason){
+    const preview = document.createElement('span');
+    preview.className = 'step-row__note-preview';
+    const trimmed = step.note.length > 80 ? `${step.note.slice(0,77)}…` : step.note;
+    preview.textContent = trimmed;
+    meta.appendChild(preview);
+  }
+  if(!step.checked && step.history && step.history.length){
+    const last = step.history[0];
+    if(last){
+      const prev = document.createElement('span');
+      prev.className = 'step-row__timestamp';
+      prev.textContent = `Last: ${formatLocalDateTime(last)}`;
+      meta.appendChild(prev);
+    }
+  }
+
+  main.appendChild(label);
+  if(meta.children.length){ main.appendChild(meta); }
+  row.appendChild(checkbox);
+  row.appendChild(main);
+
+  row.addEventListener('click', event=>{
+    if(event.target.closest('.step-row__checkbox')){
+      event.preventDefault();
+      setStepChecked(step.id, !step.checked);
+      return;
+    }
+    selectStep(step.id, { focus:false });
+  });
+
+  row.addEventListener('keydown', event=>{
+    const key = event.key;
+    if(key === 'ArrowDown' || key === 'Down'){
+      event.preventDefault();
+      focusStepRowByIndex(stepsKeyboardRows.indexOf(row) + 1);
+      return;
+    }
+    if(key === 'ArrowUp' || key === 'Up'){
+      event.preventDefault();
+      focusStepRowByIndex(stepsKeyboardRows.indexOf(row) - 1);
+      return;
+    }
+    if(key === ' ' || key === 'Spacebar'){
+      event.preventDefault();
+      setStepChecked(step.id, !step.checked);
+      return;
+    }
+    if(key === 'Enter'){
+      event.preventDefault();
+      selectStep(step.id, { focus:false });
+    }
+  });
+
+  return row;
+}
+
+function renderStepsList(){
+  if(!stepsListEl) return;
+  stepsListEl.innerHTML = '';
+  stepsKeyboardRows = [];
+  const visible = getVisibleSteps();
+  if(visible.length && !visible.some(step=>step.id === selectedStepId)){
+    selectedStepId = visible[0].id;
+  }
+  if(!visible.length){
+    const empty = document.createElement('div');
+    empty.className = 'steps-empty';
+    empty.textContent = stepsSearchTerm ? 'No steps match your search.' : 'No steps available.';
+    stepsListEl.appendChild(empty);
+    return;
+  }
+  const grouped = new Map();
+  visible.forEach(step=>{
+    if(!grouped.has(step.phase)){ grouped.set(step.phase, []); }
+    grouped.get(step.phase).push(step);
+  });
+  const phaseOrder = ['A','B','C','D','E'];
+  phaseOrder.forEach(phase=>{
+    if(!grouped.has(phase)) return;
+    const steps = grouped.get(phase);
+    const groupEl = document.createElement('div');
+    groupEl.className = 'steps-phase';
+    const title = document.createElement('div');
+    title.className = 'steps-phase__title';
+    const label = STEP_PHASE_LABELS[phase] || '';
+    title.textContent = label ? `${phase}) ${label}` : `Phase ${phase}`;
+    groupEl.appendChild(title);
+    steps.forEach(step=>{
+      const row = createStepRow(step);
+      groupEl.appendChild(row);
+      stepsKeyboardRows.push(row);
+    });
+    stepsListEl.appendChild(groupEl);
+  });
+}
+
+function selectStep(stepId, { focus=false }={}){
+  const step = getStepById(stepId);
+  if(!step) return;
+  const changed = selectedStepId !== stepId;
+  selectedStepId = stepId;
+  if(changed){
+    renderStepsList();
+  }
+  renderStepDetails();
+  if(focus){ focusStepRowByStepId(stepId); }
+}
+
+function renderStepDetails(){
+  if(!stepsDetailsEl) return;
+  const step = getStepById(selectedStepId);
+  if(!step){
+    stepsDetailsEl.textContent = 'Select a step to view details.';
+    return;
+  }
+  stepsDetailsEl.innerHTML = '';
+  const header = document.createElement('div');
+  header.className = 'steps-details__header';
+  const title = document.createElement('div'); title.className = 'steps-details__title'; title.textContent = `Step ${step.id}: ${step.label}`;
+  const subtitle = document.createElement('div'); subtitle.className = 'steps-details__subtitle'; subtitle.textContent = step.fullText;
+  header.appendChild(title); header.appendChild(subtitle);
+  stepsDetailsEl.appendChild(header);
+
+  const status = document.createElement('div'); status.className = 'steps-details__status';
+  const statusLine = step.checked ? `Completed ${step.tsIso ? formatLocalDateTime(step.tsIso) : ''}` : 'Not completed';
+  const statusSpan = document.createElement('span'); statusSpan.textContent = statusLine.trim(); status.appendChild(statusSpan);
+  if(step.skippedReason){
+    const skipSpan = document.createElement('span'); skipSpan.textContent = `Skipped: ${step.skippedReason}`;
+    status.appendChild(skipSpan);
+  }
+  stepsDetailsEl.appendChild(status);
+
+  const assigneeField = document.createElement('div'); assigneeField.className = 'steps-details__field';
+  const assigneeLabel = document.createElement('label'); assigneeLabel.setAttribute('for', 'stepsDetailAssignee'); assigneeLabel.textContent = 'Assignee';
+  const assigneeInput = document.createElement('input'); assigneeInput.type = 'text'; assigneeInput.id = 'stepsDetailAssignee'; assigneeInput.placeholder = 'IC / BC / initials'; assigneeInput.value = step.assignee || '';
+  assigneeField.appendChild(assigneeLabel); assigneeField.appendChild(assigneeInput);
+  stepsDetailsEl.appendChild(assigneeField);
+
+  const noteField = document.createElement('div'); noteField.className = 'steps-details__field';
+  const noteLabel = document.createElement('label'); noteLabel.setAttribute('for', 'stepsDetailNote'); noteLabel.textContent = 'Note';
+  const noteTextarea = document.createElement('textarea'); noteTextarea.id = 'stepsDetailNote'; noteTextarea.placeholder = 'Add context or status notes'; noteTextarea.value = step.note || '';
+  noteField.appendChild(noteLabel); noteField.appendChild(noteTextarea);
+  stepsDetailsEl.appendChild(noteField);
+
+  if(step.links && step.links.length){
+    const linksField = document.createElement('div'); linksField.className = 'steps-details__field';
+    const linksLabel = document.createElement('label'); linksLabel.textContent = 'Deep links'; linksField.appendChild(linksLabel);
+    const linkWrap = document.createElement('div'); linkWrap.className = 'steps-links';
+    step.links.forEach(linkId=>{
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'steps-link-btn';
+      btn.dataset.link = linkId;
+      btn.textContent = STEP_LINK_LABELS[linkId] || linkId;
+      btn.addEventListener('click', ()=>{
+        const target = document.getElementById(linkId);
+        if(target){
+          target.scrollIntoView({ behavior:'smooth', block:'start' });
+          if(typeof target.focus === 'function'){
+            if(!target.hasAttribute('tabindex')){ target.setAttribute('tabindex','-1'); }
+            target.focus({ preventScroll:true });
+          }
+        }
+      });
+      linkWrap.appendChild(btn);
+    });
+    linksField.appendChild(linkWrap);
+    stepsDetailsEl.appendChild(linksField);
+  }
+
+  if(step.history && step.history.length){
+    const history = document.createElement('div'); history.className = 'steps-history';
+    const histTitle = document.createElement('div'); histTitle.textContent = 'Recent completions'; history.appendChild(histTitle);
+    step.history.slice(0,3).forEach(item=>{
+      const entry = document.createElement('div'); entry.className = 'steps-history__item'; entry.textContent = formatLocalDateTime(item);
+      history.appendChild(entry);
+    });
+    stepsDetailsEl.appendChild(history);
+  }
+
+  const actions = document.createElement('div'); actions.className = 'steps-details__actions';
+  const toggleBtn = document.createElement('button'); toggleBtn.type = 'button'; toggleBtn.className = 'btn-mini'; toggleBtn.dataset.action = 'toggle'; toggleBtn.textContent = step.checked ? 'Mark incomplete' : 'Mark complete';
+  actions.appendChild(toggleBtn);
+  if(step.skippedReason){
+    const editSkip = document.createElement('button'); editSkip.type = 'button'; editSkip.className = 'steps-details__skip'; editSkip.dataset.action = 'edit-skip'; editSkip.textContent = 'Edit skip reason';
+    const clearSkip = document.createElement('button'); clearSkip.type = 'button'; clearSkip.className = 'steps-details__skip'; clearSkip.dataset.action = 'clear-skip'; clearSkip.textContent = 'Clear skip';
+    actions.appendChild(editSkip);
+    actions.appendChild(clearSkip);
+  }else{
+    const skipBtn = document.createElement('button'); skipBtn.type = 'button'; skipBtn.className = 'steps-details__skip'; skipBtn.dataset.action = 'skip'; skipBtn.textContent = 'Mark as skipped';
+    actions.appendChild(skipBtn);
+  }
+  stepsDetailsEl.appendChild(actions);
+
+  assigneeInput.addEventListener('input', ()=>{ step.assignee = assigneeInput.value.trim() || null; scheduleStepsSave(); });
+  assigneeInput.addEventListener('change', ()=>{ updateStep(step.id, { assignee: assigneeInput.value }, { log:true }); refreshManualStepOptions(); });
+  noteTextarea.addEventListener('input', ()=>{ step.note = noteTextarea.value; scheduleStepsSave(); });
+  noteTextarea.addEventListener('change', ()=>{ updateStep(step.id, { note: noteTextarea.value }, { log:true }); });
+
+  actions.addEventListener('click', async event=>{
+    const action = event.target?.dataset?.action;
+    if(!action) return;
+    if(action === 'toggle'){
+      setStepChecked(step.id, !step.checked);
+    }else if(action === 'skip'){
+      const reason = await promptSkipReason(step);
+      if(reason){ updateStep(step.id, { skippedReason: reason }, { metadata:{ skipped:true } }); refreshManualStepOptions(); }
+    }else if(action === 'edit-skip'){
+      const reason = await promptSkipReason(step);
+      if(reason){ updateStep(step.id, { skippedReason: reason }, { metadata:{ skipped:true } }); refreshManualStepOptions(); }
+    }else if(action === 'clear-skip'){
+      const confirmed = await confirmClearSkip(step);
+      if(confirmed){ updateStep(step.id, { skippedReason:'', keepCompletion:true }, { metadata:{ skipCleared:true } }); refreshManualStepOptions(); }
+    }
+  });
+}
+
+function logTypeIcon(type){
+  if(type === STEP_LOG_KIND.MANUAL) return '✍️';
+  if(type === STEP_LOG_KIND.COMMS) return '📣';
+  if(type === STEP_LOG_KIND.STEP_UNCHECKED) return '↺';
+  if(type === STEP_LOG_KIND.STEP_UPDATED) return '✎';
+  return '🧩';
+}
+
+function logMatchesFilters(entry){
+  if(!entry) return false;
+  if(stepsLogFilters.type === 'step'){
+    if(![STEP_LOG_KIND.STEP_CHECKED, STEP_LOG_KIND.STEP_UNCHECKED, STEP_LOG_KIND.STEP_UPDATED].includes(entry.type)) return false;
+  }else if(stepsLogFilters.type === 'manual'){
+    if(entry.type !== STEP_LOG_KIND.MANUAL) return false;
+  }else if(stepsLogFilters.type === 'comms'){
+    if(entry.type !== STEP_LOG_KIND.COMMS) return false;
+  }
+  if(stepsLogFilters.step !== 'all'){
+    const targetId = Number(stepsLogFilters.step);
+    if(entry.stepId !== targetId) return false;
+  }
+  if(stepsLogFilters.actor !== 'all'){
+    const actor = entry.actor || '';
+    if(actor.toLowerCase() !== stepsLogFilters.actor.toLowerCase()) return false;
+  }
+  return true;
+}
+
+function renderStepsLog(){
+  if(!stepsLogList) return;
+  stepsLogList.innerHTML = '';
+  const allEntries = Array.isArray(stepsState.log) ? stepsState.log.slice() : [];
+  const entries = allEntries.sort((a,b)=>{
+    const aTime = new Date(a.tsIso).getTime();
+    const bTime = new Date(b.tsIso).getTime();
+    return bTime - aTime;
+  }).filter(logMatchesFilters);
+  if(!allEntries.length){
+    const empty = document.createElement('div');
+    empty.className = 'steps-empty';
+    empty.textContent = 'No activity logged yet.';
+    stepsLogList.appendChild(empty);
+    return;
+  }
+  if(!entries.length){
+    const empty = document.createElement('div');
+    empty.className = 'steps-empty';
+    empty.textContent = 'No activity matches the current filters.';
+    stepsLogList.appendChild(empty);
+    return;
+  }
+  entries.forEach(entry=>{
+    const item = document.createElement('div');
+    item.className = 'steps-log__item';
+    if(entry.type === STEP_LOG_KIND.MANUAL){ item.classList.add('steps-log__item--manual'); }
+    else if(entry.type === STEP_LOG_KIND.COMMS){ item.classList.add('steps-log__item--comms'); }
+    else{ item.classList.add('steps-log__item--step'); }
+
+    const meta = document.createElement('div'); meta.className = 'steps-log__meta';
+    const icon = document.createElement('span'); icon.textContent = logTypeIcon(entry.type); meta.appendChild(icon);
+    const time = document.createElement('span'); time.textContent = formatLocalDateTime(entry.tsIso); meta.appendChild(time);
+    if(entry.actor){
+      const actor = document.createElement('span'); actor.textContent = entry.actor; meta.appendChild(actor);
+    }
+    if(entry.stepId){
+      const step = getStepById(entry.stepId);
+      if(step){
+        const stepLabel = document.createElement('span'); stepLabel.textContent = `Step ${step.id}: ${step.label}`;
+        meta.appendChild(stepLabel);
+      }
+    }
+    item.appendChild(meta);
+
+    const title = document.createElement('div'); title.className = 'steps-log__title';
+    const stepForTitle = entry.stepId ? getStepById(entry.stepId) : null;
+    title.textContent = entry.title || defaultStepLogTitle(entry.type, stepForTitle, entry);
+    item.appendChild(title);
+
+    if(entry.note){
+      const note = document.createElement('div'); note.className = 'steps-log__note'; note.textContent = entry.note;
+      item.appendChild(note);
+    }
+    stepsLogList.appendChild(item);
+  });
+}
+
+function refreshStepsFilters(){
+  if(stepsLogStepFilter){
+    const prev = stepsLogStepFilter.value;
+    stepsLogStepFilter.innerHTML = '';
+    const optionAll = document.createElement('option'); optionAll.value = 'all'; optionAll.textContent = 'All'; stepsLogStepFilter.appendChild(optionAll);
+    stepsState.steps.forEach(step=>{
+      const opt = document.createElement('option');
+      opt.value = String(step.id);
+      opt.textContent = `Step ${step.id}`;
+      stepsLogStepFilter.appendChild(opt);
+    });
+    if(prev && [...stepsLogStepFilter.options].some(opt=>opt.value === prev)){
+      stepsLogStepFilter.value = prev;
+    }else{
+      stepsLogStepFilter.value = 'all';
+      stepsLogFilters.step = 'all';
+    }
+  }
+  if(stepsLogActorFilter){
+    const prevActor = stepsLogActorFilter.value;
+    stepsLogActorFilter.innerHTML = '';
+    const optionAllActor = document.createElement('option'); optionAllActor.value = 'all'; optionAllActor.textContent = 'All'; stepsLogActorFilter.appendChild(optionAllActor);
+    const actors = new Set();
+    stepsState.log.forEach(entry=>{ if(entry.actor){ actors.add(entry.actor); } });
+    [...actors].sort().forEach(actor=>{
+      const opt = document.createElement('option'); opt.value = actor; opt.textContent = actor; stepsLogActorFilter.appendChild(opt);
+    });
+    if(prevActor && prevActor !== 'all' && actors.has(prevActor)){
+      stepsLogActorFilter.value = prevActor;
+    }else{
+      stepsLogActorFilter.value = 'all';
+      stepsLogFilters.actor = 'all';
+    }
+  }
+  if(stepsManualStepSelect){
+    refreshManualStepOptions();
+  }
+}
+
+function refreshManualStepOptions(){
+  if(!stepsManualStepSelect) return;
+  const prev = stepsManualStepSelect.value;
+  stepsManualStepSelect.innerHTML = '';
+  const none = document.createElement('option'); none.value = ''; none.textContent = 'None'; stepsManualStepSelect.appendChild(none);
+  stepsState.steps.forEach(step=>{
+    const opt = document.createElement('option');
+    opt.value = String(step.id);
+    const status = step.skippedReason ? ' (Skipped)' : step.checked ? ' (Done)' : '';
+    opt.textContent = `Step ${step.id} — ${step.label}${status}`;
+    stepsManualStepSelect.appendChild(opt);
+  });
+  if(prev && [...stepsManualStepSelect.options].some(opt=>opt.value === prev)){
+    stepsManualStepSelect.value = prev;
+  }else{
+    stepsManualStepSelect.value = '';
+  }
+}
+
+function handleManualLogSubmit(event){
+  event.preventDefault();
+  if(!stepsManualNote) return;
+  const note = stepsManualNote.value.trim();
+  if(!note){ stepsManualNote.focus(); return; }
+  const stepValue = stepsManualStepSelect ? stepsManualStepSelect.value : '';
+  const stepId = stepValue ? Number(stepValue) : undefined;
+  const actor = stepsManualActor ? stepsManualActor.value.trim() : '';
+  const step = Number.isFinite(stepId) ? getStepById(stepId) : null;
+  addStepsLogEntry(STEP_LOG_KIND.MANUAL, step, {
+    note,
+    actor: actor || null,
+    stepId: step ? step.id : undefined
+  });
+  stepsManualNote.value = '';
+  if(stepsManualActor){ stepsManualActor.value = ''; }
+  if(stepsManualStepSelect){ stepsManualStepSelect.value = ''; }
+  scheduleStepsSave();
+  saveToStorage();
+}
+
+function handleStepsSearchInput(){
+  const value = stepsSearchInput ? stepsSearchInput.value.trim().toLowerCase() : '';
+  stepsSearchTerm = value;
+  renderStepsList();
+  renderStepDetails();
+}
+
+function setStepsTab(tab){
+  if(!stepsTabChecklist || !stepsTabLog || !stepsChecklistPanel || !stepsLogPanel) return;
+  const isLog = tab === 'log';
+  stepsTabChecklist.setAttribute('aria-selected', isLog ? 'false' : 'true');
+  stepsChecklistPanel.dataset.active = isLog ? 'false' : 'true';
+  stepsChecklistPanel.setAttribute('data-active', isLog ? 'false' : 'true');
+  stepsTabLog.setAttribute('aria-selected', isLog ? 'true' : 'false');
+  stepsLogPanel.dataset.active = isLog ? 'true' : 'false';
+  stepsLogPanel.setAttribute('data-active', isLog ? 'true' : 'false');
+  if(isLog){ renderStepsLog(); }
+}
+
+function openStepsPanel(focusSearch=false){
+  if(!stepsPanel) return;
+  if(stepsPanelOpen){
+    if(focusSearch && stepsSearchInput){ stepsSearchInput.focus(); }
+    return;
+  }
+  stepsPanelOpen = true;
+  stepsPanelReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  stepsPanel.setAttribute('aria-hidden', 'false');
+  stepsPanel.setAttribute('data-open', 'true');
+  renderStepsList();
+  renderStepDetails();
+  renderStepsLog();
+  refreshStepsFilters();
+  updateStepsProgressUI();
+  if(focusSearch && stepsSearchInput){ setTimeout(()=>stepsSearchInput.focus(), 10); }
+}
+
+function closeStepsPanel(){
+  if(!stepsPanelOpen || !stepsPanel) return;
+  stepsPanelOpen = false;
+  stepsPanel.setAttribute('aria-hidden', 'true');
+  stepsPanel.removeAttribute('data-open');
+  if(stepsPanelReturnFocus && typeof stepsPanelReturnFocus.focus === 'function'){
+    stepsPanelReturnFocus.focus();
+  }
+  stepsPanelReturnFocus = null;
+}
+
+function toggleStepsPanel(force){
+  if(force === true){ openStepsPanel(true); return; }
+  if(force === false){ closeStepsPanel(); return; }
+  if(stepsPanelOpen){ closeStepsPanel(); }
+  else{ openStepsPanel(true); }
+}
+
+function handleStepsGlobalKeydown(event){
+  if(event.altKey && (event.key === 's' || event.key === 'S')){
+    event.preventDefault();
+    toggleStepsPanel();
+    return;
+  }
+  if(event.key === 'Escape'){
+    if(isStepsModalOpen()){
+      event.preventDefault();
+      closeStepsModal(null);
+      return;
+    }
+    if(stepsPanelOpen){
+      event.preventDefault();
+      closeStepsPanel();
+    }
+  }
+}
+
+function handleStepsCommunication(type){
+  const isRestoration = !!containRestore?.checked;
+  const stepId = isRestoration ? 25 : 16;
+  const step = getStepById(stepId);
+  const commType = type === 'external' ? 'external' : 'internal';
+  addStepsLogEntry(STEP_LOG_KIND.COMMS, step, {
+    metadata: { commType },
+    note: commType === 'external' ? 'External communication logged.' : 'Internal communication logged.',
+    title: `Communication logged (${commType === 'external' ? 'External' : 'Internal'})`
+  });
+  if(step && !step.checked){
+    const message = stepId === 25 ? 'Restoration comms sent? Mark Step 25 complete.' : 'Comms sent? Mark Step 16 complete.';
+    showStepsSuggestion(step, message);
+  }
+}
+
+function initStepsFeature(){
+  document.addEventListener('keydown', handleStepsGlobalKeydown);
+  if(stepsToggleBtn){ stepsToggleBtn.addEventListener('click', ()=>toggleStepsPanel(true)); }
+  if(stepsProgressChip){ stepsProgressChip.addEventListener('click', ()=>toggleStepsPanel(true)); }
+  if(stepsPanelCloseBtn){ stepsPanelCloseBtn.addEventListener('click', ()=>toggleStepsPanel(false)); }
+  if(stepsPanelScrim){ stepsPanelScrim.addEventListener('click', ()=>toggleStepsPanel(false)); }
+  if(stepsSearchInput){ stepsSearchInput.addEventListener('input', handleStepsSearchInput); }
+  if(stepsTabChecklist){ stepsTabChecklist.addEventListener('click', ()=>setStepsTab('checklist')); }
+  if(stepsTabLog){ stepsTabLog.addEventListener('click', ()=>setStepsTab('log')); }
+  if(stepsLogTypeFilter){ stepsLogTypeFilter.addEventListener('change', ()=>{ stepsLogFilters.type = stepsLogTypeFilter.value; renderStepsLog(); }); }
+  if(stepsLogStepFilter){ stepsLogStepFilter.addEventListener('change', ()=>{ stepsLogFilters.step = stepsLogStepFilter.value; renderStepsLog(); }); }
+  if(stepsLogActorFilter){ stepsLogActorFilter.addEventListener('change', ()=>{ stepsLogFilters.actor = stepsLogActorFilter.value; renderStepsLog(); }); }
+  if(stepsManualForm){ stepsManualForm.addEventListener('submit', handleManualLogSubmit); }
+  if(stepsSuggestionAction){
+    stepsSuggestionAction.addEventListener('click', ()=>{
+      if(stepsSuggestionTarget){
+        setStepChecked(stepsSuggestionTarget.stepId, true, { fromSuggestion:true });
+        hideStepsSuggestion();
+      }
+    });
+  }
+  if(stepsSuggestionDismiss){ stepsSuggestionDismiss.addEventListener('click', hideStepsSuggestion); }
+  if(stepsModal){
+    stepsModal.addEventListener('click', event=>{
+      if(event.target === stepsModal){ closeStepsModal(null); }
+    });
+  }
+  refreshStepsFilters();
+  renderStepsList();
+  renderStepDetails();
+  renderStepsLog();
+  updateStepsProgressUI();
+  setStepsTab('checklist');
+}
+
+function firstRequiredIncomplete(excludeId){
+  return stepsState.steps.find(step=>step.required && !step.checked && step.id !== excludeId) || null;
+}
+
+function computeStepsTone(completed, total){
+  if(!total) return 'low';
+  const ratio = completed / total;
+  if(ratio >= 0.7) return 'high';
+  if(ratio >= 0.3) return 'mid';
+  return 'low';
+}
+
+function updateStepsProgressUI(){
+  const total = stepsState.steps.length;
+  const completed = stepsState.steps.filter(step=>step.checked).length;
+  const text = `Steps · ${completed}/${total} ✓`;
+  if(stepsChipText){ stepsChipText.textContent = text; }
+  if(stepsPanelProgress){ stepsPanelProgress.textContent = `${completed}/${total} ✓`; }
+  if(stepsProgressChip){
+    stepsProgressChip.setAttribute('data-tone', computeStepsTone(completed, total));
+    stepsProgressChip.setAttribute('aria-label', `Steps progress ${completed} of ${total} completed`);
+  }
+  updateStepsCommBadge();
+}
+
+function updateStepsCommBadge(){
+  if(!stepsChipBadge) return;
+  stepsChipBadge.hidden = !stepsCommDue;
+}
+
+function setStepsCommDue(isDue){
+  stepsCommDue = !!isDue;
+  updateStepsCommBadge();
+}
+
 function getCadenceMinutes(){
   const mins = parseInt(commCadence, 10);
   return Number.isFinite(mins) ? mins : null;
@@ -976,6 +2500,7 @@ function toggleCommDue(isDue){
       commDueAlert.hidden = true;
     }
   }
+  setStepsCommDue(!!isDue);
 }
 
 function formatCountdown(ms){
@@ -1116,6 +2641,7 @@ function logCommunication(type){
     due.setMinutes(due.getMinutes() + mins);
     setNextDue(due);
   }
+  handleStepsCommunication(type);
   saveToStorage();
 }
 
@@ -1998,6 +3524,7 @@ function init(){
   initTable();
   ensurePossibleCausesUI();
   renderCauses();
+  initStepsFeature();
   restoreFromStorage();
   if(bridgeOpenedUtc && !bridgeOpenedUtc.value.trim()){
     bridgeOpenedUtc.value = new Date().toISOString();
@@ -2210,6 +3737,48 @@ function formatPossibleCausesSummary(){
   return blocks.join('\n\n');
 }
 
+function formatStepsSummary(){
+  if(!stepsState || !Array.isArray(stepsState.steps)) return '';
+  const total = stepsState.steps.length;
+  const completed = stepsState.steps.filter(step=>step.checked).length;
+  const lines = [`Completed: ${completed}/${total}`];
+  const open = stepsState.steps.filter(step=>step.required && !step.checked);
+  const skipped = stepsState.steps.filter(step=>step.skippedReason);
+  if(open.length){
+    lines.push('Open Items:');
+    open.forEach(step=>{
+      lines.push(`  • Step ${step.id} — ${step.label}`);
+    });
+  }
+  if(skipped.length){
+    lines.push('Skipped:');
+    skipped.forEach(step=>{
+      lines.push(`  • Step ${step.id} — ${step.label} (Reason: ${step.skippedReason})`);
+    });
+  }
+  if(Array.isArray(stepsState.log) && stepsState.log.length){
+    const sorted = stepsState.log.slice().sort((a,b)=> new Date(a.tsIso).getTime() - new Date(b.tsIso).getTime());
+    lines.push('Activity Log:');
+    sorted.forEach(entry=>{
+      const parts = [formatLocalDateTime(entry.tsIso)];
+      if(entry.actor){ parts.push(entry.actor); }
+      let label = entry.type;
+      if(entry.type === STEP_LOG_KIND.STEP_CHECKED) label = 'Checked';
+      else if(entry.type === STEP_LOG_KIND.STEP_UNCHECKED) label = 'Unchecked';
+      else if(entry.type === STEP_LOG_KIND.STEP_UPDATED) label = 'Updated';
+      else if(entry.type === STEP_LOG_KIND.MANUAL) label = 'Manual';
+      else if(entry.type === STEP_LOG_KIND.COMMS) label = 'Comms';
+      parts.push(label);
+      const step = entry.stepId ? getStepById(entry.stepId) : null;
+      if(step){ parts.push(`Step ${step.id}: ${step.label}`); }
+      let line = `  • ${parts.join(' — ')}`;
+      if(entry.note){ line += ` — ${entry.note}`; }
+      lines.push(line);
+    });
+  }
+  return lines.join('\n');
+}
+
 /* ---------- Executive summary builder ---------- */
 function buildSummaryText(){
   const title = document.getElementById('docTitle').textContent.trim();
@@ -2321,6 +3890,10 @@ function buildSummaryText(){
   pushSection('— Containment —', containment);
   pushSection('— Impact —', imp);
   pushSection('— Communications —', communications);
+  const stepsSummary = formatStepsSummary();
+  if(stepsSummary.trim().length){
+    pushSection('— Steps Checklist —', stepsSummary);
+  }
   const causes = formatPossibleCausesSummary();
   if(causes.trim().length){
     pushSection('— Possible Causes —', causes);
@@ -2507,7 +4080,8 @@ function saveToStorage(){
                  commNextDueIso:commNextDueIso||''
                },
                table:[],
-               causes: serializeCauses() };
+               causes: serializeCauses(),
+               steps: exportStepsState() };
   [...tbody.querySelectorAll('tr')].forEach(tr=>{
     if(tr.classList.contains('band')){ data.table.push({band: tr.textContent.trim()}); return; }
     const t=tr.querySelectorAll('textarea');
@@ -2598,6 +4172,9 @@ function restoreFromStorage(){
   }
   updateCauseEvidencePreviews();
   scheduleCadenceTick();
+  if(data.steps){
+    importStepsState(data.steps);
+  }
 }
 /* [script:storage] end */
 
