@@ -330,6 +330,8 @@ Anchors present:
   .cause-card__assumptions::before{content:'∑'; font-size:13px; line-height:1; color:#3b4d7a;}
   .cause-card__summary{margin:0; font-size:14px; line-height:1.6; color:#1f2b40;}
   .cause-card__helper{margin-top:-6px;}
+  .cause-card__actions{display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;}
+  .cause-card__actions .btn-mini{padding-inline:12px;}
   .cause-card__form{display:grid; gap:14px;}
   .cause-card__form .field textarea{min-height:120px;}
   .cause-controls{display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;}
@@ -350,6 +352,7 @@ Anchors present:
   .cause-eval-note{display:flex; flex-direction:column; gap:6px;}
   .cause-eval-note[hidden]{display:none;}
   .cause-eval-inputs .field textarea{min-height:120px;}
+  .cause-evidence-empty{padding:12px; border-radius:10px; background:#f7f9ff; color:#5b6475; font-size:13px;}
   @media (max-width:720px){
     .cause-card{padding:16px;}
   }
@@ -787,6 +790,637 @@ const ROWS = [
 const tbody = document.getElementById('tbody');
 const rowsBuilt = [];
 let possibleCauses = [];
+const CAUSE_STATUSES = {
+  DRAFT: 'draft',
+  NOT_TESTED: 'not-tested',
+  TESTING: 'testing',
+  EXPLAINED: 'explained',
+  FAILED: 'failed'
+};
+const CAUSE_STATUS_LABELS = {
+  [CAUSE_STATUSES.DRAFT]: 'Draft hypothesis',
+  [CAUSE_STATUSES.NOT_TESTED]: 'Not tested yet',
+  [CAUSE_STATUSES.TESTING]: 'Testing in progress',
+  [CAUSE_STATUSES.EXPLAINED]: 'Explains evidence',
+  [CAUSE_STATUSES.FAILED]: 'Failed testing'
+};
+const CAUSE_FINDING_MODES = {
+  UNKNOWN: 'unknown',
+  YES: 'yes',
+  FAIL: 'fail',
+  ASSUMPTION: 'assumption'
+};
+
+function createCauseId(){
+  return `cause-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+}
+
+function normalizeCauseStatus(value){
+  const allowed = Object.values(CAUSE_STATUSES);
+  if(typeof value === 'string'){
+    const normalized = value.trim().toLowerCase();
+    if(allowed.includes(normalized)){
+      return normalized;
+    }
+  }
+  return CAUSE_STATUSES.DRAFT;
+}
+
+function createEmptyCause(){
+  return {
+    id: createCauseId(),
+    name: '',
+    hypothesis: '',
+    impact: '',
+    assumptions: '',
+    status: CAUSE_STATUSES.DRAFT,
+    editing: true,
+    findings: {}
+  };
+}
+
+function ensurePossibleCausesUI(){
+  causeList = document.getElementById('causeList');
+  addCauseBtn = document.getElementById('addCauseBtn');
+  if(addCauseBtn && !addCauseBtn.dataset.bound){
+    addCauseBtn.addEventListener('click', ()=>{
+      const cause = createEmptyCause();
+      possibleCauses.push(cause);
+      renderCauses();
+      updateCauseEvidencePreviews();
+      if(typeof saveToStorage === 'function'){
+        saveToStorage();
+      }
+      focusFirstEditableCause();
+      const anchor = document.getElementById('possible-causes');
+      if(anchor){
+        try{
+          anchor.focus({ preventScroll:true });
+        }catch(_){
+          anchor.focus();
+        }
+        anchor.scrollIntoView({ behavior:'smooth', block:'start' });
+      }
+    });
+    addCauseBtn.dataset.bound = 'true';
+  }
+}
+
+function renderCauses(){
+  ensurePossibleCausesUI();
+  if(!causeList) return;
+  causeList.innerHTML = '';
+  if(!Array.isArray(possibleCauses) || !possibleCauses.length){
+    const empty = document.createElement('div');
+    empty.className = 'cause-empty';
+    empty.textContent = 'No possible causes added yet.';
+    causeList.appendChild(empty);
+    return;
+  }
+  const indexSnapshot = [...rowsBuilt.keys()];
+  possibleCauses.forEach((cause, idx)=>{
+    const card = buildCauseCard(cause, idx, indexSnapshot);
+    causeList.appendChild(card);
+  });
+  updateCauseEvidencePreviews();
+}
+
+function buildCauseCard(cause, index, indexSnapshot){
+  const card = document.createElement('article');
+  card.className = 'cause-card';
+  card.dataset.causeId = cause.id;
+  card.dataset.editing = cause.editing ? 'true' : 'false';
+  card.dataset.failed = causeHasFailure(cause) ? 'true' : 'false';
+
+  const header = document.createElement('div');
+  header.className = 'cause-card__header';
+
+  const meta = document.createElement('div');
+  meta.className = 'cause-card__meta';
+  const titleEl = document.createElement('div');
+  titleEl.className = 'cause-card__title';
+  const progressEl = document.createElement('div');
+  progressEl.className = 'cause-card__status';
+
+  const indicators = document.createElement('div');
+  indicators.className = 'cause-card__indicators';
+  const statusChip = document.createElement('span');
+  statusChip.className = 'cause-card__chip';
+  const failureBadge = document.createElement('span');
+  failureBadge.className = 'cause-card__failure';
+  failureBadge.textContent = 'Failed evidence check';
+  const assumptionBadge = document.createElement('span');
+  assumptionBadge.className = 'cause-card__assumptions';
+
+  indicators.append(statusChip, failureBadge, assumptionBadge);
+
+  const actions = document.createElement('div');
+  actions.className = 'cause-card__actions';
+  const toggleBtn = document.createElement('button');
+  toggleBtn.type = 'button';
+  toggleBtn.className = 'btn-mini btn-ghost';
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'btn-mini btn-danger';
+  removeBtn.textContent = 'Remove';
+
+  actions.append(toggleBtn, removeBtn);
+
+  meta.append(titleEl, progressEl);
+  header.append(meta, indicators, actions);
+
+  const summaryEl = document.createElement('p');
+  summaryEl.className = 'cause-card__summary';
+
+  const form = document.createElement('div');
+  form.className = 'cause-card__form';
+
+  const suspectField = document.createElement('div');
+  suspectField.className = 'field';
+  const suspectLabel = document.createElement('label');
+  suspectLabel.textContent = 'Suspect / Component';
+  const suspectInput = document.createElement('input');
+  suspectInput.type = 'text';
+  suspectInput.value = cause.name || '';
+  suspectField.append(suspectLabel, suspectInput);
+
+  const hypothesisField = document.createElement('div');
+  hypothesisField.className = 'field';
+  const hypothesisLabel = document.createElement('label');
+  hypothesisLabel.textContent = 'Hypothesis / Accusation';
+  const hypothesisTextarea = document.createElement('textarea');
+  hypothesisTextarea.value = cause.hypothesis || '';
+  hypothesisField.append(hypothesisLabel, hypothesisTextarea);
+
+  const impactField = document.createElement('div');
+  impactField.className = 'field';
+  const impactLabel = document.createElement('label');
+  impactLabel.textContent = 'Impact if true';
+  const impactTextarea = document.createElement('textarea');
+  impactTextarea.value = cause.impact || '';
+  impactField.append(impactLabel, impactTextarea);
+
+  const assumptionsField = document.createElement('div');
+  assumptionsField.className = 'field';
+  const assumptionsLabel = document.createElement('label');
+  assumptionsLabel.textContent = 'Assumptions to verify';
+  const assumptionsTextarea = document.createElement('textarea');
+  assumptionsTextarea.value = cause.assumptions || '';
+  assumptionsField.append(assumptionsLabel, assumptionsTextarea);
+
+  const statusField = document.createElement('fieldset');
+  statusField.className = 'field';
+  const statusLegend = document.createElement('legend');
+  statusLegend.textContent = 'Current evaluation';
+  const statusSelect = document.createElement('select');
+  [
+    { value: CAUSE_STATUSES.DRAFT, label: 'Draft hypothesis' },
+    { value: CAUSE_STATUSES.NOT_TESTED, label: 'Not tested yet' },
+    { value: CAUSE_STATUSES.TESTING, label: 'Testing in progress' },
+    { value: CAUSE_STATUSES.EXPLAINED, label: 'Explains evidence' },
+    { value: CAUSE_STATUSES.FAILED, label: 'Failed testing' }
+  ].forEach(opt=>{
+    const option = document.createElement('option');
+    option.value = opt.value;
+    option.textContent = opt.label;
+    statusSelect.appendChild(option);
+  });
+  statusSelect.value = normalizeCauseStatus(cause.status);
+  statusField.append(statusLegend, statusSelect);
+
+  form.append(suspectField, hypothesisField, impactField, assumptionsField, statusField);
+
+  const evidenceSection = document.createElement('div');
+  evidenceSection.className = 'cause-test';
+  const evidenceIntro = document.createElement('p');
+  evidenceIntro.className = 'cause-test__intro';
+  evidenceIntro.textContent = 'Compare this cause against the KT IS / IS NOT evidence.';
+  evidenceSection.appendChild(evidenceIntro);
+
+  const evidenceEmpty = document.createElement('div');
+  evidenceEmpty.className = 'cause-evidence-empty';
+  evidenceEmpty.textContent = 'Fill in the KT table above to evaluate evidence for this cause.';
+  evidenceSection.appendChild(evidenceEmpty);
+
+  indexSnapshot.forEach(rowIndex=>{
+    const row = rowsBuilt[rowIndex];
+    if(!row) return;
+    const rowKey = getRowKeyByIndex(rowIndex);
+    const finding = peekCauseFinding(cause, rowKey) || null;
+    const evidenceRow = document.createElement('div');
+    evidenceRow.className = 'cause-eval-row';
+    evidenceRow.dataset.rowIndex = String(rowIndex);
+    evidenceRow.dataset.rowKey = rowKey;
+
+    const questionText = document.createElement('div');
+    questionText.className = 'cause-eval-question-text';
+    questionText.textContent = row?.th?.textContent?.trim() || fillTokens(row?.def?.q || `Row ${rowIndex+1}`);
+
+    const evidenceWrap = document.createElement('div');
+    evidenceWrap.className = 'cause-evidence-wrap';
+    const blocks = [
+      { label:'IS', role:'is' },
+      { label:'IS NOT', role:'is-not' },
+      { label:'Distinctions', role:'dist' },
+      { label:'Changes', role:'chg' }
+    ];
+    blocks.forEach(info=>{
+      const block = document.createElement('div');
+      block.className = 'cause-evidence-block';
+      const blockLabel = document.createElement('div');
+      blockLabel.className = 'cause-evidence-label';
+      blockLabel.textContent = info.label;
+      const blockText = document.createElement('div');
+      blockText.className = 'cause-evidence-text';
+      blockText.dataset.evidenceRole = info.role;
+      blockText.textContent = '—';
+      block.append(blockLabel, blockText);
+      evidenceWrap.appendChild(block);
+    });
+
+    const inputsWrap = document.createElement('div');
+    inputsWrap.className = 'cause-eval-inputs';
+    const optionsWrap = document.createElement('div');
+    optionsWrap.className = 'cause-eval-options';
+    const noteWrap = document.createElement('div');
+    noteWrap.className = 'field cause-eval-note';
+    const noteLabel = document.createElement('label');
+    noteLabel.textContent = 'Evidence notes';
+    const noteTextarea = document.createElement('textarea');
+    noteTextarea.value = findingNote(finding);
+    noteWrap.append(noteLabel, noteTextarea);
+
+    const optionConfigs = [
+      { value: CAUSE_FINDING_MODES.YES, label: 'Explains evidence' },
+      { value: CAUSE_FINDING_MODES.ASSUMPTION, label: 'Needs assumption' },
+      { value: CAUSE_FINDING_MODES.FAIL, label: 'Fails evidence' },
+      { value: CAUSE_FINDING_MODES.UNKNOWN, label: 'Not evaluated' }
+    ];
+    optionConfigs.forEach(config=>{
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cause-eval-option';
+      btn.dataset.mode = config.value;
+      btn.textContent = config.label;
+      if(config.value === findingMode(finding) || (!findingMode(finding) && config.value === CAUSE_FINDING_MODES.UNKNOWN)){
+        btn.classList.add('is-selected');
+      }
+      btn.addEventListener('click', ()=>{
+        const next = config.value;
+        const entry = ensureFinding(cause, rowKey);
+        entry.mode = next;
+        if(next === CAUSE_FINDING_MODES.UNKNOWN && !findingNote(entry).trim()){
+          delete cause.findings[rowKey];
+        }
+        optionsWrap.querySelectorAll('.cause-eval-option').forEach(other=>{
+          other.classList.toggle('is-selected', other === btn);
+        });
+        refreshHeader();
+        if(typeof saveToStorage === 'function'){
+          saveToStorage();
+        }
+      });
+      optionsWrap.appendChild(btn);
+    });
+
+    autoResize(noteTextarea);
+    noteTextarea.addEventListener('input', ()=>{
+      const entry = ensureFinding(cause, rowKey);
+      entry.note = noteTextarea.value;
+      autoResize(noteTextarea);
+      if(!findingMode(entry) && !entry.note.trim()){
+        delete cause.findings[rowKey];
+      }
+      refreshHeader();
+      if(typeof saveToStorage === 'function'){
+        saveToStorage();
+      }
+    });
+
+    inputsWrap.append(optionsWrap, noteWrap);
+
+    evidenceRow.append(questionText, evidenceWrap, inputsWrap);
+    evidenceSection.appendChild(evidenceRow);
+  });
+
+  card.append(header, summaryEl, form, evidenceSection);
+
+  function refreshHeader(){
+    const displayIndex = index + 1;
+    titleEl.textContent = cause.name?.trim() ? cause.name.trim() : `Possible Cause ${displayIndex}`;
+    summaryEl.textContent = buildHypothesisSentence(cause);
+    const indexes = evidencePairIndexes();
+    const hasEvidence = indexes.length > 0;
+    const chipValue = hasEvidence ? normalizeCauseStatus(cause.status) : 'no-evidence';
+    statusChip.dataset.status = chipValue;
+    statusChip.textContent = causeStatusLabel(cause);
+    const failure = causeHasFailure(cause);
+    card.dataset.failed = failure ? 'true' : 'false';
+    failureBadge.hidden = !failure;
+    const assumptionsTotal = countCauseAssumptions(cause);
+    if(assumptionsTotal > 0){
+      assumptionBadge.textContent = `${assumptionsTotal} assumption${assumptionsTotal===1?'':'s'}`;
+      assumptionBadge.hidden = false;
+    }else{
+      assumptionBadge.hidden = true;
+    }
+    progressEl.textContent = causeProgressSummary ? causeProgressSummary(cause) : '';
+    toggleBtn.textContent = cause.editing ? 'Done' : 'Edit';
+  }
+
+  toggleBtn.addEventListener('click', ()=>{
+    cause.editing = !cause.editing;
+    card.dataset.editing = cause.editing ? 'true' : 'false';
+    refreshHeader();
+    if(cause.editing){
+      const firstField = card.querySelector('input, textarea, select');
+      firstField?.focus();
+    }
+    if(typeof saveToStorage === 'function'){
+      saveToStorage();
+    }
+  });
+
+  removeBtn.addEventListener('click', ()=>{
+    const idx = possibleCauses.findIndex(item=>item && item.id === cause.id);
+    if(idx !== -1){
+      possibleCauses.splice(idx, 1);
+      renderCauses();
+      updateCauseEvidencePreviews();
+      if(typeof saveToStorage === 'function'){
+        saveToStorage();
+      }
+    }
+  });
+
+  suspectInput.addEventListener('input', ()=>{
+    cause.name = suspectInput.value;
+    cause.editing = true;
+    refreshHeader();
+    if(typeof saveToStorage === 'function'){
+      saveToStorage();
+    }
+  });
+
+  [hypothesisTextarea, impactTextarea, assumptionsTextarea].forEach(textarea=>{
+    autoResize(textarea);
+  });
+
+  hypothesisTextarea.addEventListener('input', ()=>{
+    cause.hypothesis = hypothesisTextarea.value;
+    cause.editing = true;
+    autoResize(hypothesisTextarea);
+    refreshHeader();
+    if(typeof saveToStorage === 'function'){
+      saveToStorage();
+    }
+  });
+
+  impactTextarea.addEventListener('input', ()=>{
+    cause.impact = impactTextarea.value;
+    cause.editing = true;
+    autoResize(impactTextarea);
+    refreshHeader();
+    if(typeof saveToStorage === 'function'){
+      saveToStorage();
+    }
+  });
+
+  assumptionsTextarea.addEventListener('input', ()=>{
+    cause.assumptions = assumptionsTextarea.value;
+    cause.editing = true;
+    autoResize(assumptionsTextarea);
+    refreshHeader();
+    if(typeof saveToStorage === 'function'){
+      saveToStorage();
+    }
+  });
+
+  statusSelect.addEventListener('change', ()=>{
+    cause.status = normalizeCauseStatus(statusSelect.value);
+    cause.editing = true;
+    refreshHeader();
+    if(typeof saveToStorage === 'function'){
+      saveToStorage();
+    }
+  });
+
+  refreshHeader();
+  card._refreshHeader = refreshHeader;
+  return card;
+}
+
+function updateCauseEvidencePreviews(){
+  if(!causeList) return;
+  possibleCauses.forEach(cause=>{
+    const card = causeList.querySelector(`.cause-card[data-cause-id="${cause.id}"]`);
+    if(!card) return;
+    const rows = card.querySelectorAll('.cause-eval-row');
+    let visible = 0;
+    rows.forEach(rowEl=>{
+      const index = Number.parseInt(rowEl.dataset.rowIndex || '-1', 10);
+      const data = rowsBuilt[index];
+      if(!data){
+        rowEl.hidden = true;
+        return;
+      }
+      const isText = inlineText(data.isTA?.value || '');
+      const notText = inlineText(data.notTA?.value || '');
+      const distText = inlineText(data.distTA?.value || '');
+      const chgText = inlineText(data.chgTA?.value || '');
+      const hasContent = !!(isText || notText || distText || chgText);
+      rowEl.hidden = !hasContent;
+      if(hasContent) visible++;
+      rowEl.querySelector('[data-evidence-role="is"]').textContent = isText || '—';
+      rowEl.querySelector('[data-evidence-role="is-not"]').textContent = notText || '—';
+      rowEl.querySelector('[data-evidence-role="dist"]').textContent = distText || '—';
+      rowEl.querySelector('[data-evidence-role="chg"]').textContent = chgText || '—';
+
+      const rowKey = rowEl.dataset.rowKey;
+      const finding = peekCauseFinding(cause, rowKey);
+      const mode = findingMode(finding);
+      const note = findingNote(finding);
+      const buttons = rowEl.querySelectorAll('.cause-eval-option');
+      buttons.forEach(btn=>{
+        const targetMode = btn.dataset.mode;
+        const isUnknown = !mode && targetMode === CAUSE_FINDING_MODES.UNKNOWN;
+        btn.classList.toggle('is-selected', targetMode === mode || isUnknown);
+      });
+      const noteArea = rowEl.querySelector('textarea');
+      if(noteArea && noteArea.value !== note){
+        noteArea.value = note;
+        autoResize(noteArea);
+      }
+    });
+    const empty = card.querySelector('.cause-evidence-empty');
+    if(empty){
+      empty.hidden = visible > 0;
+    }
+    card._refreshHeader?.();
+  });
+}
+
+function focusFirstEditableCause(){
+  requestAnimationFrame(()=>{
+    if(!causeList) return;
+    const target = possibleCauses.find(cause=>cause && cause.editing);
+    if(!target) return;
+    const card = causeList.querySelector(`.cause-card[data-cause-id="${target.id}"]`);
+    if(!card) return;
+    const field = card.querySelector('input, textarea, select');
+    field?.focus();
+  });
+}
+
+function peekCauseFinding(cause, key){
+  if(!cause || !cause.findings || typeof key !== 'string') return null;
+  return cause.findings[key] || null;
+}
+
+function ensureFinding(cause, key){
+  if(!cause) return { mode:'', note:'' };
+  if(!cause.findings) cause.findings = {};
+  if(!cause.findings[key]){
+    cause.findings[key] = { mode: CAUSE_FINDING_MODES.UNKNOWN, note: '' };
+  }
+  return cause.findings[key];
+}
+
+function findingMode(entry){
+  if(!entry) return '';
+  const value = typeof entry.mode === 'string' ? entry.mode.trim().toLowerCase() : '';
+  if(value === CAUSE_FINDING_MODES.YES || value === CAUSE_FINDING_MODES.FAIL || value === CAUSE_FINDING_MODES.ASSUMPTION){
+    return value;
+  }
+  return '';
+}
+
+function findingNote(entry){
+  if(!entry) return '';
+  return typeof entry.note === 'string' ? entry.note : '';
+}
+
+function causeStatusLabel(cause){
+  const status = normalizeCauseStatus(cause?.status);
+  return CAUSE_STATUS_LABELS[status] || CAUSE_STATUS_LABELS[CAUSE_STATUSES.DRAFT];
+}
+
+function buildHypothesisSentence(cause){
+  if(!cause) return '';
+  const parts = [];
+  if(cause.name && cause.name.trim()) parts.push(cause.name.trim());
+  if(cause.hypothesis && cause.hypothesis.trim()) parts.push(cause.hypothesis.trim());
+  if(cause.impact && cause.impact.trim()) parts.push(`Impact: ${cause.impact.trim()}`);
+  return parts.length ? parts.join(' — ') : 'Describe why this could be the cause and the impact if confirmed.';
+}
+
+function countAssumptionFindings(cause){
+  if(!cause || !cause.findings) return 0;
+  return Object.values(cause.findings).reduce((total, entry)=>{
+    return total + (findingMode(entry) === CAUSE_FINDING_MODES.ASSUMPTION ? 1 : 0);
+  }, 0);
+}
+
+function countCauseAssumptions(cause){
+  if(!cause) return 0;
+  const lines = splitLines(cause.assumptions); // already trims and filters
+  return lines.length + countAssumptionFindings(cause);
+}
+
+function causeHasFailure(cause){
+  if(!cause) return false;
+  if(normalizeCauseStatus(cause.status) === CAUSE_STATUSES.FAILED) return true;
+  return Object.values(cause.findings || {}).some(entry=>findingMode(entry) === CAUSE_FINDING_MODES.FAIL);
+}
+
+function countCompletedEvidence(cause, indexes){
+  if(!cause || !Array.isArray(indexes)) return 0;
+  let count = 0;
+  indexes.forEach(index=>{
+    const key = getRowKeyByIndex(index);
+    const entry = peekCauseFinding(cause, key);
+    const mode = findingMode(entry);
+    if(mode === CAUSE_FINDING_MODES.YES || mode === CAUSE_FINDING_MODES.FAIL){
+      count++;
+    }
+  });
+  return count;
+}
+
+function getRowKeyByIndex(index){
+  const row = rowsBuilt[index];
+  if(!row) return `row-${index}`;
+  const base = typeof row.def?.q === 'string' ? row.def.q : `row-${index}`;
+  return base;
+}
+
+function evidencePairIndexes(){
+  const indexes = [];
+  rowsBuilt.forEach((row, index)=>{
+    if(!row) return;
+    const hasContent = [row.isTA, row.notTA, row.distTA, row.chgTA].some(el=>el && el.value && el.value.trim());
+    if(hasContent){
+      indexes.push(index);
+    }
+  });
+  return indexes;
+}
+
+function serializeCauses(){
+  if(!Array.isArray(possibleCauses)) return [];
+  return possibleCauses.map(cause=>({
+    id: cause.id,
+    name: cause.name || '',
+    hypothesis: cause.hypothesis || '',
+    impact: cause.impact || '',
+    assumptions: cause.assumptions || '',
+    status: normalizeCauseStatus(cause.status),
+    editing: !!cause.editing,
+    findings: serializeFindings(cause.findings)
+  }));
+}
+
+function serializeFindings(map){
+  const out = {};
+  if(!map || typeof map !== 'object') return out;
+  Object.entries(map).forEach(([key, entry])=>{
+    const mode = findingMode(entry);
+    const note = findingNote(entry);
+    if(mode || note.trim()){
+      out[key] = { mode, note };
+    }
+  });
+  return out;
+}
+
+function deserializeCauses(list){
+  if(!Array.isArray(list)) return [];
+  return list.map(item=>{
+    const cause = createEmptyCause();
+    cause.id = typeof item?.id === 'string' ? item.id : createCauseId();
+    cause.name = typeof item?.name === 'string' ? item.name : '';
+    cause.hypothesis = typeof item?.hypothesis === 'string' ? item.hypothesis : '';
+    cause.impact = typeof item?.impact === 'string' ? item.impact : '';
+    cause.assumptions = typeof item?.assumptions === 'string' ? item.assumptions : '';
+    cause.status = normalizeCauseStatus(item?.status);
+    cause.editing = !!item?.editing;
+    cause.findings = deserializeFindings(item?.findings);
+    return cause;
+  });
+}
+
+function deserializeFindings(map){
+  const out = {};
+  if(!map || typeof map !== 'object') return out;
+  Object.entries(map).forEach(([key, entry])=>{
+    const mode = findingMode(entry);
+    const note = findingNote(entry);
+    if(mode || note.trim()){
+      out[key] = { mode, note };
+    }
+  });
+  return out;
+}
 let objectIS = null;     // first WHAT → IS
 let deviationIS = null;  // second WHAT → IS
 let objectISDirty = false;
