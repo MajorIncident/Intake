@@ -96,9 +96,6 @@ function wireSummaryEvents() {
   const summaryBtn = $('#genSummaryBtn');
   on(summaryBtn, 'click', () => generateSummary('summary', ''));
 
-  const aiPromptBtn = $('#commAIPromptBtn');
-  on(aiPromptBtn, 'click', () => generateSummary('summary', 'prompt preamble'));
-
   const aiSummaryBtn = $('#generateAiSummaryBtn');
   on(aiSummaryBtn, 'click', () => generateSummary('summary', 'ai summary'));
 }
