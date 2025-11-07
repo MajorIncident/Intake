@@ -15,6 +15,7 @@ This file applies to the entire repository unless a more specific `AGENTS.md` fi
 - **Impact fields:** Present impact-related inputs in vertically ordered sections that flow from high-level summaries to supporting details. Pair charts or key metrics with explanatory copy when applicable.
 - **Consistency:** Reuse component classes and utility styles for spacing, typography, and buttons. Favor semantic HTML elements (`<section>`, `<header>`, `<form>`, `<fieldset>`, etc.) to communicate structure clearly.
 - **Interactions:** Incorporate inline validation and helper text near the relevant fields. Keep calls-to-action concise and prominent within each card.
+- **JavaScript location:** All client-side logic now lives in `main.js`. Keep the `[rows]`, `[script:init]`, and other anchor comments intact within that file. Do not split the script into multiple modules until the Milestone 2.3 modularisation work lands.
 
 ## Styling
 - All shared CSS rules now live in `styles.css`. Add layout variables, component rules, and responsive tweaks there while leaving the `[styles]` anchor comment in `ktintake.html` intact.

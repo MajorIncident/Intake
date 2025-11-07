@@ -8,7 +8,7 @@ This file applies to `ktintake.html`. Follow these instructions when editing any
 
 - `[styles]` / `[vars]` – Global CSS variables and layout rules.
 - `[header]` & `[section:*]` – Visual cards for each workflow stage (bridge activation, problem summary, evidence, baseline/current, impact, communications, KT table, possible causes, steps, summary output).
-- `[script]` – Wraps all JavaScript.
+- `[script]` – References the external `main.js` file. The anchor comments still live there to segment logic.
   - `[rows]` – KT prompt definitions (`ROWS`).
   - `[script:table-build]` – Utilities that render and manage the KT IS/IS NOT table.
   - `[script:preface-refs]` & `[script:tokens]` – Helpers for shared field references and text-token replacement.
@@ -21,7 +21,7 @@ Preserve the order of these anchors. If you need a new section, duplicate the ex
 
 ## Editing Contract
 - Do **not** rename or delete anchor markers, tokens `{OBJECT}` or `{DEVIATION}`, or protected functions (`init()`, `initTable()`, `initStepsFeature()`, `generateSummary()`, `buildSummaryText()`).
-- Keep the single-file structure. Prefer incremental edits rather than wholesale rewrites.
+- Keep the single-file structure. Prefer incremental edits rather than wholesale rewrites. JavaScript lives in `main.js`; do not split it into additional modules until Milestone 2.3.
 - Document any significant behavioural changes in this file so future contributors know how to work within the contract.
 
 ## Data Structures
