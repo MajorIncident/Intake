@@ -167,6 +167,17 @@ fieldset.field legend{font-weight:700; margin-bottom:6px; font-size:14px; color:
   transition:border-color var(--speed), box-shadow var(--speed), background var(--speed);
 }
 .field textarea{min-height:140px; resize:vertical;}
+#oneLine,
+#proof,
+#objectPrefill,
+#healthy,
+#now,
+#impactNow,
+#impactFuture,
+#impactTime{
+  min-height:120px;
+  height:auto;
+}
 .field input[type="text"]{height:44px;}
 .field input[readonly]{background:#f4f6fb; color:#3b4962;}
 .field input[type="time"], .field select{
