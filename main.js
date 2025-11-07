@@ -15,6 +15,12 @@ import {
   generateSummary,
   setSummaryStateProvider
 } from './src/summary.js';
+import {
+  saveToStorage as persistStateToStorage,
+  restoreFromStorage as loadStateFromStorage,
+  serializeCauses,
+  deserializeCauses
+} from './src/storage.js';
 
 /* ROWS, CAUSE_FINDING_MODES, and step definitions are deep-frozen in src/constants.js. */
 
@@ -706,68 +712,6 @@ function focusFirstEditableCause(){
     }
   });
 }
-/**
- * Serialises possible causes for storage/export.
- * @returns {Array<object>} causes with normalized finding entries ready for persistence.
- */
-function serializeCauses(){
-  return possibleCauses.map(cause=>{
-    const findings = {};
-    if(cause.findings && typeof cause.findings === 'object'){
-      Object.keys(cause.findings).forEach(key=>{
-        const normalized = normalizeFindingEntry(cause.findings[key]);
-        const mode = findingMode(normalized);
-        const note = findingNote(normalized);
-        if(mode || note.trim()){
-          findings[key] = { mode, note };
-          cause.findings[key] = normalized;
-        }else{
-          delete cause.findings[key];
-        }
-      });
-    }
-    return {
-      id: cause.id || generateCauseId(),
-      suspect: cause.suspect || '',
-      accusation: cause.accusation || '',
-      impact: cause.impact || '',
-      findings,
-      editing: !!cause.editing,
-      testingOpen: !!cause.testingOpen
-    };
-  });
-}
-/**
- * Hydrates possible causes from stored JSON structures.
- * @param {Array<object>} rawList
- * @returns {Array<object>} cleaned cause objects safe for rendering.
- */
-function deserializeCauses(rawList){
-  if(!Array.isArray(rawList)) return [];
-  return rawList.map(raw=>{
-    const cause = {
-      id: typeof raw.id === 'string' ? raw.id : generateCauseId(),
-      suspect: typeof raw.suspect === 'string' ? raw.suspect : '',
-      accusation: typeof raw.accusation === 'string' ? raw.accusation : '',
-      impact: typeof raw.impact === 'string' ? raw.impact : '',
-      findings: {},
-      editing: !!raw.editing,
-      testingOpen: !!raw.testingOpen
-    };
-    if(raw && raw.findings && typeof raw.findings === 'object'){
-      Object.keys(raw.findings).forEach(key=>{
-        const normalized = normalizeFindingEntry(raw.findings[key]);
-        const mode = findingMode(normalized);
-        const note = findingNote(normalized);
-        if(mode || note.trim()){
-          cause.findings[key] = normalized;
-        }
-      });
-    }
-    return cause;
-  });
-}
-
 let objectIS = null;     // first WHAT → IS
 let deviationIS = null;  // second WHAT → IS
 let objectISDirty = false;
@@ -1816,7 +1760,6 @@ document.addEventListener('DOMContentLoaded', function(){
 /* localStorage persistence: serialises the ktIntake payload, cadence timers,
    possible causes, and steps data. Extend keys cautiously. */
 /* =================== Autosave =================== */
-const STORAGE_KEY='kt-intake-full-v2';
 function getContainmentStatus(){
   if(containMitigation?.checked) return 'mitigation';
   if(containRestore?.checked) return 'restore';
@@ -1854,14 +1797,14 @@ function saveToStorage(){
                  commNextDueIso:commNextDueIso||''
                },
                table:[],
-               causes: serializeCauses(),
+               causes: serializeCauses(possibleCauses),
                steps: exportStepsState() };
   [...tbody.querySelectorAll('tr')].forEach(tr=>{
     if(tr.classList.contains('band')){ data.table.push({band: tr.textContent.trim()}); return; }
     const t=tr.querySelectorAll('textarea');
     data.table.push({q: tr.querySelector('th').textContent.trim(), is:t[0].value, no:t[1].value, di:t[2].value, ch:t[3].value});
   });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  persistStateToStorage(data);
 }
 /**
  * Restores persisted state from localStorage and rehydrates form controls,
@@ -1869,8 +1812,8 @@ function saveToStorage(){
  * with saveToStorage() and document new keys in README/AGENTS.
  */
 function restoreFromStorage(){
-  const raw = localStorage.getItem(STORAGE_KEY); if(!raw) return;
-  const data = JSON.parse(raw);
+  const data = loadStateFromStorage();
+  if(!data) return;
   if(data.pre){
     oneLine.value=data.pre.oneLine||''; proof.value=data.pre.proof||'';
     objectPrefill.value=data.pre.objectPrefill||''; healthy.value=data.pre.healthy||'';
