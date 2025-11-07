@@ -1,5 +1,6 @@
 import { saveToStorage, restoreFromStorage } from './src/storage.js';
 import { initStepsFeature } from './src/steps.js';
+import { initCommsDrawer, toggleCommsDrawer, closeCommsDrawer } from './src/commsDrawer.js';
 import {
   configureKT,
   initTable,
@@ -68,6 +69,7 @@ function boot() {
   renderCauses();
 
   initPreface({ onSave: saveAppState });
+  initCommsDrawer();
   initializeCommunications({ onSave: saveAppState, showToast });
   initStepsFeature({ onSave: saveAppState, onLog: logCommunication });
 
@@ -101,9 +103,22 @@ function wireSummaryEvents() {
 }
 
 function wireCommsEvents() {
+  const commsBtn = $('#commsBtn');
+  const commsCloseBtn = $('#commsCloseBtn');
+  const commsBackdrop = $('#commsBackdrop');
+  on(commsBtn, 'click', toggleCommsDrawer);
+  on(commsCloseBtn, 'click', closeCommsDrawer);
+  on(commsBackdrop, 'click', closeCommsDrawer);
+
   const { internalBtn, externalBtn, logToggleBtn, nextUpdateInput, cadenceRadios } = getCommunicationElements();
-  on(internalBtn, 'click', () => logCommunication('internal'));
-  on(externalBtn, 'click', () => logCommunication('external'));
+  on(internalBtn, 'click', () => {
+    logCommunication('internal');
+    closeCommsDrawer();
+  });
+  on(externalBtn, 'click', () => {
+    logCommunication('external');
+    closeCommsDrawer();
+  });
   on(logToggleBtn, 'click', toggleLogVisibility);
   if (nextUpdateInput) {
     on(nextUpdateInput, 'change', event => setManualNextUpdate(event.target.value));
@@ -138,10 +153,19 @@ function wireKeyboardShortcuts() {
       case 'i':
         event.preventDefault();
         logCommunication('internal');
+        closeCommsDrawer();
         break;
       case 'e':
         event.preventDefault();
         logCommunication('external');
+        closeCommsDrawer();
+        break;
+      case 'c':
+        if (event.defaultPrevented) {
+          break;
+        }
+        event.preventDefault();
+        toggleCommsDrawer();
         break;
       case 'n':
         event.preventDefault();
