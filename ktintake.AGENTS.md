@@ -44,3 +44,7 @@ Preserve the order of these anchors. If you need a new section, duplicate the ex
 
 ## Sub-Guidelines
 New modules or major UI sections should be accompanied by their own `AGENTS.md` files placed in a dedicated directory. Those sub-guidelines will override instructions here for their scope—state the relationship clearly in each document.
+
+## Styling Updates
+- All CSS referenced by `ktintake.html` now lives in `styles.css`. When adjusting component spacing, typography, or responsive behaviour, update that stylesheet and keep the `[styles]` anchor comment in the HTML as a pointer only.
+- Maintain the variable definitions defined under `[vars]` and reuse established class names to avoid fragmenting the design system.

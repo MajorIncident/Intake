@@ -16,6 +16,10 @@ This file applies to the entire repository unless a more specific `AGENTS.md` fi
 - **Consistency:** Reuse component classes and utility styles for spacing, typography, and buttons. Favor semantic HTML elements (`<section>`, `<header>`, `<form>`, `<fieldset>`, etc.) to communicate structure clearly.
 - **Interactions:** Incorporate inline validation and helper text near the relevant fields. Keep calls-to-action concise and prominent within each card.
 
+## Styling
+- All shared CSS rules now live in `styles.css`. Add layout variables, component rules, and responsive tweaks there while leaving the `[styles]` anchor comment in `ktintake.html` intact.
+- Reuse the defined CSS variables (the `[vars]` block) and existing component classes before introducing new ones to uphold the Apple-like visual rhythm described above.
+
 ## Extending These Guidelines
 - Place any additional global conventions or tooling instructions in this root-level `AGENTS.md` file.
 - If a specific directory or feature needs specialized guidance, create a sub-`AGENTS.md` within that directory. Its instructions will override or extend these guidelines for files within its scope.
