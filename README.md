@@ -1,59 +1,66 @@
-# KT Intake
+# KT Intake – AI-Optimized Incident Analysis Template
 
-KT Intake is a zero-backend, single-file HTML and JavaScript application that guides incident responders through the Kepner‑Tregoe (KT) problem-analysis method and major-incident management. Open the `ktintake.html` file in a browser to step through a structured bridge activation workflow, capture findings, and produce a polished summary that can be pasted into ServiceNow tickets or similar incident systems.
+KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for rapid bridge facilitation, AI-assisted summaries, and resilient state restoration. The UI lives entirely in `ktintake.html`, while behaviour is organised into ES modules that mirror each major feature of the app.
 
-## Workflow overview
+## Quickstart
+- Clone or download this repository.
+- Open `ktintake.html` in any modern browser. No build step or server is required.
+- The page will load previous work from `localStorage` (key: `kt-intake-full-v2`) and is immediately ready for edits, summary generation, or AI prompt creation.
 
-The intake experience walks facilitators through every stage of a live incident bridge:
+## Entry Point & Boot Logic
+- `ktintake.html` declares the full UI layout and loads the JavaScript bundle via `<script type="module" src="main.js"></script>`.
+- `main.js` waits for `DOMContentLoaded`, then calls `boot()`. This bootstraps every feature in order:
+  1. Configure the KT table utilities (`configureKT`) with callbacks such as `autoResize`, `updatePrefaceTitles`, and `showToast`.
+  2. Initialise the preface, communications log, KT table, steps drawer, and possible-causes UI.
+  3. Wire the summary buttons and communication controls, plus Alt-key shortcuts for power users.
+  4. Restore any previous session from `localStorage` via `restoreFromStorage()` → `applyAppState()`.
+  5. Expose temporary global fallbacks (`window.onGenerateSummary`, etc.) so legacy bookmarks continue to work while modules take over.
 
-1. **Bridge Activation** – establish whether the major-incident bridge is running, log owners, and record reference numbers.
-2. **Problem Summary** – document the event headline, customer impact, and severity context.
-3. **Evidence & Object** – capture detection signals, object identifiers, and key observations.
-4. **Baseline vs. Current** – compare healthy metrics against current degraded behaviour.
-5. **Impact Details** – note containment status, mitigations, and affected regions.
-6. **Communication & Cadence** – track stakeholder updates, next communication deadlines, and the running log.
-7. **KT IS / IS NOT Analysis** – populate the canonical KT table with precise IS and IS NOT statements for each question.
-8. **Possible Causes** – brainstorm hypotheses, record testing modes, and mark findings against the KT evidence.
-9. **Incident Steps Checklist** – work through the predefined major-incident playbook and mark progress in the steps drawer.
-10. **Summary Export** – generate formatted summaries with or without AI prompt preambles for use in external systems.
+## Module Architecture
+| File | Purpose |
+| ---- | ------- |
+| `src/constants.js` | Deep-frozen config: KT table rows, phase metadata, finding modes, and step definitions. |
+| `src/storage.js` | Helpers that persist and hydrate the entire UI state under `kt-intake-full-v2`. |
+| `src/appState.js` | Collects and reapplies UI state across modules (`collectAppState`, `applyAppState`, `getSummaryState`). |
+| `src/preface.js` | Manages bridge activation fields, mirror sync, detection chips, and token updates for `{OBJECT}` / `{DEVIATION}`. |
+| `src/kt.js` | Builds the KT IS/IS NOT table, manages paired facts, possible causes, and related UI affordances. |
+| `src/steps.js` | Controls the incident checklist drawer, keyboard shortcuts, and completion metrics. |
+| `src/comms.js` | Handles comms logging, cadence timers, and restoring the communications pane. |
+| `src/summary.js` | Generates formatted summaries and AI prompts; exposes `generateSummary()` and state providers. |
+| `src/toast.js` | Minimal toast notification system used by comms and global alerts. |
+| `main.js` | Entry point that imports every module, wires shared events, and runs `boot()`. |
 
-All UI markup lives in `ktintake.html`, the JavaScript has been externalised to `main.js`, and styling is loaded from the companion `styles.css`, so no server, build step, or database is required.
+## Development Guidelines
+- Change only the module that owns the UI slice you are updating; avoid cross-module DOM mutations.
+- Use `src/constants.js` for shared enums or immutable data instead of duplicating literals.
+- When wiring new behaviour, export it from a module in `src/` and import it in `main.js`. `main.js` should stay focused on orchestration.
+- Preserve anchor comments in `ktintake.html` (e.g., `[styles]`, `[section:preface]`) so automation and documentation links remain stable.
+- Keep the UI accessible: reuse layout classes, maintain contrast, and follow the Apple-like spacing guidance in `AGENTS.md`.
 
-## Project structure
+## AI & Automation Notes
+- State helpers provide a stable integration surface:
+  ```js
+  import { collectAppState, applyAppState, getSummaryState } from './src/appState.js';
+  import { generateSummary } from './src/summary.js';
 
-| File | Description |
-| ---- | ----------- |
-| `ktintake.html` | The application markup. Anchor comments segment each major region and reference the external script. |
-| `main.js` | Extracted JavaScript module that handles UI logic, persistence helpers, and anchor markers ([rows], [script:init], etc.), importing immutable data from `src/constants.js`. |
-| `src/constants.js` | Centralises the frozen KT prompts, cause-finding enums, and incident-steps definitions via a shared deep-freeze helper. |
-| `styles.css` | Externalised stylesheet that holds all layout variables, component rules, and responsive tweaks referenced by `ktintake.html`. |
-| `AGENTS.md` | Root project guidelines that describe UI/UX principles and global contributor expectations. |
-| `ktintake.AGENTS.md` | Section-level editing rules specific to `ktintake.html`, detailing anchors, invariants, and how to extend the intake flow. |
+  const snapshot = collectAppState();
+  // ... mutate the DOM, then roll everything back
+  applyAppState(snapshot);
 
-## Usage
+  // Produce a formatted narrative or AI prompt
+  generateSummary('summary', 'prompt preamble');
+  ```
+- `collectAppState()` serialises the entire UI and should be called before tests mutate the DOM.
+- `applyAppState()` rehydrates the UI, letting Playwright/Cypress tests verify round trips without manual input.
+- `getSummaryState()` is injected into the summary module so assertions can compare the most recent export.
+- The KT table exposes `configureKT()` to register callbacks. Pass only the dependencies your module needs; avoid hidden globals.
 
-1. **Open the file** – download or clone the repository and open `ktintake.html` directly in any modern desktop browser.
-2. **Bridge activation** – capture bridge state, lead contacts, and ticket identifiers at the top of the page.
-3. **Problem summary** – fill in the narrative headline, severity, and initial impact scope.
-4. **Detection & evidence chips** – toggle the detection chips to log which monitors alerted the team and add free-form evidence notes.
-5. **Baseline vs. current** – use the baseline/current grid to compare pre-incident metrics, states, or behaviours against current readings.
-6. **Containment status** – choose the containment radio option that matches the incident’s state and add mitigation details as needed.
-7. **Communication tracking** – enter cadence targets, log stakeholders, and use the communication log to timestamp outbound updates. The cadence timer will highlight when the next update is due.
-8. **KT table** – populate each IS / IS NOT field in the Kepner‑Tregoe table. Tokens such as `{OBJECT}` and `{DEVIATION}` auto-fill based on earlier fields.
-9. **Possible causes** – add cards for each hypothesis, record supporting and disproving evidence, track assumption tests, and mark results with the finding chips.
-10. **Steps checklist** – open the “Incident Steps” drawer to work through the pre-defined major-incident checklist and record progress for later export.
-11. **Summary export** – click “Generate Summary” to create a ServiceNow-ready narrative, or “Generate AI Prompt” to include the AI preamble. The text is copied to the clipboard and surfaced in the summary card for manual copying if clipboard access is blocked.
+## Testing & QA
+- Manual regression: open `ktintake.html`, fill representative data, click **Generate Summary**, then refresh to ensure state persistence.
+- Automated harnesses should use `collectAppState()` / `applyAppState()` for reliable snapshots and `generateSummary()` for output verification.
+- Future end-to-end tests will live in Playwright/Cypress suites once introduced; keep module boundaries clean to simplify that work.
 
-All inputs auto-save to `localStorage`; closing and reopening the page restores the last captured state.
-
-## Contributing
-
-- Review the root `AGENTS.md` for the UI/UX philosophy (Apple-like spacing, typography hierarchy, progressive disclosure, and accessible contrast) before proposing changes.
-- Read `ktintake.AGENTS.md` to understand the editing contract. Preserve anchors such as `[styles]`, `[rows]`, and `[script:init]`, and never rename tokens like `{OBJECT}` or `{DEVIATION}`. All JavaScript edits should now be made in `main.js` while keeping those anchors intact.
-- The `ROWS` and `STEP_DEFINITIONS` collections now live in `src/constants.js`, which deep-freezes all immutable data. Treat them as protected data and request approval before altering them.
-- When introducing new features, add helper text, storage keys, and summary-output handling alongside the UI changes. Document any specialised rules in additional sub-`AGENTS.md` files within new directories or modules.
-- Add or adjust visual styling in `styles.css` rather than embedding new rules directly inside `ktintake.html`; reuse existing variables and component classes to keep the UI consistent.
-
-## Future work
-
-Milestone 2 and beyond will focus on modularising the single file into reusable components, formalising the data layer, and introducing automated tests. JavaScript remains consolidated in `main.js` until Milestone 2.3, when deeper modularisation will begin. Those changes will happen after the documentation and contributor guardrails from this milestone are in place.
+## Additional Documentation
+- See `AGENTS.md` for global UI principles, module isolation rules, and contribution contracts.
+- Refer to `ktintake.AGENTS.md` when altering the HTML structure; it documents anchor expectations and storage invariants.
+- For AI-specific onboarding notes, including module extension patterns, read `docs/AI-ONBOARDING.md`.

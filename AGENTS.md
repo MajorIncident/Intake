@@ -9,33 +9,38 @@ This file applies to the entire repository unless a more specific `AGENTS.md` fi
 - **Progressive disclosure:** Reveal information and advanced inputs gradually. Present primary actions and essential fields first, and defer complex or optional inputs to expandable sections or secondary cards.
 - **Accessible contrast and feedback:** Ensure sufficient color contrast, provide clear focus states, and pair iconography with text labels so interactions remain inclusive.
 
-## Coding Conventions for `ktintake.html`
-- **Section structure:** Split the intake experience into concise cards or panels. Each card should focus on a single topic (e.g., contact details, project scope, impact metrics) to reduce cognitive load.
-- **Layout patterns:** Use vertical stacking for form fields to emphasize the importance of each input. Group related fields with headings or subheadings, and align labels consistently on the left.
-- **Impact fields:** Present impact-related inputs in vertically ordered sections that flow from high-level summaries to supporting details. Pair charts or key metrics with explanatory copy when applicable.
-- **Consistency:** Reuse component classes and utility styles for spacing, typography, and buttons. Favor semantic HTML elements (`<section>`, `<header>`, `<form>`, `<fieldset>`, etc.) to communicate structure clearly.
-- **Interactions:** Incorporate inline validation and helper text near the relevant fields. Keep calls-to-action concise and prominent within each card.
-- **JavaScript location:** All client-side logic now lives in `main.js`. Keep the `[rows]`, `[script:init]`, and other anchor comments intact within that file. Do not split the script into multiple modules until the Milestone 2.3 modularisation work lands.
+## Modular JavaScript Architecture
+- All runtime logic is organised into ES modules inside `src/`. Each module owns its DOM queries, event listeners, and state helpers for a single feature area (preface, KT table, comms, steps, etc.).
+- `main.js` is the orchestration entry point. It should only import modules, run `boot()`, and wire shared events. Do not place feature-specific code directly in `main.js` unless you are connecting a brand-new module.
+- When introducing new behaviour, create a module in `src/` and export only what is required. Import that module in `main.js` (or a sibling module) to keep responsibilities isolated.
+- Reuse exports from existing modules instead of duplicating functionality. For shared config, extend `src/constants.js` so enums remain centralised and deep-frozen.
+- Preserve the localStorage contract: all state persists under the key `kt-intake-full-v2`. Use the helpers from `src/storage.js` and `src/appState.js` (`collectAppState`, `applyAppState`, `getSummaryState`).
+- Example pattern for AI agents and tests:
+  ```js
+  import { collectAppState, applyAppState } from './src/appState.js';
+  import { generateSummary } from './src/summary.js';
+
+  const before = collectAppState();
+  // ...simulate changes...
+  generateSummary('summary', 'prompt preamble');
+  applyAppState(before);
+  ```
+- Keep modules free from cross-feature DOM edits. If two features must collaborate, share callbacks or data through `appState`, not ad-hoc selectors.
 
 ## Styling
-- All shared CSS rules now live in `styles.css`. Add layout variables, component rules, and responsive tweaks there while leaving the `[styles]` anchor comment in `ktintake.html` intact.
+- All shared CSS rules live in `styles.css`. Add layout variables, component rules, and responsive tweaks there while keeping the `[styles]` anchor comment in `ktintake.html` intact.
 - Reuse the defined CSS variables (the `[vars]` block) and existing component classes before introducing new ones to uphold the Apple-like visual rhythm described above.
-
-## Extending These Guidelines
-- Place any additional global conventions or tooling instructions in this root-level `AGENTS.md` file.
-- If a specific directory or feature needs specialized guidance, create a sub-`AGENTS.md` within that directory. Its instructions will override or extend these guidelines for files within its scope.
-- Document the intent and scope clearly at the top of any new `AGENTS.md` so future contributors understand where and how to apply it.
 
 ## Editing Contract & Protected Elements
 - **Anchors & tokens:** `ktintake.html` is segmented by anchors such as `[styles]`, `[rows]`, `[script:init]`, and `[script:storage]`. Keep every anchor marker intact and insert changes inside the appropriate region. Never rename or delete tokens including `{OBJECT}` and `{DEVIATION}`.
-- **Protected data:** Treat the `ROWS` array (KT prompts) and the `STEP_DEFINITIONS` array (incident playbook checklist) as immutable without project owner approval. They now live in `src/constants.js`, are deep-frozen, and underpin the entire workflow via shared imports.
-- **Function invariants:** Core lifecycle helpers—`init()`, `initTable()`, `initStepsFeature()`, `generateSummary()`, and `buildSummaryText()`—must retain their names and responsibilities. Extend behaviour via internal helpers rather than renaming or removing these entry points.
+- **Protected data:** `ROWS`, `STEP_DEFINITIONS`, and the other immutable collections in `src/constants.js` underpin the entire workflow. Extend them thoughtfully and document any changes in a scoped `AGENTS.md`.
+- **Function invariants:** Core lifecycle helpers—`boot()`, `configureKT()`, `initTable()`, `initStepsFeature()`, `generateSummary()`, and `buildSummaryText()`—must retain their names and responsibilities. Extend behaviour via internal helpers rather than renaming or removing these entry points.
 
 ## Feature & Summary Extensions
-- **UI additions:** Pair any new inputs with descriptive labels, helper text, and sensible storage keys. Follow the Apple-like spacing guidance above and prefer semantic HTML elements.
-- **Persistence:** When storing new data, extend the existing `saveToStorage()` / `restoreFromStorage()` schema and document the change in a sub-`AGENTS.md`.
-- **Summary output:** Ensure new data appears in generated summaries by updating `buildSummaryText()` and helper formatters (e.g., `formatPossibleCausesSummary()`). Match the tone, ordering, and bullet structure already used.
+- **UI additions:** Pair any new inputs with descriptive labels, helper text, and sensible storage keys. Follow the spacing guidance above and prefer semantic HTML elements.
+- **Persistence:** When storing new data, extend the existing collectors in `src/appState.js` and `src/storage.js`. Document schema changes in module-level comments or scoped `AGENTS.md` files.
+- **Summary output:** Update `buildSummaryText()` and helper formatters (e.g., `formatPossibleCausesSummary()`) when introducing new captured data. Match the tone, ordering, and bullet structure already used.
 
 ## Using Sub-Guidelines
 - Specialized editing rules for `ktintake.html` live in `ktintake.AGENTS.md`. Review that file before modifying the intake page.
-- If you introduce new modules or directories, include a scoped `AGENTS.md` that clarifies local conventions and how they interact with the global contract above.
+- If you introduce new modules or directories, include a scoped `AGENTS.md` that clarifies local conventions and how they interact with the global contract above. State the intent and scope at the top of each document so future contributors understand its coverage.
