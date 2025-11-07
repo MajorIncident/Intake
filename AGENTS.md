@@ -28,11 +28,11 @@ This file applies to the entire repository unless a more specific `AGENTS.md` fi
 - Keep modules free from cross-feature DOM edits. If two features must collaborate, share callbacks or data through `appState`, not ad-hoc selectors.
 
 ## Styling
-- All shared CSS rules live in `styles.css`. Add layout variables, component rules, and responsive tweaks there while keeping the `[styles]` anchor comment in `ktintake.html` intact.
+- All shared CSS rules live in `styles.css`. Add layout variables, component rules, and responsive tweaks there while keeping the `[styles]` anchor comment in `index.html` intact.
 - Reuse the defined CSS variables (the `[vars]` block) and existing component classes before introducing new ones to uphold the Apple-like visual rhythm described above.
 
 ## Editing Contract & Protected Elements
-- **Anchors & tokens:** `ktintake.html` is segmented by anchors such as `[styles]`, `[rows]`, `[script:init]`, and `[script:storage]`. Keep every anchor marker intact and insert changes inside the appropriate region. Never rename or delete tokens including `{OBJECT}` and `{DEVIATION}`.
+- **Anchors & tokens:** `index.html` is segmented by anchors such as `[styles]`, `[rows]`, `[script:init]`, and `[script:storage]`. Keep every anchor marker intact and insert changes inside the appropriate region. Never rename or delete tokens including `{OBJECT}` and `{DEVIATION}`.
 - **Protected data:** `ROWS`, `STEP_DEFINITIONS`, and the other immutable collections in `src/constants.js` underpin the entire workflow. Extend them thoughtfully and document any changes in a scoped `AGENTS.md`.
 - **Function invariants:** Core lifecycle helpers—`boot()`, `configureKT()`, `initTable()`, `initStepsFeature()`, `generateSummary()`, and `buildSummaryText()`—must retain their names and responsibilities. Extend behaviour via internal helpers rather than renaming or removing these entry points.
 
@@ -42,5 +42,5 @@ This file applies to the entire repository unless a more specific `AGENTS.md` fi
 - **Summary output:** Update `buildSummaryText()` and helper formatters (e.g., `formatPossibleCausesSummary()`) when introducing new captured data. Match the tone, ordering, and bullet structure already used.
 
 ## Using Sub-Guidelines
-- Specialized editing rules for `ktintake.html` live in `ktintake.AGENTS.md`. Review that file before modifying the intake page.
+- Specialized editing rules for `index.html` live in `index.AGENTS.md`. Review that file before modifying the intake page.
 - If you introduce new modules or directories, include a scoped `AGENTS.md` that clarifies local conventions and how they interact with the global contract above. State the intent and scope at the top of each document so future contributors understand its coverage.
