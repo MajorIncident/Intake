@@ -11,6 +11,10 @@ import {
   STEPS_PHASES,
   STEP_DEFINITIONS
 } from './src/constants.js';
+import {
+  generateSummary,
+  setSummaryStateProvider
+} from './src/summary.js';
 
 /* ROWS, CAUSE_FINDING_MODES, and step definitions are deep-frozen in src/constants.js. */
 
@@ -1725,463 +1729,59 @@ function init(){
 /* =================== Summary Export (executive style, chat-friendly) =================== */
 /* Generates formatted summaries for ServiceNow/AI prompts. See README.md and
    ktintake.AGENTS.md when extending to keep ordering & tone aligned. */
-
-function ensureSummaryCard(){
-  let card = document.getElementById('summaryCard');
-  if(!card){
-    const wrap = document.querySelector('.wrap');
-    card = document.createElement('div');
-    card.className = 'card';
-    card.id = 'summaryCard';
-    const h = document.createElement('h3'); h.textContent = 'Copy & Paste Summary';
-    const pre = document.createElement('pre'); pre.id='summaryPre'; pre.style.whiteSpace='pre-wrap'; pre.style.font='13px/1.6 monospace'; pre.style.margin='0';
-    card.appendChild(h); card.appendChild(pre);
-    wrap.appendChild(card);
-  }
-  return card;
+function getSummaryState(){
+  return {
+    docTitle,
+    docSubtitle,
+    oneLine,
+    proof,
+    objectPrefill,
+    objectIS,
+    healthy,
+    now,
+    detectMonitoring,
+    detectUserReport,
+    detectAutomation,
+    detectOther,
+    evScreenshot,
+    evLogs,
+    evMetrics,
+    evRepro,
+    evOther,
+    impactNow,
+    impactFuture,
+    impactTime,
+    containDesc,
+    bridgeOpenedUtc,
+    icName,
+    bcName,
+    semOpsName,
+    severity,
+    commNextUpdateTime,
+    getContainmentStatus,
+    commLog,
+    commNextDueIso,
+    stepsItems,
+    getStepsCounts,
+    possibleCauses,
+    buildHypothesisSentence,
+    causeStatusLabel,
+    causeHasFailure,
+    countCauseAssumptions,
+    evidencePairIndexes,
+    countCompletedEvidence,
+    getRowKeyByIndex,
+    rowsBuilt,
+    peekCauseFinding,
+    findingMode,
+    findingNote,
+    fillTokens,
+    tbody,
+    showToast
+  };
 }
 
-// Normalize user text into a single logical string for table cells (we’ll wrap visually in the table).
-function inlineText(s){
-  const v=(s||'').trim();
-  if(!v) return '—';
-  return v
-    .split(/\r?\n/)
-    .map(x=>x.trim())
-    .filter(Boolean)
-    .join(' · ');
-}
-
-function inlineSummaryText(s){
-  const lines = splitLines(s);
-  if(!lines.length) return '';
-  return lines.join(' · ');
-}
-
-function summaryLine(label, value){
-  const text = inlineSummaryText(value);
-  if(!text) return '';
-  return `${label}: ${text}`;
-}
-
-function summaryLineRaw(label, value){
-  const text = (value||'').trim();
-  if(!text) return '';
-  return `${label}: ${text}`;
-}
-
-function summaryBullet(label, value){
-  const text = inlineSummaryText(value);
-  if(!text) return '';
-  return `• ${label}: ${text}`;
-}
-
-function summaryBulletRaw(label, value){
-  const text = (value||'').trim();
-  if(!text) return '';
-  return `• ${label}: ${text}`;
-}
-
-function joinSummaryLines(lines){
-  return lines.filter(line=>line && line.trim().length).join('\n');
-}
-
-function splitLines(text){
-  const v=(text||'').trim();
-  if(!v) return [];
-  return v.split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
-}
-
-function formatLabeledList(label, lines){
-  if(!lines.length) return '';
-  if(lines.length === 1) return `${label}: ${lines[0]}`;
-  const bullets = lines.map(line=>`  • ${line}`).join('\n');
-  return `${label}:\n${bullets}`;
-}
-
-function formatDistinctionChanges(distLines, changeLines){
-  const len = Math.max(distLines.length, changeLines.length);
-  if(len === 0) return '';
-  if(len === 1){
-    const left = distLines[0] || '—';
-    const right = changeLines[0] || '—';
-    return `Distinctions → Changes: ${left} → ${right}`;
-  }
-  const pairs = [];
-  for(let i=0;i<len;i++){
-    const left = distLines[i] || '—';
-    const right = changeLines[i] || '—';
-    pairs.push(`  • ${left} → ${right}`);
-  }
-  return ['Distinctions → Changes:', ...pairs].join('\n');
-}
-
-function formatChipsetSelections(list){
-  const selected = list.filter(item=>item.el?.checked).map(item=>item.label);
-  return selected.length ? selected.join(', ') : '';
-}
-
-function containmentStatusText(){
-  const status = getContainmentStatus();
-  if(status==='mitigation') return 'Temporary mitigation applied';
-  if(status==='restore') return 'Full restoration in progress';
-  if(status==='none') return 'No action yet';
-  return '';
-}
-
-function latestCommEntry(type){
-  if(!Array.isArray(commLog)) return null;
-  return commLog.find(entry=>entry && entry.type === type && entry.ts);
-}
-
-function formatCommTimestamp(ts){
-  if(!ts) return '';
-  const d = new Date(ts);
-  if(Number.isNaN(d.valueOf())) return ts;
-  return d.toISOString();
-}
-
-function formatCommSummaryLine(type, label){
-  const entry = latestCommEntry(type);
-  if(!entry) return '';
-  const ts = formatCommTimestamp(entry.ts);
-  return ts ? `${label}: ${ts}` : '';
-}
-
-function nextUpdateSummaryLine(){
-  if(commNextDueIso){
-    const d = new Date(commNextDueIso);
-    if(!Number.isNaN(d.valueOf())){
-      return `Next Update: ${d.toISOString()}`;
-    }
-    return `Next Update: ${commNextDueIso}`;
-  }
-  if(commNextUpdateTime?.value){
-    return `Next Update: ${commNextUpdateTime.value}`;
-  }
-  return '';
-}
-
-function causeProgressSummary(cause){
-  const eligibleIndexes = evidencePairIndexes();
-  const total = eligibleIndexes.length;
-  if(total === 0) return 'No KT evidence pairs captured yet';
-  const answered = countCompletedEvidence(cause, eligibleIndexes);
-  if(causeHasFailure(cause)){
-    return `${answered}/${total} evidence checks • Failed on at least one check`;
-  }
-  return `${answered}/${total} evidence checks complete`;
-}
-
-function formatCauseFindingsSummary(cause){
-  if(!cause || !cause.findings) return '';
-  const eligibleIndexes = evidencePairIndexes();
-  if(!eligibleIndexes.length) return '';
-  const sections = [];
-  eligibleIndexes.forEach(index=>{
-    const row = rowsBuilt[index];
-    const key = getRowKeyByIndex(index);
-    const entry = peekCauseFinding(cause, key);
-    if(!entry) return;
-    const mode = findingMode(entry);
-    const note = findingNote(entry);
-    if(!mode && !note.trim()) return;
-    const label = row?.th?.textContent?.trim() || fillTokens(row?.def?.q || `Row ${index+1}`);
-    const lines = [`  • ${label}`];
-    if(mode === CAUSE_FINDING_MODES.ASSUMPTION){
-      lines.push(`    - Assumptions needed: ${inlineText(note)}`);
-    }else if(mode === CAUSE_FINDING_MODES.YES){
-      lines.push(`    - Explains evidence: ${inlineText(note)}`);
-    }else if(mode === CAUSE_FINDING_MODES.FAIL){
-      lines.push(`    - Fails because: ${inlineText(note)}`);
-    }else if(note.trim()){
-      lines.push(`    - Notes: ${inlineText(note)}`);
-    }
-    sections.push(lines.join('\n'));
-  });
-  return sections.length ? ['Evidence walkthrough:', ...sections].join('\n') : '';
-}
-
-function formatPossibleCausesSummary(){
-  if(!possibleCauses.length){
-    return 'No possible causes captured.';
-  }
-  const blocks = possibleCauses.map((cause, index)=>{
-    const header = `• Possible Cause ${index+1}: ${buildHypothesisSentence(cause)}`;
-    const status = `  Status: ${causeStatusLabel(cause)}`;
-    const progress = `  Progress: ${causeProgressSummary(cause)}`;
-    const failureLine = causeHasFailure(cause) ? '  Result: Failed testing on at least one evidence check' : '';
-    const assumptionCount = countCauseAssumptions(cause);
-    const assumptionLine = assumptionCount ? `  Assumptions noted: ${assumptionCount}` : '';
-    const evidence = formatCauseFindingsSummary(cause);
-    return [header, status, progress, failureLine, assumptionLine, evidence].filter(Boolean).join('\n');
-  });
-  return blocks.join('\n\n');
-}
-
-function formatStepsSummary(){
-  if(!Array.isArray(stepsItems) || !stepsItems.length) return '';
-  const { total, completed } = getStepsCounts();
-  const lines = [`Completed: ${completed}/${total}`];
-  const open = stepsItems.filter(step=>!step.checked);
-  if(open.length){
-    lines.push('Open Items:');
-    open.forEach(step=>{
-      lines.push(`  • Step ${step.id} — ${step.label}`);
-    });
-  }
-  return lines.join('\n');
-}
-
-/* ---------- Executive summary builder ---------- */
-/**
- * Compiles the human-readable incident summary using current field values.
- * Respects section order shown in the UI so ServiceNow output matches the
- * facilitator workflow. See README.md and ktintake.AGENTS.md for formatting
- * expectations when extending the output.
- */
-function buildSummaryText(){
-  const title = document.getElementById('docTitle').textContent.trim();
-  const subtitle = document.getElementById('docSubtitle').textContent.trim();
-
-  const detectionSummary = formatChipsetSelections([
-    {el: detectMonitoring, label: 'Monitoring'},
-    {el: detectUserReport, label: 'User Report'},
-    {el: detectAutomation, label: 'Automation'},
-    {el: detectOther, label: 'Other'}
-  ]);
-
-  const evidenceSummary = formatChipsetSelections([
-    {el: evScreenshot, label: 'Screenshot'},
-    {el: evLogs, label: 'Logs'},
-    {el: evMetrics, label: 'Metrics'},
-    {el: evRepro, label: 'Repro'},
-    {el: evOther, label: 'Other'}
-  ]);
-
-  // === Preface (inline answers) ===
-  const prefaceLines = [
-    summaryBullet('One-line', oneLine.value),
-    summaryBullet('Evidence/Proof', proof.value),
-    summaryBullet('Specific Object', objectPrefill.value || (objectIS?.value||'')),
-    summaryBullet('Healthy Baseline', healthy.value),
-    summaryBullet('Current State (What is happening now?)', now.value),
-    summaryBulletRaw('Detection Source', detectionSummary),
-    summaryBulletRaw('Evidence Collected', evidenceSummary)
-  ];
-  const preface = joinSummaryLines(prefaceLines);
-
-  // === Impact (inline answers) ===
-  const impactLines = [
-    summaryLine('Current Impact', impactNow.value),
-    summaryLine('Future Impact', impactFuture.value),
-    summaryLine('Timeframe', impactTime.value)
-  ];
-  const imp = joinSummaryLines(impactLines);
-
-  const containmentLines = [
-    summaryLineRaw('Status', containmentStatusText()),
-    summaryLine('Description', containDesc?.value)
-  ];
-  const containment = joinSummaryLines(containmentLines);
-
-  const communications = joinSummaryLines([
-    formatCommSummaryLine('internal', 'Last Internal Update'),
-    formatCommSummaryLine('external', 'Last External Update'),
-    nextUpdateSummaryLine()
-  ]);
-
-  // === KT Table as chat-friendly blocks per question ===
-  const rowsOut = [];
-  let pendingBand = '';
-
-  [...tbody.querySelectorAll('tr')].forEach(tr=>{
-    if(tr.classList.contains('band')){
-      pendingBand = `== ${tr.textContent.trim()} ==`;
-      return;
-    }
-    const q = tr.querySelector('th').textContent.trim();
-    const t = tr.querySelectorAll('textarea');
-    const isLines = splitLines(t[0].value);
-    const notLines = splitLines(t[1].value);
-    const distLines = splitLines(t[2].value);
-    const changeLines = splitLines(t[3].value);
-
-    // Question header
-    const sections = [
-      formatLabeledList('IS', isLines),
-      formatLabeledList('IS NOT', notLines),
-      formatDistinctionChanges(distLines, changeLines)
-    ].filter(Boolean);
-    if(!sections.length) return;
-    if(pendingBand){
-      rowsOut.push(pendingBand);
-      pendingBand = '';
-    }
-    rowsOut.push(`Q: ${q}`);
-    sections.forEach(section=>rowsOut.push(section));
-  });
-
-  const ktOut = rowsOut.filter(line=>line && line.trim().length).join('\n\n');
-
-  // === Compose (minimal blank lines between major sections) ===
-  const sectionsOut = [];
-  if(title.trim()){ sectionsOut.push(title.trim()); }
-  if(subtitle.trim()){ sectionsOut.push(subtitle.trim()); }
-  function pushSection(label, body){
-    const content = (body||'').trim();
-    if(!content) return;
-    if(sectionsOut.length){ sectionsOut.push(''); }
-    sectionsOut.push(label);
-    sectionsOut.push(content);
-  }
-
-  const bridgeLines = [
-    summaryLineRaw('Bridge Opened (UTC)', bridgeOpenedUtc?.value),
-    summaryLineRaw('Incident Commander', icName?.value),
-    summaryLineRaw('Bridge Coordinator', bcName?.value),
-    summaryLineRaw('SEM/Ops Lead', semOpsName?.value),
-    summaryLineRaw('Severity', severity?.value)
-  ];
-  const bridge = joinSummaryLines(bridgeLines);
-
-  pushSection('— Bridge Activation —', bridge);
-  pushSection('— Preface —', preface);
-  pushSection('— Containment —', containment);
-  pushSection('— Impact —', imp);
-  pushSection('— Communications —', communications);
-  const stepsSummary = formatStepsSummary();
-  if(stepsSummary.trim().length){
-    pushSection('— Steps Checklist —', stepsSummary);
-  }
-  const causes = formatPossibleCausesSummary();
-  if(causes.trim().length){
-    pushSection('— Possible Causes —', causes);
-  }
-  if(ktOut.trim().length){
-    pushSection('— KT IS / IS NOT —', ktOut);
-  }
-
-  return sectionsOut.join('\n');
-}
-
-
-
-const PROMPT_PREAMBLE = `You are ChatGPT acting as an incident communications specialist.
-Following NIST SP 800-61, ISO/IEC 27035, and ITIL major incident best practices, craft two communication log entries:
-one for internal stakeholders and one for external customers.
-Each entry should include recommended tone, key talking points, risk framing, and next steps.
-Use the incident context below to tailor the guidance.`;
-
-/**
- * Unified summary generator. Builds summary text (standard or AI prompt),
- * attempts to copy it to the clipboard, and updates the on-page summary card
- * for manual fallback. See README.md and ktintake.AGENTS.md for workflow context.
- * @param {string} kind   - e.g., "summary" (reserved for extensibility)
- * @param {string} aiType - descriptive label used for AI prompt variants.
- */
-async function generateSummary(kind='summary', aiType=''){
-  void kind; // reserved for future use
-
-  const baseText = buildSummaryText();
-
-  let output = baseText;
-  const normalizedType = typeof aiType === 'string' ? aiType.trim().toLowerCase() : '';
-  if(normalizedType === 'ai summary'){
-    const expertPrefix = `You are an expert in:
-
-Incident Management (ITIL 4, ISO 20000-1, ISO 27001)
-
-Major Incident communication (NIST SP 800-61 emergency comms best practices)
-
-Kepner-Tregoe Situation Appraisal and IS / IS NOT problem analysis
-
-Executive communication (clear, concise, jargon-free)
-
-Your task is to take the information I paste after this prompt and produce two separate communication messages:
-
-✅ Output #1 — INTERNAL COMMUNICATION UPDATE (for leadership & technical teams)
-
-Audience: internal — executives, stakeholders, engineering teams
-Goal: alignment and clarity on what is known / unknown / next steps
-
-Format using these headings:
-
-Incident Name / Reference ID:
-Current Status: (e.g., Major Incident Active – Priority 1)
-Situation Appraisal (KT format):
-
-Concerns / issues identified
-
-Priorities (what should be worked on first and why)
-
-IS / IS NOT Analysis (KT format):
-
-IS: (confirmed facts)
-
-IS NOT: (ruled out variables)
-
-What we know / What we don’t know yet:
-Immediate actions taken:
-Next steps / owners / ETAs:
-Decision / ask for leadership: (if relevant)
-Planned internal update cadence: (e.g., every 30 mins)
-
-Keep the tone concise, factual, non-emotional. Avoid speculation and blame.
-
-✅ Output #2 — EXTERNAL COMMUNICATION UPDATE (for customers / business users)
-
-Audience: external — end users, customers, executives
-Goal: confidence, clarity, and reduced anxiety — without technical noise
-
-Format using these headings:
-
-Status: (plain language, no acronyms)
-Impact: (what users experience, scope of impact)
-What we are doing: (reassurance + action)
-What you need to do: (if anything)
-Next update: (time commitment)
-
-Follow these rules:
-
-Do not include internal details or root cause speculation.
-
-Be plain language. Example: instead of "database replication latency," say "our systems are not syncing data correctly."
-
-Keep the update short, calm, and confident.
-
-Tone guideline:
-
-“Clear, factual, and reassuring.”
-
-When generating both updates:
-
-✔ Apply KT thinking (no assumptions — separate Known vs. Unknown)
-✔ Apply ITIL/ISO/NIST best practices (clarity, ownership, cadence, impact)
-✔ Prioritize accuracy > completeness
-
-I will paste all the known information next. Analyze it and reply with the two formatted communications. Do not ask clarifying questions; make reasonable assumptions and proceed.`;
-    output = `${expertPrefix}\n\n${baseText}`;
-  }else if(normalizedType === 'prompt preamble'){
-    output = `${PROMPT_PREAMBLE}\n\n${baseText}`;
-  }
-
-  const card = ensureSummaryCard();
-  const pre = document.getElementById('summaryPre');
-  if(pre){ pre.textContent = output; }
-  if(card){ card.style.display = 'block'; }
-
-  try{
-    if(window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText){
-      await navigator.clipboard.writeText(output);
-      if(typeof showToast==='function'){ showToast('Summary updated & copied. It’s also shown below.'); }
-    }else{
-      if(typeof showToast==='function'){ showToast('Summary updated. Clipboard blocked — copy it from the bottom.'); }
-    }
-  }catch(_){
-    if(typeof showToast==='function'){ showToast('Summary updated. Clipboard blocked — copy it from the bottom.'); }
-  }
-}
+setSummaryStateProvider(getSummaryState);
 
 async function runSummaryFlow({usePromptPreamble=false}={}){
   const aiType = usePromptPreamble ? 'prompt preamble' : '';
@@ -2195,6 +1795,10 @@ async function onGenerateSummary(){
 async function onGenerateAIPrompt(){
   return generateSummary('summary', 'prompt preamble');
 }
+
+window.onGenerateSummary = onGenerateSummary;
+window.onGenerateAIPrompt = onGenerateAIPrompt;
+window.onGenerateAISummary = () => generateSummary('summary', 'ai summary');
 
 document.addEventListener('DOMContentLoaded', function(){
   init();
