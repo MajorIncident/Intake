@@ -13,7 +13,7 @@
   /* Layout */
   --qcol-w:10.5rem;     /* narrow KT Question column */
   --ta-fs:15px;         /* textarea font size */
-  --ta-min-h:380px;     /* taller by default */
+  --ta-min-h:190px;     /* taller by default */
   --radius:14px;
   --shadow:0 8px 24px rgba(12,18,32,.08), 0 1px 0 rgba(255,255,255,.6) inset;
   --speed:.22s;
