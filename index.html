@@ -44,6 +44,10 @@ Anchors present:
       <h1 id="docTitle">KT Intake</h1>
     </div>
     <div class="header-actions">
+      <button type="button" class="steps-button" id="commsBtn" aria-haspopup="dialog" aria-controls="commsDrawer" aria-expanded="false">
+        <span>Comms</span>
+        <span class="shortcut">Alt+C</span>
+      </button>
       <button type="button" class="steps-button" id="stepsBtn" aria-haspopup="dialog" aria-controls="stepsDrawer" aria-expanded="false">
         <span>Steps</span>
         <span class="shortcut">Alt+S</span>
@@ -55,45 +59,10 @@ Anchors present:
   <!-- [header] end -->
 
   <div class="wrap">
-    <!-- Preface cards: bridge activation, summary headline, and detection inputs. -->
+    <!-- Preface cards: summary headline, detection inputs, and baseline. Bridge activation fields now live in the Comms drawer. -->
     <!-- [section:preface] start -->
     <section class="preface-stack">
-      <div class="card">
-        <h3>Bridge Activation</h3>
-        <p class="caption">Capture only what’s needed to activate the bridge and set comms cadence.</p>
-        <div class="grid cols-3">
-          <div class="field">
-            <label for="bridgeOpenedUtc">Bridge opened (UTC)</label>
-            <div class="inline">
-              <input type="text" id="bridgeOpenedUtc" readonly aria-readonly="true" />
-              <button type="button" class="btn-mini" id="bridgeSetNowBtn" aria-label="Stamp bridge opened time">Set Now</button>
-            </div>
-          </div>
-          <div class="field">
-            <label for="icName">Incident Commander</label>
-            <input type="text" id="icName" placeholder="" />
-          </div>
-          <div class="field">
-            <label for="bcName">Bridge Coordinator</label>
-            <input type="text" id="bcName" placeholder="" />
-          </div>
-        </div>
-        <div class="grid cols-3">
-          <div class="field">
-            <label for="semOpsName">SEM/Ops Lead</label>
-            <input type="text" id="semOpsName" placeholder="" />
-          </div>
-          <div class="field">
-            <label for="severity">Severity</label>
-            <select id="severity">
-              <option value="">Select severity</option>
-              <option value="S1">S1</option>
-              <option value="S2">S2</option>
-              <option value="S3">S3</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      <div class="drawer-placeholder" aria-hidden="true"></div>
 
       <div class="card" id="problem-summary">
         <h3>Problem Summary</h3>
@@ -239,53 +208,7 @@ Anchors present:
     </div>
     <!-- [section:impact] end -->
 
-    <div class="card" id="commControlsCard">
-      <h3>Communication Cadence &amp; Log</h3>
-      <fieldset class="field" id="communication-cadence">
-        <legend id="commCadenceLegend">Communication cadence</legend>
-        <div class="cadence-group" id="commCadenceGroup" role="radiogroup" aria-labelledby="commCadenceLegend">
-          <label class="cadence-option">
-            <input type="radio" name="commCadence" value="10" />
-            <span>10 min</span>
-          </label>
-          <label class="cadence-option">
-            <input type="radio" name="commCadence" value="15" />
-            <span>15 min</span>
-          </label>
-          <label class="cadence-option">
-            <input type="radio" name="commCadence" value="20" />
-            <span>20 min</span>
-          </label>
-          <label class="cadence-option">
-            <input type="radio" name="commCadence" value="30" />
-            <span>30 min</span>
-          </label>
-          <label class="cadence-option">
-            <input type="radio" name="commCadence" value="60" />
-            <span>Hourly</span>
-          </label>
-        </div>
-        <small>Pick how often updates should be broadcast. Logging a communication restarts the timer and reminder.</small>
-      </fieldset>
-      <div class="inline comm-actions">
-        <button type="button" class="btn-mini" id="commInternalStampBtn" aria-label="Log internal communication">Log internal update</button>
-        <button type="button" class="btn-mini" id="commExternalStampBtn" aria-label="Log external communication">Log external update</button>
-        <button type="button" class="btn-mini" id="generateAiSummaryBtn" aria-label="Generate AI Summary">Generate AI Summary</button>
-        <span class="countdown" id="commCountdown" aria-live="polite"></span>
-      </div>
-      <div class="comm-alert" id="commDueAlert" role="alert" hidden></div>
-      <div class="grid comm-grid comm-grid--single">
-        <div class="field">
-          <label for="commNextUpdateTime">Next update scheduled for</label>
-          <input type="time" id="commNextUpdateTime" />
-        </div>
-      </div>
-      <div class="field" id="communication-log">
-        <label for="commLogList">Communication log</label>
-        <ul id="commLogList" class="comm-log" aria-live="polite" aria-label="Communication log"></ul>
-        <button type="button" class="btn-mini comm-log-toggle" id="commLogToggleBtn" hidden aria-expanded="false">Show all</button>
-      </div>
-    </div>
+    <div class="drawer-placeholder" aria-hidden="true"></div>
 
     <!-- KT IS / IS NOT analysis table driven by ROWS tokens. -->
     <!-- [section:table] start -->
@@ -334,6 +257,104 @@ Anchors present:
     <!-- [section:summary] end -->
 
   </div>
+
+  <div class="comms-backdrop" id="commsBackdrop" aria-hidden="true"></div>
+  <aside class="comms-drawer" id="commsDrawer" role="dialog" aria-modal="true" aria-labelledby="commsDrawerTitle" aria-hidden="true" tabindex="-1">
+    <div class="comms-drawer__panel">
+      <header class="comms-drawer__header">
+        <div class="comms-drawer__title-group">
+          <h2 class="comms-drawer__title" id="commsDrawerTitle">Bridge &amp; Communications</h2>
+          <p class="comms-drawer__subtitle">Stamp bridge details, set cadence, and log incident updates.</p>
+        </div>
+        <button type="button" class="comms-drawer__close-btn" id="commsCloseBtn">Close</button>
+      </header>
+      <div class="comms-drawer__body">
+        <section class="card comms-card">
+          <h3>Bridge Activation</h3>
+          <p class="caption">Capture only what’s needed to activate the bridge and set comms cadence.</p>
+          <div class="grid cols-3">
+            <div class="field">
+              <label for="bridgeOpenedUtc">Bridge opened (UTC)</label>
+              <div class="inline">
+                <input type="text" id="bridgeOpenedUtc" readonly aria-readonly="true" />
+                <button type="button" class="btn-mini" id="bridgeSetNowBtn" aria-label="Stamp bridge opened time">Set Now</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="icName">Incident Commander</label>
+              <input type="text" id="icName" placeholder="" />
+            </div>
+            <div class="field">
+              <label for="bcName">Bridge Coordinator</label>
+              <input type="text" id="bcName" placeholder="" />
+            </div>
+          </div>
+          <div class="grid cols-3">
+            <div class="field">
+              <label for="semOpsName">SEM/Ops Lead</label>
+              <input type="text" id="semOpsName" placeholder="" />
+            </div>
+            <div class="field">
+              <label for="severity">Severity</label>
+              <select id="severity">
+                <option value="">Select severity</option>
+                <option value="S1">S1</option>
+                <option value="S2">S2</option>
+                <option value="S3">S3</option>
+              </select>
+            </div>
+          </div>
+        </section>
+        <section class="card comms-card" id="commControlsCard">
+          <h3>Communication Cadence &amp; Log</h3>
+          <fieldset class="field" id="communication-cadence">
+            <legend id="commCadenceLegend">Communication cadence</legend>
+            <div class="cadence-group" id="commCadenceGroup" role="radiogroup" aria-labelledby="commCadenceLegend">
+              <label class="cadence-option">
+                <input type="radio" name="commCadence" value="10" />
+                <span>10 min</span>
+              </label>
+              <label class="cadence-option">
+                <input type="radio" name="commCadence" value="15" />
+                <span>15 min</span>
+              </label>
+              <label class="cadence-option">
+                <input type="radio" name="commCadence" value="20" />
+                <span>20 min</span>
+              </label>
+              <label class="cadence-option">
+                <input type="radio" name="commCadence" value="30" />
+                <span>30 min</span>
+              </label>
+              <label class="cadence-option">
+                <input type="radio" name="commCadence" value="60" />
+                <span>Hourly</span>
+              </label>
+            </div>
+            <small>Pick how often updates should be broadcast. Logging a communication restarts the timer and reminder.</small>
+          </fieldset>
+          <div class="inline comm-actions">
+            <button type="button" class="btn-mini" id="commInternalStampBtn" aria-label="Log internal communication">Log internal update</button>
+            <button type="button" class="btn-mini" id="commExternalStampBtn" aria-label="Log external communication">Log external update</button>
+            <button type="button" class="btn-mini" id="generateAiSummaryBtn" aria-label="Generate AI Summary">Generate AI Summary</button>
+            <span class="countdown" id="commCountdown" aria-live="polite"></span>
+          </div>
+          <div class="comm-alert" id="commDueAlert" role="alert" hidden></div>
+          <div class="grid comm-grid comm-grid--single">
+            <div class="field">
+              <label for="commNextUpdateTime">Next update scheduled for</label>
+              <input type="time" id="commNextUpdateTime" />
+            </div>
+          </div>
+          <div class="field" id="communication-log">
+            <label for="commLogList">Communication log</label>
+            <ul id="commLogList" class="comm-log" aria-live="polite" aria-label="Communication log"></ul>
+            <button type="button" class="btn-mini comm-log-toggle" id="commLogToggleBtn" hidden aria-expanded="false">Show all</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </aside>
 
   <div class="steps-backdrop" id="stepsBackdrop" aria-hidden="true"></div>
   <aside class="steps-drawer" id="stepsDrawer" role="dialog" aria-modal="true" aria-labelledby="stepsDrawerTitle" aria-hidden="true" tabindex="-1">
