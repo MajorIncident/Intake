@@ -28,7 +28,7 @@ This file applies to the entire repository unless a more specific `AGENTS.md` fi
 
 ## Editing Contract & Protected Elements
 - **Anchors & tokens:** `ktintake.html` is segmented by anchors such as `[styles]`, `[rows]`, `[script:init]`, and `[script:storage]`. Keep every anchor marker intact and insert changes inside the appropriate region. Never rename or delete tokens including `{OBJECT}` and `{DEVIATION}`.
-- **Protected data:** Treat the `ROWS` array (KT prompts) and the `STEP_DEFINITIONS` array (incident playbook checklist) as immutable without project owner approval. They underpin the entire workflow and are referenced by persistence routines.
+- **Protected data:** Treat the `ROWS` array (KT prompts) and the `STEP_DEFINITIONS` array (incident playbook checklist) as immutable without project owner approval. They now live in `src/constants.js`, are deep-frozen, and underpin the entire workflow via shared imports.
 - **Function invariants:** Core lifecycle helpers—`init()`, `initTable()`, `initStepsFeature()`, `generateSummary()`, and `buildSummaryText()`—must retain their names and responsibilities. Extend behaviour via internal helpers rather than renaming or removing these entry points.
 
 ## Feature & Summary Extensions

@@ -24,7 +24,8 @@ All UI markup lives in `ktintake.html`, the JavaScript has been externalised to 
 | File | Description |
 | ---- | ----------- |
 | `ktintake.html` | The application markup. Anchor comments segment each major region and reference the external script. |
-| `main.js` | Extracted JavaScript that contains the KT data model, UI logic, persistence helpers, and anchor markers ([rows], [script:init], etc.). |
+| `main.js` | Extracted JavaScript module that handles UI logic, persistence helpers, and anchor markers ([rows], [script:init], etc.), importing immutable data from `src/constants.js`. |
+| `src/constants.js` | Centralises the frozen KT prompts, cause-finding enums, and incident-steps definitions via a shared deep-freeze helper. |
 | `styles.css` | Externalised stylesheet that holds all layout variables, component rules, and responsive tweaks referenced by `ktintake.html`. |
 | `AGENTS.md` | Root project guidelines that describe UI/UX principles and global contributor expectations. |
 | `ktintake.AGENTS.md` | Section-level editing rules specific to `ktintake.html`, detailing anchors, invariants, and how to extend the intake flow. |
@@ -49,7 +50,7 @@ All inputs auto-save to `localStorage`; closing and reopening the page restores 
 
 - Review the root `AGENTS.md` for the UI/UX philosophy (Apple-like spacing, typography hierarchy, progressive disclosure, and accessible contrast) before proposing changes.
 - Read `ktintake.AGENTS.md` to understand the editing contract. Preserve anchors such as `[styles]`, `[rows]`, and `[script:init]`, and never rename tokens like `{OBJECT}` or `{DEVIATION}`. All JavaScript edits should now be made in `main.js` while keeping those anchors intact.
-- The `ROWS` and `STEP_DEFINITIONS` collections define core KT prompts and the incident playbook. Treat them as protected data and request approval before altering them.
+- The `ROWS` and `STEP_DEFINITIONS` collections now live in `src/constants.js`, which deep-freezes all immutable data. Treat them as protected data and request approval before altering them.
 - When introducing new features, add helper text, storage keys, and summary-output handling alongside the UI changes. Document any specialised rules in additional sub-`AGENTS.md` files within new directories or modules.
 - Add or adjust visual styling in `styles.css` rather than embedding new rules directly inside `ktintake.html`; reuse existing variables and component classes to keep the UI consistent.
 
