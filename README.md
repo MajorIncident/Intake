@@ -17,13 +17,14 @@ The intake experience walks facilitators through every stage of a live incident 
 9. **Incident Steps Checklist** – work through the predefined major-incident playbook and mark progress in the steps drawer.
 10. **Summary Export** – generate formatted summaries with or without AI prompt preambles for use in external systems.
 
-Every section is contained in the single HTML file, so no server, build step, or database is required.
+All UI markup and logic remain in the single HTML file, while styling is loaded from the companion `styles.css`, so no server, build step, or database is required.
 
 ## Project structure
 
 | File | Description |
 | ---- | ----------- |
-| `ktintake.html` | The entire application UI, styling, data model, logic, and persistence helpers. Editing anchors segment each major region. |
+| `ktintake.html` | The application markup, data model, logic, and persistence helpers. Editing anchors segment each major region. |
+| `styles.css` | Externalised stylesheet that holds all layout variables, component rules, and responsive tweaks referenced by `ktintake.html`. |
 | `AGENTS.md` | Root project guidelines that describe UI/UX principles and global contributor expectations. |
 | `ktintake.AGENTS.md` | Section-level editing rules specific to `ktintake.html`, detailing anchors, invariants, and how to extend the intake flow. |
 
@@ -49,6 +50,7 @@ All inputs auto-save to `localStorage`; closing and reopening the page restores 
 - Read `ktintake.AGENTS.md` to understand the editing contract. Preserve anchors such as `[styles]`, `[rows]`, and `[script:init]`, and never rename tokens like `{OBJECT}` or `{DEVIATION}`.
 - The `ROWS` and `STEP_DEFINITIONS` collections define core KT prompts and the incident playbook. Treat them as protected data and request approval before altering them.
 - When introducing new features, add helper text, storage keys, and summary-output handling alongside the UI changes. Document any specialised rules in additional sub-`AGENTS.md` files within new directories or modules.
+- Add or adjust visual styling in `styles.css` rather than embedding new rules directly inside `ktintake.html`; reuse existing variables and component classes to keep the UI consistent.
 
 ## Future work
 
