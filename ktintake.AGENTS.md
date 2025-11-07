@@ -1,4 +1,4 @@
-# KT Intake Single-File Guidelines
+# KT Intake HTML Guidelines
 
 ## Scope
 This file applies to `ktintake.html`. Follow these instructions when editing any portion of the intake application.
@@ -6,44 +6,34 @@ This file applies to `ktintake.html`. Follow these instructions when editing any
 ## File Layout & Anchors
 `ktintake.html` is divided into named anchors. Only edit inside the matching start/end comments and keep the marker text unchanged.
 
-- `[styles]` / `[vars]` – Global CSS variables and layout rules.
-- `[header]` & `[section:*]` – Visual cards for each workflow stage (bridge activation, problem summary, evidence, baseline/current, impact, communications, KT table, possible causes, steps, summary output).
-- `[script]` – References the external `main.js` file. The anchor comments still live there to segment logic.
-  - `[rows]` – KT prompt definitions (`ROWS`).
-  - `[script:table-build]` – Utilities that render and manage the KT IS/IS NOT table.
-  - `[script:preface-refs]` & `[script:tokens]` – Helpers for shared field references and text-token replacement.
-  - `[script:init]` – Bootstraps event listeners and page initialisation. Must call `initTable()` and `initStepsFeature()`.
-  - `[script:export]` – Summary generation, clipboard flows, and toast messages.
-  - `[script:storage]` – `localStorage` persistence (form fields, comm cadence, KT causes, steps drawer).
-  - `[script:toast]` – Lightweight notification banner.
+- `[styles]` / `[vars]` – Anchor references for global CSS. The actual styles live in `styles.css` but the comments must remain.
+- `[header]` & `[section:*]` – Visual cards for each workflow stage (bridge activation, problem summary, evidence, baseline/current, impact, communications, KT table, possible causes, steps, summary export).
+- `[section:summary]` – Container for the latest generated summary text. Keep IDs intact for persistence and testing hooks.
+- `[script]` – Reference block for the external ES module entry point.
+  - `[rows]`, `[script:table-build]`, `[script:preface-refs]`, `[script:tokens]`, `[script:init]`, `[script:export]`, `[script:storage]`, `[script:toast]` – Historical anchors preserved for traceability. They now correspond to modules imported by `main.js`; do not remove them even though the code resides in `src/`.
 
-Preserve the order of these anchors. If you need a new section, duplicate the existing pattern: insert the markup between neighbouring anchors and provide matching comments such as `<!-- [section:new-feature] start -->` / `<!-- [section:new-feature] end -->`.
+Preserve the order of these anchors. If you need a new section, duplicate the existing pattern: insert markup between neighbouring anchors and provide matching comments such as `<!-- [section:new-feature] start -->` / `<!-- [section:new-feature] end -->`.
 
 ## Editing Contract
-- Do **not** rename or delete anchor markers, tokens `{OBJECT}` or `{DEVIATION}`, or protected functions (`init()`, `initTable()`, `initStepsFeature()`, `generateSummary()`, `buildSummaryText()`).
-- Keep the single-file structure. Prefer incremental edits rather than wholesale rewrites. JavaScript lives in `main.js`; do not split it into additional modules until Milestone 2.3.
-- Document any significant behavioural changes in this file so future contributors know how to work within the contract.
+- Do **not** rename or delete anchor markers, tokens `{OBJECT}` or `{DEVIATION}`, or protected function names documented in `AGENTS.md`.
+- Keep the DOM IDs and ARIA attributes stable. Tests and AI agents rely on them to replay state via `collectAppState()` / `applyAppState()`.
+- All behaviour lives in modules under `src/`. Avoid inline scripts in the HTML; instead, export helpers from a module and import them in `main.js`.
+- Only modify `main.js` to register new modules or top-level event wiring. Feature logic belongs beside the DOM it controls (`src/preface.js`, `src/kt.js`, etc.).
+- When adjusting layout, reuse existing classes (`.card`, `.field`, `.grid`, `.chipset`, etc.) before introducing new ones.
 
-## Data Structures
-- `ROWS` enumerates the KT questions and helper copy. Modify only when the KT playbook intentionally changes.
-- `CAUSE_FINDING_MODES` and `STEP_DEFINITIONS` power possible-cause tracking and the steps drawer. Treat them as canonical data: update with caution and ensure summaries and persistence stay aligned.
+## Data Structures & Persistence
+- Immutable data such as `ROWS`, `CAUSE_FINDING_MODES`, and `STEP_DEFINITIONS` live in `src/constants.js`. Update them cautiously and ensure each change flows through summary generation and persistence.
+- `collectAppState()` and `applyAppState()` coordinate the round-trip of UI state. When you add new fields, hook them into those helpers plus the serialization logic in `src/storage.js`.
+- Local storage uses the key `kt-intake-full-v2`. Keep this identifier consistent so legacy data migrates correctly.
 
-## Adding UI or Fields
-- Add new fields within the appropriate section card. Include clear labels, helper text, and ARIA attributes when relevant.
-- Use existing utility classes (`.field`, `.grid`, `.chipset`, etc.) to maintain spacing and alignment.
-- Store new values by extending `saveToStorage()` / `restoreFromStorage()` with consistent key names. Persisted keys should live under the top-level `ktIntake` object to avoid collisions.
+## Extending Behaviour
+- New UI fields should include descriptive labels, helper text, and keyboard/focus affordances. Maintain semantic grouping with `<section>`, `<fieldset>`, and accessible legends.
+- To surface new data in the summary, update the relevant formatter in `src/summary.js` and ensure the summary card IDs in the HTML stay unchanged.
+- For AI prompt adjustments, prefer to add new summary modes via `generateSummary(mode, variant)` rather than introducing inline handlers.
 
-## Extending Summaries
-- Update `buildSummaryText()` and supporting helpers (such as `formatPossibleCausesSummary()` or `formatStepsSummary()`) when introducing new captured data.
-- Match the existing bullet/paragraph formatting and keep the narrative order aligned with the on-screen workflow.
-- When adding AI prompt variants, guard the behaviour with `generateSummary()` feature flags and reuse the copy structure already provided.
-
-## Persistence & Tokens
-- When introducing new token placeholders, document them here and update the token-fill helpers under `[script:tokens]`.
-- Keep auto-save behaviour intact. Any new data should be wired into the serialization helpers and restored on load before UI rendering occurs.
-
-## Sub-Guidelines
-New modules or major UI sections should be accompanied by their own `AGENTS.md` files placed in a dedicated directory. Those sub-guidelines will override instructions here for their scope—state the relationship clearly in each document.
+## Testing Hooks
+- Summary buttons (`#genSummaryBtn`, `#generateAiSummaryBtn`, `#commAIPromptBtn`) remain the canonical triggers. If you add variants, expose them through `generateSummary()` to keep the global fallbacks (`window.onGenerateSummary`, etc.) valid.
+- Steps drawer controls (`#stepsBtn`, `#stepsCloseBtn`, `#stepsDrawer`) and communications actions must remain accessible for automated tests. Update `src/steps.js` or `src/comms.js` if structural changes are required.
 
 ## Styling Updates
 - All CSS referenced by `ktintake.html` now lives in `styles.css`. When adjusting component spacing, typography, or responsive behaviour, update that stylesheet and keep the `[styles]` anchor comment in the HTML as a pointer only.
