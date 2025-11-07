@@ -6,6 +6,15 @@
 <title>KT Intake</title>
 
 <!--
+KT Intake is a single-file Kepner-Tregoe intake workbook. It renders all UI, logic,
+and persistence helpers for the zero-backend workflow described in README.md. See
+README.md and AGENTS.md for contributor guidance.
+
+Editing contract summary: preserve anchor comments, keep tokens such as {OBJECT}
+and {DEVIATION}, and retain the names of core functions (init, initTable,
+initStepsFeature, generateSummary, buildSummaryText). Additional contract details
+follow below.
+
 [contract] start
 EDITING CONTRACT for ChatGPT & humans:
 - Keep these anchors intact. Prefer unified diffs (*** Begin Patch / *** End Patch) that edit INSIDE the relevant anchors only.
@@ -20,9 +29,11 @@ Anchors present:
 [contract] end
 -->
 
+<!-- Styles and layout definitions for the full intake workbook UI. -->
 <!-- [styles] start -->
 <style>
   /* [vars] start */
+  /* Theme palette and layout constants shared across the intake sections. */
   :root{
     /* Apple-like daytime palette */
     --bg:#f5f7fb;
@@ -382,6 +393,7 @@ Anchors present:
 <!-- [styles] end -->
 </head>
 <body>
+  <!-- Header: global controls for steps drawer and summary generation. -->
   <!-- [header] start -->
   <header>
     <div class="header-title">
@@ -399,6 +411,7 @@ Anchors present:
   <!-- [header] end -->
 
   <div class="wrap">
+    <!-- Preface cards: bridge activation, summary headline, and detection inputs. -->
     <!-- [section:preface] start -->
     <section class="preface-stack">
       <div class="card">
@@ -532,6 +545,7 @@ Anchors present:
     <h2 id="docSubtitle">Describe The Problem</h2>
     <!-- [subtitle] end -->
 
+    <!-- Impact, containment, and communications workflow section. -->
     <!-- [section:impact] start -->
     <div class="card impact">
       <h3>Impact</h3>
@@ -630,6 +644,7 @@ Anchors present:
       </div>
     </div>
 
+    <!-- KT IS / IS NOT analysis table driven by ROWS tokens. -->
     <!-- [section:table] start -->
     <p class="subtle" id="kt-is-is-not">Problem Analysis</p>
 
@@ -667,6 +682,7 @@ Anchors present:
     </div>
 
 
+    <!-- Summary card showing the most recent export for manual copy. -->
     <!-- [section:summary] start -->
     <div class="card" id="summaryCard" style="display:none;">
       <h3>Copy &amp; Paste Summary</h3>
@@ -694,11 +710,17 @@ Anchors present:
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+<!-- Script: data models, event wiring, summary export, and persistence helpers. -->
 <!-- [script] start -->
 <script>
 /* [rows] start */
 /* =================== Core data & prompts (KT Problem Analysis) =================== */
-/* Use {OBJECT} / {DEVIATION} tokens anywhere you want auto-fill. */
+/* Use {OBJECT} / {DEVIATION} tokens anywhere you want auto-fill. These are protected
+   datasets—see README.md and AGENTS.md for change control expectations. */
+/**
+ * ROWS enumerates the KT IS / IS NOT prompts in display order.
+ * Updating questions requires revisiting table rendering, persistence, and summaries.
+ */
 const ROWS = [
   { band: "WHAT", note: "Define the problem precisely (Object & Deviation)." },
 
@@ -787,10 +809,16 @@ const ROWS = [
 
 /* [script:table-build] start */
 /* =================== Build table & dynamic tokens =================== */
+/* Table rendering & hypothesis helpers: builds the KT grid, synchronises
+   possible-cause cards, and keeps UI state aligned with ROWS definitions. */
 const tbody = document.getElementById('tbody');
 const rowsBuilt = [];
 let possibleCauses = [];
 /* ===== Possible causes (hypotheses) ===== */
+/**
+ * Possible-cause finding modes represent how evidence supports a hypothesis.
+ * Treat as an enum—update in tandem with UI chips and summary formatting.
+ */
 const CAUSE_FINDING_MODES = {
   ASSUMPTION: 'assumption',
   YES: 'yes',
@@ -1472,6 +1500,10 @@ function focusFirstEditableCause(){
     }
   });
 }
+/**
+ * Serialises possible causes for storage/export.
+ * @returns {Array<object>} causes with normalized finding entries ready for persistence.
+ */
 function serializeCauses(){
   return possibleCauses.map(cause=>{
     const findings = {};
@@ -1499,6 +1531,11 @@ function serializeCauses(){
     };
   });
 }
+/**
+ * Hydrates possible causes from stored JSON structures.
+ * @param {Array<object>} rawList
+ * @returns {Array<object>} cleaned cause objects safe for rendering.
+ */
 function deserializeCauses(rawList){
   if(!Array.isArray(rawList)) return [];
   return rawList.map(raw=>{
@@ -1585,6 +1622,10 @@ function mkRow(def, i){
   rowsBuilt.push({tr, th, def, isTA, notTA, distTA, chgTA});
   return tr;
 }
+/**
+ * Builds the KT table rows from ROWS definitions and wires textarea listeners
+ * for persistence, token refresh, and possible-cause previews.
+ */
 function initTable(){
   let dataRowCount = 0;
   ROWS.forEach((def)=>{
@@ -1611,6 +1652,8 @@ function initTable(){
 
 /* [script:preface-refs] start */
 /* =================== Preface helpers & H1/H2 =================== */
+/* Collects DOM references for preface cards and dynamic headings. These feeds
+   summary generation, token replacement, and persistence. */
 const oneLine = document.getElementById('oneLine');
 const proof = document.getElementById('proof');
 const objectPrefill = document.getElementById('objectPrefill');
@@ -1985,6 +2028,11 @@ const STEPS_PHASES = [
   { id:'D', label:'Restore, Validate & Close Comms Loop' },
   { id:'E', label:'Handover & Close' }
 ];
+/**
+ * STEP_DEFINITIONS enumerates the incident-playbook checklist shown in the
+ * drawer. Treat as protected data: update persistence, summaries, and docs if
+ * items change.
+ */
 const STEP_DEFINITIONS = [
   { id:'1', phase:'A', label:'Pre-analysis completed' },
   { id:'2', phase:'A', label:'Incident Commander assigned' },
@@ -2320,6 +2368,10 @@ function importStepsState(data){
   saveStepsDrawerStateToLocalStorage();
 }
 
+/**
+ * Bootstraps the incident steps drawer: wires DOM references, restores
+ * persisted progress, and attaches keyboard/toggle listeners.
+ */
 function initStepsFeature(){
   stepsBtn = document.getElementById('stepsBtn');
   stepsCompletedLabel = document.getElementById('stepsCompletedLabel');
@@ -2343,6 +2395,8 @@ function initStepsFeature(){
 }
 
 /* [script:tokens] start */
+/* Token + computed text helpers keep `{OBJECT}` / `{DEVIATION}` references
+   consistent across UI labels and summaries. */
 function firstSnippet(v){
   const s = (v||'').trim();
   if(!s) return '';
@@ -2439,6 +2493,10 @@ function updateTitlesAndLabels(){
 let _mirrorTick = null;
 let _lastPrefObj = "";
 let _lastPrefNow = "";
+/**
+ * Periodically syncs prefetched headings into KT table textareas to respect
+ * `{OBJECT}`/`{DEVIATION}` token updates. Triggers auto-save when values change.
+ */
 function syncMirror(force=false){
   try{
     const curObj = getObjectFull();
@@ -2472,6 +2530,8 @@ function syncMirror(force=false){
   }catch(e){ /* no-op */ }
 }
 /* [script:init] start */
+/* Initialisation helpers wire textarea behaviour, build core UI, and load
+   persisted state. Do not rename init(), initTable(), or initStepsFeature(). */
 function autoResize(el){
   if(!el || el.tagName !== 'TEXTAREA') return;
   el.style.height = 'auto';
@@ -2505,6 +2565,8 @@ init();
 /* [script:export] start */
 
 /* =================== Summary Export (executive style, chat-friendly) =================== */
+/* Generates formatted summaries for ServiceNow/AI prompts. See README.md and
+   ktintake.AGENTS.md when extending to keep ordering & tone aligned. */
 
 function ensureSummaryCard(){
   let card = document.getElementById('summaryCard');
@@ -2714,6 +2776,12 @@ function formatStepsSummary(){
 }
 
 /* ---------- Executive summary builder ---------- */
+/**
+ * Compiles the human-readable incident summary using current field values.
+ * Respects section order shown in the UI so ServiceNow output matches the
+ * facilitator workflow. See README.md and ktintake.AGENTS.md for formatting
+ * expectations when extending the output.
+ */
 function buildSummaryText(){
   const title = document.getElementById('docTitle').textContent.trim();
   const subtitle = document.getElementById('docSubtitle').textContent.trim();
@@ -2848,9 +2916,11 @@ Each entry should include recommended tone, key talking points, risk framing, an
 Use the incident context below to tailor the guidance.`;
 
 /**
- * Unified summary generator.
+ * Unified summary generator. Builds summary text (standard or AI prompt),
+ * attempts to copy it to the clipboard, and updates the on-page summary card
+ * for manual fallback. See README.md and ktintake.AGENTS.md for workflow context.
  * @param {string} kind   - e.g., "summary" (reserved for extensibility)
- * @param {string} aiType - if "ai summary", prepend expert instructions
+ * @param {string} aiType - descriptive label used for AI prompt variants.
  */
 async function generateSummary(kind='summary', aiType=''){
   void kind; // reserved for future use
@@ -2980,6 +3050,8 @@ document.addEventListener('DOMContentLoaded', function(){
 /* [script:export] end */
 
 /* [script:storage] start */
+/* localStorage persistence: serialises the ktIntake payload, cadence timers,
+   possible causes, and steps data. Extend keys cautiously. */
 /* =================== Autosave =================== */
 const STORAGE_KEY='kt-intake-full-v2';
 function getContainmentStatus(){
@@ -2988,6 +3060,11 @@ function getContainmentStatus(){
   if(containNone?.checked) return 'none';
   return '';
 }
+/**
+ * Serialises all form inputs, communication cadence, KT table content, possible
+ * causes, and steps state into localStorage under `kt-intake-full-v2`.
+ * Add new fields by extending this payload and updating restoreFromStorage().
+ */
 function saveToStorage(){
   const data={ pre:{ oneLine:oneLine.value, proof:proof.value, objectPrefill:objectPrefill.value, healthy:healthy.value, now:now.value },
                impact:{ now:impactNow.value, future:impactFuture.value, time:impactTime.value },
@@ -3023,6 +3100,11 @@ function saveToStorage(){
   });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
+/**
+ * Restores persisted state from localStorage and rehydrates form controls,
+ * KT table, possible causes, and the steps drawer. Keep schema changes in sync
+ * with saveToStorage() and document new keys in README/AGENTS.
+ */
 function restoreFromStorage(){
   const raw = localStorage.getItem(STORAGE_KEY); if(!raw) return;
   const data = JSON.parse(raw);
@@ -3113,6 +3195,7 @@ function restoreFromStorage(){
 /* [script:storage] end */
 
 /* [script:toast] start */
+/* Minimal notification helper for clipboard feedback. */
 function showToast(msg){
   const toast = document.getElementById('toast');
   toast.textContent = msg;

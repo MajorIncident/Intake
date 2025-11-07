@@ -20,3 +20,17 @@ This file applies to the entire repository unless a more specific `AGENTS.md` fi
 - Place any additional global conventions or tooling instructions in this root-level `AGENTS.md` file.
 - If a specific directory or feature needs specialized guidance, create a sub-`AGENTS.md` within that directory. Its instructions will override or extend these guidelines for files within its scope.
 - Document the intent and scope clearly at the top of any new `AGENTS.md` so future contributors understand where and how to apply it.
+
+## Editing Contract & Protected Elements
+- **Anchors & tokens:** `ktintake.html` is segmented by anchors such as `[styles]`, `[rows]`, `[script:init]`, and `[script:storage]`. Keep every anchor marker intact and insert changes inside the appropriate region. Never rename or delete tokens including `{OBJECT}` and `{DEVIATION}`.
+- **Protected data:** Treat the `ROWS` array (KT prompts) and the `STEP_DEFINITIONS` array (incident playbook checklist) as immutable without project owner approval. They underpin the entire workflow and are referenced by persistence routines.
+- **Function invariants:** Core lifecycle helpers—`init()`, `initTable()`, `initStepsFeature()`, `generateSummary()`, and `buildSummaryText()`—must retain their names and responsibilities. Extend behaviour via internal helpers rather than renaming or removing these entry points.
+
+## Feature & Summary Extensions
+- **UI additions:** Pair any new inputs with descriptive labels, helper text, and sensible storage keys. Follow the Apple-like spacing guidance above and prefer semantic HTML elements.
+- **Persistence:** When storing new data, extend the existing `saveToStorage()` / `restoreFromStorage()` schema and document the change in a sub-`AGENTS.md`.
+- **Summary output:** Ensure new data appears in generated summaries by updating `buildSummaryText()` and helper formatters (e.g., `formatPossibleCausesSummary()`). Match the tone, ordering, and bullet structure already used.
+
+## Using Sub-Guidelines
+- Specialized editing rules for `ktintake.html` live in `ktintake.AGENTS.md`. Review that file before modifying the intake page.
+- If you introduce new modules or directories, include a scoped `AGENTS.md` that clarifies local conventions and how they interact with the global contract above.
