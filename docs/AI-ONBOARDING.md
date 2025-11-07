@@ -3,7 +3,7 @@
 This guide summarises the Milestone 2.3 modularisation so AI agents can confidently extend, test, and maintain the KT Intake app.
 
 ## Entry Point & Boot Sequence
-1. `ktintake.html` renders the full layout and loads the ES module entry via `<script type="module" src="main.js"></script>`.
+1. `index.html` renders the full layout and loads the ES module entry via `<script type="module" src="main.js"></script>`.
 2. `main.js` registers a `DOMContentLoaded` listener that calls `boot()`.
 3. `boot()` performs the following in order:
    - Wires the KT helpers by calling `configureKT({ autoResize, updatePrefaceTitles, showToast, getObjectFull, getDeviationFull })`.
@@ -28,7 +28,7 @@ This guide summarises the Milestone 2.3 modularisation so AI agents can confiden
 ## Working Agreement for AI Agents
 - **Stay modular:** Add new behaviour by creating a file under `src/` and exporting named helpers. Only touch `main.js` to import and wire these helpers.
 - **Respect DOM ownership:** Each module queries and mutates only the nodes in its feature area. If cross-feature data is required, share callbacks or extend `appState` rather than querying unrelated sections.
-- **Keep anchors intact:** The comments in `ktintake.html` (`[section:*]`, `[script:*]`, etc.) act as automation anchors. Never remove or rename them.
+- **Keep anchors intact:** The comments in `index.html` (`[section:*]`, `[script:*]`, etc.) act as automation anchors. Never remove or rename them.
 - **Reuse constants:** Extend `src/constants.js` if new enumerations or immutable lists are required. Deep-freeze ensures downstream modules receive read-only copies.
 - **Preserve storage compatibility:** When saving extra data, extend the shape emitted by `collectAppState()` and persisted by `saveToStorage()`. Always update `applyAppState()` so round-trip tests pass.
 
@@ -71,7 +71,7 @@ function boot() {
 ```
 
 ## Testing & QA Notes
-- Always run a manual smoke test by opening `ktintake.html` in a modern browser, entering sample data, generating a summary, and refreshing to confirm persistence.
+- Always run a manual smoke test by opening `index.html` in a modern browser, entering sample data, generating a summary, and refreshing to confirm persistence.
 - Automated suites should rely on `collectAppState()` / `applyAppState()` for deterministic state setup and on `generateSummary()` for output verification.
 - No server is required; the app is fully static. Use a simple `file://` load or a lightweight static host when integrating with tooling that requires HTTP.
 

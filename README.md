@@ -1,14 +1,14 @@
 # KT Intake – AI-Optimized Incident Analysis Template
 
-KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for rapid bridge facilitation, AI-assisted summaries, and resilient state restoration. The UI lives entirely in `ktintake.html`, while behaviour is organised into ES modules that mirror each major feature of the app.
+KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for rapid bridge facilitation, AI-assisted summaries, and resilient state restoration. The UI lives entirely in `index.html`, while behaviour is organised into ES modules that mirror each major feature of the app.
 
 ## Quickstart
 - Clone or download this repository.
-- Open `ktintake.html` in any modern browser. No build step or server is required.
+- Open `index.html` in any modern browser. No build step or server is required.
 - The page will load previous work from `localStorage` (key: `kt-intake-full-v2`) and is immediately ready for edits, summary generation, or AI prompt creation.
 
 ## Entry Point & Boot Logic
-- `ktintake.html` declares the full UI layout and loads the JavaScript bundle via `<script type="module" src="main.js"></script>`.
+- `index.html` declares the full UI layout and loads the JavaScript bundle via `<script type="module" src="main.js"></script>`.
 - `main.js` waits for `DOMContentLoaded`, then calls `boot()`. This bootstraps every feature in order:
   1. Configure the KT table utilities (`configureKT`) with callbacks such as `autoResize`, `updatePrefaceTitles`, and `showToast`.
   2. Initialise the preface, communications log, KT table, steps drawer, and possible-causes UI.
@@ -34,7 +34,7 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 - Change only the module that owns the UI slice you are updating; avoid cross-module DOM mutations.
 - Use `src/constants.js` for shared enums or immutable data instead of duplicating literals.
 - When wiring new behaviour, export it from a module in `src/` and import it in `main.js`. `main.js` should stay focused on orchestration.
-- Preserve anchor comments in `ktintake.html` (e.g., `[styles]`, `[section:preface]`) so automation and documentation links remain stable.
+- Preserve anchor comments in `index.html` (e.g., `[styles]`, `[section:preface]`) so automation and documentation links remain stable.
 - Keep the UI accessible: reuse layout classes, maintain contrast, and follow the Apple-like spacing guidance in `AGENTS.md`.
 
 ## AI & Automation Notes
@@ -56,11 +56,11 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 - The KT table exposes `configureKT()` to register callbacks. Pass only the dependencies your module needs; avoid hidden globals.
 
 ## Testing & QA
-- Manual regression: open `ktintake.html`, fill representative data, click **Generate Summary**, then refresh to ensure state persistence.
+- Manual regression: open `index.html`, fill representative data, click **Generate Summary**, then refresh to ensure state persistence.
 - Automated harnesses should use `collectAppState()` / `applyAppState()` for reliable snapshots and `generateSummary()` for output verification.
 - Future end-to-end tests will live in Playwright/Cypress suites once introduced; keep module boundaries clean to simplify that work.
 
 ## Additional Documentation
 - See `AGENTS.md` for global UI principles, module isolation rules, and contribution contracts.
-- Refer to `ktintake.AGENTS.md` when altering the HTML structure; it documents anchor expectations and storage invariants.
+- Refer to `index.AGENTS.md` when altering the HTML structure; it documents anchor expectations and storage invariants.
 - For AI-specific onboarding notes, including module extension patterns, read `docs/AI-ONBOARDING.md`.
