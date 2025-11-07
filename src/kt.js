@@ -864,6 +864,50 @@ export function getRowsBuilt(){
   return rowsBuilt;
 }
 
+export function getTableElement(){
+  return tbody;
+}
+
+export function exportKTTableState(){
+  if(!tbody) return [];
+  const out = [];
+  [...tbody.querySelectorAll('tr')].forEach(tr => {
+    if(tr.classList.contains('band')){
+      out.push({ band: tr.textContent.trim() });
+      return;
+    }
+    const th = tr.querySelector('th');
+    const textareas = tr.querySelectorAll('textarea');
+    out.push({
+      q: th?.textContent.trim() || '',
+      is: textareas[0]?.value || '',
+      no: textareas[1]?.value || '',
+      di: textareas[2]?.value || '',
+      ch: textareas[3]?.value || ''
+    });
+  });
+  return out;
+}
+
+export function importKTTableState(tableData){
+  if(!tbody || !Array.isArray(tableData)) return;
+  let index = 0;
+  [...tbody.querySelectorAll('tr')].forEach(tr => {
+    if(tr.classList.contains('band')) return;
+    const th = tr.querySelector('th');
+    const label = th?.textContent.trim() || '';
+    const match = tableData.find(entry => !entry.band && entry.q === label);
+    const record = match || tableData[index++];
+    if(!record) return;
+    const textareas = tr.querySelectorAll('textarea');
+    if(textareas[0]){ textareas[0].value = record.is || ''; autoResize(textareas[0]); }
+    if(textareas[1]){ textareas[1].value = record.no || ''; autoResize(textareas[1]); }
+    if(textareas[2]){ textareas[2].value = record.di || ''; autoResize(textareas[2]); }
+    if(textareas[3]){ textareas[3].value = record.ch || ''; autoResize(textareas[3]); }
+  });
+  refreshAllTokenizedText();
+}
+
 function mkBand(title, note){
   const tr = document.createElement('tr'); tr.className = 'band';
   const th = document.createElement('th'); th.colSpan = 5; th.innerHTML = `${title} <span>— ${note}</span>`;
