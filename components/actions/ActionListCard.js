@@ -24,6 +24,7 @@ export function mountActionListCard(hostEl) {
   const listEl = hostEl.querySelector('#action-list');
   let disposeEtaPicker = null;
   let disposeMoreMenu = null;
+  let disposeVerificationDialog = null;
 
   function fmtETA(dueAt) {
     if (!dueAt) return 'ETA';
@@ -49,17 +50,7 @@ export function mountActionListCard(hostEl) {
   function render() {
     closeMoreMenu();
     const items = listActions(analysisId);
-    listEl.innerHTML = items.map(it => `
-      <li class="action-row" data-id="${it.id}" data-status="${it.status}" data-priority="${it.priority}">
-        <button class="chip status" title="Advance status (Space)">${it.status}</button>
-        <button class="chip priority" title="Set priority (1/2/3)">${it.priority}</button>
-        <div class="summary" title="${it.detail?.replaceAll('"','&quot;') || ''}">${it.summary}</div>
-        <button class="chip owner" title="Pick owner (O)">${it.owner || 'Owner'}</button>
-        <button class="chip eta" title="Set ETA (E)">${fmtETA(it.dueAt)}</button>
-        <button class="chip verify" title="Record verification (V)">Verify</button>
-        <button class="more" title="More">⋯</button>
-      </li>
-    `).join('');
+    listEl.innerHTML = items.map(renderActionRow).join('');
 
     // Wiring per row:
     listEl.querySelectorAll('.action-row').forEach(row => {
@@ -69,7 +60,7 @@ export function mountActionListCard(hostEl) {
       row.querySelector('.priority').addEventListener('click', () => cyclePriority(id));
       row.querySelector('.owner').addEventListener('click', () => setOwner(id));
       row.querySelector('.eta').addEventListener('click', () => setEta(id));
-      row.querySelector('.verify').addEventListener('click', () => verifyAction(id));
+      row.querySelector('.verify-button').addEventListener('click', () => verifyAction(id));
       row.querySelector('.more').addEventListener('click', (event) => moreMenu(id, event.currentTarget));
       row.addEventListener('keydown', (e) => keyControls(e, id));
       row.tabIndex = 0;
@@ -96,6 +87,132 @@ export function mountActionListCard(hostEl) {
       disposeMoreMenu();
       disposeMoreMenu = null;
     }
+  }
+
+  function closeVerificationDialog() {
+    if (typeof disposeVerificationDialog === 'function') {
+      disposeVerificationDialog();
+      disposeVerificationDialog = null;
+    }
+  }
+
+  function htmlEscape(input) {
+    if (typeof input !== 'string') return '';
+    return input
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function normalizeVerification(raw) {
+    if (!raw || typeof raw !== 'object') {
+      return { required: false, method: '', evidence: '', result: '', checkedBy: '', checkedAt: '' };
+    }
+    return {
+      required: Boolean(raw.required),
+      method: raw.method || '',
+      evidence: raw.evidence || '',
+      result: raw.result || '',
+      checkedBy: raw.checkedBy || '',
+      checkedAt: raw.checkedAt || '',
+    };
+  }
+
+  function formatVerificationTimestamp(iso) {
+    if (!iso) return 'No timestamp yet';
+    const dt = new Date(iso);
+    if (Number.isNaN(dt.getTime())) return 'Timestamp unavailable';
+    return dt.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function verificationState(verification) {
+    if (verification.required) {
+      return verification.result ? 'verified' : 'required';
+    }
+    return 'optional';
+  }
+
+  function renderEvidenceMarkup(evidence) {
+    if (!evidence) {
+      return '<span class="summary__value summary__value--muted">No evidence yet</span>';
+    }
+    const trimmed = evidence.trim();
+    if (/^https?:\/\//i.test(trimmed)) {
+      const safeUrl = htmlEscape(trimmed);
+      return `<a class="summary__link" href="${safeUrl}" target="_blank" rel="noopener noreferrer" title="${safeUrl}">View evidence</a>`;
+    }
+    const safeText = htmlEscape(trimmed);
+    return `<span class="summary__value" title="${safeText}">${safeText}</span>`;
+  }
+
+  function renderVerificationDetail(action) {
+    const verification = normalizeVerification(action.verification);
+    const state = verificationState(verification);
+    const statusText = verification.required
+      ? (verification.result ? 'Verified' : 'Verification required')
+      : 'Verification optional';
+    const resultText = verification.result || 'Pending';
+    const methodText = verification.method || 'Method pending';
+    const checkedByText = verification.checkedBy || 'Unassigned';
+    const timestampText = formatVerificationTimestamp(verification.checkedAt);
+
+    return {
+      detail: `
+        <dl class="summary__detail" data-verify-state="${state}">
+          <div class="summary__detail-row">
+            <dt>Status</dt>
+            <dd class="summary__value summary__value--status">${htmlEscape(statusText)}</dd>
+          </div>
+          <div class="summary__detail-row">
+            <dt>Result</dt>
+            <dd class="summary__value">${htmlEscape(resultText)}</dd>
+          </div>
+          <div class="summary__detail-row">
+            <dt>Method</dt>
+            <dd class="summary__value">${htmlEscape(methodText)}</dd>
+          </div>
+          <div class="summary__detail-row">
+            <dt>Checked by</dt>
+            <dd class="summary__value">${htmlEscape(checkedByText)}</dd>
+          </div>
+          <div class="summary__detail-row">
+            <dt>Checked at</dt>
+            <dd class="summary__value">${htmlEscape(timestampText)}</dd>
+          </div>
+          <div class="summary__detail-row">
+            <dt>Evidence</dt>
+            <dd class="summary__value">${renderEvidenceMarkup(verification.evidence)}</dd>
+          </div>
+        </dl>
+      `,
+      state,
+      verification,
+    };
+  }
+
+  function renderActionRow(it) {
+    const detailTitle = it.detail ? htmlEscape(it.detail) : '';
+    const { detail, state, verification } = renderVerificationDetail(it);
+    const summaryTitle = htmlEscape(it.summary);
+    const ownerLabel = it.owner ? htmlEscape(it.owner) : 'Owner';
+    const verifyButtonLabel = verification.result ? 'Update' : 'Verify';
+    const verifyState = state;
+    return `
+      <li class="action-row" data-id="${it.id}" data-status="${it.status}" data-priority="${it.priority}">
+        <button class="chip chip--status status" data-status="${it.status}" title="Advance status (Space)">${htmlEscape(it.status)}</button>
+        <button class="chip chip--priority priority" data-priority="${it.priority}" title="Set priority (1/2/3)">${htmlEscape(it.priority)}</button>
+        <div class="summary" title="${detailTitle}">
+          <div class="summary__title">${summaryTitle}</div>
+          ${detail}
+        </div>
+        <button class="chip chip--pill owner" title="Pick owner (O)">${ownerLabel}</button>
+        <button class="chip chip--pill eta" title="Set ETA (E)">${htmlEscape(fmtETA(it.dueAt))}</button>
+        <button class="chip chip--pill verify-button" data-verify-state="${verifyState}" title="Record verification (V)">${verifyButtonLabel}</button>
+        <button class="icon-button more" title="More">⋯</button>
+      </li>
+    `;
   }
 
   function applyPatch(id, delta, onOk) {
@@ -242,17 +359,144 @@ export function mountActionListCard(hostEl) {
     if (!it) return;
     openEtaPicker(it);
   }
+  function formatCheckedAtInput(iso) {
+    if (!iso) return '';
+    const dt = new Date(iso);
+    if (Number.isNaN(dt.getTime())) return '';
+    return formatDatetimeLocal(dt);
+  }
+
+  function parseCheckedAtValue(value) {
+    if (!value) return '';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toISOString();
+  }
+
   function verifyAction(id) {
     const items = listActions(analysisId);
     const it = items.find(x => x.id === id);
     if (!it) return;
-    const required = confirm('Require verification for this action? Click OK to require.');
-    const method = required ? (prompt('Verification method (Metric/Alarm/User test):') || '') : '';
-    const evidence = required ? (prompt('Evidence (link or note):') || '') : '';
-    const result = required ? (prompt('Result (Pass/Fail or leave blank to verify later):') || '') : '';
-    const checkedBy = result ? (prompt('Checked by:') || '') : '';
-    const checkedAt = result ? new Date().toISOString() : '';
-    applyPatch(id, { verification: { required, method, evidence, result: result || undefined, checkedBy, checkedAt } });
+    openVerificationDialog(it);
+  }
+
+  function openVerificationDialog(action) {
+    closeVerificationDialog();
+
+    const verification = normalizeVerification(action.verification);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'verification-dialog-overlay';
+    overlay.innerHTML = `
+      <div class="verification-dialog" role="dialog" aria-modal="true" aria-label="Record verification">
+        <header class="verification-dialog__header">
+          <h4>Verification</h4>
+          <button type="button" class="verification-dialog__close" aria-label="Close">×</button>
+        </header>
+        <form class="verification-dialog__form">
+          <label class="verification-dialog__field">
+            <span>Require verification</span>
+            <input type="checkbox" name="required" ${verification.required ? 'checked' : ''} />
+          </label>
+          <label class="verification-dialog__field">
+            <span>Method</span>
+            <input type="text" name="method" value="${htmlEscape(verification.method)}" placeholder="Metric, alarm, or test" />
+          </label>
+          <label class="verification-dialog__field">
+            <span>Evidence</span>
+            <textarea name="evidence" rows="2" placeholder="Link or note">${htmlEscape(verification.evidence)}</textarea>
+          </label>
+          <label class="verification-dialog__field">
+            <span>Result</span>
+            <input type="text" name="result" value="${htmlEscape(verification.result)}" placeholder="Pass/Fail or note" />
+          </label>
+          <label class="verification-dialog__field">
+            <span>Checked by</span>
+            <input type="text" name="checkedBy" value="${htmlEscape(verification.checkedBy)}" placeholder="Name or handle" />
+          </label>
+          <label class="verification-dialog__field">
+            <span>Checked at</span>
+            <input type="datetime-local" name="checkedAt" value="${formatCheckedAtInput(verification.checkedAt)}" />
+          </label>
+          <div class="verification-dialog__actions">
+            <button type="button" data-action="cancel" class="verification-dialog__button verification-dialog__button--ghost">Cancel</button>
+            <button type="submit" class="verification-dialog__button verification-dialog__button--primary">Save</button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const form = overlay.querySelector('form');
+    const requiredInput = form.querySelector('input[name="required"]');
+    const methodInput = form.querySelector('input[name="method"]');
+    const evidenceInput = form.querySelector('textarea[name="evidence"]');
+    const resultInput = form.querySelector('input[name="result"]');
+    const checkedByInput = form.querySelector('input[name="checkedBy"]');
+    const checkedAtInput = form.querySelector('input[name="checkedAt"]');
+
+    const firstField = methodInput;
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeVerificationDialog();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+
+    const focusTimer = requestAnimationFrame(() => {
+      if (firstField) {
+        firstField.focus();
+        firstField.select?.();
+      }
+    });
+
+    disposeVerificationDialog = () => {
+      cancelAnimationFrame(focusTimer);
+      document.removeEventListener('keydown', onKeyDown);
+      overlay.remove();
+      const verifyBtn = listEl.querySelector(`.action-row[data-id="${action.id}"] .verify-button`);
+      if (verifyBtn && typeof verifyBtn.focus === 'function') {
+        verifyBtn.focus();
+      }
+    };
+
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) {
+        closeVerificationDialog();
+      }
+    });
+
+    overlay.querySelector('.verification-dialog__close').addEventListener('click', () => {
+      closeVerificationDialog();
+    });
+
+    form.querySelector('[data-action="cancel"]').addEventListener('click', () => {
+      closeVerificationDialog();
+    });
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const payload = {
+        required: requiredInput.checked,
+        method: methodInput.value.trim(),
+        evidence: evidenceInput.value.trim(),
+        result: resultInput.value.trim(),
+        checkedBy: checkedByInput.value.trim(),
+        checkedAt: parseCheckedAtValue(checkedAtInput.value),
+      };
+
+      if (payload.required && payload.result && !payload.checkedAt) {
+        payload.checkedAt = new Date().toISOString();
+      }
+
+      applyPatch(action.id, { verification: payload }, () => {
+        closeVerificationDialog();
+      });
+    });
   }
   function moreMenu(id, anchorEl) {
     const items = listActions(analysisId);
