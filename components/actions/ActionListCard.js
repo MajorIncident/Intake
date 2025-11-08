@@ -24,6 +24,7 @@ export function mountActionListCard(hostEl) {
   const listEl = hostEl.querySelector('#action-list');
   let disposeEtaPicker = null;
   let disposeMoreMenu = null;
+  let disposeBlockerDialog = null;
   let disposeVerificationDialog = null;
 
   function fmtETA(dueAt) {
@@ -49,6 +50,7 @@ export function mountActionListCard(hostEl) {
 
   function render() {
     closeMoreMenu();
+    closeBlockerDialog();
     const items = listActions(analysisId);
     listEl.innerHTML = items.map(renderActionRow).join('');
 
@@ -86,6 +88,13 @@ export function mountActionListCard(hostEl) {
     if (typeof disposeMoreMenu === 'function') {
       disposeMoreMenu();
       disposeMoreMenu = null;
+    }
+  }
+
+  function closeBlockerDialog() {
+    if (typeof disposeBlockerDialog === 'function') {
+      disposeBlockerDialog();
+      disposeBlockerDialog = null;
     }
   }
 
@@ -192,6 +201,18 @@ export function mountActionListCard(hostEl) {
     };
   }
 
+  function renderBlockerDetail(action) {
+    if (!action.notes) return '';
+    const note = htmlEscape(action.notes).replace(/\n/g, '<br>');
+    const status = action.status === 'Blocked' ? 'blocked' : 'not-blocked';
+    return `
+      <div class="summary__blocker" data-blocker-state="${status}">
+        <span class="summary__blocker-label">Blocker</span>
+        <span class="summary__blocker-text">${note}</span>
+      </div>
+    `;
+  }
+
   function renderActionRow(it) {
     const detailTitle = it.detail ? htmlEscape(it.detail) : '';
     const { detail, state, verification } = renderVerificationDetail(it);
@@ -199,12 +220,14 @@ export function mountActionListCard(hostEl) {
     const ownerLabel = it.owner ? htmlEscape(it.owner) : 'Owner';
     const verifyButtonLabel = verification.result ? 'Update' : 'Verify';
     const verifyState = state;
+    const blockerDetail = renderBlockerDetail(it);
     return `
       <li class="action-row" data-id="${it.id}" data-status="${it.status}" data-priority="${it.priority}">
         <button class="chip chip--status status" data-status="${it.status}" title="Advance status (Space)">${htmlEscape(it.status)}</button>
         <button class="chip chip--priority priority" data-priority="${it.priority}" title="Set priority (1/2/3)">${htmlEscape(it.priority)}</button>
         <div class="summary" title="${detailTitle}">
           <div class="summary__title">${summaryTitle}</div>
+          ${blockerDetail}
           ${detail}
         </div>
         <button class="chip chip--pill owner" title="Pick owner (O)">${ownerLabel}</button>
@@ -511,11 +534,25 @@ export function mountActionListCard(hostEl) {
     const menu = document.createElement('div');
     menu.className = 'action-menu';
     menu.setAttribute('role', 'menu');
+    const isBlocked = it.status === 'Blocked';
+    const blockLabel = isBlocked ? 'Update block status' : 'Mark blocked';
+    const blockHint = isBlocked
+      ? 'Refresh blocker notes to keep the team aligned'
+      : 'Flag the action as blocked and capture context';
+    const clearBlockButton = isBlocked
+      ? `
+        <button type="button" class="action-menu__item" data-action="clear-block">
+          <span class="action-menu__label">Clear block</span>
+          <span class="action-menu__hint">Remove blocker notes and return to Planned</span>
+        </button>
+      `
+      : '';
     menu.innerHTML = `
       <button type="button" class="action-menu__item" data-action="block">
-        <span class="action-menu__label">Mark blocked</span>
-        <span class="action-menu__hint">Flag the action as blocked and capture context</span>
+        <span class="action-menu__label">${blockLabel}</span>
+        <span class="action-menu__hint">${blockHint}</span>
       </button>
+      ${clearBlockButton}
       <button type="button" class="action-menu__item" data-action="defer">
         <span class="action-menu__label">Defer</span>
         <span class="action-menu__hint">Move the action out of the active queue</span>
@@ -581,8 +618,13 @@ export function mountActionListCard(hostEl) {
           return;
         }
         if (action === 'block') {
-          const note = prompt('Blocker note:');
-          applyPatch(id, { status: 'Blocked', notes: note || '' });
+          openBlockerDialog(it);
+          return;
+        }
+        if (action === 'clear-block') {
+          applyPatch(id, { status: 'Planned', notes: '' }, () => {
+            toast('Block cleared.');
+          });
           return;
         }
         if (action === 'defer') {
@@ -621,6 +663,96 @@ export function mountActionListCard(hostEl) {
         firstButton.focus();
       }
     });
+  }
+
+  function openBlockerDialog(action) {
+    closeBlockerDialog();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'blocker-dialog-overlay';
+    overlay.innerHTML = `
+      <div class="blocker-dialog" role="dialog" aria-modal="true" aria-label="Manage block status">
+        <header class="blocker-dialog__header">
+          <h4>${action.status === 'Blocked' ? 'Update block status' : 'Mark as blocked'}</h4>
+          <button type="button" class="blocker-dialog__close" aria-label="Close">×</button>
+        </header>
+        <form class="blocker-dialog__form">
+          <p class="blocker-dialog__intro">Add context so others can help remove the blocker.</p>
+          <label class="blocker-dialog__field">
+            <span>Blocker notes</span>
+            <textarea class="blocker-dialog__textarea" rows="4" required></textarea>
+          </label>
+          <div class="blocker-dialog__actions">
+            <button type="button" class="blocker-dialog__button blocker-dialog__button--ghost" data-action="cancel">Cancel</button>
+            <button type="submit" class="blocker-dialog__button blocker-dialog__button--primary">Save</button>
+          </div>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const form = overlay.querySelector('.blocker-dialog__form');
+    const textarea = overlay.querySelector('.blocker-dialog__textarea');
+    const closeBtn = overlay.querySelector('.blocker-dialog__close');
+    const cancelBtn = overlay.querySelector('[data-action="cancel"]');
+
+    textarea.value = action.notes || '';
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeBlockerDialog();
+      }
+    };
+
+    const focusTimer = requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.select();
+    });
+
+    const onSubmit = (event) => {
+      event.preventDefault();
+      const value = textarea.value.trim();
+      if (!value) {
+        textarea.setCustomValidity('Please add blocker notes so the team has context.');
+        textarea.reportValidity();
+        return;
+      }
+      textarea.setCustomValidity('');
+      applyPatch(action.id, { status: 'Blocked', notes: value }, () => {
+        closeBlockerDialog();
+        toast('Action marked as blocked.');
+      });
+    };
+
+    form.addEventListener('submit', onSubmit);
+    const onCloseClick = () => { closeBlockerDialog(); };
+    const onCancelClick = () => { closeBlockerDialog(); };
+    const onOverlayClick = (event) => {
+      if (event.target === overlay) {
+        closeBlockerDialog();
+      }
+    };
+
+    closeBtn.addEventListener('click', onCloseClick);
+    cancelBtn.addEventListener('click', onCancelClick);
+    overlay.addEventListener('click', onOverlayClick);
+
+    document.addEventListener('keydown', onKeyDown, true);
+
+    disposeBlockerDialog = () => {
+      cancelAnimationFrame(focusTimer);
+      document.removeEventListener('keydown', onKeyDown, true);
+      form.removeEventListener('submit', onSubmit);
+      closeBtn.removeEventListener('click', onCloseClick);
+      cancelBtn.removeEventListener('click', onCancelClick);
+      overlay.removeEventListener('click', onOverlayClick);
+      overlay.remove();
+      const trigger = listEl.querySelector(`.action-row[data-id="${action.id}"] .more`);
+      if (trigger && typeof trigger.focus === 'function') {
+        trigger.focus();
+      }
+    };
   }
 
   // Keyboard shortcuts for focused row

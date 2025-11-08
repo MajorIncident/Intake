@@ -654,7 +654,7 @@ textarea.tableta:focus{border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,1
   font-size:14px;
   letter-spacing:-0.01em;
 }
-.summary__detail{
+.summary__detail{ 
   margin:0;
   display:flex;
   flex-wrap:wrap;
@@ -666,6 +666,38 @@ textarea.tableta:focus{border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,1
   color:#1d2845;
   font-size:12.5px;
   font-weight:500;
+}
+.summary__blocker{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid #f7c7c7;
+  background:#fdeaea;
+  color:#1d2845;
+  font-size:12.5px;
+  font-weight:500;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6);
+}
+.summary__blocker[data-blocker-state="not-blocked"]{
+  border-color:#e4e9f8;
+  background:#f6f8ff;
+}
+.summary__blocker-label{
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:#b3261e;
+}
+.summary__blocker[data-blocker-state="not-blocked"] .summary__blocker-label{
+  color:#6b768a;
+}
+.summary__blocker-text{
+  line-height:1.45;
+  color:#1d2845;
+  word-break:break-word;
 }
 .summary__detail-row{
   display:flex;
@@ -716,6 +748,131 @@ textarea.tableta:focus{border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,1
 
 .action-row button{
   min-width:56px;
+}
+
+.blocker-dialog-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(16,24,40,.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  z-index:1200;
+}
+.blocker-dialog{
+  width:min(420px, calc(100vw - 32px));
+  background:linear-gradient(180deg,#ffffff 0%,#f8faff 100%);
+  border-radius:20px;
+  box-shadow:0 28px 60px rgba(15,24,36,.25);
+  border:1px solid rgba(255,255,255,.65);
+  display:flex;
+  flex-direction:column;
+}
+.blocker-dialog__header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:20px 22px 12px 24px;
+}
+.blocker-dialog__header h4{
+  margin:0;
+  font-size:18px;
+  font-weight:700;
+  letter-spacing:-0.01em;
+  color:#1d2845;
+}
+.blocker-dialog__close{
+  appearance:none;
+  border:none;
+  background:transparent;
+  color:#6b768a;
+  font-size:26px;
+  line-height:1;
+  padding:4px 8px;
+  border-radius:12px;
+  cursor:pointer;
+  transition:background var(--speed), color var(--speed);
+}
+.blocker-dialog__close:hover,
+.blocker-dialog__close:focus{
+  background:rgba(0,0,0,.05);
+  color:#1d2845;
+  outline:none;
+}
+.blocker-dialog__form{
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+  padding:0 24px 24px;
+}
+.blocker-dialog__intro{
+  margin:0;
+  font-size:14px;
+  color:#4a5670;
+  line-height:1.5;
+}
+.blocker-dialog__field{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.blocker-dialog__field span{
+  font-size:13px;
+  font-weight:600;
+  color:#1d2845;
+}
+.blocker-dialog__textarea{
+  resize:vertical;
+  min-height:120px;
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid #d6dff4;
+  font:inherit;
+  color:#1d2845;
+  background:#fff;
+  transition:border-color var(--speed), box-shadow var(--speed);
+}
+.blocker-dialog__textarea:focus{
+  outline:none;
+  border-color:rgba(0,122,255,.55);
+  box-shadow:0 0 0 3px rgba(0,122,255,.18);
+}
+.blocker-dialog__actions{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:12px;
+}
+.blocker-dialog__button{
+  appearance:none;
+  border:none;
+  border-radius:999px;
+  font-weight:600;
+  font-size:14px;
+  padding:10px 20px;
+  cursor:pointer;
+  transition:transform var(--speed), box-shadow var(--speed), background var(--speed);
+}
+.blocker-dialog__button--ghost{
+  background:rgba(99,112,138,.12);
+  color:#1d2845;
+}
+.blocker-dialog__button--ghost:hover,
+.blocker-dialog__button--ghost:focus{
+  background:rgba(99,112,138,.22);
+  outline:none;
+}
+.blocker-dialog__button--primary{
+  background:#0b55d3;
+  color:#fff;
+  box-shadow:0 10px 20px rgba(11,85,211,.25);
+}
+.blocker-dialog__button--primary:hover,
+.blocker-dialog__button--primary:focus{
+  transform:translateY(-1px);
+  box-shadow:0 12px 24px rgba(11,85,211,.3);
+  outline:none;
 }
 
 #action-card .chip{
