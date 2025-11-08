@@ -110,6 +110,185 @@ export const CAUSE_FINDING_MODES = deepFreeze({
 
 export const CAUSE_FINDING_MODE_VALUES = Object.freeze(Object.values(CAUSE_FINDING_MODES));
 
+const OWNER_CATEGORIES_UNFROZEN = [
+  {
+    id: 'APPLICATION_PRODUCT',
+    label: 'Application & Product',
+    subOwners: [
+      { id: 'APPLICATION_PRODUCT__APPLICATION_OWNER', label: 'Application Owner' },
+      { id: 'APPLICATION_PRODUCT__BUSINESS_APPLICATION_SUPPORT', label: 'Business Application Support' },
+      { id: 'APPLICATION_PRODUCT__PRODUCT_MANAGEMENT', label: 'Product Management' },
+      { id: 'APPLICATION_PRODUCT__QA_TESTING', label: 'QA / Testing' },
+      { id: 'APPLICATION_PRODUCT__RELEASE_MANAGEMENT', label: 'Release Management' }
+    ]
+  },
+  {
+    id: 'BUSINESS_CUSTOMER',
+    label: 'Business & Customer',
+    subOwners: [
+      { id: 'BUSINESS_CUSTOMER__BUSINESS_CONTINUITY', label: 'Business Continuity (BCP)' },
+      { id: 'BUSINESS_CUSTOMER__BUSINESS_RELATIONSHIP', label: 'Business Relationship Management' },
+      { id: 'BUSINESS_CUSTOMER__CUSTOMER_SUPPORT', label: 'Customer Support / Service Desk' },
+      { id: 'BUSINESS_CUSTOMER__EXECUTIVE_SPONSOR', label: 'Executive Business Sponsor' },
+      { id: 'BUSINESS_CUSTOMER__PROCESS_OWNER', label: 'Process Owner (ASQ)' }
+    ]
+  },
+  {
+    id: 'CHANGE_CONFIGURATION',
+    label: 'Change & Configuration (ITIL / ISO)',
+    subOwners: [
+      { id: 'CHANGE_CONFIGURATION__CAB', label: 'Change Advisory Board (CAB)' },
+      { id: 'CHANGE_CONFIGURATION__CHANGE_MANAGER', label: 'Change Manager / Change Enablement' },
+      { id: 'CHANGE_CONFIGURATION__CONFIGURATION_MANAGEMENT', label: 'Configuration Management / CMDB' }
+    ]
+  },
+  {
+    id: 'DATA_DATABASES',
+    label: 'Data & Databases',
+    subOwners: [
+      { id: 'DATA_DATABASES__DBA', label: 'Database Administration (DBA)' },
+      { id: 'DATA_DATABASES__DATA_GOVERNANCE', label: 'Data Governance / Data Owner' },
+      { id: 'DATA_DATABASES__DATA_PRIVACY', label: 'Data Privacy / Records Management (ISO 27001)' }
+    ]
+  },
+  {
+    id: 'ENGINEERING_DEVELOPMENT',
+    label: 'Engineering & Development',
+    subOwners: [
+      { id: 'ENGINEERING_DEVELOPMENT__BACKEND', label: 'Backend Engineering' },
+      { id: 'ENGINEERING_DEVELOPMENT__FRONTEND', label: 'Frontend Engineering' },
+      { id: 'ENGINEERING_DEVELOPMENT__DEVOPS', label: 'DevOps / Platform Engineering' },
+      { id: 'ENGINEERING_DEVELOPMENT__SRE', label: 'SRE (Site Reliability Engineering)' }
+    ]
+  },
+  {
+    id: 'FACILITIES_PHYSICAL',
+    label: 'Facilities / Physical',
+    subOwners: [
+      { id: 'FACILITIES_PHYSICAL__BUILDING_MANAGEMENT', label: 'Building Management / Security' },
+      { id: 'FACILITIES_PHYSICAL__NETWORK_CABLING', label: 'Network Cabling / Infrastructure On-Prem' },
+      { id: 'FACILITIES_PHYSICAL__POWER', label: 'Power / HVAC / UPS Vendor' }
+    ]
+  },
+  {
+    id: 'GOVERNANCE_RISK_COMPLIANCE',
+    label: 'Governance / Risk / Compliance',
+    subOwners: [
+      { id: 'GOVERNANCE_RISK_COMPLIANCE__AUDIT', label: 'Audit & Compliance (ISO / ASQ)' },
+      { id: 'GOVERNANCE_RISK_COMPLIANCE__ENTERPRISE_RISK', label: 'Enterprise Risk Management' },
+      { id: 'GOVERNANCE_RISK_COMPLIANCE__IT_RISK', label: 'IT Risk & Control (SOX / ISO / NIST)' }
+    ]
+  },
+  {
+    id: 'HARDWARE_INFRASTRUCTURE',
+    label: 'Hardware / Infrastructure',
+    subOwners: [
+      { id: 'HARDWARE_INFRASTRUCTURE__COMPUTE', label: 'Compute / Virtualization' },
+      { id: 'HARDWARE_INFRASTRUCTURE__DATA_CENTER', label: 'Data Center Operations' },
+      { id: 'HARDWARE_INFRASTRUCTURE__STORAGE', label: 'Storage Administration' }
+    ]
+  },
+  {
+    id: 'INFORMATION_SECURITY',
+    label: 'Information Security (ISO / NIST)',
+    subOwners: [
+      { id: 'INFORMATION_SECURITY__INCIDENT_RESPONSE', label: 'Incident Response / CSIRT' },
+      { id: 'INFORMATION_SECURITY__THREAT_INTEL', label: 'Threat Intelligence' },
+      { id: 'INFORMATION_SECURITY__VULNERABILITY', label: 'Vulnerability Management' },
+      { id: 'INFORMATION_SECURITY__SOC', label: 'Security Operations Center (SOC)' }
+    ]
+  },
+  {
+    id: 'KNOWLEDGE_CI',
+    label: 'Knowledge & Continuous Improvement',
+    subOwners: [
+      { id: 'KNOWLEDGE_CI__LESSONS_LEARNED', label: 'Lessons Learned / Postmortem' },
+      { id: 'KNOWLEDGE_CI__LEAN', label: 'Lean / Continuous Improvement (ASQ)' },
+      { id: 'KNOWLEDGE_CI__TRAINING', label: 'Training / SOP Documentation' }
+    ]
+  },
+  {
+    id: 'MAJOR_INCIDENT_MANAGEMENT',
+    label: 'Major Incident Management (ITIL / NIST)',
+    subOwners: [
+      { id: 'MAJOR_INCIDENT_MANAGEMENT__INCIDENT_COMMANDER', label: 'Incident Commander' },
+      { id: 'MAJOR_INCIDENT_MANAGEMENT__COMMUNICATIONS_LEAD', label: 'Communications Lead' },
+      { id: 'MAJOR_INCIDENT_MANAGEMENT__TECHNICAL_BRIDGE_LEAD', label: 'Technical Bridge Lead' },
+      { id: 'MAJOR_INCIDENT_MANAGEMENT__SCRIBE', label: 'Scribe / Work Notes' }
+    ]
+  },
+  {
+    id: 'NETWORK',
+    label: 'Network',
+    subOwners: [
+      { id: 'NETWORK__NETWORK_ENGINEERING', label: 'Network Engineering' },
+      { id: 'NETWORK__FIREWALL', label: 'Firewall / Security Perimeter' },
+      { id: 'NETWORK__TELECOM', label: 'Telecom / WAN / MPLS / SD-WAN' }
+    ]
+  },
+  {
+    id: 'PROJECT_PROGRAM_MANAGEMENT',
+    label: 'Project / Program Management (PMI)',
+    subOwners: [
+      { id: 'PROJECT_PROGRAM_MANAGEMENT__PROJECT_MANAGER', label: 'Project Manager' },
+      { id: 'PROJECT_PROGRAM_MANAGEMENT__PROGRAM_MANAGER', label: 'Program Manager' },
+      { id: 'PROJECT_PROGRAM_MANAGEMENT__PMO', label: 'PMO (Project Management Office)' }
+    ]
+  },
+  {
+    id: 'RELEASE_DEPLOYMENT',
+    label: 'Release / Environment / Deployment',
+    subOwners: [
+      { id: 'RELEASE_DEPLOYMENT__RELEASE_TRAIN_ENGINEER', label: 'Release Train Engineer (Scaled Agile)' },
+      { id: 'RELEASE_DEPLOYMENT__ENVIRONMENT_MANAGER', label: 'Environment Manager' },
+      { id: 'RELEASE_DEPLOYMENT__DEPLOYMENT_AUTOMATION', label: 'Deployment / Automation' }
+    ]
+  },
+  {
+    id: 'SERVICE_OPERATIONS',
+    label: 'Service Operations (ITIL)',
+    subOwners: [
+      { id: 'SERVICE_OPERATIONS__AVAILABILITY', label: 'Availability Management' },
+      { id: 'SERVICE_OPERATIONS__CAPACITY', label: 'Capacity Management' },
+      { id: 'SERVICE_OPERATIONS__SERVICE_LEVEL', label: 'Service Level Management' },
+      { id: 'SERVICE_OPERATIONS__PROBLEM_MANAGEMENT', label: 'Problem Management' },
+      { id: 'SERVICE_OPERATIONS__SERVICE_OWNER', label: 'Service Owner' },
+      { id: 'SERVICE_OPERATIONS__VENDOR_MANAGEMENT', label: 'Vendor / Supplier Management' }
+    ]
+  },
+  {
+    id: 'TECHNOLOGY_PLATFORM',
+    label: 'Technology Platform Teams',
+    subOwners: [
+      { id: 'TECHNOLOGY_PLATFORM__CLOUD', label: 'Cloud / Infrastructure-as-Code' },
+      { id: 'TECHNOLOGY_PLATFORM__INTEGRATION', label: 'Integration / API' },
+      { id: 'TECHNOLOGY_PLATFORM__MIDDLEWARE', label: 'Middleware' },
+      { id: 'TECHNOLOGY_PLATFORM__MONITORING', label: 'Monitoring & Observability' }
+    ]
+  },
+  {
+    id: 'USER_COMMS',
+    label: 'User Experience & Comms',
+    subOwners: [
+      { id: 'USER_COMMS__CUSTOMER_COMMUNICATION', label: 'Customer Communication' },
+      { id: 'USER_COMMS__UX', label: 'UX / Digital Experience Monitoring' },
+      { id: 'USER_COMMS__TRAINING', label: 'Training & Instructions to End-Users' }
+    ]
+  },
+  {
+    id: 'GENERIC',
+    label: 'Generic / Universal',
+    subOwners: [
+      { id: 'GENERIC__UNASSIGNED', label: 'Unassigned' },
+      { id: 'GENERIC__TBD', label: 'TBD / To Be Determined' },
+      { id: 'GENERIC__EXTERNAL_VENDOR', label: 'External Vendor' },
+      { id: 'GENERIC__THIRD_PARTY_SUPPORT', label: '3rd-Party Support Provider' }
+    ]
+  }
+];
+
+export const OWNER_CATEGORIES = deepFreeze(OWNER_CATEGORIES_UNFROZEN);
+
 const STEPS_PHASES_UNFROZEN = [
   { id:'A', label:'Activate & Frame' },
   { id:'B', label:'Hypothesize, Test & Communicate' },
