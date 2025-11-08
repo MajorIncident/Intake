@@ -4,8 +4,8 @@ const STATUS_ORDER = {
   'In-Progress': 1,
   Planned: 2,
   Deferred: 3,
-  Cancelled: 3,
   Done: 4,
+  Cancelled: 5,
 };
 
 const PRIORITY_ORDER = {
