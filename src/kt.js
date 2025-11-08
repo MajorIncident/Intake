@@ -14,6 +14,7 @@ let getDeviationFullFn = () => '';
 const tbody = document.getElementById('tbody');
 const rowsBuilt = [];
 let possibleCauses = [];
+let likelyCauseId = null;
 let causeList = document.getElementById('causeList');
 let addCauseBtn = document.getElementById('addCauseBtn');
 
@@ -393,6 +394,78 @@ export function createEmptyCause(){
   };
 }
 
+function causeDisplayLabel(cause){
+  if(!cause) return '';
+  const suspect = typeof cause.suspect === 'string' ? cause.suspect.trim() : '';
+  if(suspect){
+    return suspect;
+  }
+  const accusation = typeof cause.accusation === 'string' ? cause.accusation.trim() : '';
+  if(accusation){
+    return accusation;
+  }
+  const index = possibleCauses.findIndex(item => item && item.id === cause.id);
+  return index >= 0 ? `Possible Cause ${index + 1}` : 'Selected cause';
+}
+
+function updateLikelyBadge(card, cause){
+  if(!card || !cause) return;
+  const toggle = card.querySelector('[data-role="likely-toggle"]');
+  if(!toggle) return;
+  const failed = causeHasFailure(cause);
+  const selected = !failed && likelyCauseId === cause.id;
+  if(selected){
+    card.dataset.likely = 'true';
+  }else{
+    delete card.dataset.likely;
+  }
+  if(failed){
+    toggle.disabled = true;
+    toggle.dataset.state = 'failed';
+    toggle.textContent = 'Not a match';
+    toggle.removeAttribute('aria-pressed');
+    toggle.setAttribute('aria-label', "This cause was ruled out and can't be set as Likely.");
+  }else{
+    toggle.disabled = false;
+    toggle.dataset.state = selected ? 'selected' : 'idle';
+    toggle.textContent = selected ? '⭐ Likely Cause' : '☆ Set as Likely';
+    toggle.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    toggle.setAttribute('aria-label', selected ? 'Unset Likely Cause.' : 'Set this cause as the Likely Cause.');
+  }
+}
+
+function commitLikelyCause(nextId, { silent = false, message = '', skipRender = false } = {}){
+  const normalized = typeof nextId === 'string' && nextId.trim() ? nextId.trim() : null;
+  const current = typeof likelyCauseId === 'string' && likelyCauseId.trim() ? likelyCauseId : null;
+  if(current === normalized){
+    return false;
+  }
+  likelyCauseId = normalized;
+  saveHandler();
+  if(!silent){
+    const selectedCause = possibleCauses.find(item => item && item.id === normalized);
+    const label = causeDisplayLabel(selectedCause) || 'Selected cause';
+    const toastMessage = message || (normalized ? `Likely Cause set to: ${label}.` : 'Likely Cause cleared.');
+    if(toastMessage){
+      callShowToast(toastMessage);
+    }
+  }else if(message){
+    callShowToast(message);
+  }
+  if(!skipRender){
+    renderCauses();
+  }
+  return true;
+}
+
+function toggleLikelyCause(cause){
+  if(!cause || causeHasFailure(cause)) return;
+  const nextId = likelyCauseId === cause.id ? null : cause.id;
+  const label = causeDisplayLabel(cause);
+  const message = nextId ? `Likely Cause set to: ${label}.` : 'Likely Cause cleared.';
+  commitLikelyCause(nextId, { silent: false, message });
+}
+
 function hasCompleteHypothesis(cause){
   if(!cause) return false;
   return ['suspect', 'accusation', 'impact'].every(key => typeof cause[key] === 'string' && cause[key].trim().length);
@@ -518,6 +591,10 @@ function updateCauseCardIndicators(card, cause){
   if(failureEl){ failureEl.hidden = !failed; }
   if(failed){
     card.dataset.failed = 'true';
+    if(likelyCauseId === cause.id){
+      commitLikelyCause(null, { silent: true, skipRender: true });
+      callShowToast('Previous Likely Cause was ruled out and has been cleared.');
+    }
   }else{
     delete card.dataset.failed;
   }
@@ -530,6 +607,7 @@ function updateCauseCardIndicators(card, cause){
       assumptionEl.hidden = true;
     }
   }
+  updateLikelyBadge(card, cause);
 }
 
 function previewEvidenceText(value){
@@ -611,6 +689,16 @@ export function renderCauses(){
     ensurePossibleCausesUI();
   }
   if(!causeList) return;
+  let clearedMessage = '';
+  if(likelyCauseId){
+    const active = possibleCauses.find(item => item && item.id === likelyCauseId);
+    if(!active){
+      commitLikelyCause(null, { silent: true, skipRender: true });
+    }else if(causeHasFailure(active)){
+      commitLikelyCause(null, { silent: true, skipRender: true });
+      clearedMessage = 'Previous Likely Cause was ruled out and has been cleared.';
+    }
+  }
   causeList.innerHTML = '';
   if(!possibleCauses.length){
     const empty = document.createElement('div');
@@ -648,7 +736,15 @@ export function renderCauses(){
     assumptionTag.className = 'cause-card__assumptions';
     assumptionTag.hidden = true;
     indicators.append(failureTag, chip, assumptionTag);
-    header.append(meta, indicators);
+    const likelyWrap = document.createElement('div');
+    likelyWrap.className = 'cause-card__likely';
+    const likelyBtn = document.createElement('button');
+    likelyBtn.type = 'button';
+    likelyBtn.className = 'cause-card__likely-badge';
+    likelyBtn.dataset.role = 'likely-toggle';
+    likelyBtn.addEventListener('click', () => { toggleLikelyCause(cause); });
+    likelyWrap.appendChild(likelyBtn);
+    header.append(meta, likelyWrap, indicators);
     card.append(header);
     updateCauseStatusLabel(statusEl, cause);
     updateCauseProgressChip(chip, cause);
@@ -769,6 +865,16 @@ export function renderCauses(){
     causeList.appendChild(card);
     updateCauseCardIndicators(card, cause);
   });
+  const allFailed = possibleCauses.length > 0 && possibleCauses.every(item => causeHasFailure(item));
+  if(allFailed){
+    const hint = document.createElement('p');
+    hint.className = 'cause-list__hint';
+    hint.textContent = 'All current causes were ruled out. Add a new Possible Cause to continue.';
+    causeList.appendChild(hint);
+  }
+  if(clearedMessage){
+    callShowToast(clearedMessage);
+  }
   updateCauseEvidencePreviews();
 }
 
@@ -1006,6 +1112,15 @@ export function getPossibleCauses(){
 
 export function setPossibleCauses(list){
   possibleCauses = Array.isArray(list) ? list : [];
+}
+
+export function getLikelyCauseId(){
+  return typeof likelyCauseId === 'string' && likelyCauseId.trim() ? likelyCauseId : null;
+}
+
+export function setLikelyCauseId(nextId, options = {}){
+  const { silent = false, skipRender = false, message = '' } = options || {};
+  commitLikelyCause(nextId, { silent, skipRender, message });
 }
 
 export function getRowsBuilt(){
