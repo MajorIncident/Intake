@@ -24,6 +24,8 @@ import {
   buildHypothesisSentence,
   causeStatusLabel,
   causeHasFailure,
+  getLikelyCauseId,
+  setLikelyCauseId,
   countCauseAssumptions,
   evidencePairIndexes,
   countCompletedEvidence,
@@ -54,6 +56,7 @@ export function collectAppState() {
   const table = exportKTTableState();
   const tableFocusMode = getTableFocusMode();
   const causes = serializeCauses(getPossibleCauses());
+  const likelyCauseId = getLikelyCauseId();
   const steps = exportStepsState();
   return {
     pre,
@@ -61,13 +64,22 @@ export function collectAppState() {
     ops: { ...ops, ...commState, tableFocusMode },
     table,
     causes,
+    likelyCauseId,
     steps
   };
 }
 
 export function applyAppState(data = {}) {
   if (!data || typeof data !== 'object') return;
-  const { pre = {}, impact = {}, ops = {}, table = [], causes = [], steps = null } = data;
+  const {
+    pre = {},
+    impact = {},
+    ops = {},
+    table = [],
+    causes = [],
+    steps = null,
+    likelyCauseId: savedLikelyCauseId = null
+  } = data;
   const {
     commCadence = '',
     commLog = [],
@@ -91,6 +103,7 @@ export function applyAppState(data = {}) {
   } else {
     setPossibleCauses([]);
   }
+  setLikelyCauseId(savedLikelyCauseId, { silent: true, skipRender: true });
   ensurePossibleCausesUI();
   renderCauses();
   const list = getPossibleCauses();
@@ -135,6 +148,7 @@ export function getSummaryState() {
     findingNote,
     fillTokens,
     tbody: getTableElement(),
+    likelyCauseId: getLikelyCauseId(),
     getObjectFull,
     getDeviationFull,
     showToast
