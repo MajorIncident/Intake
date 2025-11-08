@@ -18,7 +18,7 @@ let causeList = document.getElementById('causeList');
 let addCauseBtn = document.getElementById('addCauseBtn');
 
 const TABLE_FOCUS_MODES = ['rapid', 'focused', 'comprehensive'];
-const DEFAULT_TABLE_FOCUS_MODE = 'comprehensive';
+const DEFAULT_TABLE_FOCUS_MODE = 'rapid';
 let tableFocusMode = DEFAULT_TABLE_FOCUS_MODE;
 
 const bandMap = new Map();
