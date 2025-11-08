@@ -1,4 +1,23 @@
 const KEY = 'kt-actions-by-analysis-v1';
+const PRIORITY_ORDER = {
+  Blocked: 0,
+  P1: 1,
+  P2: 2,
+  P3: 3,
+  Deferred: 4,
+  Cancelled: 5,
+};
+
+function getPriorityRank(priority) {
+  const rank = PRIORITY_ORDER[priority];
+  return typeof rank === 'number' ? rank : Number.POSITIVE_INFINITY;
+}
+
+function getDueTime(dueAt) {
+  if (!dueAt) return Number.POSITIVE_INFINITY;
+  const parsed = new Date(dueAt).getTime();
+  return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
+}
 
 function loadAll() {
   try { return JSON.parse(localStorage.getItem(KEY)) || {}; }
@@ -81,4 +100,30 @@ export function removeAction(analysisId, actionId) {
   const list = all[analysisId] || [];
   all[analysisId] = list.filter(a => a.id !== actionId);
   saveAll(all);
+}
+
+export function sortActions(analysisId) {
+  const all = loadAll();
+  const list = all[analysisId] || [];
+  if (list.length <= 1) return list;
+
+  const sorted = [...list].sort((a, b) => {
+    const priorityDiff = getPriorityRank(a.priority) - getPriorityRank(b.priority);
+    if (priorityDiff !== 0) return priorityDiff;
+
+    const etaDiff = getDueTime(a.dueAt) - getDueTime(b.dueAt);
+    if (etaDiff !== 0) return etaDiff;
+
+    const aCreated = a.createdAt || '';
+    const bCreated = b.createdAt || '';
+    if (aCreated === bCreated) return 0;
+    return aCreated < bCreated ? -1 : 1;
+  });
+
+  const hasChanged = sorted.some((item, index) => item.id !== list[index]?.id);
+  if (!hasChanged) return list;
+
+  all[analysisId] = sorted;
+  saveAll(all);
+  return sorted;
 }

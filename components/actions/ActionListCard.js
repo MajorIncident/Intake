@@ -1,4 +1,4 @@
-import { listActions, createAction, patchAction, removeAction } from '../../src/actionsStore.js';
+import { listActions, createAction, patchAction, removeAction, sortActions } from '../../src/actionsStore.js';
 import { getAnalysisId, getLikelyCauseId } from '../../src/appState.js';
 import { showToast } from '../../src/toast.js';
 
@@ -8,8 +8,11 @@ export function mountActionListCard(hostEl) {
   hostEl.innerHTML = `
     <section class="card" id="action-card">
       <header class="card-header">
-        <h3>Action List</h3>
-        <div class="muted">Track, execute, verify</div>
+        <div class="card-title-group">
+          <h3>Action List</h3>
+          <div class="muted">Track, execute, verify</div>
+        </div>
+        <button id="action-refresh" class="icon-button" title="Refresh and sort actions">↻ Refresh</button>
       </header>
       <div class="quick-add">
         <input id="action-new" placeholder="e.g., Restart API gateway in zone A" />
@@ -22,6 +25,7 @@ export function mountActionListCard(hostEl) {
   const input = hostEl.querySelector('#action-new');
   const addBtn = hostEl.querySelector('#action-add');
   const listEl = hostEl.querySelector('#action-list');
+  const refreshBtn = hostEl.querySelector('#action-refresh');
   let disposeEtaPicker = null;
   let disposeMoreMenu = null;
   let disposeVerificationDialog = null;
@@ -66,6 +70,12 @@ export function mountActionListCard(hostEl) {
       row.addEventListener('keydown', (e) => keyControls(e, id));
       row.tabIndex = 0;
     });
+  }
+
+  function handleRefresh() {
+    sortActions(analysisId);
+    render();
+    toast('Actions sorted by priority and ETA.');
   }
 
   function toast(msg) {
@@ -725,6 +735,7 @@ export function mountActionListCard(hostEl) {
   }
   addBtn.addEventListener('click', add);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') add(); });
+  refreshBtn.addEventListener('click', handleRefresh);
 
   // Global shortcuts
   document.addEventListener('keydown', e => {
