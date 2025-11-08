@@ -208,7 +208,11 @@ fieldset.field legend{font-weight:700; margin-bottom:6px; font-size:14px; color:
   transition:border-color var(--speed), box-shadow var(--speed), background var(--speed);
 }
 .field textarea{min-height:140px; resize:vertical;}
-#oneLine,
+#oneLine{
+  min-height:52px;
+  max-height:72px;
+  height:auto;
+}
 #proof,
 #objectPrefill,
 #healthy,
