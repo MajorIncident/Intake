@@ -32,7 +32,9 @@ import {
   findingMode,
   findingNote,
   fillTokens,
-  getTableElement
+  getTableElement,
+  getTableFocusMode,
+  setTableFocusMode
 } from './kt.js';
 import {
   exportStepsState,
@@ -50,12 +52,13 @@ export function collectAppState() {
   const { pre, impact, ops } = getPrefaceState();
   const commState = getCommunicationsState();
   const table = exportKTTableState();
+  const tableFocusMode = getTableFocusMode();
   const causes = serializeCauses(getPossibleCauses());
   const steps = exportStepsState();
   return {
     pre,
     impact,
-    ops: { ...ops, ...commState },
+    ops: { ...ops, ...commState, tableFocusMode },
     table,
     causes,
     steps
@@ -70,6 +73,7 @@ export function applyAppState(data = {}) {
     commLog = [],
     commNextDueIso = '',
     commNextUpdateTime = '',
+    tableFocusMode: savedFocusMode = '',
     ...opsWithoutComms
   } = ops || {};
 
@@ -79,6 +83,8 @@ export function applyAppState(data = {}) {
   if (Array.isArray(table) && table.length) {
     importKTTableState(table);
   }
+
+  setTableFocusMode(savedFocusMode, { silent: true });
 
   if (Array.isArray(causes)) {
     setPossibleCauses(deserializeCauses(causes));

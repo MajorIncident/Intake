@@ -385,12 +385,65 @@ tbody th{
 @media (max-width:720px){
   .cause-card{padding:16px;}
 }
+.kt-focus-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:4px;
+  border:1px solid #dfe4f2;
+  border-radius:999px;
+  background:rgba(223,228,242,.4);
+  margin:0 0 12px;
+}
+.kt-focus-toggle button{
+  appearance:none;
+  border:1px solid transparent;
+  background:transparent;
+  color:#1d2845;
+  font-weight:600;
+  font-size:13px;
+  padding:6px 12px;
+  border-radius:999px;
+  cursor:pointer;
+  transition:background var(--speed), color var(--speed), border-color var(--speed), box-shadow var(--speed);
+}
+.kt-focus-toggle button:hover{
+  background:rgba(0,122,255,.08);
+  color:var(--accent);
+}
+.kt-focus-toggle button:focus{
+  outline:none;
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(0,122,255,.18);
+}
+.kt-focus-toggle button.is-active{
+  background:var(--accent);
+  color:#ffffff;
+  border-color:var(--accent);
+  box-shadow:0 8px 20px rgba(0,122,255,.22);
+}
 .band th{
   padding:12px; font-weight:800; color:#2a3957;
   background:linear-gradient(180deg, var(--band), #ffffff);
   border-top:1px solid var(--line); border-bottom:1px solid var(--line);
 }
 .band th span{opacity:.85; font-weight:600; color:#6b768a}
+#ktTable tbody tr[data-priority]{position:relative;}
+#ktTable tbody tr[data-priority] > th{position:relative; background-clip:padding-box;}
+#ktTable tbody tr[data-priority="p1"] > th{background:linear-gradient(90deg, rgba(0,122,255,.16), rgba(0,122,255,0)); color:#13315b;}
+#ktTable tbody tr[data-priority="p2"] > th{background:linear-gradient(90deg, rgba(0,122,255,.1), rgba(0,122,255,0));}
+#ktTable tbody tr[data-priority]::before{
+  content:'';
+  position:absolute;
+  left:6px;
+  top:6px;
+  bottom:6px;
+  width:4px;
+  border-radius:999px;
+  background:rgba(0,122,255,.24);
+  pointer-events:none;
+}
+#ktTable tbody tr[data-priority="p2"]::before{background:rgba(0,122,255,.16);}
 textarea.tableta{
   width:100%; min-height:var(--ta-min-h); resize:vertical; box-sizing:border-box;
   font:var(--ta-fs)/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
