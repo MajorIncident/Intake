@@ -975,6 +975,74 @@ body.dialog-open{overflow:hidden;}
   text-overflow: ellipsis;
 }
 
+.action-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 230;
+}
+
+.action-menu {
+  position: absolute;
+  min-width: 240px;
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #dfe4f2;
+  box-shadow: 0 24px 48px rgba(12, 18, 32, 0.18);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.action-menu__divider {
+  height: 1px;
+  background: #edf1fb;
+  margin: 4px 0;
+}
+
+.action-menu__item {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  border-radius: 10px;
+  text-align: left;
+  padding: 9px 12px;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: background var(--speed), box-shadow var(--speed), transform var(--speed);
+}
+
+.action-menu__item:hover,
+.action-menu__item:focus {
+  background: #eef3ff;
+  outline: none;
+  transform: translateX(2px);
+}
+
+.action-menu__item--danger {
+  color: #9f1f24;
+}
+
+.action-menu__item--danger:hover,
+.action-menu__item--danger:focus {
+  background: rgba(159, 31, 36, 0.1);
+}
+
+.action-menu__label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.action-menu__hint {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
 .eta-picker-overlay{
   position:fixed;
   inset:0;
