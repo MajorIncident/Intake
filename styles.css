@@ -449,14 +449,12 @@ tbody th{
   border-top:1px solid var(--line); border-bottom:1px solid var(--line);
 }
 .band th span{opacity:.85; font-weight:600; color:#6b768a}
-#ktTable tbody tr[data-priority] > th{
+#ktTable tbody tr[data-row-theme] > th{
   position:relative;
   background-clip:padding-box;
   padding-left:8px;
 }
-#ktTable tbody tr[data-priority="p1"] > th{background:linear-gradient(90deg, rgba(0,122,255,.16), rgba(0,122,255,0)); color:#13315b;}
-#ktTable tbody tr[data-priority="p2"] > th{background:linear-gradient(90deg, rgba(0,122,255,.1), rgba(0,122,255,0));}
-#ktTable tbody tr[data-priority] > th::before{
+#ktTable tbody tr[data-row-theme] > th::before{
   content:'';
   position:absolute;
   left:0;
@@ -464,10 +462,18 @@ tbody th{
   bottom:6px;
   width:4px;
   border-radius:999px;
-  background:rgba(0,122,255,.24);
   pointer-events:none;
 }
-#ktTable tbody tr[data-priority="p2"] > th::before{background:rgba(0,122,255,.16);}
+#ktTable tbody tr[data-row-theme="blue"] > th{
+  background:linear-gradient(90deg, rgba(0,122,255,.16), rgba(0,122,255,0));
+  color:#13315b;
+}
+#ktTable tbody tr[data-row-theme="blue"] > th::before{background:rgba(0,122,255,.24);}
+#ktTable tbody tr[data-row-theme="lavender"] > th{
+  background:linear-gradient(90deg, rgba(168,132,255,.16), rgba(168,132,255,0));
+  color:#33275b;
+}
+#ktTable tbody tr[data-row-theme="lavender"] > th::before{background:rgba(168,132,255,.28);}
 textarea.tableta{
   width:100%; min-height:var(--ta-min-h); resize:vertical; box-sizing:border-box;
   font:var(--ta-fs)/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
