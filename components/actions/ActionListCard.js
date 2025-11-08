@@ -1,4 +1,5 @@
 import { listActions, createAction, patchAction, removeAction, sortActions } from '../../src/actionsStore.js';
+import { OWNER_CATEGORIES } from '../../src/constants.js';
 import { getAnalysisId, getLikelyCauseId } from '../../src/appState.js';
 import { showToast } from '../../src/toast.js';
 
@@ -30,6 +31,7 @@ export function mountActionListCard(hostEl) {
   let disposeMoreMenu = null;
   let disposeBlockerDialog = null;
   let disposeVerificationDialog = null;
+  let disposeOwnerDialog = null;
 
   function fmtETA(dueAt) {
     if (!dueAt) return 'ETA';
@@ -116,6 +118,382 @@ export function mountActionListCard(hostEl) {
     }
   }
 
+  function closeOwnerDialog() {
+    if (typeof disposeOwnerDialog === 'function') {
+      disposeOwnerDialog();
+      disposeOwnerDialog = null;
+    }
+  }
+
+  function isActionLocked(action) {
+    if (!action || typeof action !== 'object') return false;
+    return action.status === 'Done' || action.status === 'Cancelled';
+  }
+
+  function openOwnerDialog(action) {
+    closeOwnerDialog();
+
+    const owner = normalizeOwnerForUI(action.owner);
+    const overlay = document.createElement('div');
+    overlay.className = 'owner-picker-overlay';
+    overlay.innerHTML = `
+      <div class="owner-picker" role="dialog" aria-modal="true" aria-labelledby="ownerPickerTitle" aria-describedby="ownerPickerDescription">
+        <header class="owner-picker__header">
+          <div class="owner-picker__heading">
+            <h4 id="ownerPickerTitle">Assign Owner</h4>
+            <p id="ownerPickerDescription" class="owner-picker__subtitle">Choose a team or person. You can type a name, pick a category, or both.</p>
+          </div>
+          <button type="button" class="owner-picker__close" aria-label="Close">×</button>
+        </header>
+        <form class="owner-picker__form">
+          <div class="owner-picker__banner owner-picker__banner--warning" hidden>
+            <span>This action is locked. You can’t change the owner.</span>
+          </div>
+          <label class="owner-picker__field">
+            <span class="owner-picker__label">Owner Name</span>
+            <input type="text" name="ownerName" placeholder="Type an owner name (e.g., ‘Jane Doe’ or ‘Acme NOC’)" autocomplete="off" />
+          </label>
+          <label class="owner-picker__field">
+            <span class="owner-picker__label">Category</span>
+            <select name="ownerCategory">
+              <option value="">Select a category</option>
+              ${OWNER_CATEGORY_OPTIONS_HTML}
+            </select>
+          </label>
+          <label class="owner-picker__field owner-picker__field--sub">
+            <span class="owner-picker__label">Sub-owner</span>
+            <select name="ownerSubOwner" disabled>
+              <option value="">Select a sub-owner</option>
+            </select>
+            <div class="owner-picker__other" hidden>
+              <input type="text" name="ownerSubOwnerOther" placeholder="Enter custom sub-owner" autocomplete="off" />
+            </div>
+          </label>
+          <p class="owner-picker__hint" role="status" aria-live="polite" hidden></p>
+          <div class="owner-picker__error" role="alert" hidden></div>
+          <label class="owner-picker__field owner-picker__field--notes">
+            <span class="owner-picker__label">Notes for the owner (optional)</span>
+            <textarea name="ownerNotes" maxlength="280" rows="3"></textarea>
+            <span class="owner-picker__counter" aria-live="polite">280</span>
+          </label>
+          <footer class="owner-picker__actions">
+            <button type="button" class="owner-picker__button owner-picker__button--ghost" data-action="clear">Clear</button>
+            <span class="owner-picker__spacer"></span>
+            <button type="button" class="owner-picker__button owner-picker__button--ghost" data-action="cancel">Cancel</button>
+            <button type="submit" class="owner-picker__button owner-picker__button--primary" data-action="assign" disabled>Assign Owner</button>
+          </footer>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const form = overlay.querySelector('.owner-picker__form');
+    const closeBtn = overlay.querySelector('.owner-picker__close');
+    const nameInput = form.querySelector('input[name="ownerName"]');
+    const categorySelect = form.querySelector('select[name="ownerCategory"]');
+    const subOwnerSelect = form.querySelector('select[name="ownerSubOwner"]');
+    const otherWrapper = form.querySelector('.owner-picker__other');
+    const otherInput = form.querySelector('input[name="ownerSubOwnerOther"]');
+    const notesInput = form.querySelector('textarea[name="ownerNotes"]');
+    const hintEl = form.querySelector('.owner-picker__hint');
+    const errorEl = form.querySelector('.owner-picker__error');
+    const counterEl = form.querySelector('.owner-picker__counter');
+    const cancelBtn = form.querySelector('[data-action="cancel"]');
+    const clearBtn = form.querySelector('[data-action="clear"]');
+    const assignBtn = form.querySelector('[data-action="assign"]');
+    const bannerEl = form.querySelector('.owner-picker__banner');
+
+    const locked = isActionLocked(action);
+    bannerEl.hidden = !locked;
+
+    nameInput.value = owner.name;
+    categorySelect.value = owner.category;
+    notesInput.value = owner.notes ? owner.notes.slice(0, 280) : '';
+
+    errorEl.hidden = true;
+    errorEl.textContent = '';
+
+    if (locked) {
+      nameInput.disabled = true;
+      categorySelect.disabled = true;
+      subOwnerSelect.disabled = true;
+      otherInput.disabled = true;
+      notesInput.disabled = true;
+      assignBtn.disabled = true;
+      clearBtn.disabled = true;
+    }
+
+    function populateSubOwnerOptions(categoryId, selectedValue) {
+      const category = getOwnerCategory(categoryId);
+      const options = category && Array.isArray(category.subOwners) ? category.subOwners : [];
+      const defaultOption = '<option value="">Select a sub-owner</option>';
+      if (!options.length) {
+        subOwnerSelect.innerHTML = defaultOption;
+        subOwnerSelect.disabled = true;
+        subOwnerSelect.value = '';
+        otherWrapper.hidden = true;
+        otherInput.value = '';
+        otherInput.disabled = true;
+        return;
+      }
+      const optionsHtml = options
+        .map(entry => `<option value="${htmlEscape(entry.id)}">${htmlEscape(entry.label)}</option>`)
+        .join('');
+      subOwnerSelect.innerHTML = `${defaultOption}${optionsHtml}<option value="${OWNER_OTHER_VALUE}">Other…</option>`;
+      subOwnerSelect.disabled = locked;
+      if (selectedValue && options.some(entry => entry.id === selectedValue)) {
+        subOwnerSelect.value = selectedValue;
+        otherWrapper.hidden = true;
+        otherInput.value = '';
+        otherInput.disabled = true;
+      } else if (selectedValue) {
+        subOwnerSelect.value = OWNER_OTHER_VALUE;
+        otherWrapper.hidden = false;
+        otherInput.disabled = locked;
+        otherInput.value = selectedValue;
+      } else {
+        subOwnerSelect.value = '';
+        otherWrapper.hidden = true;
+        otherInput.value = '';
+        otherInput.disabled = true;
+      }
+    }
+
+    populateSubOwnerOptions(owner.category, owner.subOwner);
+
+    function resolveSubOwnerValue() {
+      if (subOwnerSelect.disabled) return '';
+      const raw = subOwnerSelect.value;
+      if (raw === OWNER_OTHER_VALUE) {
+        return otherInput.value.trim();
+      }
+      return raw || '';
+    }
+
+    function updateHint() {
+      if (locked) {
+        hintEl.hidden = true;
+        hintEl.textContent = '';
+        return;
+      }
+      const categoryId = categorySelect.value;
+      const category = getOwnerCategory(categoryId);
+      const options = category && Array.isArray(category.subOwners) ? category.subOwners : [];
+      const show = categoryId && options.length > 0 && subOwnerSelect.value === '';
+      if (show) {
+        hintEl.textContent = 'Select a sub-owner or continue with Category only.';
+        hintEl.hidden = false;
+      } else {
+        hintEl.hidden = true;
+        hintEl.textContent = '';
+      }
+    }
+
+    function updateCounter() {
+      const remaining = 280 - (notesInput.value || '').length;
+      counterEl.textContent = String(Math.max(0, remaining));
+    }
+
+    function collectTelemetryState() {
+      return {
+        category: categorySelect.value || '',
+        subOwner: resolveSubOwnerValue() || '',
+        hasName: !!nameInput.value.trim(),
+        hasNotes: !!notesInput.value.trim()
+      };
+    }
+
+    function updateAssignState() {
+      if (locked) {
+        assignBtn.disabled = true;
+        return;
+      }
+      const hasName = !!nameInput.value.trim();
+      const hasCategory = !!categorySelect.value;
+      const requiresOther = subOwnerSelect.value === OWNER_OTHER_VALUE;
+      const otherFilled = !requiresOther || !!otherInput.value.trim();
+      const canAssign = (hasName || hasCategory) && otherFilled;
+      assignBtn.disabled = !canAssign;
+    }
+
+    function resetError() {
+      errorEl.hidden = true;
+      errorEl.textContent = '';
+    }
+
+    updateHint();
+    updateCounter();
+    updateAssignState();
+
+    const onSubmit = (event) => {
+      event.preventDefault();
+      if (assignBtn.disabled) return;
+      resetError();
+      const trimmedName = nameInput.value.trim();
+      const categoryId = categorySelect.value;
+      const subOwnerValue = resolveSubOwnerValue();
+      const trimmedNotes = notesInput.value.trim().slice(0, 280);
+      const payload = {
+        name: trimmedName,
+        category: categoryId,
+        subOwner: subOwnerValue,
+        notes: trimmedNotes,
+        lastAssignedBy: 'local-user',
+        lastAssignedAt: new Date().toISOString(),
+        source: 'Manual'
+      };
+      const telemetry = {
+        category: payload.category || '',
+        subOwner: payload.subOwner || '',
+        hasName: !!payload.name,
+        hasNotes: !!payload.notes
+      };
+      assignBtn.disabled = true;
+      const onOk = () => {
+        assignBtn.disabled = false;
+        closeOwnerDialog();
+        trackOwnerEvent('owner_assigned', telemetry);
+      };
+      const onError = (message) => {
+        assignBtn.disabled = false;
+        errorEl.textContent = message || 'Unable to assign owner. Try again.';
+        errorEl.hidden = false;
+        trackOwnerEvent('owner_failed', telemetry);
+      };
+      applyPatch(action.id, { owner: payload }, onOk, onError);
+    };
+
+    const onOverlayClick = (event) => {
+      if (event.target === overlay) {
+        closeOwnerDialog();
+      }
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeOwnerDialog();
+      }
+    };
+
+    const onCloseClick = () => {
+      closeOwnerDialog();
+    };
+
+    const onCancelClick = (event) => {
+      event.preventDefault();
+      closeOwnerDialog();
+    };
+
+    const onClearClick = (event) => {
+      event.preventDefault();
+      if (locked) return;
+      nameInput.value = '';
+      categorySelect.value = '';
+      populateSubOwnerOptions('', '');
+      notesInput.value = '';
+      otherWrapper.hidden = true;
+      otherInput.value = '';
+      otherInput.disabled = true;
+      updateHint();
+      updateCounter();
+      updateAssignState();
+      resetError();
+      trackOwnerEvent('owner_cleared', collectTelemetryState());
+      requestAnimationFrame(() => {
+        nameInput.focus();
+      });
+    };
+
+    const onCategoryChange = () => {
+      resetError();
+      populateSubOwnerOptions(categorySelect.value, '');
+      updateHint();
+      updateAssignState();
+    };
+
+    const onSubOwnerChange = () => {
+      resetError();
+      if (subOwnerSelect.value === OWNER_OTHER_VALUE) {
+        otherWrapper.hidden = false;
+        if (!locked) {
+          otherInput.disabled = false;
+          requestAnimationFrame(() => otherInput.focus());
+        }
+      } else {
+        otherWrapper.hidden = true;
+        otherInput.value = '';
+        otherInput.disabled = true;
+      }
+      updateHint();
+      updateAssignState();
+    };
+
+    const onOtherInput = () => {
+      resetError();
+      updateAssignState();
+    };
+
+    const onNameInput = () => {
+      resetError();
+      updateAssignState();
+    };
+
+    const onNotesInput = () => {
+      resetError();
+      updateCounter();
+      updateAssignState();
+    };
+
+    form.addEventListener('submit', onSubmit);
+    overlay.addEventListener('click', onOverlayClick);
+    document.addEventListener('keydown', onKeyDown, true);
+    closeBtn.addEventListener('click', onCloseClick);
+    cancelBtn.addEventListener('click', onCancelClick);
+    clearBtn.addEventListener('click', onClearClick);
+    categorySelect.addEventListener('change', onCategoryChange);
+    subOwnerSelect.addEventListener('change', onSubOwnerChange);
+    otherInput.addEventListener('input', onOtherInput);
+    nameInput.addEventListener('input', onNameInput);
+    notesInput.addEventListener('input', onNotesInput);
+
+    const focusTimer = requestAnimationFrame(() => {
+      if (locked) {
+        cancelBtn.focus();
+      } else {
+        nameInput.focus();
+        if (nameInput.value) {
+          nameInput.select();
+        }
+      }
+    });
+
+    disposeOwnerDialog = () => {
+      cancelAnimationFrame(focusTimer);
+      form.removeEventListener('submit', onSubmit);
+      overlay.removeEventListener('click', onOverlayClick);
+      document.removeEventListener('keydown', onKeyDown, true);
+      closeBtn.removeEventListener('click', onCloseClick);
+      cancelBtn.removeEventListener('click', onCancelClick);
+      clearBtn.removeEventListener('click', onClearClick);
+      categorySelect.removeEventListener('change', onCategoryChange);
+      subOwnerSelect.removeEventListener('change', onSubOwnerChange);
+      otherInput.removeEventListener('input', onOtherInput);
+      nameInput.removeEventListener('input', onNameInput);
+      notesInput.removeEventListener('input', onNotesInput);
+      overlay.remove();
+      const trigger = listEl.querySelector(`.action-row[data-id="${action.id}"] .owner`);
+      if (trigger && typeof trigger.focus === 'function') {
+        trigger.focus();
+      }
+    };
+
+    updateHint();
+    updateAssignState();
+    updateCounter();
+    trackOwnerEvent('owner_opened', collectTelemetryState());
+  }
+
   function htmlEscape(input) {
     if (typeof input !== 'string') return '';
     return input
@@ -124,6 +502,138 @@ export function mountActionListCard(hostEl) {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function escapeAttribute(value) {
+    if (typeof value !== 'string') return '';
+    return htmlEscape(value).replace(/\n/g, '&#10;');
+  }
+
+  const OWNER_OTHER_VALUE = '__OWNER_OTHER__';
+  const OWNER_CATEGORY_INDEX = new Map();
+  const OWNER_CATEGORY_OPTIONS_HTML = OWNER_CATEGORIES
+    .map(category => `<option value="${htmlEscape(category.id)}">${htmlEscape(category.label)}</option>`)
+    .join('');
+
+  OWNER_CATEGORIES.forEach(category => {
+    OWNER_CATEGORY_INDEX.set(category.id, category);
+  });
+
+  function getOwnerCategory(categoryId) {
+    if (!categoryId) return null;
+    return OWNER_CATEGORY_INDEX.get(categoryId) || null;
+  }
+
+  function getOwnerCategoryLabel(categoryId) {
+    const category = getOwnerCategory(categoryId);
+    return category ? category.label : '';
+  }
+
+  function getOwnerSubOwnerLabel(categoryId, subOwnerValue) {
+    if (!subOwnerValue) return '';
+    const category = getOwnerCategory(categoryId);
+    if (!category || !Array.isArray(category.subOwners)) {
+      return subOwnerValue;
+    }
+    const match = category.subOwners.find(entry => entry.id === subOwnerValue);
+    return match ? match.label : subOwnerValue;
+  }
+
+  function normalizeOwnerForUI(raw) {
+    const base = {
+      name: '',
+      category: '',
+      subOwner: '',
+      notes: '',
+      lastAssignedBy: '',
+      lastAssignedAt: '',
+      source: 'Manual'
+    };
+    if (!raw) return base;
+    if (typeof raw === 'string') {
+      return { ...base, name: raw.trim() };
+    }
+    if (typeof raw !== 'object') return base;
+    const owner = { ...base };
+    if (typeof raw.name === 'string') owner.name = raw.name.trim();
+    if (typeof raw.category === 'string') owner.category = raw.category.trim();
+    if (typeof raw.subOwner === 'string') owner.subOwner = raw.subOwner.trim();
+    if (typeof raw.notes === 'string') owner.notes = raw.notes.trim();
+    if (typeof raw.lastAssignedBy === 'string') owner.lastAssignedBy = raw.lastAssignedBy.trim();
+    if (typeof raw.lastAssignedAt === 'string') owner.lastAssignedAt = raw.lastAssignedAt.trim();
+    if (typeof raw.source === 'string' && raw.source.trim()) owner.source = raw.source.trim();
+    return owner;
+  }
+
+  function formatOwnerDisplay(raw) {
+    const owner = normalizeOwnerForUI(raw);
+    const name = owner.name;
+    const categoryLabel = getOwnerCategoryLabel(owner.category);
+    const subOwnerLabel = getOwnerSubOwnerLabel(owner.category, owner.subOwner);
+    const notes = owner.notes;
+    const hasName = !!name;
+    const hasCategory = !!categoryLabel;
+    const hasSubOwner = !!subOwnerLabel;
+    const isEmpty = !hasName && !hasCategory && !hasSubOwner;
+    if (isEmpty) {
+      return {
+        html: 'Owner',
+        tooltip: 'Assign owner (O)',
+        isEmpty: true,
+        notes: ''
+      };
+    }
+
+    const parts = [];
+    if (hasName) {
+      parts.push(`<span class="owner-chip__name">${htmlEscape(name)}</span>`);
+    }
+
+    let metaText = '';
+    if (hasCategory) {
+      metaText = htmlEscape(categoryLabel);
+      if (hasSubOwner) {
+        metaText += ` › ${htmlEscape(subOwnerLabel)}`;
+      }
+    } else if (hasSubOwner) {
+      metaText = htmlEscape(subOwnerLabel);
+    }
+
+    if (metaText) {
+      if (hasName) {
+        parts.push('<span class="owner-chip__separator">•</span>');
+      }
+      parts.push(`<span class="owner-chip__meta">${metaText}</span>`);
+    }
+
+    const tooltipSegments = [];
+    if (hasName) tooltipSegments.push(name);
+    if (hasCategory) {
+      const categorySegment = hasSubOwner ? `${categoryLabel} › ${subOwnerLabel}` : categoryLabel;
+      tooltipSegments.push(categorySegment);
+    } else if (hasSubOwner) {
+      tooltipSegments.push(subOwnerLabel);
+    }
+    const tooltipMain = tooltipSegments.join(' • ');
+    const tooltipNotes = notes ? `\nNotes: ${notes}` : '';
+    const tooltipText = tooltipMain ? `Owner: ${tooltipMain}${tooltipNotes}` : `Owner${tooltipNotes}`;
+    return {
+      html: parts.join(''),
+      tooltip: tooltipText,
+      isEmpty: false,
+      notes
+    };
+  }
+
+  function trackOwnerEvent(name, detail = {}) {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    try {
+      window.dispatchEvent(new CustomEvent(name, { detail }));
+    } catch (error) {
+      console.debug('[owner-event]', name, detail, error);
+    }
   }
 
   function normalizeVerification(raw) {
@@ -228,7 +738,10 @@ export function mountActionListCard(hostEl) {
     const detailTitle = it.detail ? htmlEscape(it.detail) : '';
     const { detail, state, verification } = renderVerificationDetail(it);
     const summaryTitle = htmlEscape(it.summary);
-    const ownerLabel = it.owner ? htmlEscape(it.owner) : 'Owner';
+    const ownerDisplay = formatOwnerDisplay(it.owner);
+    const ownerTooltip = ownerDisplay.tooltip || 'Assign owner (O)';
+    const ownerTitleAttr = escapeAttribute(ownerTooltip);
+    const ownerHtml = ownerDisplay.html || 'Owner';
     const verifyButtonLabel = verification.result ? 'Update' : 'Verify';
     const verifyState = state;
     const blockerDetail = renderBlockerDetail(it);
@@ -241,7 +754,7 @@ export function mountActionListCard(hostEl) {
           ${blockerDetail}
           ${detail}
         </div>
-        <button class="chip chip--pill owner" title="Pick owner (O)">${ownerLabel}</button>
+        <button class="chip chip--pill owner" data-owner-empty="${ownerDisplay.isEmpty ? '1' : '0'}" title="${ownerTitleAttr}" aria-label="${ownerTitleAttr}">${ownerHtml}</button>
         <button class="chip chip--pill eta" title="Set ETA (E)">${htmlEscape(fmtETA(it.dueAt))}</button>
         <button class="chip chip--pill verify-button" data-verify-state="${verifyState}" title="Record verification (V)">${verifyButtonLabel}</button>
         <button class="icon-button more" title="More">⋯</button>
@@ -330,11 +843,19 @@ export function mountActionListCard(hostEl) {
     });
   }
 
-  function applyPatch(id, delta, onOk) {
+  function applyPatch(id, delta, onOk, onError) {
     const res = patchAction(analysisId, id, delta);
-    if (res && res.__error) { toast(res.__error); return; }
+    if (res && res.__error) {
+      if (typeof onError === 'function') {
+        onError(res.__error);
+      } else {
+        toast(res.__error);
+      }
+      return null;
+    }
     render();
     if (onOk) onOk(res);
+    return res;
   }
 
   function formatDatetimeLocal(date) {
@@ -465,13 +986,17 @@ export function mountActionListCard(hostEl) {
     const items = listActions(analysisId);
     const it = items.find(x => x.id === id);
     if (!it) return;
-    const v = prompt('Owner (name or handle):');
-    if (v !== null) applyPatch(id, { owner: v.trim() });
+    closeEtaPicker();
+    closeVerificationDialog();
+    closeBlockerDialog();
+    closeMoreMenu();
+    openOwnerDialog(it);
   }
   function setEta(id) {
     const items = listActions(analysisId);
     const it = items.find(x => x.id === id);
     if (!it) return;
+    closeOwnerDialog();
     openEtaPicker(it);
   }
   function formatCheckedAtInput(iso) {
@@ -492,6 +1017,7 @@ export function mountActionListCard(hostEl) {
     const items = listActions(analysisId);
     const it = items.find(x => x.id === id);
     if (!it) return;
+    closeOwnerDialog();
     openVerificationDialog(it);
   }
 

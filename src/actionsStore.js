@@ -17,6 +17,92 @@ const PRIORITY_ORDER = {
   Cancelled: 5,
 };
 
+const OWNER_SOURCES = new Set(['Manual', 'DirectoryLookup', 'API']);
+
+const OWNER_TEMPLATE = Object.freeze({
+  name: '',
+  category: '',
+  subOwner: '',
+  notes: '',
+  lastAssignedBy: '',
+  lastAssignedAt: '',
+  source: 'Manual'
+});
+
+function normalizeOwner(raw) {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const owner = { ...OWNER_TEMPLATE };
+    if (typeof raw.name === 'string') {
+      owner.name = raw.name.trim();
+    }
+    if (typeof raw.category === 'string') {
+      owner.category = raw.category.trim();
+    }
+    if (typeof raw.subOwner === 'string') {
+      owner.subOwner = raw.subOwner.trim();
+    }
+    if (typeof raw.notes === 'string') {
+      owner.notes = raw.notes.slice(0, 280);
+    }
+    if (typeof raw.lastAssignedBy === 'string') {
+      owner.lastAssignedBy = raw.lastAssignedBy.trim();
+    }
+    if (typeof raw.lastAssignedAt === 'string') {
+      const trimmed = raw.lastAssignedAt.trim();
+      if (trimmed && !Number.isNaN(new Date(trimmed).getTime())) {
+        owner.lastAssignedAt = trimmed;
+      }
+    }
+    if (typeof raw.source === 'string') {
+      const src = raw.source.trim();
+      owner.source = OWNER_SOURCES.has(src) ? src : 'Manual';
+    }
+    return owner;
+  }
+  if (typeof raw === 'string') {
+    return { ...OWNER_TEMPLATE, name: raw.trim() };
+  }
+  return { ...OWNER_TEMPLATE };
+}
+
+function cloneOwner(owner) {
+  return normalizeOwner(owner);
+}
+
+function ownerEquals(a, b) {
+  const left = normalizeOwner(a);
+  const right = normalizeOwner(b);
+  return left.name === right.name
+    && left.category === right.category
+    && left.subOwner === right.subOwner
+    && left.notes === right.notes
+    && left.lastAssignedBy === right.lastAssignedBy
+    && left.lastAssignedAt === right.lastAssignedAt
+    && left.source === right.source;
+}
+
+function normalizeActionRecord(action) {
+  if (!action || typeof action !== 'object') {
+    return { owner: normalizeOwner(null), auditTrail: [] };
+  }
+  const base = { ...action };
+  base.owner = normalizeOwner(action.owner);
+  base.auditTrail = Array.isArray(action.auditTrail)
+    ? action.auditTrail.map(entry => ({ ...entry }))
+    : [];
+  return base;
+}
+
+function migrateAll(map) {
+  if (!map || typeof map !== 'object') return {};
+  const migrated = {};
+  Object.keys(map).forEach(key => {
+    const list = Array.isArray(map[key]) ? map[key] : [];
+    migrated[key] = list.map(item => normalizeActionRecord(item));
+  });
+  return migrated;
+}
+
 function getStatusRank(status) {
   const rank = STATUS_ORDER[status];
   return typeof rank === 'number' ? rank : Number.POSITIVE_INFINITY;
@@ -34,9 +120,15 @@ function getDueTime(dueAt) {
 }
 
 function loadAll() {
-  try { return JSON.parse(localStorage.getItem(KEY)) || {}; }
-  catch { return {}; }
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEY)) || {};
+    return migrateAll(raw);
+  }
+  catch {
+    return {};
+  }
 }
+
 function saveAll(map) {
   localStorage.setItem(KEY, JSON.stringify(map));
 }
@@ -59,7 +151,7 @@ export function createAction(analysisId, patch) {
     createdBy: 'local',
     summary: (patch.summary || '').trim(),
     detail: patch.detail || '',
-    owner: patch.owner || '',
+    owner: normalizeOwner(patch.owner),
     role: patch.role || '',
     status: 'Planned',
     priority: patch.priority || 'P2',
@@ -71,7 +163,8 @@ export function createAction(analysisId, patch) {
     changeControl: { required: false, ...(patch.changeControl || {}) },
     verification: { required: false, ...(patch.verification || {}) },
     links: patch.links || {},
-    notes: ''
+    notes: '',
+    auditTrail: []
   };
   if (!item.summary) return null;
   const list = all[analysisId] ? [item, ...all[analysisId]] : [item];
@@ -86,7 +179,36 @@ export function patchAction(analysisId, actionId, delta) {
   const i = list.findIndex(a => a.id === actionId);
   if (i < 0) return null;
   const curr = list[i];
-  const next = { ...curr, ...delta };
+  const sanitizedDelta = { ...(delta || {}) };
+  delete sanitizedDelta.owner;
+  delete sanitizedDelta.auditTrail;
+
+  const baseOwner = normalizeOwner(curr.owner);
+  const baseAuditTrail = Array.isArray(curr.auditTrail) ? [...curr.auditTrail] : [];
+
+  const next = { ...curr, ...sanitizedDelta };
+  next.owner = baseOwner;
+  next.auditTrail = baseAuditTrail;
+
+  if (Object.prototype.hasOwnProperty.call(delta || {}, 'owner')) {
+    const deltaOwnerRaw = delta.owner;
+    const mergedSource = (deltaOwnerRaw && typeof deltaOwnerRaw === 'object' && !Array.isArray(deltaOwnerRaw))
+      ? { ...baseOwner, ...deltaOwnerRaw }
+      : deltaOwnerRaw;
+    const incomingOwner = normalizeOwner(mergedSource);
+    const changed = !ownerEquals(baseOwner, incomingOwner);
+    if (changed) {
+      const auditEntry = {
+        type: 'ownerChanged',
+        at: incomingOwner.lastAssignedAt || new Date().toISOString(),
+        by: incomingOwner.lastAssignedBy || 'local',
+        before: cloneOwner(baseOwner),
+        after: cloneOwner(incomingOwner)
+      };
+      next.owner = incomingOwner;
+      next.auditTrail = [...baseAuditTrail, auditEntry];
+    }
+  }
 
   // Guardrails mirroring your M3 rules
   if (delta.status === 'In-Progress') {
