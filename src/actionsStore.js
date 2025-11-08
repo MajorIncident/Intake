@@ -1,4 +1,13 @@
 const KEY = 'kt-actions-by-analysis-v1';
+const STATUS_ORDER = {
+  Blocked: 0,
+  'In-Progress': 1,
+  Planned: 2,
+  Deferred: 3,
+  Cancelled: 3,
+  Done: 4,
+};
+
 const PRIORITY_ORDER = {
   Blocked: 0,
   P1: 1,
@@ -7,6 +16,11 @@ const PRIORITY_ORDER = {
   Deferred: 4,
   Cancelled: 5,
 };
+
+function getStatusRank(status) {
+  const rank = STATUS_ORDER[status];
+  return typeof rank === 'number' ? rank : Number.POSITIVE_INFINITY;
+}
 
 function getPriorityRank(priority) {
   const rank = PRIORITY_ORDER[priority];
@@ -108,6 +122,9 @@ export function sortActions(analysisId) {
   if (list.length <= 1) return list;
 
   const sorted = [...list].sort((a, b) => {
+    const statusDiff = getStatusRank(a.status) - getStatusRank(b.status);
+    if (statusDiff !== 0) return statusDiff;
+
     const priorityDiff = getPriorityRank(a.priority) - getPriorityRank(b.priority);
     if (priorityDiff !== 0) return priorityDiff;
 
