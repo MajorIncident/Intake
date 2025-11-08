@@ -177,7 +177,8 @@ h2#docSubtitle{margin:12px 0 8px; font-size:16px; font-weight:700; color:#2a3957
 .grid.cols-2{ grid-template-columns:1fr 1fr; }
 .grid.cols-3{ grid-template-columns:1fr 1fr 1fr; }
 .containment-grid{ margin-top:32px; }
-.containment-grid .contain-status{ grid-column:span 2; }
+.containment-grid .contain-status{ grid-column:1 / -1; }
+.containment-grid .containment-description{ grid-column:1 / -1; margin-top:12px; }
 .containment-radios{ display:flex; flex-wrap:wrap; gap:12px; }
 .radio-option{ display:flex; align-items:center; gap:6px; }
 .comm-grid{ grid-template-columns:1fr 1fr auto; align-items:end; }

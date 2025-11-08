@@ -184,23 +184,39 @@ Anchors present:
       </div>
       <div class="grid cols-3 gap-24 containment-grid">
         <fieldset class="field contain-status">
-          <legend>Containment Status</legend>
-          <div class="containment-radios" role="radiogroup" aria-label="Containment Status">
+          <legend>Service Recovery Stage</legend>
+          <div class="containment-radios" role="radiogroup" aria-label="Service Recovery Stage">
             <div class="radio-option">
-              <input type="radio" id="containNone" name="containStatus" value="none" />
-              <label for="containNone">No action yet</label>
+              <input type="radio" id="containAssessing" name="containStatus" value="assessing" />
+              <label for="containAssessing">Assessing</label>
             </div>
             <div class="radio-option">
-              <input type="radio" id="containMitigation" name="containStatus" value="mitigation" />
-              <label for="containMitigation">Temporary mitigation applied</label>
+              <input type="radio" id="containStoppingImpact" name="containStatus" value="stoppingImpact" />
+              <label for="containStoppingImpact">Stopping the impact</label>
             </div>
             <div class="radio-option">
-              <input type="radio" id="containRestore" name="containStatus" value="restore" />
-              <label for="containRestore">Full restoration in progress</label>
+              <input type="radio" id="containStabilized" name="containStatus" value="stabilized" />
+              <label for="containStabilized">Stabilized/Workaround Active</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" id="containFixInProgress" name="containStatus" value="fixInProgress" />
+              <label for="containFixInProgress">Fix in progress</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" id="containRestoring" name="containStatus" value="restoring" />
+              <label for="containRestoring">Restoring service</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" id="containMonitoring" name="containStatus" value="monitoring" />
+              <label for="containMonitoring">Monitoring stability</label>
+            </div>
+            <div class="radio-option">
+              <input type="radio" id="containClosed" name="containStatus" value="closed" />
+              <label for="containClosed">Closed</label>
             </div>
           </div>
         </fieldset>
-        <div class="field">
+        <div class="field containment-description">
           <label for="containDesc">Containment Description</label>
           <input type="text" id="containDesc" placeholder="What immediate step reduces risk?" />
         </div>

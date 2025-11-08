@@ -12,6 +12,31 @@ let mirrorTimerId = null;
 let lastObjectValue = '';
 let lastNowValue = '';
 
+const CONTAINMENT_STATUS_PAIRS = [
+  ['assessing', 'containAssessing'],
+  ['stoppingImpact', 'containStoppingImpact'],
+  ['stabilized', 'containStabilized'],
+  ['fixInProgress', 'containFixInProgress'],
+  ['restoring', 'containRestoring'],
+  ['monitoring', 'containMonitoring'],
+  ['closed', 'containClosed']
+];
+
+const CONTAINMENT_STATUS_VALUES = new Set(CONTAINMENT_STATUS_PAIRS.map(([value]) => value));
+
+const LEGACY_CONTAINMENT_STATUS_MAP = {
+  none: 'assessing',
+  mitigation: 'stabilized',
+  restore: 'restoring'
+};
+
+function normalizeContainmentStatus(value) {
+  if (typeof value !== 'string') return '';
+  if (CONTAINMENT_STATUS_VALUES.has(value)) return value;
+  const legacy = LEGACY_CONTAINMENT_STATUS_MAP[value];
+  return typeof legacy === 'string' ? legacy : '';
+}
+
 function ensureRefs() {
   if (refs) return refs;
   refs = {
@@ -41,9 +66,13 @@ function ensureRefs() {
     impactNow: document.getElementById('impactNow'),
     impactFuture: document.getElementById('impactFuture'),
     impactTime: document.getElementById('impactTime'),
-    containNone: document.getElementById('containNone'),
-    containMitigation: document.getElementById('containMitigation'),
-    containRestore: document.getElementById('containRestore'),
+    containAssessing: document.getElementById('containAssessing'),
+    containStoppingImpact: document.getElementById('containStoppingImpact'),
+    containStabilized: document.getElementById('containStabilized'),
+    containFixInProgress: document.getElementById('containFixInProgress'),
+    containRestoring: document.getElementById('containRestoring'),
+    containMonitoring: document.getElementById('containMonitoring'),
+    containClosed: document.getElementById('containClosed'),
     containDesc: document.getElementById('containDesc')
   };
   return refs;
@@ -164,6 +193,7 @@ function handlePrefaceInput(target) {
 
 export function initPreface({ onSave } = {}) {
   saveHandler = typeof onSave === 'function' ? onSave : () => {};
+  const references = ensureRefs();
   const {
     oneLine,
     proof,
@@ -186,11 +216,8 @@ export function initPreface({ onSave } = {}) {
     evMetrics,
     evRepro,
     evOther,
-    containDesc,
-    containNone,
-    containMitigation,
-    containRestore
-  } = ensureRefs();
+    containDesc
+  } = references;
 
   [oneLine, proof, objectPrefill, healthy, now, impactNow, impactFuture, impactTime].forEach(el => {
     if (!el) return;
@@ -218,7 +245,11 @@ export function initPreface({ onSave } = {}) {
     containDesc.addEventListener('input', saveHandler);
   }
 
-  [containNone, containMitigation, containRestore].forEach(el => {
+  const containmentRadios = CONTAINMENT_STATUS_PAIRS
+    .map(([, key]) => references[key])
+    .filter(Boolean);
+
+  containmentRadios.forEach(el => {
     if (!el) return;
     el.addEventListener('change', saveHandler);
   });
@@ -285,10 +316,12 @@ export function setBridgeOpenedNow() {
 }
 
 export function getContainmentStatus() {
-  const { containNone, containMitigation, containRestore } = ensureRefs();
-  if (containMitigation?.checked) return 'mitigation';
-  if (containRestore?.checked) return 'restore';
-  if (containNone?.checked) return 'none';
+  const references = ensureRefs();
+  for (const [value, key] of CONTAINMENT_STATUS_PAIRS) {
+    if (references[key]?.checked) {
+      return value;
+    }
+  }
   return '';
 }
 
@@ -440,15 +473,12 @@ export function applyPrefaceState(state = {}) {
     refs.containDesc.value = ops.containDesc || '';
   }
 
-  if (refs.containNone) {
-    refs.containNone.checked = ops.containStatus === 'none';
-  }
-  if (refs.containMitigation) {
-    refs.containMitigation.checked = ops.containStatus === 'mitigation';
-  }
-  if (refs.containRestore) {
-    refs.containRestore.checked = ops.containStatus === 'restore';
-  }
+  const normalizedStatus = normalizeContainmentStatus(ops.containStatus);
+  CONTAINMENT_STATUS_PAIRS.forEach(([value, key]) => {
+    if (refs[key]) {
+      refs[key].checked = normalizedStatus === value;
+    }
+  });
 
   updatePrefaceTitles();
 }
