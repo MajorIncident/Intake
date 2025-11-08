@@ -50,6 +50,32 @@ import {
 } from './storage.js';
 import { showToast } from './toast.js';
 
+const ANALYSIS_ID_KEY = 'kt-analysis-id';
+let cachedAnalysisId = '';
+
+function ensureAnalysisId() {
+  if (cachedAnalysisId) {
+    return cachedAnalysisId;
+  }
+  const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(ANALYSIS_ID_KEY) : null;
+  if (stored && typeof stored === 'string' && stored.trim()) {
+    cachedAnalysisId = stored;
+    return cachedAnalysisId;
+  }
+  const generated = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? `analysis-${crypto.randomUUID()}`
+    : `analysis-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(ANALYSIS_ID_KEY, generated);
+  }
+  cachedAnalysisId = generated;
+  return cachedAnalysisId;
+}
+
+export function getAnalysisId() {
+  return ensureAnalysisId();
+}
+
 export function collectAppState() {
   const { pre, impact, ops } = getPrefaceState();
   const commState = getCommunicationsState();
@@ -154,3 +180,5 @@ export function getSummaryState() {
     showToast
   };
 }
+
+export { getLikelyCauseId };

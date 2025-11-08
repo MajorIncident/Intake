@@ -8,6 +8,7 @@ import {
   renderCauses
 } from './src/kt.js';
 import { generateSummary, setSummaryStateProvider } from './src/summary.js';
+import { mountActionListCard } from './components/actions/ActionListCard.js';
 import {
   initPreface,
   autoResize,
@@ -178,6 +179,16 @@ function wireKeyboardShortcuts() {
   });
 }
 
+function mountAfterPossibleCauses() {
+  const anchor = document.querySelector('#possibleCausesCard')
+    || document.querySelector('#possible-causes');
+  if (!anchor) return;
+
+  const host = document.createElement('div');
+  anchor.insertAdjacentElement('afterend', host);
+  mountActionListCard(host);
+}
+
 function exposeGlobals() {
   window.onGenerateSummary = () => generateSummary('summary', '');
   window.onGenerateAIPrompt = () => generateSummary('summary', 'prompt preamble');
@@ -187,6 +198,7 @@ function exposeGlobals() {
 document.addEventListener('DOMContentLoaded', () => {
   try {
     boot();
+    mountAfterPossibleCauses();
     exposeGlobals();
   } catch (error) {
     console.error('Initialization failed:', error);
