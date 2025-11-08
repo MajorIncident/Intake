@@ -149,92 +149,204 @@ function nextUpdateSummaryLine(state){
   return '';
 }
 
-function causeProgressSummary(state, cause){
+const CAUSE_STATUS_LABELS = Object.freeze({
+  not_tested: 'Not tested yet',
+  in_progress: 'Testing',
+  completed: 'Explains all evidence',
+  failed: 'Failed testing'
+});
+
+function dimensionPhrase(dim){
+  switch((dim || '').toUpperCase()){
+    case 'WHAT':
+      return 'Describe the object/deviation';
+    case 'WHERE':
+      return 'Describe where it occurs';
+    case 'WHEN':
+      return 'Describe when it was first seen';
+    case 'EXTENT':
+      return 'Describe size/scope/impact';
+    default:
+      return 'Evidence detail';
+  }
+}
+
+function collectCauseEvidenceDetails(state, cause){
   const evidenceIndexes = typeof state?.evidencePairIndexes === 'function'
     ? state.evidencePairIndexes()
     : [];
   const total = evidenceIndexes.length;
-  if(total === 0) return 'No KT evidence pairs captured yet';
-  const answered = typeof state?.countCompletedEvidence === 'function'
-    ? state.countCompletedEvidence(cause, evidenceIndexes)
-    : 0;
-  const hasFailure = typeof state?.causeHasFailure === 'function'
-    ? state.causeHasFailure(cause)
-    : false;
-  if(hasFailure){
-    return `${answered}/${total} evidence checks • Failed on at least one check`;
+  const rows = Array.isArray(state?.rowsBuilt) ? state.rowsBuilt : [];
+  const canInspectEntries = typeof state?.peekCauseFinding === 'function'
+    && typeof state?.findingMode === 'function'
+    && typeof state?.findingNote === 'function';
+  const entries = [];
+
+  if(canInspectEntries){
+    evidenceIndexes.forEach(index => {
+      const key = typeof state?.getRowKeyByIndex === 'function'
+        ? state.getRowKeyByIndex(index)
+        : `row-${index}`;
+      const entry = state.peekCauseFinding(cause, key);
+      if(!entry) return;
+      const mode = state.findingMode(entry);
+      const rawNote = typeof state.findingNote === 'function' ? state.findingNote(entry) : '';
+      const note = typeof rawNote === 'string' ? rawNote.trim() : '';
+      if(!mode) return;
+      const row = rows[index];
+      const rawHeader = row?.def?.q || row?.th?.textContent || '';
+      let dimensionKey = '';
+      let dimensionDetail = '';
+      if(rawHeader){
+        const parts = rawHeader.split('—');
+        if(parts.length > 1){
+          dimensionKey = parts[0].trim().toUpperCase();
+          dimensionDetail = parts.slice(1).join('—').trim();
+        }else{
+          dimensionDetail = rawHeader.trim();
+        }
+      }
+      const formattedNote = note ? inlineText(note) : '';
+      entries.push({
+        mode,
+        note,
+        formattedNote,
+        dimensionKey,
+        dimensionDetail
+      });
+    });
   }
-  return `${answered}/${total} evidence checks complete`;
+
+  const completedRaw = typeof state?.countCompletedEvidence === 'function'
+    ? state.countCompletedEvidence(cause, evidenceIndexes)
+    : entries.filter(entry => entry.note).length;
+  const complete = Math.max(0, Math.min(total, completedRaw || 0));
+
+  const failedCount = entries.filter(entry => entry.mode === CAUSE_FINDING_MODES.FAIL).length
+    || (typeof state?.causeHasFailure === 'function' && state.causeHasFailure(cause) ? 1 : 0);
+
+  const evidenceLines = entries.map(entry => {
+    const { mode, formattedNote, note, dimensionKey, dimensionDetail } = entry;
+    const header = dimensionKey
+      ? `${dimensionKey} — ${dimensionDetail || dimensionPhrase(dimensionKey)}`
+      : (dimensionDetail || dimensionPhrase(''));
+    let detail = '';
+    if(mode === CAUSE_FINDING_MODES.FAIL){
+      detail = formattedNote ? `Fails because: ${formattedNote}` : 'Fails';
+    }else if(mode === CAUSE_FINDING_MODES.YES){
+      detail = formattedNote ? `Pass: ${formattedNote}` : 'Pass';
+    }else if(mode === CAUSE_FINDING_MODES.ASSUMPTION){
+      detail = formattedNote ? `Needs assumption: ${formattedNote}` : 'Needs assumption';
+    }else{
+      detail = formattedNote || note || '';
+    }
+    return `  • ${header}\n    - ${detail}`;
+  });
+
+  const evidenceBlock = evidenceLines.length
+    ? `Evidence walkthrough:\n${evidenceLines.join('\n')}`
+    : '';
+
+  return {
+    total,
+    complete,
+    failedCount,
+    evidenceBlock
+  };
 }
 
 function formatCauseFindingsSummary(state, cause){
-  if(!cause || !cause.findings) return '';
-  const evidenceIndexes = typeof state?.evidencePairIndexes === 'function'
-    ? state.evidencePairIndexes()
-    : [];
-  if(!evidenceIndexes.length) return '';
-  const rows = Array.isArray(state?.rowsBuilt) ? state.rowsBuilt : [];
-  const sections = [];
-  evidenceIndexes.forEach(index => {
-    const row = rows[index];
-    const key = typeof state?.getRowKeyByIndex === 'function'
-      ? state.getRowKeyByIndex(index)
-      : `row-${index}`;
-    const entry = typeof state?.peekCauseFinding === 'function'
-      ? state.peekCauseFinding(cause, key)
-      : null;
-    if(!entry) return;
-    const mode = typeof state?.findingMode === 'function' ? state.findingMode(entry) : '';
-    const note = typeof state?.findingNote === 'function' ? state.findingNote(entry) : '';
-    if(!mode && !note.trim()) return;
-    const fallbackLabel = row?.def?.q || `Row ${index + 1}`;
-    const label = row?.th?.textContent?.trim()
-      || (typeof state?.fillTokens === 'function' ? state.fillTokens(fallbackLabel) : fallbackLabel);
-    const lines = [`  • ${label}`];
-    if(mode === CAUSE_FINDING_MODES.ASSUMPTION){
-      lines.push(`    - Assumptions needed: ${inlineText(note)}`);
-    }else if(mode === CAUSE_FINDING_MODES.YES){
-      lines.push(`    - Explains evidence: ${inlineText(note)}`);
-    }else if(mode === CAUSE_FINDING_MODES.FAIL){
-      lines.push(`    - Fails because: ${inlineText(note)}`);
-    }else if(note.trim()){
-      lines.push(`    - Notes: ${inlineText(note)}`);
+  if(!cause) return '';
+  const { evidenceBlock } = collectCauseEvidenceDetails(state, cause);
+  return evidenceBlock;
+}
+
+function resolveCauseTitle(cause, index){
+  const explicit = typeof cause?.title === 'string' ? cause.title.trim() : '';
+  if(explicit){
+    return explicit;
+  }
+  return `Possible Cause ${index + 1}`;
+}
+
+function describeCauseStatus(state, cause, details){
+  const statusRaw = typeof cause?.status === 'string' ? cause.status.trim().toLowerCase() : '';
+  if(statusRaw && CAUSE_STATUS_LABELS[statusRaw]){
+    return CAUSE_STATUS_LABELS[statusRaw];
+  }
+
+  if(typeof state?.causeStatusLabel === 'function'){
+    const label = state.causeStatusLabel(cause) || '';
+    const normalized = label.trim().toLowerCase();
+    if(normalized.includes('failed')) return CAUSE_STATUS_LABELS.failed;
+    if(normalized.includes('explains')) return CAUSE_STATUS_LABELS.completed;
+    if(normalized.includes('testing')) return CAUSE_STATUS_LABELS.in_progress;
+    if(normalized.includes('not tested') || normalized.includes('ready to test') || normalized.includes('waiting')){
+      return CAUSE_STATUS_LABELS.not_tested;
     }
-    sections.push(lines.join('\n'));
-  });
-  return sections.length ? ['Evidence walkthrough:', ...sections].join('\n') : '';
+    if(normalized.includes('draft') || normalized.includes('editing')){
+      return CAUSE_STATUS_LABELS.not_tested;
+    }
+  }
+
+  if(details.failedCount > 0) return CAUSE_STATUS_LABELS.failed;
+  if(details.total === 0){
+    return details.complete > 0 ? CAUSE_STATUS_LABELS.in_progress : CAUSE_STATUS_LABELS.not_tested;
+  }
+  if(details.complete >= details.total && details.total > 0){
+    return CAUSE_STATUS_LABELS.completed;
+  }
+  if(details.complete > 0){
+    return CAUSE_STATUS_LABELS.in_progress;
+  }
+  return CAUSE_STATUS_LABELS.not_tested;
 }
 
 export function formatPossibleCausesSummary(stateInput){
   const state = resolveState(stateInput);
   const causes = Array.isArray(state?.possibleCauses) ? state.possibleCauses : [];
   if(!causes.length){
-    return 'No possible causes captured.';
+    return { likely: '', possible: 'No possible causes captured.' };
   }
-  const blocks = causes.map((cause, index) => {
-    const buildHypothesisSentence = typeof state?.buildHypothesisSentence === 'function'
-      ? state.buildHypothesisSentence
-      : () => '';
-    const causeStatusLabel = typeof state?.causeStatusLabel === 'function'
-      ? state.causeStatusLabel
-      : () => '';
-    const countCauseAssumptions = typeof state?.countCauseAssumptions === 'function'
-      ? state.countCauseAssumptions
-      : () => 0;
-    const header = `• Possible Cause ${index + 1}: ${buildHypothesisSentence(cause)}`;
-    const status = `  Status: ${causeStatusLabel(cause)}`;
-    const progress = `  Progress: ${causeProgressSummary(state, cause)}`;
-    const failureLine = typeof state?.causeHasFailure === 'function' && state.causeHasFailure(cause)
-      ? '  Result: Failed testing on at least one evidence check'
-      : '';
-    const assumptionCount = countCauseAssumptions(cause);
-    const assumptionLine = assumptionCount ? `  Assumptions noted: ${assumptionCount}` : '';
-    const evidence = formatCauseFindingsSummary(state, cause);
-    return [header, status, progress, failureLine, assumptionLine, evidence]
-      .filter(Boolean)
-      .join('\n');
-  });
-  return blocks.join('\n\n');
+
+  const buildHypothesisSentence = typeof state?.buildHypothesisSentence === 'function'
+    ? state.buildHypothesisSentence
+    : () => '';
+  const likelyIdRaw = typeof state?.likelyCauseId === 'string' ? state.likelyCauseId.trim() : '';
+  const likelyId = likelyIdRaw || null;
+
+  const described = causes.map((cause, index) => {
+    if(!cause) return null;
+    const details = collectCauseEvidenceDetails(state, cause);
+    const statusText = describeCauseStatus(state, cause, details);
+    const failFlag = details.failedCount > 0 ? ' • Failed on at least one check' : '';
+    const lines = [
+      `• ${resolveCauseTitle(cause, index)}: ${buildHypothesisSentence(cause)}`,
+      `  Status: ${statusText}`,
+      `  Progress: ${details.complete}/${details.total} evidence checks${failFlag}`
+    ];
+    if(details.evidenceBlock){
+      lines.push(details.evidenceBlock);
+    }
+    return {
+      id: typeof cause?.id === 'string' ? cause.id : `cause-${index}`,
+      text: lines.join('\n'),
+      index
+    };
+  }).filter(Boolean);
+
+  const likelyEntry = likelyId ? described.find(item => item.id === likelyId) : null;
+  const likelyText = likelyEntry ? likelyEntry.text : '';
+
+  const possibleEntries = described.filter(item => !likelyEntry || item.id !== likelyEntry.id);
+  const possibleText = possibleEntries.length
+    ? possibleEntries.map(item => item.text).join('\n\n')
+    : '• None to show.';
+
+  return {
+    likely: likelyText,
+    possible: possibleText
+  };
 }
 
 export function formatStepsSummary(stateInput){
@@ -580,10 +692,16 @@ export function buildSummaryText(stateInput, options = {}){
     pushSection('— Steps Checklist —', stepsSummary);
   }
 
-  const causes = formatPossibleCausesSummary(state);
-  if(causes.trim().length){
-    pushSection('— Possible Causes —', causes);
+  const causeSections = formatPossibleCausesSummary(state);
+  const likelySummary = typeof causeSections?.likely === 'string' ? causeSections.likely.trim() : '';
+  if(likelySummary){
+    pushSection('— ⭐ Likely Cause —', likelySummary);
   }
+  let possibleSummary = typeof causeSections?.possible === 'string' ? causeSections.possible : '';
+  if(!possibleSummary.trim().length){
+    possibleSummary = '• None to show.';
+  }
+  pushSection('— Possible Causes —', possibleSummary);
 
   const ktOut = formatKTTableSummary(state);
   if(ktOut.trim().length){
