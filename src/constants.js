@@ -114,7 +114,7 @@ const STEPS_PHASES_UNFROZEN = [
   { id:'A', label:'Activate & Frame' },
   { id:'B', label:'Hypothesize, Test & Communicate' },
   { id:'C', label:'Evaluate & Decide' },
-  { id:'D', label:'Restore, Validate & Close Comms Loop' },
+  { id:'D', label:'Restore, Validate' },
   { id:'E', label:'Handover & Close' }
 ];
 
