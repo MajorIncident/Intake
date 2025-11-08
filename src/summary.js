@@ -2,6 +2,22 @@ import { CAUSE_FINDING_MODES } from './constants.js';
 
 let stateProvider = () => ({ });
 
+const CONTAINMENT_STATUS_LABELS = Object.freeze({
+  assessing: 'Assessing',
+  stoppingImpact: 'Stopping the impact',
+  stabilized: 'Stabilized/Workaround Active',
+  fixInProgress: 'Fix in progress',
+  restoring: 'Restoring service',
+  monitoring: 'Monitoring stability',
+  closed: 'Closed'
+});
+
+const LEGACY_CONTAINMENT_STATUS_LABELS = Object.freeze({
+  none: CONTAINMENT_STATUS_LABELS.assessing,
+  mitigation: CONTAINMENT_STATUS_LABELS.stabilized,
+  restore: CONTAINMENT_STATUS_LABELS.restoring
+});
+
 function resolveState(input){
   if(input && typeof input === 'object'){ return input; }
   try{
@@ -101,10 +117,8 @@ function formatChipsetSelections(list){
 function containmentStatusText(state){
   if(!state || typeof state.getContainmentStatus !== 'function') return '';
   const status = state.getContainmentStatus();
-  if(status === 'mitigation') return 'Temporary mitigation applied';
-  if(status === 'restore') return 'Full restoration in progress';
-  if(status === 'none') return 'No action yet';
-  return '';
+  if(CONTAINMENT_STATUS_LABELS[status]) return CONTAINMENT_STATUS_LABELS[status];
+  return LEGACY_CONTAINMENT_STATUS_LABELS[status] || '';
 }
 
 function latestCommEntry(state, type){
