@@ -717,6 +717,13 @@ export function mountActionListCard(hostEl) {
 
   // Keyboard shortcuts for focused row
   function keyControls(e, id) {
+    const target = e.target;
+    if (target) {
+      const tag = target.tagName ? target.tagName.toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea') return;
+      if (target.isContentEditable) return;
+      if (target.closest && target.closest('.summary__title--editing')) return;
+    }
     if (e.key === ' ') { e.preventDefault(); advanceStatus(id); }
     if (e.key === 'V' || e.key === 'v') { e.preventDefault(); verifyAction(id); }
     if (e.key === 'O' || e.key === 'o') { e.preventDefault(); setOwner(id); }
