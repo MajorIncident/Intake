@@ -22,10 +22,20 @@ export function mountActionListCard(hostEl) {
   const input = hostEl.querySelector('#action-new');
   const addBtn = hostEl.querySelector('#action-add');
   const listEl = hostEl.querySelector('#action-list');
+  let disposeEtaPicker = null;
 
   function fmtETA(dueAt) {
     if (!dueAt) return 'ETA';
-    try { return new Date(dueAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+    try {
+      const dt = new Date(dueAt);
+      if (Number.isNaN(dt.getTime())) return 'ETA';
+      const now = new Date();
+      const sameDay = dt.toDateString() === now.toDateString();
+      if (sameDay) {
+        return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      return dt.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
     catch { return 'ETA'; }
   }
 
@@ -72,11 +82,127 @@ export function mountActionListCard(hostEl) {
     console.info('[action]', msg);
   }
 
+  function closeEtaPicker() {
+    if (typeof disposeEtaPicker === 'function') {
+      disposeEtaPicker();
+      disposeEtaPicker = null;
+    }
+  }
+
   function applyPatch(id, delta, onOk) {
     const res = patchAction(analysisId, id, delta);
     if (res && res.__error) { toast(res.__error); return; }
     render();
     if (onOk) onOk(res);
+  }
+
+  function formatDatetimeLocal(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    const y = date.getFullYear();
+    const m = pad(date.getMonth() + 1);
+    const d = pad(date.getDate());
+    const h = pad(date.getHours());
+    const min = pad(date.getMinutes());
+    return `${y}-${m}-${d}T${h}:${min}`;
+  }
+
+  function defaultEtaDate(existing) {
+    if (existing) {
+      const parsed = new Date(existing);
+      if (!Number.isNaN(parsed.getTime())) return parsed;
+    }
+    const base = new Date();
+    base.setMinutes(base.getMinutes() + 30);
+    base.setSeconds(0, 0);
+    return base;
+  }
+
+  function openEtaPicker(action) {
+    closeEtaPicker();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'eta-picker-overlay';
+    overlay.innerHTML = `
+      <div class="eta-picker" role="dialog" aria-modal="true" aria-label="Set ETA">
+        <header class="eta-picker__header">
+          <h4>Set ETA</h4>
+          <button type="button" class="eta-picker__close" aria-label="Close">×</button>
+        </header>
+        <label class="eta-picker__field">
+          <span>Due date &amp; time</span>
+          <input type="datetime-local" class="eta-picker__input" />
+        </label>
+        <div class="eta-picker__actions">
+          <button type="button" class="eta-picker__clear" data-action="clear">Clear</button>
+          <span class="eta-picker__spacer"></span>
+          <button type="button" class="eta-picker__cancel" data-action="cancel">Cancel</button>
+          <button type="button" class="eta-picker__save" data-action="save">Save</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const input = overlay.querySelector('.eta-picker__input');
+    const defaultValue = formatDatetimeLocal(defaultEtaDate(action.dueAt));
+    if (defaultValue) input.value = defaultValue;
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeEtaPicker();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+
+    const focusTimer = requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+    });
+
+    disposeEtaPicker = () => {
+      cancelAnimationFrame(focusTimer);
+      document.removeEventListener('keydown', onKeyDown);
+      overlay.remove();
+    };
+
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) closeEtaPicker();
+    });
+
+    overlay.querySelector('.eta-picker__close').addEventListener('click', () => {
+      closeEtaPicker();
+    });
+
+    overlay.querySelector('[data-action="cancel"]').addEventListener('click', () => {
+      closeEtaPicker();
+    });
+
+    overlay.querySelector('[data-action="clear"]').addEventListener('click', () => {
+      applyPatch(action.id, { dueAt: '' }, () => {
+        closeEtaPicker();
+      });
+    });
+
+    overlay.querySelector('[data-action="save"]').addEventListener('click', () => {
+      const raw = input.value;
+      if (!raw) {
+        applyPatch(action.id, { dueAt: '' }, () => {
+          closeEtaPicker();
+        });
+        return;
+      }
+      const picked = new Date(raw);
+      if (Number.isNaN(picked.getTime())) {
+        input.setCustomValidity('Pick a valid date and time.');
+        input.reportValidity();
+        return;
+      }
+      input.setCustomValidity('');
+      applyPatch(action.id, { dueAt: picked.toISOString() }, () => {
+        closeEtaPicker();
+      });
+    });
   }
 
   // Actions
@@ -105,15 +231,7 @@ export function mountActionListCard(hostEl) {
     const items = listActions(analysisId);
     const it = items.find(x => x.id === id);
     if (!it) return;
-    const v = prompt('Due at (ISO or hh:mm):');
-    if (v !== null) {
-      let iso = v.trim();
-      if (/^\d{1,2}:\d{2}$/.test(iso)) {
-        const t = new Date(); const [h,m] = iso.split(':');
-        t.setHours(+h, +m, 0, 0); iso = t.toISOString();
-      }
-      applyPatch(id, { dueAt: iso });
-    }
+    openEtaPicker(it);
   }
   function verifyAction(id) {
     const items = listActions(analysisId);
