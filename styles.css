@@ -428,14 +428,17 @@ tbody th{
   border-top:1px solid var(--line); border-bottom:1px solid var(--line);
 }
 .band th span{opacity:.85; font-weight:600; color:#6b768a}
-#ktTable tbody tr[data-priority]{position:relative;}
-#ktTable tbody tr[data-priority] > th{position:relative; background-clip:padding-box;}
+#ktTable tbody tr[data-priority] > th{
+  position:relative;
+  background-clip:padding-box;
+  padding-left:8px;
+}
 #ktTable tbody tr[data-priority="p1"] > th{background:linear-gradient(90deg, rgba(0,122,255,.16), rgba(0,122,255,0)); color:#13315b;}
 #ktTable tbody tr[data-priority="p2"] > th{background:linear-gradient(90deg, rgba(0,122,255,.1), rgba(0,122,255,0));}
-#ktTable tbody tr[data-priority]::before{
+#ktTable tbody tr[data-priority] > th::before{
   content:'';
   position:absolute;
-  left:6px;
+  left:0;
   top:6px;
   bottom:6px;
   width:4px;
@@ -443,7 +446,7 @@ tbody th{
   background:rgba(0,122,255,.24);
   pointer-events:none;
 }
-#ktTable tbody tr[data-priority="p2"]::before{background:rgba(0,122,255,.16);}
+#ktTable tbody tr[data-priority="p2"] > th::before{background:rgba(0,122,255,.16);}
 textarea.tableta{
   width:100%; min-height:var(--ta-min-h); resize:vertical; box-sizing:border-box;
   font:var(--ta-fs)/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
