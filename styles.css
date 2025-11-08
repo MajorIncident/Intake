@@ -664,7 +664,7 @@ textarea.tableta:focus{border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,1
   min-width:56px;
 }
 
-.chip{
+#action-card .chip{
   appearance:none;
   border:1px solid #dfe4f2;
   background:#f6f8ff;
@@ -676,26 +676,26 @@ textarea.tableta:focus{border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,1
   transition:background var(--speed), border-color var(--speed), transform var(--speed);
 }
 
-.chip:hover,
-.chip:focus{
+#action-card .chip:hover,
+#action-card .chip:focus{
   outline:none;
   border-color:var(--accent);
   background:rgba(0,122,255,.12);
 }
-.chip--status{font-size:13px; padding:8px 16px; text-transform:none;}
-.chip--status[data-status="Planned"]{background:#eef2ff; border-color:#d8def8; color:#1d2845;}
-.chip--status[data-status="In-Progress"]{background:rgba(0,122,255,.14); border-color:rgba(0,122,255,.32); color:#0b55d3;}
-.chip--status[data-status="Done"]{background:#e6f6ec; border-color:#b7e4c5; color:#0f5b2f;}
-.chip--status[data-status="Blocked"]{background:#fdeaea; border-color:#f7c7c7; color:#b3261e;}
-.chip--status[data-status="Deferred"],
-.chip--status[data-status="Cancelled"]{background:#f3f4f9; border-color:#e1e4ef; color:#5b6475;}
-.chip--priority{min-width:60px; font-variant-numeric:tabular-nums;}
-.chip--priority[data-priority="P1"]{background:#fdecec; border-color:#f5b9b9; color:#c13232;}
-.chip--priority[data-priority="P2"]{background:#fff4d6; border-color:#f9dca2; color:#a66a00;}
-.chip--priority[data-priority="P3"]{background:#f1f5ff; border-color:#d9e3ff; color:#1d45a6;}
-.chip--pill{padding:8px 14px; min-width:72px; background:#ffffff;}
-.chip--pill:hover,
-.chip--pill:focus{background:#f6f8ff;}
+#action-card .chip--status{font-size:13px; padding:8px 16px; text-transform:none;}
+#action-card .chip--status[data-status="Planned"]{background:#eef2ff; border-color:#d8def8; color:#1d2845;}
+#action-card .chip--status[data-status="In-Progress"]{background:rgba(0,122,255,.14); border-color:rgba(0,122,255,.32); color:#0b55d3;}
+#action-card .chip--status[data-status="Done"]{background:#e6f6ec; border-color:#b7e4c5; color:#0f5b2f;}
+#action-card .chip--status[data-status="Blocked"]{background:#fdeaea; border-color:#f7c7c7; color:#b3261e;}
+#action-card .chip--status[data-status="Deferred"],
+#action-card .chip--status[data-status="Cancelled"]{background:#f3f4f9; border-color:#e1e4ef; color:#5b6475;}
+#action-card .chip--priority{min-width:60px; font-variant-numeric:tabular-nums;}
+#action-card .chip--priority[data-priority="P1"]{background:#fdecec; border-color:#f5b9b9; color:#c13232;}
+#action-card .chip--priority[data-priority="P2"]{background:#fff4d6; border-color:#f9dca2; color:#a66a00;}
+#action-card .chip--priority[data-priority="P3"]{background:#f1f5ff; border-color:#d9e3ff; color:#1d45a6;}
+#action-card .chip--pill{padding:8px 14px; min-width:72px; background:#ffffff;}
+#action-card .chip--pill:hover,
+#action-card .chip--pill:focus{background:#f6f8ff;}
 
 .icon-button{
   appearance:none;
@@ -962,7 +962,7 @@ body.dialog-open{overflow:hidden;}
   outline: 2px solid var(--focus, #8ab4ff);
   outline-offset: 2px;
 }
-.action-row .chip {
+#action-card .action-row .chip {
   padding: 0.35rem 0.55rem;
   border-radius: 0.6rem;
   border: 1px solid var(--border, #e3e3e3);
