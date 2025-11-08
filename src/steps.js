@@ -123,6 +123,29 @@ function updateStepsProgressUI() {
   }
 }
 
+function updateStepsCategoryStates() {
+  if (!stepsList) return;
+  const countsByPhase = new Map();
+  stepsItems.forEach(step => {
+    const phaseId = step.phase;
+    if (!countsByPhase.has(phaseId)) {
+      countsByPhase.set(phaseId, { total: 0, completed: 0 });
+    }
+    const entry = countsByPhase.get(phaseId);
+    entry.total += 1;
+    if (step.checked) {
+      entry.completed += 1;
+    }
+  });
+  const categories = stepsList.querySelectorAll('details[data-phase]');
+  categories.forEach(category => {
+    const phaseId = category.dataset.phase;
+    const counts = countsByPhase.get(phaseId);
+    const isComplete = !!counts && counts.total > 0 && counts.completed === counts.total;
+    category.classList.toggle('steps-category--complete', isComplete);
+  });
+}
+
 function getDrawerFocusables() {
   if (!stepsDrawer) return [];
   const nodes = stepsDrawer.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
@@ -142,6 +165,7 @@ function handleStepToggle(event) {
   if (!step) return;
   step.checked = !!checkbox.checked;
   updateStepsProgressUI();
+  updateStepsCategoryStates();
   saveStepsItemsToLocalStorage();
   triggerFullSave();
   const message = step.checked ? `Step checked: ${step.label}` : `Step unchecked: ${step.label}`;
@@ -200,6 +224,7 @@ function renderStepsList() {
     if (!items || !items.length) return;
     const details = document.createElement('details');
     details.className = 'steps-category';
+    details.dataset.phase = phase.id;
     details.open = true;
     const summary = document.createElement('summary');
     summary.className = 'steps-category__header';
@@ -239,8 +264,12 @@ function renderStepsList() {
       container.appendChild(row);
     });
     details.appendChild(container);
+    if (items.every(step => step.checked)) {
+      details.classList.add('steps-category--complete');
+    }
     stepsList.appendChild(details);
   });
+  updateStepsCategoryStates();
 }
 
 function setStepsDrawer(open, options = {}) {
