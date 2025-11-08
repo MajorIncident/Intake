@@ -18,6 +18,10 @@ let causeList = document.getElementById('causeList');
 let addCauseBtn = document.getElementById('addCauseBtn');
 
 const TABLE_FOCUS_MODES = ['rapid', 'focused', 'comprehensive'];
+const TABLE_MODE_ROWS = Object.freeze({
+  rapid: Object.freeze([1, 2, 7]),
+  focused: Object.freeze([1, 2, 3, 5, 7])
+});
 const DEFAULT_TABLE_FOCUS_MODE = 'rapid';
 
 const ROW_THEME_ASSIGNMENTS = Object.freeze({
@@ -119,14 +123,15 @@ function normalizeTableFocusMode(mode){
 }
 
 function shouldDisplayRowForMode(row, mode){
-  const priority = row?.priority || row?.def?.priority || '';
-  if(mode === 'rapid'){
-    return priority === 'p1';
+  const rowNumber = Number(row?.rowNumber);
+  if(!Number.isInteger(rowNumber) || rowNumber < 1){
+    return true;
   }
-  if(mode === 'focused'){
-    return priority === 'p1' || priority === 'p2';
+  const allowedRows = TABLE_MODE_ROWS[mode];
+  if(!Array.isArray(allowedRows)){
+    return true;
   }
-  return true;
+  return allowedRows.includes(rowNumber);
 }
 
 function handleFocusToggleKeydown(event){
@@ -1118,7 +1123,18 @@ function mkRow(def, i, bandId){
   tdIS.appendChild(isTA); tdNOT.appendChild(notTA); tdDIST.appendChild(distTA); tdCHG.appendChild(chgTA);
   tr.append(th, tdIS, tdNOT, tdDIST, tdCHG);
 
-  rowsBuilt.push({ tr, th, def, isTA, notTA, distTA, chgTA, priority: def.priority || '', bandId: bandId || null });
+  rowsBuilt.push({
+    tr,
+    th,
+    def,
+    isTA,
+    notTA,
+    distTA,
+    chgTA,
+    priority: def.priority || '',
+    bandId: bandId || null,
+    rowNumber: i
+  });
   return tr;
 }
 
