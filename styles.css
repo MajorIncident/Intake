@@ -78,7 +78,14 @@ h1#docTitle{font-size:22px; font-weight:800; margin:0; letter-spacing:-0.01em; w
 .steps-drawer__title-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
 .steps-drawer__title{margin:0; font-size:18px; font-weight:700; color:#1d2845; letter-spacing:-0.01em;}
 .steps-drawer__progress{font-size:14px; font-weight:600; color:#3b4962;}
-.steps-drawer__body{flex:1; overflow:auto; padding:24px; display:flex; flex-direction:column; gap:18px;}
+.steps-drawer__body{
+  flex:1;
+  display:grid;
+  row-gap:18px;
+  padding:24px;
+  overflow-y:auto;
+  overflow-x:hidden;
+}
 .steps-category{border:1px solid #e2e7f3; border-radius:14px; background:#f8faff; padding:0; overflow:hidden;}
 .steps-category summary{list-style:none;}
 .steps-category summary::-webkit-details-marker{display:none;}
