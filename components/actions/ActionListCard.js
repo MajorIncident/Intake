@@ -62,6 +62,7 @@ export function mountActionListCard(hostEl) {
       row.querySelector('.eta').addEventListener('click', () => setEta(id));
       row.querySelector('.verify-button').addEventListener('click', () => verifyAction(id));
       row.querySelector('.more').addEventListener('click', (event) => moreMenu(id, event.currentTarget));
+      row.querySelector('.summary__title').addEventListener('dblclick', () => editSummary(id));
       row.addEventListener('keydown', (e) => keyControls(e, id));
       row.tabIndex = 0;
     });
@@ -204,7 +205,7 @@ export function mountActionListCard(hostEl) {
         <button class="chip chip--status status" data-status="${it.status}" title="Advance status (Space)">${htmlEscape(it.status)}</button>
         <button class="chip chip--priority priority" data-priority="${it.priority}" title="Set priority (1/2/3)">${htmlEscape(it.priority)}</button>
         <div class="summary" title="${detailTitle}">
-          <div class="summary__title">${summaryTitle}</div>
+          <div class="summary__title" title="Double-click to edit title">${summaryTitle}</div>
           ${detail}
         </div>
         <button class="chip chip--pill owner" title="Pick owner (O)">${ownerLabel}</button>
@@ -213,6 +214,87 @@ export function mountActionListCard(hostEl) {
         <button class="icon-button more" title="More">⋯</button>
       </li>
     `;
+  }
+
+  function editSummary(id) {
+    const items = listActions(analysisId);
+    const action = items.find(x => x.id === id);
+    if (!action) return;
+
+    const row = Array.from(listEl.querySelectorAll('.action-row')).find(el => el.dataset.id === id);
+    if (!row) return;
+
+    const titleEl = row.querySelector('.summary__title');
+    if (!titleEl || titleEl.dataset.editing === '1') return;
+
+    const originalText = action.summary || '';
+    const originalHtml = titleEl.innerHTML;
+
+    titleEl.dataset.editing = '1';
+    titleEl.classList.add('summary__title--editing');
+    titleEl.innerHTML = '';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'summary__title-input';
+    input.value = originalText;
+    input.setAttribute('aria-label', 'Edit action title');
+    input.autocomplete = 'off';
+    input.spellcheck = true;
+    titleEl.appendChild(input);
+
+    input.focus();
+    input.select();
+
+    let closed = false;
+
+    function restore() {
+      if (closed) return;
+      closed = true;
+      titleEl.dataset.editing = '';
+      titleEl.classList.remove('summary__title--editing');
+      titleEl.innerHTML = originalHtml;
+    }
+
+    function commit() {
+      if (closed) return;
+      const trimmed = input.value.trim();
+      if (!trimmed) {
+        input.setCustomValidity('Title cannot be empty.');
+        input.reportValidity();
+        return;
+      }
+      input.setCustomValidity('');
+      restore();
+      if (trimmed !== originalText) {
+        applyPatch(id, { summary: trimmed });
+      }
+    }
+
+    function cancel() {
+      if (closed) return;
+      input.setCustomValidity('');
+      restore();
+    }
+
+    input.addEventListener('blur', () => {
+      commit();
+    });
+
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        commit();
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        cancel();
+      }
+    });
+
+    input.addEventListener('input', () => {
+      input.setCustomValidity('');
+    });
   }
 
   function applyPatch(id, delta, onOk) {
@@ -625,6 +707,13 @@ export function mountActionListCard(hostEl) {
 
   // Keyboard shortcuts for focused row
   function keyControls(e, id) {
+    const target = e.target;
+    if (target) {
+      const tag = target.tagName ? target.tagName.toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea') return;
+      if (target.isContentEditable) return;
+      if (target.closest && target.closest('.summary__title--editing')) return;
+    }
     if (e.key === ' ') { e.preventDefault(); advanceStatus(id); }
     if (e.key === 'V' || e.key === 'v') { e.preventDefault(); verifyAction(id); }
     if (e.key === 'O' || e.key === 'o') { e.preventDefault(); setOwner(id); }
