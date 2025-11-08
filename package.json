@@ -1,0 +1,37 @@
+{
+  "name": "intake",
+  "version": "1.0.0",
+  "description": "KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for rapid bridge facilitation, AI-assisted summaries, and resilient state restoration. The UI lives entirely in `index.html`, while behaviour is organised into ES modules that mirror each major feature of the app.",
+  "main": "main.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node-dev --respawn server/src/index.ts",
+    "start": "node dist/server/index.js",
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "better-sqlite3": "^12.4.1",
+    "express": "^5.1.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.5",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.10.0",
+    "@types/supertest": "^6.0.3",
+    "jest": "^30.2.0",
+    "supertest": "^7.1.4",
+    "ts-jest": "^29.4.5",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.3"
+  }
+}
