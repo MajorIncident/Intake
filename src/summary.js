@@ -83,28 +83,21 @@ function splitLines(text){
   return v.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
 }
 
-function formatLabeledList(label, lines){
-  if(!lines.length) return '';
-  if(lines.length === 1) return `${label}: ${lines[0]}`;
-  const bullets = lines.map(line => `  • ${line}`).join('\n');
-  return `${label}:\n${bullets}`;
-}
-
 function formatDistinctionChanges(distLines, changeLines){
   const len = Math.max(distLines.length, changeLines.length);
   if(len === 0) return '';
   if(len === 1){
     const left = distLines[0] || '—';
     const right = changeLines[0] || '—';
-    return `Distinctions → Changes: ${left} → ${right}`;
+    return `${left} → ${right}`;
   }
   const pairs = [];
   for(let i = 0; i < len; i++){
     const left = distLines[i] || '—';
     const right = changeLines[i] || '—';
-    pairs.push(`  • ${left} → ${right}`);
+    pairs.push(`${left} → ${right}`);
   }
-  return ['Distinctions → Changes:', ...pairs].join('\n');
+  return pairs.join(' · ');
 }
 
 function formatChipsetSelections(list){
@@ -326,34 +319,150 @@ export function formatKTTableSummary(stateInput){
   const state = resolveState(stateInput);
   const tbody = state?.tbody ?? document.getElementById('tbody');
   if(!tbody) return '';
-  const rowsOut = [];
-  let pendingBand = '';
-  [...tbody.querySelectorAll('tr')].forEach(tr => {
+  const bandLayouts = [
+    {
+      key: 'WHAT',
+      heading: '🟦 WHAT — Define the Problem',
+      sections: ['Object', 'Deviation']
+    },
+    {
+      key: 'WHERE',
+      heading: '🟩 WHERE — Location',
+      sections: ['Topology / Geography', 'On the Object']
+    },
+    {
+      key: 'WHEN',
+      heading: '🟧 WHEN — Timing / Pattern',
+      sections: ['First Observed', 'Pattern / Recurrence', 'Conditions / Context']
+    },
+    {
+      key: 'EXTENT',
+      heading: '🟪 EXTENT — Magnitude / Trend',
+      sections: ['Population / Scope', 'Size Per Instance', 'Volume / Frequency']
+    }
+  ];
+
+  const questionLayouts = [
+    {
+      band: 'WHAT',
+      label: 'Object',
+      match: text => text.startsWith('WHAT — Specific Object/Thing')
+    },
+    {
+      band: 'WHAT',
+      label: 'Deviation',
+      match: text => text.startsWith('WHAT — Specific Deviation')
+    },
+    {
+      band: 'WHERE',
+      label: 'Topology / Geography',
+      match: text => text.startsWith('WHERE — is the')
+    },
+    {
+      band: 'WHERE',
+      label: 'On the Object',
+      match: text => text.startsWith('WHERE — On the')
+    },
+    {
+      band: 'WHEN',
+      label: 'First Observed',
+      match: text => text.startsWith('WHEN — Was the')
+    },
+    {
+      band: 'WHEN',
+      label: 'Pattern / Recurrence',
+      match: text => text.startsWith('WHEN — Since was the first time')
+    },
+    {
+      band: 'WHEN',
+      label: 'Conditions / Context',
+      match: text => text.startsWith('WHEN — Describe')
+    },
+    {
+      band: 'EXTENT',
+      label: 'Population / Scope',
+      match: text => text.startsWith('EXTENT — What is the population')
+    },
+    {
+      band: 'EXTENT',
+      label: 'Size Per Instance',
+      match: text => text.startsWith('EXTENT — What is the size')
+    },
+    {
+      band: 'EXTENT',
+      label: 'Volume / Frequency',
+      match: text => text.startsWith('EXTENT — How many')
+    }
+  ];
+
+  const bandSections = new Map();
+  bandLayouts.forEach(layout => {
+    bandSections.set(layout.key, []);
+  });
+
+  let currentBand = '';
+  const rows = [...tbody.querySelectorAll('tr')];
+  rows.forEach(tr => {
     if(tr.classList.contains('band')){
-      pendingBand = `== ${tr.textContent.trim()} ==`;
+      const bandText = tr.textContent?.trim() || '';
+      const bandKey = bandText.split('—')[0]?.trim().toUpperCase() || '';
+      currentBand = bandSections.has(bandKey) ? bandKey : '';
       return;
     }
+
     const th = tr.querySelector('th');
-    const q = th?.textContent?.trim() || '';
-    const t = tr.querySelectorAll('textarea');
-    const isLines = splitLines(t[0]?.value);
-    const notLines = splitLines(t[1]?.value);
-    const distLines = splitLines(t[2]?.value);
-    const changeLines = splitLines(t[3]?.value);
-    const sections = [
-      formatLabeledList('IS', isLines),
-      formatLabeledList('IS NOT', notLines),
-      formatDistinctionChanges(distLines, changeLines)
-    ].filter(Boolean);
-    if(!sections.length) return;
-    if(pendingBand){
-      rowsOut.push(pendingBand);
-      pendingBand = '';
+    const questionText = th?.textContent?.trim() || '';
+    const textareas = tr.querySelectorAll('textarea');
+    const isText = inlineSummaryText(textareas[0]?.value);
+    const notText = inlineSummaryText(textareas[1]?.value);
+    const distText = formatDistinctionChanges(
+      splitLines(textareas[2]?.value),
+      splitLines(textareas[3]?.value)
+    );
+
+    const layoutMatch = questionLayouts.find(entry => entry.match(questionText));
+    const bandKey = layoutMatch?.band || currentBand;
+    if(!bandKey || !bandSections.has(bandKey)) return;
+
+    let sectionLabel = layoutMatch?.label;
+    if(!sectionLabel){
+      const layout = bandLayouts.find(entry => entry.key === bandKey);
+      if(layout){
+        const usedLabels = bandSections.get(bandKey).map(lines => lines[0]);
+        sectionLabel = layout.sections.find(label => !usedLabels.includes(label))
+          || layout.sections[usedLabels.length]
+          || `Section ${usedLabels.length + 1}`;
+      }
     }
-    rowsOut.push(`Q: ${q}`);
-    sections.forEach(section => rowsOut.push(section));
+    if(!sectionLabel){
+      sectionLabel = questionText || 'Entry';
+    }
+
+    const hasContent = Boolean(isText || notText || distText);
+    if(!hasContent){
+      return;
+    }
+
+    const sectionLines = [sectionLabel];
+    if(isText){ sectionLines.push('', `IS: ${isText}`); }
+    if(notText){ sectionLines.push('', `IS NOT: ${notText}`); }
+    if(distText){ sectionLines.push('', `Distinctions / Change: ${distText}`); }
+    bandSections.get(bandKey).push(sectionLines);
   });
-  return rowsOut.filter(line => line && line.trim().length).join('\n\n');
+
+  const output = [];
+  bandLayouts.forEach(layout => {
+    const sections = bandSections.get(layout.key) || [];
+    if(!sections.length) return;
+    if(output.length) output.push('');
+    output.push(layout.heading);
+    sections.forEach(lines => {
+      output.push('');
+      output.push(...lines);
+    });
+  });
+
+  return output.join('\n').trim();
 }
 
 export function buildSummaryText(stateInput, options = {}){
