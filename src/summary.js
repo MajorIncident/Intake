@@ -1,4 +1,4 @@
-import { CAUSE_FINDING_MODES } from './constants.js';
+import { CAUSE_FINDING_MODES, STEPS_PHASES } from './constants.js';
 
 let stateProvider = () => ({ });
 
@@ -248,17 +248,77 @@ export function formatStepsSummary(stateInput){
   const state = resolveState(stateInput);
   const steps = Array.isArray(state?.stepsItems) ? state.stepsItems : [];
   if(!steps.length) return '';
+
   const counts = typeof state?.getStepsCounts === 'function'
     ? state.getStepsCounts()
     : { total: steps.length, completed: steps.filter(step => step.checked).length };
-  const lines = [`Completed: ${counts.completed}/${counts.total}`];
-  const open = steps.filter(step => !step.checked);
-  if(open.length){
-    lines.push('Open Items:');
-    open.forEach(step => {
-      lines.push(`  • Step ${step.id} — ${step.label}`);
+
+  const groupedByPhase = new Map();
+  steps.forEach(step => {
+    const phaseId = typeof step?.phase === 'string' && step.phase.trim()
+      ? step.phase.trim()
+      : '__unassigned__';
+    if(!groupedByPhase.has(phaseId)){
+      groupedByPhase.set(phaseId, []);
+    }
+    groupedByPhase.get(phaseId).push(step);
+  });
+
+  const phaseSummaries = [];
+  STEPS_PHASES.forEach(phase => {
+    const items = groupedByPhase.get(phase.id);
+    if(!items || !items.length) return;
+    const total = items.length;
+    const completed = items.filter(item => item.checked).length;
+    phaseSummaries.push({
+      id: phase.id,
+      label: phase.label,
+      total,
+      completed
     });
+    groupedByPhase.delete(phase.id);
+  });
+
+  if(groupedByPhase.size){
+    const extras = [];
+    groupedByPhase.forEach((items, phaseId) => {
+      if(!items || !items.length) return;
+      const total = items.length;
+      const completed = items.filter(item => item.checked).length;
+      const label = phaseId && phaseId !== '__unassigned__'
+        ? `Phase ${phaseId}`
+        : 'Other';
+      extras.push({
+        id: phaseId,
+        label,
+        total,
+        completed
+      });
+    });
+    extras.sort((a, b) => a.label.localeCompare(b.label));
+    phaseSummaries.push(...extras);
   }
+
+  if(!phaseSummaries.length) return `Completed: ${counts.completed}/${counts.total}`;
+
+  const completedPhases = phaseSummaries
+    .filter(phase => phase.completed >= phase.total && phase.total > 0)
+    .map(phase => `  • ${phase.label}`);
+
+  const remainingPhases = phaseSummaries
+    .filter(phase => phase.completed < phase.total)
+    .map(phase => `  • ${phase.label} (${phase.completed}/${phase.total})`);
+
+  const lines = [`Completed: ${counts.completed}/${counts.total}`];
+  if(completedPhases.length){
+    lines.push('Completed Categories:');
+    lines.push(...completedPhases);
+  }
+  if(remainingPhases.length){
+    lines.push('Remaining Categories:');
+    lines.push(...remainingPhases);
+  }
+
   return lines.join('\n');
 }
 
