@@ -23,6 +23,7 @@ export function mountActionListCard(hostEl) {
   const addBtn = hostEl.querySelector('#action-add');
   const listEl = hostEl.querySelector('#action-list');
   let disposeEtaPicker = null;
+  let disposeMoreMenu = null;
 
   function fmtETA(dueAt) {
     if (!dueAt) return 'ETA';
@@ -46,6 +47,7 @@ export function mountActionListCard(hostEl) {
   }
 
   function render() {
+    closeMoreMenu();
     const items = listActions(analysisId);
     listEl.innerHTML = items.map(it => `
       <li class="action-row" data-id="${it.id}" data-status="${it.status}" data-priority="${it.priority}">
@@ -68,7 +70,7 @@ export function mountActionListCard(hostEl) {
       row.querySelector('.owner').addEventListener('click', () => setOwner(id));
       row.querySelector('.eta').addEventListener('click', () => setEta(id));
       row.querySelector('.verify').addEventListener('click', () => verifyAction(id));
-      row.querySelector('.more').addEventListener('click', () => moreMenu(id));
+      row.querySelector('.more').addEventListener('click', (event) => moreMenu(id, event.currentTarget));
       row.addEventListener('keydown', (e) => keyControls(e, id));
       row.tabIndex = 0;
     });
@@ -86,6 +88,13 @@ export function mountActionListCard(hostEl) {
     if (typeof disposeEtaPicker === 'function') {
       disposeEtaPicker();
       disposeEtaPicker = null;
+    }
+  }
+
+  function closeMoreMenu() {
+    if (typeof disposeMoreMenu === 'function') {
+      disposeMoreMenu();
+      disposeMoreMenu = null;
     }
   }
 
@@ -245,25 +254,129 @@ export function mountActionListCard(hostEl) {
     const checkedAt = result ? new Date().toISOString() : '';
     applyPatch(id, { verification: { required, method, evidence, result: result || undefined, checkedBy, checkedAt } });
   }
-  function moreMenu(id) {
+  function moreMenu(id, anchorEl) {
     const items = listActions(analysisId);
     const it = items.find(x => x.id === id);
-    if (!it) return;
-    const choice = prompt('More: type one of [block, defer, cancel, link, delete]');
-    if (!choice) return;
-    if (choice === 'delete') { removeAction(analysisId, id); render(); return; }
-    if (choice === 'block') {
-      const note = prompt('Blocker note:');
-      applyPatch(id, { status: 'Blocked', notes: note || '' });
-      return;
-    }
-    if (choice === 'defer') { applyPatch(id, { status: 'Deferred' }); return; }
-    if (choice === 'cancel') { applyPatch(id, { status: 'Cancelled' }); return; }
-    if (choice === 'link') {
-      const likely = getLikelyCauseId();
-      const hyp = prompt('Link to cause id (Enter uses Likely Cause):', likely || '');
-      applyPatch(id, { links: { hypothesisId: hyp || likely || '' } });
-    }
+    if (!it || !anchorEl) return;
+
+    closeMoreMenu();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'action-menu-overlay';
+
+    const menu = document.createElement('div');
+    menu.className = 'action-menu';
+    menu.setAttribute('role', 'menu');
+    menu.innerHTML = `
+      <button type="button" class="action-menu__item" data-action="block">
+        <span class="action-menu__label">Mark blocked</span>
+        <span class="action-menu__hint">Flag the action as blocked and capture context</span>
+      </button>
+      <button type="button" class="action-menu__item" data-action="defer">
+        <span class="action-menu__label">Defer</span>
+        <span class="action-menu__hint">Move the action out of the active queue</span>
+      </button>
+      <button type="button" class="action-menu__item" data-action="cancel">
+        <span class="action-menu__label">Cancel</span>
+        <span class="action-menu__hint">Stop work on this action</span>
+      </button>
+      <button type="button" class="action-menu__item" data-action="link">
+        <span class="action-menu__label">Link to cause</span>
+        <span class="action-menu__hint">Associate with a likely cause or hypothesis</span>
+      </button>
+      <div class="action-menu__divider" role="separator"></div>
+      <button type="button" class="action-menu__item action-menu__item--danger" data-action="delete">
+        <span class="action-menu__label">Delete</span>
+        <span class="action-menu__hint">Remove this action permanently</span>
+      </button>
+    `;
+
+    overlay.appendChild(menu);
+    document.body.appendChild(overlay);
+
+    const rect = anchorEl.getBoundingClientRect();
+    const alignMenu = () => {
+      const menuRect = menu.getBoundingClientRect();
+      let top = rect.bottom + 8;
+      let left = rect.left;
+      if (top + menuRect.height > window.innerHeight - 12) {
+        top = Math.max(12, rect.top - menuRect.height - 8);
+      }
+      const maxLeft = window.innerWidth - menuRect.width - 12;
+      left = Math.min(Math.max(12, left), Math.max(12, maxLeft));
+      menu.style.top = `${top}px`;
+      menu.style.left = `${left}px`;
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeMoreMenu();
+      }
+    };
+
+    const onResize = () => {
+      closeMoreMenu();
+    };
+
+    overlay.addEventListener('click', (event) => {
+      if (!menu.contains(event.target)) {
+        closeMoreMenu();
+      }
+    });
+
+    menu.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        closeMoreMenu();
+        if (action === 'delete') {
+          if (confirm('Delete this action?')) {
+            removeAction(analysisId, id);
+            render();
+          }
+          return;
+        }
+        if (action === 'block') {
+          const note = prompt('Blocker note:');
+          applyPatch(id, { status: 'Blocked', notes: note || '' });
+          return;
+        }
+        if (action === 'defer') {
+          applyPatch(id, { status: 'Deferred' });
+          return;
+        }
+        if (action === 'cancel') {
+          applyPatch(id, { status: 'Cancelled' });
+          return;
+        }
+        if (action === 'link') {
+          const likely = getLikelyCauseId();
+          const hyp = prompt('Link to cause id (Enter uses Likely Cause):', likely || '');
+          applyPatch(id, { links: { hypothesisId: hyp || likely || '' } });
+        }
+      });
+    });
+
+    const firstButton = menu.querySelector('button');
+
+    disposeMoreMenu = () => {
+      document.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('resize', onResize);
+      overlay.remove();
+      if (anchorEl && typeof anchorEl.focus === 'function') {
+        anchorEl.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('resize', onResize);
+
+    requestAnimationFrame(() => {
+      alignMenu();
+      if (firstButton) {
+        firstButton.focus();
+      }
+    });
   }
 
   // Keyboard shortcuts for focused row
