@@ -19,6 +19,14 @@ let addCauseBtn = document.getElementById('addCauseBtn');
 
 const TABLE_FOCUS_MODES = ['rapid', 'focused', 'comprehensive'];
 const DEFAULT_TABLE_FOCUS_MODE = 'rapid';
+
+const ROW_THEME_ASSIGNMENTS = Object.freeze({
+  1: 'blue',
+  2: 'blue',
+  3: 'lavender',
+  5: 'lavender',
+  7: 'blue'
+});
 let tableFocusMode = DEFAULT_TABLE_FOCUS_MODE;
 
 const bandMap = new Map();
@@ -1060,6 +1068,10 @@ function mkRow(def, i, bandId){
   }
   if(def.priority){
     tr.dataset.priority = def.priority;
+  }
+  const rowTheme = ROW_THEME_ASSIGNMENTS[i] || '';
+  if(rowTheme){
+    tr.dataset.rowTheme = rowTheme;
   }
   const th = document.createElement('th'); th.scope = 'row'; th.textContent = fillTokens(def.q);
 
