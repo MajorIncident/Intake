@@ -17,6 +17,15 @@ let possibleCauses = [];
 let causeList = document.getElementById('causeList');
 let addCauseBtn = document.getElementById('addCauseBtn');
 
+const TABLE_FOCUS_MODES = ['rapid', 'focused', 'comprehensive'];
+const DEFAULT_TABLE_FOCUS_MODE = 'comprehensive';
+let tableFocusMode = DEFAULT_TABLE_FOCUS_MODE;
+
+const bandMap = new Map();
+let bandCounter = 0;
+let focusToggleButtons = [];
+let focusControlsBound = false;
+
 let objectIS = null;
 let deviationIS = null;
 let objectISDirty = false;
@@ -89,6 +98,129 @@ export function fillTokens(text){
   return (text || '')
     .replace(/\{OBJECT\}/g, `“${obj}”`)
     .replace(/\{DEVIATION\}/g, `“${dev}”`);
+}
+
+function normalizeTableFocusMode(mode){
+  if(typeof mode === 'string'){
+    const normalized = mode.trim().toLowerCase();
+    if(TABLE_FOCUS_MODES.includes(normalized)){
+      return normalized;
+    }
+  }
+  return DEFAULT_TABLE_FOCUS_MODE;
+}
+
+function shouldDisplayRowForMode(row, mode){
+  const priority = row?.priority || row?.def?.priority || '';
+  if(mode === 'rapid'){
+    return priority === 'p1';
+  }
+  if(mode === 'focused'){
+    return priority === 'p1' || priority === 'p2';
+  }
+  return true;
+}
+
+function handleFocusToggleKeydown(event){
+  if(!focusToggleButtons.length) return;
+  const key = event.key;
+  if(!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(key)){
+    return;
+  }
+  event.preventDefault();
+  if(key === 'Home'){
+    const firstBtn = focusToggleButtons[0];
+    if(firstBtn){
+      setTableFocusMode(firstBtn.dataset.focusMode);
+      firstBtn.focus();
+    }
+    return;
+  }
+  if(key === 'End'){
+    const lastBtn = focusToggleButtons[focusToggleButtons.length - 1];
+    if(lastBtn){
+      setTableFocusMode(lastBtn.dataset.focusMode);
+      lastBtn.focus();
+    }
+    return;
+  }
+  const direction = (key === 'ArrowRight' || key === 'ArrowDown') ? 1 : -1;
+  const currentIndex = focusToggleButtons.findIndex(btn => normalizeTableFocusMode(btn.dataset.focusMode) === tableFocusMode);
+  let nextIndex = currentIndex + direction;
+  if(nextIndex < 0){
+    nextIndex = focusToggleButtons.length - 1;
+  }else if(nextIndex >= focusToggleButtons.length){
+    nextIndex = 0;
+  }
+  const nextBtn = focusToggleButtons[nextIndex];
+  if(nextBtn){
+    setTableFocusMode(nextBtn.dataset.focusMode);
+    nextBtn.focus();
+  }
+}
+
+function wireFocusModeControls(){
+  if(focusControlsBound) return;
+  const group = document.querySelector('.kt-focus-toggle');
+  if(!group) return;
+  const buttons = [...group.querySelectorAll('[data-focus-mode]')];
+  if(!buttons.length) return;
+  focusToggleButtons = buttons;
+  focusToggleButtons.forEach(btn => {
+    if(btn.type !== 'button'){
+      btn.type = 'button';
+    }
+    if(!btn.getAttribute('role')){
+      btn.setAttribute('role', 'radio');
+    }
+    btn.addEventListener('click', () => {
+      setTableFocusMode(btn.dataset.focusMode);
+    });
+  });
+  group.addEventListener('keydown', handleFocusToggleKeydown);
+  focusControlsBound = true;
+}
+
+export function getTableFocusMode(){
+  return tableFocusMode;
+}
+
+export function setTableFocusMode(mode, options = {}){
+  const normalized = normalizeTableFocusMode(mode);
+  const previous = tableFocusMode;
+  tableFocusMode = normalized;
+  const silent = Boolean(options.silent || normalized === previous);
+  applyTableFocusMode({ silent });
+}
+
+export function applyTableFocusMode({ silent = false } = {}){
+  wireFocusModeControls();
+  const mode = tableFocusMode;
+  const visibleBands = new Set();
+  rowsBuilt.forEach(row => {
+    const shouldShow = shouldDisplayRowForMode(row, mode);
+    if(row?.tr){
+      row.tr.hidden = !shouldShow;
+    }
+    if(shouldShow && row?.bandId){
+      visibleBands.add(row.bandId);
+    }
+  });
+  bandMap.forEach((bandTr, bandId) => {
+    if(!bandTr) return;
+    bandTr.hidden = !visibleBands.has(bandId);
+  });
+  focusToggleButtons.forEach(btn => {
+    const btnMode = normalizeTableFocusMode(btn.dataset.focusMode);
+    const isActive = btnMode === mode;
+    btn.classList.toggle('is-active', isActive);
+    btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+    btn.tabIndex = isActive ? 0 : -1;
+  });
+  if(!silent){
+    saveHandler();
+  }
+  updateCauseEvidencePreviews();
 }
 
 function mkIsNotPH(baseCopy, isVal){
@@ -301,6 +433,7 @@ function setCauseFindingValue(cause, key, prop, value){
 
 function rowHasEvidencePair(row){
   if(!row) return false;
+  if(row?.tr?.hidden) return false;
   const isText = typeof row?.isTA?.value === 'string' ? row.isTA.value.trim() : '';
   const notText = typeof row?.notTA?.value === 'string' ? row.notTA.value.trim() : '';
   return Boolean(isText && notText);
@@ -656,6 +789,7 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
     rowEl.className = 'cause-eval-row';
     rowEl.dataset.rowIndex = index;
     rowEl.dataset.rowKey = rowKey;
+    rowEl.hidden = Boolean(row?.tr?.hidden);
     const qText = document.createElement('div');
     qText.className = 'cause-eval-question-text';
     qText.dataset.role = 'question';
@@ -811,6 +945,7 @@ export function updateCauseEvidencePreviews(){
     const index = parseInt(rowEl.dataset.rowIndex, 10);
     if(Number.isNaN(index) || !rowsBuilt[index]) return;
     const row = rowsBuilt[index];
+    rowEl.hidden = Boolean(row?.tr?.hidden);
     const questionEl = rowEl.querySelector('[data-role="question"]');
     if(questionEl){ questionEl.textContent = row?.th?.textContent?.trim() || fillTokens(row?.def?.q || ''); }
     const isValue = rowEl.querySelector('[data-role="is-value"]');
@@ -910,12 +1045,22 @@ export function importKTTableState(tableData){
 
 function mkBand(title, note){
   const tr = document.createElement('tr'); tr.className = 'band';
+  const bandId = `band-${++bandCounter}`;
+  tr.dataset.bandId = bandId;
   const th = document.createElement('th'); th.colSpan = 5; th.innerHTML = `${title} <span>— ${note}</span>`;
-  tr.appendChild(th); return tr;
+  tr.appendChild(th);
+  bandMap.set(bandId, tr);
+  return tr;
 }
 
-function mkRow(def, i){
+function mkRow(def, i, bandId){
   const tr = document.createElement('tr'); tr.dataset.row = i;
+  if(bandId){
+    tr.dataset.bandId = bandId;
+  }
+  if(def.priority){
+    tr.dataset.priority = def.priority;
+  }
   const th = document.createElement('th'); th.scope = 'row'; th.textContent = fillTokens(def.q);
 
   const tdIS = document.createElement('td');
@@ -961,7 +1106,7 @@ function mkRow(def, i){
   tdIS.appendChild(isTA); tdNOT.appendChild(notTA); tdDIST.appendChild(distTA); tdCHG.appendChild(chgTA);
   tr.append(th, tdIS, tdNOT, tdDIST, tdCHG);
 
-  rowsBuilt.push({ tr, th, def, isTA, notTA, distTA, chgTA });
+  rowsBuilt.push({ tr, th, def, isTA, notTA, distTA, chgTA, priority: def.priority || '', bandId: bandId || null });
   return tr;
 }
 
@@ -971,11 +1116,14 @@ export function initTable(){
     return;
   }
   let dataRowCount = 0;
+  let currentBandId = null;
   ROWS.forEach(def => {
     if(def.band){
-      tbody.appendChild(mkBand(def.band, def.note || ''));
+      const bandRow = mkBand(def.band, def.note || '');
+      currentBandId = bandRow?.dataset?.bandId || null;
+      tbody.appendChild(bandRow);
     }else{
-      const tr = mkRow(def, ++dataRowCount);
+      const tr = mkRow(def, ++dataRowCount, currentBandId);
       tbody.appendChild(tr);
       if(dataRowCount === 1) objectIS = rowsBuilt[rowsBuilt.length - 1].isTA;
       if(dataRowCount === 2) deviationIS = rowsBuilt[rowsBuilt.length - 1].isTA;
@@ -992,4 +1140,7 @@ export function initTable(){
       saveHandler();
     });
   });
+
+  wireFocusModeControls();
+  applyTableFocusMode({ silent: true });
 }

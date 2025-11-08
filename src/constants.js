@@ -16,6 +16,7 @@ const ROWS_UNFROZEN = [
 
   {
     q: "WHAT — Specific Object/Thing is having the {DEVIATION}",
+    priority: 'p1',
     isPH:
       "What specific object has {DEVIATION}?",
     notPH:
@@ -23,6 +24,7 @@ const ROWS_UNFROZEN = [
   },
   {
     q: "WHAT — Specific Deviation does the {OBJECT} have?",
+    priority: 'p1',
     isPH:
       "What exactly is the deviation that has been confirmed?",
     notPH:
@@ -33,6 +35,7 @@ const ROWS_UNFROZEN = [
 
   {
     q: "WHERE — is the {OBJECT} geographically/topology when the {DEVIATION} occurs?",
+    priority: 'p1',
     isPH:
       "Where is {OBJECT} when {DEVIATION} occurs?",
     notPH:
@@ -40,6 +43,7 @@ const ROWS_UNFROZEN = [
   },
   {
     q: "WHERE — On the {OBJECT} is the {DEVIATION} observed?",
+    priority: 'p2',
     isPH:
       "Where on {OBJECT} is {DEVIATION} observed?",
     notPH:
@@ -50,6 +54,7 @@ const ROWS_UNFROZEN = [
 
   {
     q: "WHEN — Was the {DEVIATION} First observed for {OBJECT}",
+    priority: 'p2',
     isPH:
       "When was {DEVIATION} first observed for {OBJECT}? (date/time/zone)",
     notPH:
