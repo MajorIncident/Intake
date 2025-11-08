@@ -147,6 +147,7 @@ function wireKeyboardShortcuts() {
     const key = (event.key || '').toLowerCase();
     switch (key) {
       case 's':
+      case 'g':
         event.preventDefault();
         generateSummary('summary', '');
         break;
