@@ -13,7 +13,7 @@
   /* Layout */
   --qcol-w:10.5rem;     /* narrow KT Question column */
   --ta-fs:15px;         /* textarea font size */
-  --ta-min-h:190px;     /* taller by default */
+  --ta-min-h:72px;      /* comfortable 2-3 line textarea height */
   --radius:14px;
   --shadow:0 8px 24px rgba(12,18,32,.08), 0 1px 0 rgba(255,255,255,.6) inset;
   --speed:.22s;
@@ -202,13 +202,19 @@ fieldset.field{border:0; padding:0; margin:0;}
 fieldset.field legend{font-weight:700; margin-bottom:6px; font-size:14px; color:#1d2845;}
 .field textarea, .field input[type="text"]{
   width:100%; box-sizing:border-box;
-  font:15px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size:var(--ta-fs);
+  line-height:1.6;
+  font-family:"SF Pro Text","SF Pro Display",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   color:var(--ink); background:#f9fbff;
   border:1px solid #dfe5f2; border-radius:12px; padding:12px 14px; outline:none;
   transition:border-color var(--speed), box-shadow var(--speed), background var(--speed);
 }
-.field textarea{min-height:140px; resize:vertical;}
-#oneLine,
+.field textarea{min-height:var(--ta-min-h); resize:vertical;}
+#oneLine{
+  min-height:52px;
+  max-height:72px;
+  height:auto;
+}
 #proof,
 #objectPrefill,
 #healthy,
@@ -216,7 +222,7 @@ fieldset.field legend{font-weight:700; margin-bottom:6px; font-size:14px; color:
 #impactNow,
 #impactFuture,
 #impactTime{
-  min-height:120px;
+  min-height:calc(var(--ta-min-h) + 16px);
   height:auto;
 }
 .field input[type="text"]{height:44px;}
