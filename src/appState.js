@@ -45,14 +45,21 @@ import {
   getStepsCounts
 } from './steps.js';
 import {
+  listActions,
+  exportActionsState,
+  importActionsState
+} from './actionsStore.js';
+import {
   serializeCauses,
   deserializeCauses
 } from './storage.js';
 import { APP_STATE_VERSION } from './appStateVersion.js';
 import { showToast } from './toast.js';
+import { refreshActionList } from '../components/actions/ActionListCard.js';
 
 const ANALYSIS_ID_KEY = 'kt-analysis-id';
 let cachedAnalysisId = '';
+const ACTIONS_UPDATED_EVENT = 'intake:actions-updated';
 
 function ensureAnalysisId() {
   if (cachedAnalysisId) {
@@ -85,6 +92,13 @@ export function collectAppState() {
   const causes = serializeCauses(getPossibleCauses());
   const likelyCauseId = getLikelyCauseId();
   const steps = exportStepsState();
+  const analysisId = getAnalysisId();
+  const rawActions = listActions(analysisId);
+  const actionsList = Array.isArray(rawActions) ? rawActions : [];
+  const actionsSnapshot = exportActionsState(analysisId);
+  const serializedActions = actionsSnapshot.length
+    ? actionsSnapshot
+    : (actionsList.length ? actionsList.map(action => ({ ...action })) : []);
   return {
     meta: {
       version: APP_STATE_VERSION,
@@ -96,7 +110,11 @@ export function collectAppState() {
     table,
     causes,
     likelyCauseId,
-    steps
+    steps,
+    actions: {
+      analysisId,
+      items: serializedActions
+    }
   };
 }
 
@@ -109,8 +127,18 @@ export function applyAppState(data = {}) {
     table = [],
     causes = [],
     steps = null,
-    likelyCauseId: savedLikelyCauseId = null
+    likelyCauseId: savedLikelyCauseId = null,
+    actions: savedActionsState = null
   } = data;
+  const currentAnalysisId = getAnalysisId();
+  const actionsPayload = savedActionsState && typeof savedActionsState === 'object'
+    ? savedActionsState
+    : {};
+  const targetAnalysisId = typeof actionsPayload.analysisId === 'string' && actionsPayload.analysisId.trim()
+    ? actionsPayload.analysisId.trim()
+    : currentAnalysisId;
+  const actionItems = Array.isArray(actionsPayload.items) ? actionsPayload.items : [];
+  const importedActions = importActionsState(targetAnalysisId, actionItems);
   const {
     commCadence = '',
     commLog = [],
@@ -145,6 +173,24 @@ export function applyAppState(data = {}) {
 
   if (steps) {
     importStepsState(steps);
+  }
+
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    try {
+      window.dispatchEvent(new CustomEvent(ACTIONS_UPDATED_EVENT, {
+        detail: {
+          analysisId: targetAnalysisId,
+          total: Array.isArray(importedActions) ? importedActions.length : 0
+        }
+      }));
+    } catch (error) {
+      console.debug('[appState:actions-event]', error);
+    }
+  }
+  try {
+    refreshActionList();
+  } catch (error) {
+    console.debug('[appState:actions-refresh]', error);
   }
 }
 

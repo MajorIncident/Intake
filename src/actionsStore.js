@@ -133,6 +133,35 @@ function saveAll(map) {
   localStorage.setItem(KEY, JSON.stringify(map));
 }
 
+/**
+ * Snapshot persisted via the app state helpers.
+ * @typedef {{ analysisId: string, items: object[] }} PersistedActionsState
+ */
+
+export function exportActionsState(analysisId) {
+  if (typeof analysisId !== 'string' || !analysisId.trim()) {
+    return [];
+  }
+  const id = analysisId.trim();
+  const all = loadAll();
+  const list = Array.isArray(all[id]) ? all[id] : [];
+  return list.map(item => ({ ...normalizeActionRecord(item), analysisId: id }));
+}
+
+export function importActionsState(analysisId, actions) {
+  if (typeof analysisId !== 'string' || !analysisId.trim()) {
+    return [];
+  }
+  const id = analysisId.trim();
+  const all = loadAll();
+  const nextList = Array.isArray(actions)
+    ? actions.map(item => ({ ...normalizeActionRecord(item), analysisId: id }))
+    : [];
+  all[id] = nextList;
+  saveAll(all);
+  return nextList;
+}
+
 export function listActions(analysisId) {
   const all = loadAll();
   return all[analysisId] || [];
