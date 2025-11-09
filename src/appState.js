@@ -1,3 +1,12 @@
+/**
+ * @module appState
+ * @summary Coordinates collection, serialization, and rehydration of the intake application's state.
+ * @description
+ *   This module aggregates state from feature modules into a persisted snapshot and re-applies that
+ *   snapshot to the DOM and supporting stores. It also exposes summary state for reporting and
+ *   orchestrates the actions list refresh cycle.
+ */
+
 import {
   getPrefaceState,
   applyPrefaceState,
@@ -80,10 +89,21 @@ function ensureAnalysisId() {
   return cachedAnalysisId;
 }
 
+/**
+ * Retrieve the cached analysis identifier, creating and persisting one if necessary.
+ *
+ * @returns {string} Stable identifier used for namespacing persisted intake data.
+ */
 export function getAnalysisId() {
   return ensureAnalysisId();
 }
 
+/**
+ * Gather a snapshot of the current intake state across modules.
+ *
+ * @returns {import('./storage.js').SerializedAppState} Structured state payload including
+ *   metadata and feature-specific values for persistence.
+ */
 export function collectAppState() {
   const { pre, impact, ops } = getPrefaceState();
   const commState = getCommunicationsState();
@@ -118,6 +138,15 @@ export function collectAppState() {
   };
 }
 
+/**
+ * Rehydrate the intake experience using a previously serialized app state snapshot.
+ *
+ * @param {Partial<import('./storage.js').SerializedAppState>} [data={}] Persisted state payload to apply.
+ * @returns {void}
+ * @fires window#intake:actions-updated when actions state is reloaded.
+ * @sideEffects Updates multiple DOM regions through feature modules, mutates local storage, and
+ *   triggers toast refreshes via {@link refreshActionList}.
+ */
 export function applyAppState(data = {}) {
   if (!data || typeof data !== 'object') return;
   const {
@@ -194,6 +223,12 @@ export function applyAppState(data = {}) {
   }
 }
 
+/**
+ * Create a readonly bundle of helper references and values for summary generation.
+ *
+ * @returns {import('./summary.js').SummaryState} Collection of DOM references, formatter helpers,
+ *   and data required by summary builders.
+ */
 export function getSummaryState() {
   const summaryElements = getSummaryElements();
   const commElements = getCommunicationElements();
