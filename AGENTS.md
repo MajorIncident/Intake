@@ -38,7 +38,7 @@ This file applies to the entire repository unless a more specific `AGENTS.md` fi
 
 ## Feature & Summary Extensions
 - **UI additions:** Pair any new inputs with descriptive labels, helper text, and sensible storage keys. Follow the spacing guidance above and prefer semantic HTML elements.
-- **Persistence:** When storing new data, extend the existing collectors in `src/appState.js` and `src/storage.js`. Document schema changes in module-level comments or scoped `AGENTS.md` files.
+- **Persistence:** When storing new data, extend the existing collectors in `src/appState.js` and `src/storage.js`. Document schema changes in module-level comments or scoped `AGENTS.md` files, and rerun `npm run update:storage-docs` so `docs/storage-schema.md` stays accurate.
 - **Summary output:** Update `buildSummaryText()` and helper formatters (e.g., `formatPossibleCausesSummary()`) when introducing new captured data. Match the tone, ordering, and bullet structure already used.
 
 ## Using Sub-Guidelines
