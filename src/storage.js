@@ -13,6 +13,7 @@
 
 import { CAUSE_FINDING_MODES, CAUSE_FINDING_MODE_VALUES } from './constants.js';
 import { APP_STATE_VERSION } from './appStateVersion.js';
+import { normalizeActionSnapshot } from './actionsStore.js';
 /* eslint-enable jsdoc/require-jsdoc */
 
 /**
@@ -65,6 +66,7 @@ import { APP_STATE_VERSION } from './appStateVersion.js';
  * @property {Array<CauseRecord>} causes - Serialized causes list compatible with {@link serializeCauses}.
  * @property {(string|null)} likelyCauseId - Identifier for the selected likely cause.
  * @property {{items: Array<{id: string, label: string, checked: boolean}>, drawerOpen: boolean}} steps - Steps drawer state.
+ * @property {{analysisId: string, items: import('./actionsStore.js').ActionRecord[]}|undefined} actions - Optional actions snapshot.
  */
 
 /**
@@ -198,6 +200,40 @@ function toString(value) {
     return String(value);
   }
   return '';
+}
+
+/**
+ * Normalizes a persisted actions snapshot into the canonical structure.
+ * @param {unknown} raw - Raw actions payload read from storage.
+ * @param {boolean} hasField - Whether the original snapshot declared the field.
+ * @returns {{analysisId: string, items: import('./actionsStore.js').ActionRecord[]}|null} Normalized actions state or null.
+ */
+function normalizeActionsState(raw, hasField) {
+  if (!hasField) {
+    return null;
+  }
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw)
+    ? raw
+    : {};
+  const candidateId = typeof source.analysisId === 'string' ? source.analysisId.trim() : '';
+  const itemsSource = Array.isArray(source.items) ? source.items : [];
+  const normalizedItems = itemsSource.map(item => {
+    const normalized = normalizeActionSnapshot(item);
+    const actionAnalysisId = typeof normalized.analysisId === 'string' ? normalized.analysisId.trim() : '';
+    return {
+      ...normalized,
+      analysisId: actionAnalysisId
+    };
+  });
+  const resolvedAnalysisId = [candidateId, ...normalizedItems.map(item => item.analysisId).filter(Boolean)][0] || '';
+  const items = normalizedItems.map(item => ({
+    ...item,
+    analysisId: resolvedAnalysisId
+  }));
+  return {
+    analysisId: resolvedAnalysisId,
+    items
+  };
 }
 
 /**
@@ -405,6 +441,7 @@ function normalizeAppStateStructure(raw) {
   const preSource = incoming.pre && typeof incoming.pre === 'object' ? incoming.pre : {};
   const impactSource = incoming.impact && typeof incoming.impact === 'object' ? incoming.impact : {};
   const opsSource = incoming.ops && typeof incoming.ops === 'object' ? incoming.ops : {};
+  const hasActionsField = Object.prototype.hasOwnProperty.call(incoming, 'actions');
 
   const pre = {
     oneLine: toString(preSource.oneLine ?? incoming.oneLine),
@@ -472,7 +509,7 @@ function normalizeAppStateStructure(raw) {
     ? incoming.meta.savedAt
     : (typeof incoming.savedAt === 'string' ? incoming.savedAt : null);
 
-  return {
+  const normalized = {
     meta: {
       version: APP_STATE_VERSION,
       savedAt
@@ -485,6 +522,13 @@ function normalizeAppStateStructure(raw) {
     likelyCauseId,
     steps
   };
+
+  const actions = normalizeActionsState(incoming.actions, hasActionsField);
+  if (actions) {
+    normalized.actions = actions;
+  }
+
+  return normalized;
 }
 
 /**

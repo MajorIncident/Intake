@@ -58,6 +58,7 @@ import {
   exportActionsState,
   importActionsState
 } from './actionsStore.js';
+import { resolveActionsImport } from './appStateActions.js';
 import {
   serializeCauses,
   deserializeCauses
@@ -160,14 +161,12 @@ export function applyAppState(data = {}) {
     actions: savedActionsState = null
   } = data;
   const currentAnalysisId = getAnalysisId();
-  const actionsPayload = savedActionsState && typeof savedActionsState === 'object'
-    ? savedActionsState
-    : {};
-  const targetAnalysisId = typeof actionsPayload.analysisId === 'string' && actionsPayload.analysisId.trim()
-    ? actionsPayload.analysisId.trim()
-    : currentAnalysisId;
-  const actionItems = Array.isArray(actionsPayload.items) ? actionsPayload.items : [];
-  const importedActions = importActionsState(targetAnalysisId, actionItems);
+  const hasActionsSnapshot = Object.prototype.hasOwnProperty.call(data, 'actions');
+  const actionsResolution = resolveActionsImport(hasActionsSnapshot, savedActionsState, currentAnalysisId);
+  const targetAnalysisId = actionsResolution.analysisId;
+  const importedActions = actionsResolution.shouldImport
+    ? importActionsState(targetAnalysisId, actionsResolution.items)
+    : listActions(targetAnalysisId);
   const {
     commCadence = '',
     commLog = [],
@@ -269,3 +268,4 @@ export function getSummaryState() {
 
 export { getLikelyCauseId };
 export { APP_STATE_VERSION };
+export { resolveActionsImport };

@@ -217,6 +217,15 @@ function normalizeActionRecord(action) {
 }
 
 /**
+ * Normalizes an arbitrary action snapshot into the canonical record shape.
+ * @param {unknown} action - Persisted or imported action payload.
+ * @returns {ActionRecord} - Normalized action record compatible with storage exports.
+ */
+export function normalizeActionSnapshot(action) {
+  return normalizeActionRecord(action);
+}
+
+/**
  * Normalizes a persisted actions map into runtime-ready records.
  * @param {unknown} map - Potentially stale persisted map.
  * @returns {ActionsMap} - Map keyed by analysis identifier with normalized records.

@@ -21,6 +21,9 @@ function createSource(kind) {
       export const sortActions = (...args) => mocks.sortActions(...args);
       export const exportActionsState = (...args) => mocks.exportActionsState?.(...args) ?? [];
       export const importActionsState = (...args) => mocks.importActionsState?.(...args) ?? [];
+      export const normalizeActionSnapshot = (...args) => (
+        mocks.normalizeActionSnapshot?.(...args) ?? ({ ...(args[0] && typeof args[0] === 'object' ? args[0] : {}) })
+      );
     `;
   }
   if (kind === 'appState') {
