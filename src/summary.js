@@ -1,3 +1,11 @@
+/**
+ * @module summary
+ * This module assembles human-readable incident summaries by collecting
+ * structured state from the intake UI. It formats bridge logistics,
+ * containment, impact, communications cadence, Kepner-Tregoe analysis, and
+ * possible cause progress into a cohesive block of text that can be copied or
+ * shared with AI assistants.
+ */
 import { CAUSE_FINDING_MODES, STEPS_PHASES } from './constants.js';
 
 let stateProvider = () => ({ });
@@ -18,6 +26,12 @@ const LEGACY_CONTAINMENT_STATUS_LABELS = Object.freeze({
   restore: CONTAINMENT_STATUS_LABELS.restoring
 });
 
+/**
+ * Normalizes summary state access by preferring an explicit input before
+ * falling back to the registered provider.
+ * @param {object} [input] - Optional pre-resolved state object.
+ * @returns {object} The resolved state snapshot used for summary generation.
+ */
 function resolveState(input){
   if(input && typeof input === 'object'){ return input; }
   try{
@@ -27,12 +41,23 @@ function resolveState(input){
   }
 }
 
+/**
+ * Registers a lazy state provider that returns the DOM-backed summary state.
+ * @param {() => object} provider - Function that resolves the current summary
+ *   state tree when invoked.
+ * @returns {void}
+ */
 export function setSummaryStateProvider(provider){
   if(typeof provider === 'function'){
     stateProvider = provider;
   }
 }
 
+/**
+ * Collapses multiline text into a single inline string separated by middle dots.
+ * @param {string} value - Raw multiline text entered by users.
+ * @returns {string} Display-safe inline text or an em dash placeholder.
+ */
 function inlineText(value){
   const v = (value || '').trim();
   if(!v) return '—';
@@ -43,46 +68,94 @@ function inlineText(value){
     .join(' · ');
 }
 
+/**
+ * Converts multiline summary fields into inline text segments.
+ * @param {string} value - Raw multiline summary text.
+ * @returns {string} Flattened summary text or an empty string when blank.
+ */
 function inlineSummaryText(value){
   const lines = splitLines(value);
   if(!lines.length) return '';
   return lines.join(' · ');
 }
 
+/**
+ * Produces a labeled single-line summary by flattening line breaks with a
+ * middle dot separator.
+ * @param {string} label - Field label rendered before the colon.
+ * @param {string} value - User-provided multiline value to normalize.
+ * @returns {string} The formatted "Label: value" text or an empty string when
+ *   no content is available.
+ */
 export function summaryLine(label, value){
   const text = inlineSummaryText(value);
   if(!text) return '';
   return `${label}: ${text}`;
 }
 
+/**
+ * Produces a labeled single-line summary without normalizing whitespace.
+ * @param {string} label - Field label rendered before the colon.
+ * @param {string} value - Raw value to append after the colon.
+ * @returns {string} The formatted "Label: value" text or an empty string when
+ *   no content is available.
+ */
 export function summaryLineRaw(label, value){
   const text = (value || '').trim();
   if(!text) return '';
   return `${label}: ${text}`;
 }
 
+/**
+ * Formats a bullet line with flattened summary content.
+ * @param {string} label - Bullet label displayed after the bullet.
+ * @param {string} value - Multiline value to normalize.
+ * @returns {string} Bullet line or an empty string when blank.
+ */
 function summaryBullet(label, value){
   const text = inlineSummaryText(value);
   if(!text) return '';
   return `• ${label}: ${text}`;
 }
 
+/**
+ * Formats a bullet line with raw text content without normalization.
+ * @param {string} label - Bullet label displayed after the bullet.
+ * @param {string} value - Raw value to include.
+ * @returns {string} Bullet line or an empty string when blank.
+ */
 function summaryBulletRaw(label, value){
   const text = (value || '').trim();
   if(!text) return '';
   return `• ${label}: ${text}`;
 }
 
+/**
+ * Joins summary lines, skipping empty or whitespace-only entries.
+ * @param {string[]} lines - Candidate lines to merge.
+ * @returns {string} Joined lines separated by newlines.
+ */
 function joinSummaryLines(lines){
   return lines.filter(line => line && line.trim().length).join('\n');
 }
 
+/**
+ * Splits text into trimmed non-empty lines.
+ * @param {string} text - Value to split on newline boundaries.
+ * @returns {string[]} Array of cleaned lines.
+ */
 function splitLines(text){
   const v = (text || '').trim();
   if(!v) return [];
   return v.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
 }
 
+/**
+ * Formats paired distinction/change lines into readable comparisons.
+ * @param {string[]} distLines - Lines describing what changed or stayed the same.
+ * @param {string[]} changeLines - Lines describing contrasting values.
+ * @returns {string} Joined distinction summary suitable for inline display.
+ */
 function formatDistinctionChanges(distLines, changeLines){
   const len = Math.max(distLines.length, changeLines.length);
   if(len === 0) return '';
@@ -100,6 +173,12 @@ function formatDistinctionChanges(distLines, changeLines){
   return pairs.join(' · ');
 }
 
+/**
+ * Collects labels for checked chip inputs.
+ * @param {{el: HTMLInputElement|{checked?: boolean}, label: string}[]} list -
+ *   Input list describing chip controls and labels.
+ * @returns {string} Comma-separated label list of selected chips.
+ */
 function formatChipsetSelections(list){
   const selected = list
     .filter(item => item.el?.checked)
@@ -107,6 +186,11 @@ function formatChipsetSelections(list){
   return selected.length ? selected.join(', ') : '';
 }
 
+/**
+ * Resolves the human-friendly containment status label from state helpers.
+ * @param {object} state - Summary state exposing containment accessors.
+ * @returns {string} Containment status label or an empty string when unknown.
+ */
 function containmentStatusText(state){
   if(!state || typeof state.getContainmentStatus !== 'function') return '';
   const status = state.getContainmentStatus();
@@ -114,11 +198,22 @@ function containmentStatusText(state){
   return LEGACY_CONTAINMENT_STATUS_LABELS[status] || '';
 }
 
+/**
+ * Retrieves the latest communication log entry for the specified channel.
+ * @param {object} state - State containing `commLog` entries.
+ * @param {string} type - Entry type to filter (e.g., "internal" or "external").
+ * @returns {object|undefined} Matching log entry with a timestamp.
+ */
 function latestCommEntry(state, type){
   const log = Array.isArray(state?.commLog) ? state.commLog : [];
   return log.find(entry => entry && entry.type === type && entry.ts);
 }
 
+/**
+ * Converts a timestamp into ISO 8601 text when possible.
+ * @param {string|number|Date} ts - Timestamp to normalize.
+ * @returns {string} ISO formatted timestamp or the raw value when invalid.
+ */
 function formatCommTimestamp(ts){
   if(!ts) return '';
   const d = new Date(ts);
@@ -126,6 +221,13 @@ function formatCommTimestamp(ts){
   return d.toISOString();
 }
 
+/**
+ * Builds a communications summary line for the most recent update of a type.
+ * @param {object} state - Summary state with communication history.
+ * @param {string} type - Communication channel identifier.
+ * @param {string} label - Label prefix for the summary line.
+ * @returns {string} Formatted summary line or an empty string when absent.
+ */
 function formatCommSummaryLine(state, type, label){
   const entry = latestCommEntry(state, type);
   if(!entry) return '';
@@ -133,6 +235,11 @@ function formatCommSummaryLine(state, type, label){
   return ts ? `${label}: ${ts}` : '';
 }
 
+/**
+ * Determines the next scheduled update line using ISO timestamps or form input.
+ * @param {object} state - Summary state that may provide next update values.
+ * @returns {string} Summary line describing the next update commitment.
+ */
 function nextUpdateSummaryLine(state){
   const iso = typeof state?.commNextDueIso === 'string' ? state.commNextDueIso : '';
   if(iso){
@@ -156,6 +263,11 @@ const CAUSE_STATUS_LABELS = Object.freeze({
   failed: 'Failed testing'
 });
 
+/**
+ * Provides fallback labels for KT evidence dimensions.
+ * @param {string} dim - Dimension key (WHAT, WHERE, WHEN, EXTENT).
+ * @returns {string} Friendly description associated with the dimension.
+ */
 function dimensionPhrase(dim){
   switch((dim || '').toUpperCase()){
     case 'WHAT':
@@ -171,6 +283,15 @@ function dimensionPhrase(dim){
   }
 }
 
+/**
+ * Builds aggregate evidence details for a possible cause, including progress
+ * counts and rich bullet output sourced from KT evidence rows.
+ * @param {object} state - Summary state accessor that exposes evidence lookup
+ *   helpers (e.g., `evidencePairIndexes`, `peekCauseFinding`).
+ * @param {object} cause - Possible cause record currently being summarized.
+ * @returns {{total: number, complete: number, failedCount: number, evidenceBlock: string}}
+ *   Breakdown of evidence completion and formatted walkthrough text.
+ */
 function collectCauseEvidenceDetails(state, cause){
   const evidenceIndexes = typeof state?.evidencePairIndexes === 'function'
     ? state.evidencePairIndexes()
@@ -255,6 +376,12 @@ function collectCauseEvidenceDetails(state, cause){
   };
 }
 
+/**
+ * Resolves a cause title, falling back to a numbered placeholder.
+ * @param {object} cause - Cause entry that may contain a `title`.
+ * @param {number} index - Zero-based cause index for placeholders.
+ * @returns {string} Display title for the cause card.
+ */
 function resolveCauseTitle(cause, index){
   const explicit = typeof cause?.title === 'string' ? cause.title.trim() : '';
   if(explicit){
@@ -263,6 +390,13 @@ function resolveCauseTitle(cause, index){
   return `Possible Cause ${index + 1}`;
 }
 
+/**
+ * Derives a normalized cause status label by checking explicit and inferred values.
+ * @param {object} state - Summary state exposing status helpers.
+ * @param {object} cause - Cause entry to evaluate.
+ * @param {{failedCount: number, total: number, complete: number}} details - Evidence metrics for the cause.
+ * @returns {string} Human-friendly status string.
+ */
 function describeCauseStatus(state, cause, details){
   const statusRaw = typeof cause?.status === 'string' ? cause.status.trim().toLowerCase() : '';
   if(statusRaw && CAUSE_STATUS_LABELS[statusRaw]){
@@ -296,6 +430,14 @@ function describeCauseStatus(state, cause, details){
   return CAUSE_STATUS_LABELS.not_tested;
 }
 
+/**
+ * Converts the possible cause workspace into formatted text sections that show
+ * likely and remaining hypotheses with evidence progress.
+ * @param {object} [stateInput] - Optional state override; defaults to the
+ *   registered provider when omitted.
+ * @returns {{likely: string, possible: string}} Structured text blocks for the
+ *   likely cause and the list of other candidates.
+ */
 export function formatPossibleCausesSummary(stateInput){
   const state = resolveState(stateInput);
   const causes = Array.isArray(state?.possibleCauses) ? state.possibleCauses : [];
@@ -343,6 +485,14 @@ export function formatPossibleCausesSummary(stateInput){
   };
 }
 
+/**
+ * Summarizes the task checklist, grouped by phase, to show overall completion
+ * and outstanding categories.
+ * @param {object} [stateInput] - Optional state override; defaults to the
+ *   registered provider when omitted.
+ * @returns {string} Multi-line summary describing completed and remaining
+ *   phases, or an empty string when no steps are tracked.
+ */
 export function formatStepsSummary(stateInput){
   const state = resolveState(stateInput);
   const steps = Array.isArray(state?.stepsItems) ? state.stepsItems : [];
@@ -421,6 +571,14 @@ export function formatStepsSummary(stateInput){
   return lines.join('\n');
 }
 
+/**
+ * Extracts structured IS/IS NOT entries from the Kepner-Tregoe table markup
+ * and renders them in a text-only format by band and section.
+ * @param {object} [stateInput] - Optional state override; defaults to the
+ *   registered provider when omitted.
+ * @returns {string} The IS/IS NOT summary ready for inclusion in the master
+ *   incident summary.
+ */
 export function formatKTTableSummary(stateInput){
   const state = resolveState(stateInput);
   const tbody = state?.tbody ?? document.getElementById('tbody');
@@ -571,6 +729,15 @@ export function formatKTTableSummary(stateInput){
   return output.join('\n').trim();
 }
 
+/**
+ * Builds the full incident narrative by stitching together bridge details,
+ * preface bullets, containment, impact, communications, tasks, causes, and the
+ * KT analysis.
+ * @param {object} [stateInput] - Optional state override; defaults to the
+ *   registered provider when omitted.
+ * @param {object} [options] - Reserved feature flags that influence formatting.
+ * @returns {string} Multi-section summary ready for clipboard or AI prompts.
+ */
 export function buildSummaryText(stateInput, options = {}){
   const state = resolveState(stateInput);
   const {
@@ -667,6 +834,12 @@ export function buildSummaryText(stateInput, options = {}){
   if(title){ sectionsOut.push(title); }
   if(subtitle){ sectionsOut.push(subtitle); }
 
+  /**
+   * Adds a labeled section to the composed summary when body content exists.
+   * @param {string} label - Section heading.
+   * @param {string} body - Section body text.
+   * @returns {void}
+   */
   function pushSection(label, body){
     const content = (body || '').trim();
     if(!content) return;
@@ -712,6 +885,10 @@ one for internal stakeholders and one for external customers.
 Each entry should include recommended tone, key talking points, risk framing, and next steps.
 Use the incident context below to tailor the guidance.`;
 
+/**
+ * Ensures the summary card exists in the DOM so generated text can be rendered.
+ * @returns {HTMLElement|null} The summary card element if available.
+ */
 function ensureSummaryCard(){
   let card = document.getElementById('summaryCard');
   if(!card){
@@ -733,6 +910,17 @@ function ensureSummaryCard(){
   return card;
 }
 
+/**
+ * Generates and optionally copies a summary for the requested output type,
+ * augmenting the base text with AI prompt preambles when needed.
+ * @param {string} [kind] - Summary category (reserved for future branching;
+ *   currently ignored).
+ * @param {string} [aiType] - AI augmentation mode (e.g., "ai summary" or
+ *   "prompt preamble").
+ * @param {object} [stateInput] - Optional state override; defaults to the
+ *   registered provider when omitted.
+ * @returns {Promise<string>} Resolved formatted summary text.
+ */
 export async function generateSummary(kind = 'summary', aiType = '', stateInput){
   void kind;
   const state = resolveState(stateInput);
