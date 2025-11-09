@@ -48,6 +48,11 @@ This file applies to the entire repository unless a more specific `AGENTS.md` fi
 - **Change checklist:** Before merging a change that adds files, modules, anchors, or storage keys, run through the checklist in `docs/commenting-guide.md`. Confirm that affected README sections and any scoped `AGENTS.md` documents are refreshed with the new anchors, links, or schema notes. Treat README/AGENTS updates as required work, not optional polish.
 - **Reference guide:** Follow the detailed patterns and examples in [`docs/commenting-guide.md`](docs/commenting-guide.md) whenever you add documentation, anchors, or persisted keys. Update that guide alongside behaviour changes so it remains authoritative.
 
+## Testing expectations
+- Every feature pull request must add or update automated tests that cover the behaviours it introduces or changes.
+- Consult [`docs/testing-guidelines.md`](docs/testing-guidelines.md) for instructions on when to write unit tests versus DOM integration tests, how to use `collectAppState()` / `applyAppState()` in new suites, and the required naming/location conventions under `tests/`.
+- Start new coverage from the reusable template in `tests/template.feature.test.mjs` to keep imports, teardown patterns, and file names consistent.
+
 ## Using Sub-Guidelines
 - Specialized editing rules for `index.html` live in `index.AGENTS.md`. Review that file before modifying the intake page.
 - If you introduce new modules or directories, include a scoped `AGENTS.md` that clarifies local conventions and how they interact with the global contract above. State the intent and scope at the top of each document so future contributors understand its coverage.

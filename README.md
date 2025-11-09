@@ -61,10 +61,11 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 - The KT table exposes `configureKT()` to register callbacks. Pass only the dependencies your module needs; avoid hidden globals.
 
 ## Testing & QA
-- Manual regression: open `index.html`, fill representative data, click **Generate Summary**, then refresh to ensure state persistence.
-- Automated harnesses should use `collectAppState()` / `applyAppState()` for reliable snapshots and `generateSummary()` for output verification.
-- Future end-to-end tests will live in Playwright/Cypress suites once introduced; keep module boundaries clean to simplify that work.
-- Storage changes: run `npm run update:storage-docs` after altering persisted fields. CI can enforce freshness with `npm run check:storage-docs`.
+- **Automated coverage is mandatory:** Every feature pull request must add or update tests that assert the behaviours introduced or modified.
+- **Choose the right suite:** Follow [`docs/testing-guidelines.md`](docs/testing-guidelines.md) to decide between unit and DOM integration tests, apply the naming/location conventions under `tests/`, and leverage the reusable template in `tests/template.feature.test.mjs` when starting new files.
+- **Snapshot-friendly helpers:** Automated harnesses should call `collectAppState()` / `applyAppState()` for reliable state restoration and `generateSummary()` for output verification.
+- **Manual regression:** Open `index.html`, fill representative data, click **Generate Summary**, then refresh to ensure state persistence.
+- **Storage changes:** Run `npm run update:storage-docs` after altering persisted fields. CI can enforce freshness with `npm run check:storage-docs`.
 
 ## Additional Documentation
 - See `AGENTS.md` for global UI principles, module isolation rules, and contribution contracts.
