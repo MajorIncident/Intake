@@ -64,7 +64,9 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 [![CI status](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
 
 - **Automated coverage is mandatory:** Every feature pull request must add or update tests that assert the behaviours introduced or modified.
+- **Run the coverage guard:** Execute `npm run verify:tests` after staging runtime changes. The guard ensures any updates under `src/` or `components/` are paired with refreshed suites in `tests/**/*.test.mjs`.
 - **Choose the right suite:** Follow [`docs/testing-guidelines.md`](docs/testing-guidelines.md) to decide between unit and DOM integration tests, apply the naming/location conventions under `tests/`, and leverage the reusable template in `tests/template.feature.test.mjs` when starting new files.
+- **Auto-generated stubs live in `tests/auto-generated/`:** When the guard detects missing coverage it copies `tests/template.feature.test.mjs` into a feature-specific stub so you can immediately replace the skipped test with meaningful assertions. Commit the file once it contains real coverage or delete it if you move the tests elsewhere.
 - **Snapshot-friendly helpers:** Automated harnesses should call `collectAppState()` / `applyAppState()` for reliable state restoration and `generateSummary()` for output verification.
 - **Manual regression:** Open `index.html`, fill representative data, click **Generate Summary**, then refresh to ensure state persistence.
 - **Storage changes:** Run `npm run update:storage-docs` after altering persisted fields. CI can enforce freshness with `npm run check:storage-docs`.
