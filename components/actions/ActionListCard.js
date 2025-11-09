@@ -5,6 +5,28 @@ import { getPossibleCauses, causeHasFailure, buildHypothesisSentence } from '../
 import { showToast } from '../../src/toast.js';
 
 const ACTIONS_UPDATED_EVENT = 'intake:actions-updated';
+const REFRESH_CLEANUP_KEY = Symbol('intake:action-list-refresh-cleanup');
+const refreshSubscribers = new Set();
+
+function registerActionListRefresh(handler) {
+  if (typeof handler !== 'function') {
+    return () => {};
+  }
+  refreshSubscribers.add(handler);
+  return () => {
+    refreshSubscribers.delete(handler);
+  };
+}
+
+export function refreshActionList() {
+  refreshSubscribers.forEach(handler => {
+    try {
+      handler();
+    } catch (error) {
+      console.debug('[actions:refresh]', error);
+    }
+  });
+}
 
 function announceActionListChange(detail = {}) {
   if (typeof window === 'undefined') {
@@ -1711,6 +1733,14 @@ export function mountActionListCard(hostEl) {
       input.focus();
     }
   });
+
+  if (hostEl && typeof hostEl[REFRESH_CLEANUP_KEY] === 'function') {
+    hostEl[REFRESH_CLEANUP_KEY]();
+  }
+  const unregisterRefresh = registerActionListRefresh(render);
+  if (hostEl) {
+    hostEl[REFRESH_CLEANUP_KEY] = unregisterRefresh;
+  }
 
   render();
 }
