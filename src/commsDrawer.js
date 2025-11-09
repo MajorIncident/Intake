@@ -1,3 +1,14 @@
+/**
+ * Communications drawer controller responsible for persistence and focus safety.
+ *
+ * The module exposes helpers to initialise and toggle the drawer UI while storing the
+ * open state in `localStorage` so it survives page refreshes. When the drawer is
+ * active, focus is trapped inside the panel and restored to the previously active
+ * control when closed to maintain accessibility.
+ *
+ * @module commsDrawer
+ */
+
 const STORAGE_KEY = 'comms.drawerOpen';
 
 let commsBtn = null;
@@ -63,6 +74,12 @@ function restoreFocus() {
   }
 }
 
+/**
+ * Keep keyboard focus constrained within the open drawer.
+ *
+ * @param {KeyboardEvent} event - The keydown event emitted from the drawer container.
+ * @returns {void}
+ */
 function trapFocus(event) {
   if (event.key !== 'Tab') return;
   const focusables = getDrawerFocusables();
@@ -85,6 +102,11 @@ function trapFocus(event) {
   }
 }
 
+/**
+ * Capture the element that should regain focus after the drawer closes.
+ *
+ * @returns {void}
+ */
 function rememberReturnFocus() {
   const active = document.activeElement;
   if (active && commsDrawer && commsDrawer.contains(active)) {
@@ -162,6 +184,11 @@ function handleGlobalKeydown(event) {
   }
 }
 
+/**
+ * Prepare the communications drawer by wiring DOM references, listeners, and stored state.
+ *
+ * @returns {void}
+ */
 export function initCommsDrawer() {
   if (commsDrawerReady) return;
   commsBtn = document.getElementById('commsBtn');
@@ -190,6 +217,11 @@ export function initCommsDrawer() {
   document.addEventListener('keydown', handleGlobalKeydown);
 }
 
+/**
+ * Open the communications drawer and record where focus should return.
+ *
+ * @returns {void}
+ */
 export function openCommsDrawer() {
   if (!commsDrawerReady) return;
   if (!commsDrawerOpen) {
@@ -198,11 +230,21 @@ export function openCommsDrawer() {
   setCommsDrawer(true);
 }
 
+/**
+ * Close the communications drawer and restore focus when appropriate.
+ *
+ * @returns {void}
+ */
 export function closeCommsDrawer() {
   if (!commsDrawerReady) return;
   setCommsDrawer(false);
 }
 
+/**
+ * Toggle the communications drawer, capturing focus when transitioning from closed.
+ *
+ * @returns {void}
+ */
 export function toggleCommsDrawer() {
   if (!commsDrawerReady) return;
   if (!commsDrawerOpen) {
