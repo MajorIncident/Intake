@@ -1,3 +1,13 @@
+/**
+ * Renders and manages the intake action list card UI, including refresh controls,
+ * inline editing workflows, and links to possible causes. The module emits the
+ * `intake:actions-updated` window event when the list changes and exposes
+ * utilities that other modules can call to refresh or mount the card.
+ *
+ * Key exports:
+ * - {@link refreshActionList}: Broadcasts a refresh to all subscribed handlers.
+ * - {@link mountActionListCard}: Mounts the card markup and binds DOM listeners.
+ */
 import { listActions, createAction, patchAction, removeAction, sortActions } from '../../src/actionsStore.js';
 import { OWNER_CATEGORIES } from '../../src/constants.js';
 import { getAnalysisId, getLikelyCauseId } from '../../src/appState.js';
@@ -8,6 +18,12 @@ const ACTIONS_UPDATED_EVENT = 'intake:actions-updated';
 const REFRESH_CLEANUP_KEY = Symbol('intake:action-list-refresh-cleanup');
 const refreshSubscribers = new Set();
 
+/**
+ * Adds a handler that will run when {@link refreshActionList} broadcasts a refresh.
+ *
+ * @param {() => void} handler - Callback executed during refresh broadcasts. Ignored when falsy.
+ * @returns {() => void} Cleanup function that unregisters the handler.
+ */
 function registerActionListRefresh(handler) {
   if (typeof handler !== 'function') {
     return () => {};
@@ -18,6 +34,11 @@ function registerActionListRefresh(handler) {
   };
 }
 
+/**
+ * Triggers all registered refresh handlers so they can reconcile their state.
+ *
+ * @returns {void}
+ */
 export function refreshActionList() {
   refreshSubscribers.forEach(handler => {
     try {
@@ -28,6 +49,12 @@ export function refreshActionList() {
   });
 }
 
+/**
+ * Dispatches the `intake:actions-updated` window event for cross-module listeners.
+ *
+ * @param {object} [detail={}] - Additional data describing the change.
+ * @returns {void}
+ */
 function announceActionListChange(detail = {}) {
   if (typeof window === 'undefined') {
     return;
@@ -39,6 +66,13 @@ function announceActionListChange(detail = {}) {
   }
 }
 
+/**
+ * Mounts the action list card UI into the provided host element and wires up all
+ * event listeners required for inline editing and persistence.
+ *
+ * @param {HTMLElement} hostEl - Container node that receives the rendered card markup.
+ * @returns {void}
+ */
 export function mountActionListCard(hostEl) {
   const analysisId = getAnalysisId();
 
@@ -165,6 +199,11 @@ export function mountActionListCard(hostEl) {
     announceActionListChange({ total: items.length });
   }
 
+  /**
+   * Sorts and re-renders the action list for the active analysis before showing feedback.
+   *
+   * @returns {void}
+   */
   function handleRefresh() {
     sortActions(analysisId);
     render();
@@ -226,6 +265,13 @@ export function mountActionListCard(hostEl) {
     return action.status === 'Done' || action.status === 'Cancelled';
   }
 
+  /**
+   * Persists the chosen cause link for an action and restores focus to the trigger.
+   *
+   * @param {{ id: string, links?: Record<string, string> }} action - Action being updated.
+   * @param {string} nextId - Selected cause identifier or empty string to unlink.
+   * @returns {void}
+   */
   function handleCauseLinkSelection(action, nextId) {
     if (!action) return;
     const normalized = typeof nextId === 'string' ? nextId.trim() : '';
@@ -1286,6 +1332,12 @@ export function mountActionListCard(hostEl) {
   }
 
   // Actions
+  /**
+   * Steps the action status forward (Planned → In-Progress → Done) and saves it.
+   *
+   * @param {string} id - Identifier of the action to update.
+   * @returns {void}
+   */
   function advanceStatus(id) {
     const items = listActions(analysisId);
     const it = items.find(x => x.id === id);
@@ -1293,6 +1345,12 @@ export function mountActionListCard(hostEl) {
     const next = nextPrimaryStatus(it.status);
     applyPatch(id, { status: next });
   }
+  /**
+   * Rotates the action priority (P1 → P2 → P3) and persists the result.
+   *
+   * @param {string} id - Identifier of the action to reprioritise.
+   * @returns {void}
+   */
   function cyclePriority(id) {
     const items = listActions(analysisId);
     const it = items.find(x => x.id === id);
