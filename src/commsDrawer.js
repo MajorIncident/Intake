@@ -9,7 +9,13 @@
  * @module commsDrawer
  */
 
-const STORAGE_KEY = 'comms.drawerOpen';
+/**
+ * Local storage key used to persist the communications drawer visibility state.
+ * @type {string}
+ */
+export const COMMS_DRAWER_STORAGE_KEY = 'comms.drawerOpen';
+
+const STORAGE_KEY = COMMS_DRAWER_STORAGE_KEY;
 
 let commsBtn = null;
 let commsDrawer = null;

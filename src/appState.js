@@ -272,6 +272,14 @@ export function getSummaryState() {
   };
 }
 
+/**
+ * Clears the memoized analysis identifier so a subsequent lookup generates a new value.
+ * @returns {void}
+ */
+export function resetAnalysisId() {
+  cachedAnalysisId = '';
+}
+
 export { getLikelyCauseId };
 export { APP_STATE_VERSION };
 export { resolveActionsImport };

@@ -13,7 +13,9 @@
 
 import { CAUSE_FINDING_MODES, CAUSE_FINDING_MODE_VALUES } from './constants.js';
 import { APP_STATE_VERSION } from './appStateVersion.js';
-import { normalizeActionSnapshot } from './actionsStore.js';
+import { normalizeActionSnapshot, ACTIONS_STORAGE_KEY } from './actionsStore.js';
+import { STEPS_ITEMS_KEY, STEPS_DRAWER_KEY } from './steps.js';
+import { COMMS_DRAWER_STORAGE_KEY } from './commsDrawer.js';
 /* eslint-enable jsdoc/require-jsdoc */
 
 /**
@@ -75,6 +77,8 @@ import { normalizeActionSnapshot } from './actionsStore.js';
  * @type {string}
  */
 export const STORAGE_KEY = 'kt-intake-full-v2';
+
+const ANALYSIS_ID_STORAGE_KEY = 'kt-analysis-id';
 
 /**
  * Safely parses JSON content while tolerating invalid inputs.
@@ -666,4 +670,26 @@ export function restoreFromStorage() {
  */
 export function clearStorage() {
   localStorage.removeItem(STORAGE_KEY);
+}
+
+/**
+ * Removes all persisted intake storage segments, including feature-specific caches.
+ * @returns {void}
+ */
+export function clearAllIntakeStorage() {
+  clearStorage();
+  const keys = [
+    STEPS_ITEMS_KEY,
+    STEPS_DRAWER_KEY,
+    COMMS_DRAWER_STORAGE_KEY,
+    ANALYSIS_ID_STORAGE_KEY,
+    ACTIONS_STORAGE_KEY
+  ];
+  keys.forEach(key => {
+    try {
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.debug('[storage:clear]', key, error);
+    }
+  });
 }

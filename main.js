@@ -4,8 +4,8 @@
  * @module main
  */
 
-import { saveToStorage, restoreFromStorage } from './src/storage.js';
-import { initStepsFeature } from './src/steps.js';
+import { saveToStorage, restoreFromStorage, clearAllIntakeStorage } from './src/storage.js';
+import { initStepsFeature, resetStepsState } from './src/steps.js';
 import { initCommsDrawer, toggleCommsDrawer, closeCommsDrawer } from './src/commsDrawer.js';
 import {
   configureKT,
@@ -14,7 +14,7 @@ import {
   renderCauses
 } from './src/kt.js';
 import { generateSummary, setSummaryStateProvider } from './src/summary.js';
-import { mountActionListCard } from './components/actions/ActionListCard.js';
+import { mountActionListCard, refreshActionList } from './components/actions/ActionListCard.js';
 import {
   initPreface,
   autoResize,
@@ -36,7 +36,8 @@ import {
 import {
   collectAppState,
   applyAppState,
-  getSummaryState
+  getSummaryState,
+  resetAnalysisId
 } from './src/appState.js';
 import { showToast } from './src/toast.js';
 
@@ -101,6 +102,28 @@ function restoreSavedIntake({
 }
 
 /**
+ * Clear all intake storage segments and rebuild the UI to a pristine state.
+ * @returns {void}
+ */
+function startFresh() {
+  clearAllIntakeStorage();
+  resetAnalysisId();
+  resetStepsState();
+  applyAppState({});
+  closeCommsDrawer();
+  setBridgeOpenedNow();
+  updatePrefaceTitles();
+  try {
+    refreshActionList();
+  } catch (error) {
+    console.debug('[main:start-fresh]', error);
+  }
+  clearAllIntakeStorage();
+  resetAnalysisId();
+  showToast('Intake reset. Ready for a new incident ✨');
+}
+
+/**
  * Initialize the intake experience by configuring modules, restoring state,
  * and wiring shared lifecycle events.
  * @returns {void}
@@ -140,6 +163,7 @@ function boot() {
 
   wireSummaryEvents();
   wireCommsEvents();
+  wireStartFreshButton();
   wireBridgeNowButton();
   wireKeyboardShortcuts();
 }
@@ -199,6 +223,17 @@ function wireCommsEvents() {
       });
     });
   }
+}
+
+/**
+ * Attach the Start Fresh button to the reset workflow.
+ * @returns {void}
+ */
+function wireStartFreshButton() {
+  const btn = $('#startFreshBtn');
+  on(btn, 'click', () => {
+    startFresh();
+  });
 }
 
 /**

@@ -489,6 +489,23 @@ export function getStepsItems() {
 }
 
 /**
+ * Reset the in-memory steps collection and drawer visibility to their defaults without persisting.
+ * @returns {void}
+ */
+export function resetStepsState() {
+  stepsItems = STEP_DEFINITIONS.map(def => ({
+    id: def.id,
+    phase: def.phase,
+    label: def.label,
+    checked: false
+  }));
+  stepsDrawerOpen = false;
+  renderStepsList();
+  updateStepsProgressUI();
+  setStepsDrawer(false, { skipFocus: true, skipSave: true });
+}
+
+/**
  * Initialise the steps drawer by wiring DOM nodes, restoring persisted state, and binding events.
  * @param {{ onSave?: () => void, onLog?: (channel: string, message: string) => void }} [options]
  * Optional callbacks for persistence and audit logging.

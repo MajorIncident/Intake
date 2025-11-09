@@ -6,7 +6,13 @@
  * intake workflow and storage export/import routines.
  */
 
-const KEY = 'kt-actions-by-analysis-v1';
+/**
+ * Storage key under which the remediation actions map is persisted.
+ * @type {string}
+ */
+export const ACTIONS_STORAGE_KEY = 'kt-actions-by-analysis-v1';
+
+const KEY = ACTIONS_STORAGE_KEY;
 const STATUS_ORDER = {
   Blocked: 0,
   'In-Progress': 1,
