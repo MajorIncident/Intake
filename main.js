@@ -1,3 +1,9 @@
+/**
+ * Application entry point responsible for bootstrapping shared modules, wiring
+ * global events, and exposing utility callbacks for manual triggering.
+ * @module main
+ */
+
 import { saveToStorage, restoreFromStorage } from './src/storage.js';
 import { initStepsFeature } from './src/steps.js';
 import { initCommsDrawer, toggleCommsDrawer, closeCommsDrawer } from './src/commsDrawer.js';
@@ -34,16 +40,32 @@ import {
 } from './src/appState.js';
 import { showToast } from './src/toast.js';
 
+/**
+ * Query the document for the first element that matches the provided CSS selector.
+ * @param {string} selector - The CSS selector identifying the desired element.
+ * @returns {Element|null} The matching element, or <code>null</code> if none is found.
+ */
 function $(selector) {
   return document.querySelector(selector);
 }
 
+/**
+ * Attach a DOM event listener to an element if it exists.
+ * @param {Element|Document|null} element - The target element to receive the listener.
+ * @param {string} event - The event type to listen for (e.g., <code>'click'</code>).
+ * @param {(event: Event) => void} handler - Callback invoked with the event object.
+ * @returns {void}
+ */
 function on(element, event, handler) {
   if (element) {
     element.addEventListener(event, handler);
   }
 }
 
+/**
+ * Collect and persist the current intake application state to localStorage.
+ * @returns {void}
+ */
 function saveAppState() {
   try {
     const state = collectAppState();
@@ -53,6 +75,11 @@ function saveAppState() {
   }
 }
 
+/**
+ * Initialize the intake experience by configuring modules, restoring state,
+ * and wiring shared lifecycle events.
+ * @returns {void}
+ */
 function boot() {
   window.showToast = showToast;
 
@@ -95,6 +122,10 @@ function boot() {
   wireKeyboardShortcuts();
 }
 
+/**
+ * Register click handlers that trigger summary generation for manual and AI flows.
+ * @returns {void}
+ */
 function wireSummaryEvents() {
   const summaryBtn = $('#genSummaryBtn');
   on(summaryBtn, 'click', () => generateSummary('summary', ''));
@@ -103,6 +134,10 @@ function wireSummaryEvents() {
   on(aiSummaryBtn, 'click', () => generateSummary('summary', 'ai summary'));
 }
 
+/**
+ * Wire communication drawer controls including logging buttons and cadence inputs.
+ * @returns {void}
+ */
 function wireCommsEvents() {
   const commsBtn = $('#commsBtn');
   const commsCloseBtn = $('#commsCloseBtn');
@@ -135,11 +170,19 @@ function wireCommsEvents() {
   }
 }
 
+/**
+ * Bind the bridge "Set to Now" button to update the bridge opened timestamp.
+ * @returns {void}
+ */
 function wireBridgeNowButton() {
   const btn = $('#bridgeSetNowBtn');
   on(btn, 'click', setBridgeOpenedNow);
 }
 
+/**
+ * Install Alt-key keyboard shortcuts for summary generation and communication logging.
+ * @returns {void}
+ */
 function wireKeyboardShortcuts() {
   document.addEventListener('keydown', event => {
     if (!event.altKey || event.ctrlKey || event.metaKey) {
@@ -179,6 +222,10 @@ function wireKeyboardShortcuts() {
   });
 }
 
+/**
+ * Mount the Action List card immediately after the possible causes anchor if present.
+ * @returns {void}
+ */
 function mountAfterPossibleCauses() {
   const anchor = document.querySelector('#possibleCausesCard')
     || document.querySelector('#possible-causes');
@@ -189,6 +236,10 @@ function mountAfterPossibleCauses() {
   mountActionListCard(host);
 }
 
+/**
+ * Expose summary generation helpers on the global window for legacy inline bindings.
+ * @returns {void}
+ */
 function exposeGlobals() {
   window.onGenerateSummary = () => generateSummary('summary', '');
   window.onGenerateAIPrompt = () => generateSummary('summary', 'prompt preamble');
