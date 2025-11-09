@@ -25,12 +25,17 @@ function createSource(kind) {
   }
   if (kind === 'appState') {
     return `
-      const mocks = globalThis.__appStateMocks;
-      if (!mocks) {
-        throw new Error('appState mocks not initialised');
-      }
+      const defaultMocks = {
+        getAnalysisId: () => '',
+        getLikelyCauseId: () => null,
+        collectAppState: () => ({}),
+        applyAppState: () => {}
+      };
+      const mocks = globalThis.__appStateMocks ?? defaultMocks;
       export const getAnalysisId = (...args) => mocks.getAnalysisId(...args);
       export const getLikelyCauseId = (...args) => mocks.getLikelyCauseId(...args);
+      export const collectAppState = (...args) => mocks.collectAppState?.(...args) ?? {};
+      export const applyAppState = (...args) => mocks.applyAppState?.(...args);
     `;
   }
   if (kind === 'kt') {
