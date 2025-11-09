@@ -48,6 +48,7 @@ import {
   serializeCauses,
   deserializeCauses
 } from './storage.js';
+import { APP_STATE_VERSION } from './appStateVersion.js';
 import { showToast } from './toast.js';
 
 const ANALYSIS_ID_KEY = 'kt-analysis-id';
@@ -85,6 +86,10 @@ export function collectAppState() {
   const likelyCauseId = getLikelyCauseId();
   const steps = exportStepsState();
   return {
+    meta: {
+      version: APP_STATE_VERSION,
+      savedAt: new Date().toISOString()
+    },
     pre,
     impact,
     ops: { ...ops, ...commState, tableFocusMode },
@@ -182,3 +187,4 @@ export function getSummaryState() {
 }
 
 export { getLikelyCauseId };
+export { APP_STATE_VERSION };
