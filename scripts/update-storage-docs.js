@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+/**
+ * @file CLI that materialises the latest storage schema into
+ * `docs/storage-schema.md`, ensuring the documentation matches the current app
+ * state migrations and field definitions.
+ */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +17,11 @@ const repoRoot = path.resolve(__dirname, '..');
 const docsDir = path.join(repoRoot, 'docs');
 const outputPath = path.join(docsDir, 'storage-schema.md');
 
+/**
+ * Derives a human-readable type label for a given field value.
+ * @param {unknown} value Value whose type should be described.
+ * @returns {string} One of `array`, `null`, or the result of `typeof`.
+ */
 function describeType(value) {
   if (Array.isArray(value)) {
     return 'array';
@@ -22,6 +32,13 @@ function describeType(value) {
   return typeof value;
 }
 
+/**
+ * Collects flattened field descriptors for every nested property in a state.
+ * @param {unknown} value The value to inspect for nested fields.
+ * @param {string[]} [parts] The accumulated path components for recursion. Defaults to an empty array.
+ * @param {Array<{ field: string, type: string }>} [acc] Aggregate results array. Defaults to an empty array.
+ * @returns {Array<{ field: string, type: string }>} The provided accumulator with all discovered field descriptors.
+ */
 function collectFields(value, parts = [], acc = []) {
   if (parts.length > 0) {
     acc.push({
@@ -38,6 +55,10 @@ function collectFields(value, parts = [], acc = []) {
   return acc;
 }
 
+/**
+ * Builds lookup metadata linking fields to the migration version introducing them.
+ * @returns {{ overrides: Map<string, number>, migrations: Array<[number, { introducedFields?: string[], name?: string }]> }} An object containing the lookup map and ordered registry entries.
+ */
 function buildIntroducedOverrides() {
   const overrides = new Map();
   const migrations = Array.from(MIGRATION_REGISTRY.entries()).sort((a, b) => a[0] - b[0]);
@@ -54,6 +75,11 @@ function buildIntroducedOverrides() {
   return { overrides, migrations };
 }
 
+/**
+ * Renders the migrations section for the documentation markdown file.
+ * @param {Array<[number, { introducedFields?: string[], name?: string }]>} migrations Ordered migration entries from the registry.
+ * @returns {string} Markdown representing the migrations table.
+ */
 function renderMigrationsTable(migrations) {
   if (!migrations.length) {
     return '## Migrations\n\n_No registered migrations. States start at the base schema._\n\n';
@@ -67,6 +93,10 @@ function renderMigrationsTable(migrations) {
   return lines.join('\n') + '\n';
 }
 
+/**
+ * Generates and writes the storage documentation markdown file.
+ * @returns {Promise<void>} A promise that resolves when the file has been written to disk.
+ */
 async function writeStorageDocs() {
   const canonicalState = migrateAppState({});
   const fields = collectFields(canonicalState)
