@@ -61,11 +61,15 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 - The KT table exposes `configureKT()` to register callbacks. Pass only the dependencies your module needs; avoid hidden globals.
 
 ## Testing & QA
+[![CI status](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+
 - **Automated coverage is mandatory:** Every feature pull request must add or update tests that assert the behaviours introduced or modified.
 - **Choose the right suite:** Follow [`docs/testing-guidelines.md`](docs/testing-guidelines.md) to decide between unit and DOM integration tests, apply the naming/location conventions under `tests/`, and leverage the reusable template in `tests/template.feature.test.mjs` when starting new files.
 - **Snapshot-friendly helpers:** Automated harnesses should call `collectAppState()` / `applyAppState()` for reliable state restoration and `generateSummary()` for output verification.
 - **Manual regression:** Open `index.html`, fill representative data, click **Generate Summary**, then refresh to ensure state persistence.
 - **Storage changes:** Run `npm run update:storage-docs` after altering persisted fields. CI can enforce freshness with `npm run check:storage-docs`.
+
+Continuous integration runs automatically on pull requests and pushes to `main`, using the repository's Node.js version via `actions/setup-node` with npm caching for faster installs. The workflow executes `npm ci`, `npm test` (emitting JUnit results for artifact upload on failure), and `npm run check:storage-docs` so Codex-driven contributions keep tests and storage docs in sync.
 
 ## Additional Documentation
 - See `AGENTS.md` for global UI principles, module isolation rules, and contribution contracts.
