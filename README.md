@@ -59,6 +59,7 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 - Manual regression: open `index.html`, fill representative data, click **Generate Summary**, then refresh to ensure state persistence.
 - Automated harnesses should use `collectAppState()` / `applyAppState()` for reliable snapshots and `generateSummary()` for output verification.
 - Future end-to-end tests will live in Playwright/Cypress suites once introduced; keep module boundaries clean to simplify that work.
+- Storage changes: run `npm run update:storage-docs` after altering persisted fields. CI can enforce freshness with `npm run check:storage-docs`.
 
 ## Additional Documentation
 - See `AGENTS.md` for global UI principles, module isolation rules, and contribution contracts.

@@ -234,6 +234,8 @@ const MIGRATIONS = new Map([
   [0, migrateLegacyState]
 ]);
 
+export const MIGRATION_REGISTRY = new Map(MIGRATIONS);
+
 function normalizeAppStateStructure(raw) {
   const incoming = raw && typeof raw === 'object' ? raw : {};
   const preSource = incoming.pre && typeof incoming.pre === 'object' ? incoming.pre : {};
