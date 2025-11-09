@@ -3,6 +3,7 @@ import {
   CAUSE_FINDING_MODES,
   CAUSE_FINDING_MODE_VALUES
 } from './constants.js';
+import { buildCauseActionCounts } from './causeActionCounts.js';
 
 let autoResize = () => {};
 let saveHandler = () => {};
@@ -17,6 +18,10 @@ let possibleCauses = [];
 let likelyCauseId = null;
 let causeList = document.getElementById('causeList');
 let addCauseBtn = document.getElementById('addCauseBtn');
+
+const ACTIONS_UPDATED_EVENT = 'intake:actions-updated';
+let actionUpdateListenerBound = false;
+let causeActionCounts = new Map();
 
 const TABLE_FOCUS_MODES = ['rapid', 'focused', 'comprehensive'];
 const TABLE_MODE_ROWS = Object.freeze({
@@ -70,6 +75,54 @@ export function configureKT({
   if(typeof getDeviationFull === 'function'){
     getDeviationFullFn = getDeviationFull;
   }
+  bindActionUpdateListener();
+}
+
+function bindActionUpdateListener(){
+  if(actionUpdateListenerBound) return;
+  if(typeof window === 'undefined') return;
+  window.addEventListener(ACTIONS_UPDATED_EVENT, () => {
+    renderCauses();
+  });
+  actionUpdateListenerBound = true;
+}
+
+function refreshCauseActionCounts(){
+  try{
+    const counts = buildCauseActionCounts();
+    if(counts instanceof Map){
+      causeActionCounts = counts;
+    }else{
+      const pairs = counts && typeof counts === 'object'
+        ? Object.entries(counts).filter(entry => typeof entry[1] === 'number')
+        : [];
+      causeActionCounts = new Map(pairs);
+    }
+  }catch(_){
+    causeActionCounts = new Map();
+  }
+}
+
+function causeActionCountById(id){
+  if(typeof id !== 'string') return 0;
+  const key = id.trim();
+  if(!key) return 0;
+  return causeActionCounts.get(key) || 0;
+}
+
+function formatCauseActionCount(count){
+  if(!Number.isFinite(count) || count <= 0) return 'No actions yet';
+  return count === 1 ? '1 action assigned' : `${count} actions assigned`;
+}
+
+function updateCauseActionBadge(el, cause){
+  if(!el) return 'No actions yet';
+  const count = causeActionCountById(cause?.id);
+  const text = formatCauseActionCount(count);
+  el.textContent = text;
+  el.dataset.count = String(count);
+  el.setAttribute('aria-label', text);
+  return text;
 }
 
 function callShowToast(message){
@@ -578,9 +631,14 @@ function updateCauseProgressChip(chip, cause){
   chip.dataset.status = status;
 }
 
-function updateCauseStatusLabel(el, cause){
+function updateCauseStatusLabel(el, cause, countText){
   if(!el) return;
-  el.textContent = causeStatusLabel(cause);
+  const status = causeStatusLabel(cause);
+  el.textContent = status;
+  const fullLabel = typeof countText === 'string' && countText
+    ? `${status}. ${countText}`
+    : status;
+  el.setAttribute('aria-label', fullLabel);
 }
 
 function updateCauseCardIndicators(card, cause){
@@ -689,6 +747,7 @@ export function renderCauses(){
     ensurePossibleCausesUI();
   }
   if(!causeList) return;
+  refreshCauseActionCounts();
   let clearedMessage = '';
   if(likelyCauseId){
     const active = possibleCauses.find(item => item && item.id === likelyCauseId);
@@ -723,7 +782,11 @@ export function renderCauses(){
     titleEl.textContent = `Possible Cause ${index + 1}`;
     const statusEl = document.createElement('span');
     statusEl.className = 'cause-card__status';
-    meta.append(titleEl, statusEl);
+    const actionCountEl = document.createElement('span');
+    actionCountEl.className = 'cause-card__actions-badge';
+    actionCountEl.dataset.role = 'action-count';
+    actionCountEl.setAttribute('aria-live', 'polite');
+    meta.append(titleEl, statusEl, actionCountEl);
     const indicators = document.createElement('div');
     indicators.className = 'cause-card__indicators';
     const failureTag = document.createElement('span');
@@ -746,7 +809,8 @@ export function renderCauses(){
     likelyWrap.appendChild(likelyBtn);
     header.append(meta, likelyWrap, indicators);
     card.append(header);
-    updateCauseStatusLabel(statusEl, cause);
+    const actionCountText = updateCauseActionBadge(actionCountEl, cause);
+    updateCauseStatusLabel(statusEl, cause, actionCountText);
     updateCauseProgressChip(chip, cause);
     const summaryEl = document.createElement('p');
     summaryEl.className = 'cause-card__summary';
@@ -772,7 +836,8 @@ export function renderCauses(){
         cause.suspect = e.target.value;
         autoResize(suspectInput);
         summaryEl.textContent = buildHypothesisSentence(cause);
-        updateCauseStatusLabel(statusEl, cause);
+        const countText = updateCauseActionBadge(actionCountEl, cause);
+        updateCauseStatusLabel(statusEl, cause, countText);
         updateCauseProgressChip(chip, cause);
         saveHandler();
       });
@@ -790,7 +855,8 @@ export function renderCauses(){
         cause.accusation = e.target.value;
         autoResize(accusationInput);
         summaryEl.textContent = buildHypothesisSentence(cause);
-        updateCauseStatusLabel(statusEl, cause);
+        const countText = updateCauseActionBadge(actionCountEl, cause);
+        updateCauseStatusLabel(statusEl, cause, countText);
         updateCauseProgressChip(chip, cause);
         saveHandler();
       });
@@ -808,7 +874,8 @@ export function renderCauses(){
         cause.impact = e.target.value;
         autoResize(impactInput);
         summaryEl.textContent = buildHypothesisSentence(cause);
-        updateCauseStatusLabel(statusEl, cause);
+        const countText = updateCauseActionBadge(actionCountEl, cause);
+        updateCauseStatusLabel(statusEl, cause, countText);
         updateCauseProgressChip(chip, cause);
         saveHandler();
       });
@@ -881,6 +948,7 @@ export function renderCauses(){
 function buildCauseTestPanel(cause, progressChip, statusEl, card){
   const panel = document.createElement('div');
   panel.className = 'cause-test';
+  const actionBadge = card?.querySelector('[data-role="action-count"]');
   const intro = document.createElement('p');
   intro.className = 'cause-test__intro';
   intro.textContent = 'For each KT row, choose how this hypothesis handles the IS / IS NOT evidence and document your reasoning.';
@@ -961,7 +1029,8 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
       setCauseFindingValue(cause, rowKey, 'note', e.target.value);
       autoResize(noteInput);
       updateCauseProgressChip(progressChip, cause);
-      updateCauseStatusLabel(statusEl, cause);
+      const countText = updateCauseActionBadge(actionBadge, cause);
+      updateCauseStatusLabel(statusEl, cause, countText);
       updateCauseCardIndicators(card, cause);
       saveHandler();
     });
@@ -1022,7 +1091,8 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
       autoResize(noteInput);
       if(!opts.silent){
         updateCauseProgressChip(progressChip, cause);
-        updateCauseStatusLabel(statusEl, cause);
+        const countText = updateCauseActionBadge(actionBadge, cause);
+        updateCauseStatusLabel(statusEl, cause, countText);
         updateCauseCardIndicators(card, cause);
         saveHandler();
       }
@@ -1060,6 +1130,7 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
 
 export function updateCauseEvidencePreviews(){
   if(!causeList) return;
+  refreshCauseActionCounts();
   causeList.querySelectorAll('.cause-eval-row').forEach(rowEl => {
     const index = parseInt(rowEl.dataset.rowIndex, 10);
     if(Number.isNaN(index) || !rowsBuilt[index]) return;
@@ -1090,7 +1161,9 @@ export function updateCauseEvidencePreviews(){
     const chip = card.querySelector('.cause-card__chip');
     if(chip){ updateCauseProgressChip(chip, cause); }
     const statusEl = card.querySelector('.cause-card__status');
-    if(statusEl){ updateCauseStatusLabel(statusEl, cause); }
+    const actionBadge = card.querySelector('[data-role="action-count"]');
+    const countText = updateCauseActionBadge(actionBadge, cause);
+    if(statusEl){ updateCauseStatusLabel(statusEl, cause, countText); }
     updateCauseCardIndicators(card, cause);
   });
 }
