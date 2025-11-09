@@ -297,3 +297,178 @@ test('actions: integrates with the store when users interact with the list', asy
   assert.match(rows[rows.length - 1].textContent, /Omega finalize rollout/, 'new store item appears after refresh');
   assert.equal(updates.at(-1)?.total, actions.length, 'refresh dispatch emits the latest count');
 });
+
+test('appState: applyAppState adopts imported action snapshots and updates the card UI', async (t) => {
+  const importedAnalysisId = 'analysis-imported';
+  const importedItems = [
+    {
+      id: 'action-imported-1',
+      analysisId: importedAnalysisId,
+      summary: 'Restore snapshot service',
+      detail: '',
+      owner: {
+        name: 'Ops Rotation',
+        category: 'Operations',
+        subOwner: '',
+        notes: '',
+        lastAssignedBy: '',
+        lastAssignedAt: '',
+        source: 'Manual'
+      },
+      role: 'Owner',
+      status: 'Planned',
+      priority: 'P1',
+      dueAt: '',
+      startedAt: '',
+      completedAt: '',
+      dependencies: [],
+      risk: 'None',
+      changeControl: { required: false },
+      verification: { required: false },
+      links: { hypothesisId: '' },
+      notes: '',
+      auditTrail: []
+    }
+  ];
+
+  const storeState = new Map();
+  const actionsStoreMocks = {
+    listActions: mock.fn((analysisId) => {
+      const stored = storeState.get(analysisId) ?? [];
+      return stored.map(item => ({
+        ...item,
+        owner: { ...(item.owner || {}) },
+        links: { ...(item.links || {}) },
+        changeControl: { ...(item.changeControl || {}) },
+        verification: { ...(item.verification || {}) }
+      }));
+    }),
+    createAction: mock.fn(() => null),
+    patchAction: mock.fn(() => null),
+    removeAction: mock.fn(() => true),
+    sortActions: mock.fn((analysisId) => {
+      const stored = storeState.get(analysisId) ?? [];
+      const cloned = stored.map(item => ({ ...item }));
+      storeState.set(analysisId, cloned);
+      return cloned;
+    }),
+    exportActionsState: mock.fn(() => []),
+    importActionsState: mock.fn((analysisId, items) => {
+      const cloned = Array.isArray(items)
+        ? items.map(item => ({
+          ...item,
+          owner: { ...(item.owner || {}) },
+          links: { ...(item.links || {}) },
+          changeControl: { ...(item.changeControl || {}) },
+          verification: { ...(item.verification || {}) }
+        }))
+        : [];
+      storeState.set(analysisId, cloned);
+      return cloned;
+    })
+  };
+
+  const previousActionsMocks = globalThis.__actionsStoreMocks;
+  globalThis.__actionsStoreMocks = actionsStoreMocks;
+
+  t.after(() => {
+    if (previousActionsMocks) {
+      globalThis.__actionsStoreMocks = previousActionsMocks;
+    } else {
+      delete globalThis.__actionsStoreMocks;
+    }
+  });
+
+  const previousKtMocks = globalThis.__ktMocks;
+  globalThis.__ktMocks = {
+    ...previousKtMocks,
+    getPossibleCauses: () => previousKtMocks?.getPossibleCauses?.() ?? [],
+    causeHasFailure: () => previousKtMocks?.causeHasFailure?.() ?? false,
+    buildHypothesisSentence: () => previousKtMocks?.buildHypothesisSentence?.() ?? '',
+    getObjectISField: () => previousKtMocks?.getObjectISField?.() ?? null,
+    getDeviationISField: () => previousKtMocks?.getDeviationISField?.() ?? null,
+    isObjectISDirty: () => previousKtMocks?.isObjectISDirty?.() ?? false,
+    isDeviationISDirty: () => previousKtMocks?.isDeviationISDirty?.() ?? false,
+    refreshAllTokenizedText: () => previousKtMocks?.refreshAllTokenizedText?.(),
+    ensurePossibleCausesUI: () => previousKtMocks?.ensurePossibleCausesUI?.(),
+    renderCauses: () => previousKtMocks?.renderCauses?.(),
+    focusFirstEditableCause: () => previousKtMocks?.focusFirstEditableCause?.(),
+    updateCauseEvidencePreviews: () => previousKtMocks?.updateCauseEvidencePreviews?.(),
+    setPossibleCauses: (...args) => previousKtMocks?.setPossibleCauses?.(...args),
+    exportKTTableState: (...args) => previousKtMocks?.exportKTTableState?.(...args) ?? [],
+    importKTTableState: (...args) => previousKtMocks?.importKTTableState?.(...args) ?? [],
+    getRowsBuilt: (...args) => previousKtMocks?.getRowsBuilt?.(...args) ?? [],
+    causeStatusLabel: (...args) => previousKtMocks?.causeStatusLabel?.(...args) ?? '',
+    getLikelyCauseId: (...args) => previousKtMocks?.getLikelyCauseId?.(...args) ?? null,
+    setLikelyCauseId: (...args) => previousKtMocks?.setLikelyCauseId?.(...args),
+    countCauseAssumptions: (...args) => previousKtMocks?.countCauseAssumptions?.(...args) ?? 0,
+    evidencePairIndexes: (...args) => previousKtMocks?.evidencePairIndexes?.(...args) ?? [],
+    countCompletedEvidence: (...args) => previousKtMocks?.countCompletedEvidence?.(...args) ?? 0,
+    getRowKeyByIndex: (...args) => previousKtMocks?.getRowKeyByIndex?.(...args) ?? '',
+    peekCauseFinding: (...args) => previousKtMocks?.peekCauseFinding?.(...args) ?? null,
+    findingMode: (...args) => previousKtMocks?.findingMode?.(...args) ?? '',
+    findingNote: (...args) => previousKtMocks?.findingNote?.(...args) ?? '',
+    fillTokens: (...args) => previousKtMocks?.fillTokens?.(...args) ?? '',
+    getTableElement: (...args) => previousKtMocks?.getTableElement?.(...args) ?? null,
+    getTableFocusMode: (...args) => previousKtMocks?.getTableFocusMode?.(...args) ?? '',
+    setTableFocusMode: (...args) => previousKtMocks?.setTableFocusMode?.(...args)
+  };
+
+  t.after(() => {
+    if (previousKtMocks) {
+      globalThis.__ktMocks = previousKtMocks;
+    } else {
+      delete globalThis.__ktMocks;
+    }
+  });
+
+  const appStateModule = await import('../src/appState.js?actual');
+  const previousAppStateMocks = globalThis.__appStateMocks;
+  globalThis.__appStateMocks = {
+    ...previousAppStateMocks,
+    getAnalysisId: () => appStateModule.getAnalysisId(),
+    getLikelyCauseId: () => previousAppStateMocks?.getLikelyCauseId?.() ?? 'cause-mocked'
+  };
+
+  t.after(() => {
+    if (previousAppStateMocks) {
+      globalThis.__appStateMocks = previousAppStateMocks;
+    } else {
+      delete globalThis.__appStateMocks;
+    }
+  });
+
+  const payload = {
+    actions: {
+      analysisId: importedAnalysisId,
+      items: importedItems
+    }
+  };
+
+  assert.equal(localStorage.getItem('kt-analysis-id'), null, 'analysis storage key starts empty');
+
+  appStateModule.applyAppState(payload);
+
+  assert.equal(
+    localStorage.getItem('kt-analysis-id'),
+    importedAnalysisId,
+    'applyAppState persists the imported analysis identifier'
+  );
+  assert.equal(appStateModule.getAnalysisId(), importedAnalysisId, 'getAnalysisId reflects the imported identifier');
+  assert.equal(actionsStoreMocks.importActionsState.mock.calls.length, 1, 'actions snapshot imported once');
+  const importCall = actionsStoreMocks.importActionsState.mock.calls[0].arguments;
+  assert.equal(importCall[0], importedAnalysisId, 'actions import uses the adopted analysis id');
+  assert.deepEqual(importCall[1], importedItems, 'imported actions payload passed through unchanged');
+
+  const host = document.createElement('div');
+  document.body.append(host);
+
+  const { mountActionListCard } = await import('../components/actions/ActionListCard.js');
+  mountActionListCard(host);
+
+  const rows = host.querySelectorAll('.action-row');
+  assert.equal(rows.length, importedItems.length, 'mounted list renders imported actions');
+  assert.match(rows[0].textContent, /Restore snapshot service/, 'imported action summary is visible');
+
+  host.remove();
+});
