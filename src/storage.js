@@ -1,8 +1,85 @@
+/* eslint-disable jsdoc/require-jsdoc -- module metadata provided below */
+/**
+ * @module storage
+ */
+
+/**
+ * Persistence helpers for the intake app state. This module owns the
+ * serialization contract for `localStorage`, including versioned migrations via
+ * {@link migrateAppState}. Key exports cover cause list serialization,
+ * app-state migrations, and storage lifecycle helpers (`saveToStorage`,
+ * `restoreFromStorage`, `clearStorage`).
+ */
+
 import { CAUSE_FINDING_MODES, CAUSE_FINDING_MODE_VALUES } from './constants.js';
 import { APP_STATE_VERSION } from './appStateVersion.js';
+/* eslint-enable jsdoc/require-jsdoc */
 
+/**
+ * @typedef {object} CauseFinding
+ * @property {string} mode - Normalized finding classification.
+ * @property {string} note - Supporting note captured for the finding.
+ */
+
+/**
+ * @typedef {object} CauseRecord
+ * @property {string} id - Stable identifier used for UI reconciliation.
+ * @property {string} suspect - Primary suspect description.
+ * @property {string} accusation - Hypothesis about the cause mechanics.
+ * @property {string} impact - Summary of the incident impact.
+ * @property {Record<string, CauseFinding>} findings - Evidence grouped by finding key.
+ * @property {boolean} editing - Whether the UI currently edits the record.
+ * @property {boolean} testingOpen - Whether the testing drawer is expanded.
+ */
+
+/**
+ * @typedef {object} SerializedAppState
+ * @property {{version: number, savedAt: (string|null)}} meta - Persistence metadata.
+ * @property {{oneLine: string, proof: string, objectPrefill: string, healthy: string, now: string}} pre
+ *   - Preface inputs describing the incident summary.
+ * @property {{now: string, future: string, time: string}} impact - Impact statements.
+ * @property {{
+ *   bridgeOpenedUtc: string,
+ *   icName: string,
+ *   bcName: string,
+ *   semOpsName: string,
+ *   severity: string,
+ *   detectMonitoring: boolean,
+ *   detectUserReport: boolean,
+ *   detectAutomation: boolean,
+ *   detectOther: boolean,
+ *   evScreenshot: boolean,
+ *   evLogs: boolean,
+ *   evMetrics: boolean,
+ *   evRepro: boolean,
+ *   evOther: boolean,
+ *   containStatus: string,
+ *   containDesc: string,
+ *   commCadence: string,
+ *   commLog: Array<string|object>,
+ *   commNextDueIso: string,
+ *   commNextUpdateTime: string,
+ *   tableFocusMode: string
+ * }} ops - Operations and communication related details.
+ * @property {Array<object>} table - Serialized KT table rows.
+ * @property {Array<CauseRecord>} causes - Serialized causes list compatible with {@link serializeCauses}.
+ * @property {(string|null)} likelyCauseId - Identifier for the selected likely cause.
+ * @property {{items: Array<{id: string, label: string, checked: boolean}>, drawerOpen: boolean}} steps - Steps drawer state.
+ */
+
+/**
+ * Namespaced storage key that encapsulates the entire intake snapshot in
+ * `localStorage`.
+ * @type {string}
+ */
 export const STORAGE_KEY = 'kt-intake-full-v2';
 
+/**
+ * Safely parses JSON content while tolerating invalid inputs.
+ * @param {string|number|boolean|null|undefined} json - Potential JSON string to parse.
+ * @param {unknown} [fallback] - Value returned when parsing fails or input is empty.
+ * @returns {unknown} Parsed JSON structure or the provided fallback.
+ */
 function safeParse(json, fallback = null) {
   if (typeof json !== 'string' || !json.trim()) {
     return fallback;
@@ -14,14 +91,28 @@ function safeParse(json, fallback = null) {
   }
 }
 
+/**
+ * Generates a semi-random identifier for persisted cause records.
+ * @returns {string} Unique identifier suitable for use as a DOM key.
+ */
 function generateCauseId() {
   return 'cause-' + Math.random().toString(36).slice(2, 8) + '-' + Date.now().toString(36);
 }
 
+/**
+ * Checks whether a finding mode matches a known enum value.
+ * @param {unknown} mode - Candidate mode value to validate.
+ * @returns {boolean} `true` when the mode is recognized.
+ */
 function isValidFindingMode(mode) {
   return typeof mode === 'string' && CAUSE_FINDING_MODE_VALUES.includes(mode);
 }
 
+/**
+ * Coerces persisted finding entries into the `{mode, note}` format.
+ * @param {unknown} entry - Raw finding entry possibly stored in legacy shapes.
+ * @returns {CauseFinding} Normalized finding record.
+ */
 function normalizeFindingEntry(entry) {
   const normalized = { mode: '', note: '' };
   if (entry && typeof entry === 'object') {
@@ -51,17 +142,33 @@ function normalizeFindingEntry(entry) {
   return normalized;
 }
 
+/**
+ * Extracts a normalized finding mode from an entry.
+ * @param {unknown} entry - Finding entry to inspect.
+ * @returns {string} Valid finding mode or an empty string.
+ */
 function findingMode(entry) {
   if (!entry || typeof entry !== 'object') return '';
   const mode = typeof entry.mode === 'string' ? entry.mode : '';
   return isValidFindingMode(mode) ? mode : '';
 }
 
+/**
+ * Extracts the note associated with a finding entry.
+ * @param {unknown} entry - Finding entry to inspect.
+ * @returns {string} Finding note or an empty string.
+ */
 function findingNote(entry) {
   if (!entry || typeof entry !== 'object') return '';
   return typeof entry.note === 'string' ? entry.note : '';
 }
 
+/**
+ * Produces a deep-ish clone of persisted state objects, tolerating
+ * environments without `structuredClone`.
+ * @param {unknown} value - Arbitrary value to clone.
+ * @returns {unknown} Cloned value suitable for mutation during migration.
+ */
 function cloneState(value) {
   if (typeof globalThis.structuredClone === 'function') {
     try {
@@ -80,6 +187,11 @@ function cloneState(value) {
   }
 }
 
+/**
+ * Converts a persisted value to a string, trimming unsupported types.
+ * @param {unknown} value - Value requiring normalization.
+ * @returns {string} Normalized string representation.
+ */
 function toString(value) {
   if (typeof value === 'string') return value;
   if (typeof value === 'number' || typeof value === 'boolean') {
@@ -88,6 +200,11 @@ function toString(value) {
   return '';
 }
 
+/**
+ * Normalizes persisted truthy flags into booleans.
+ * @param {unknown} value - Value requiring boolean coercion.
+ * @returns {boolean} Coerced boolean value.
+ */
 function toBoolean(value) {
   if (typeof value === 'string') {
     const normalized = value.trim().toLowerCase();
@@ -114,6 +231,11 @@ const CONTAINMENT_STATUS_VALUES = new Set([
   'closed'
 ]);
 
+/**
+ * Harmonizes containment status strings against current enums.
+ * @param {unknown} value - Candidate containment status value.
+ * @returns {string} Recognized containment status or an empty string.
+ */
 function normalizeContainmentStatus(value) {
   if (typeof value !== 'string') return '';
   if (CONTAINMENT_STATUS_VALUES.has(value)) {
@@ -123,6 +245,11 @@ function normalizeContainmentStatus(value) {
   return typeof legacy === 'string' ? legacy : '';
 }
 
+/**
+ * Normalizes communication log entries into strings or cloned objects.
+ * @param {unknown} entries - Persisted communications list.
+ * @returns {Array<string|object>} Sanitized communication log entries.
+ */
 function normalizeCommLog(entries) {
   if (!Array.isArray(entries)) return [];
   return entries
@@ -138,6 +265,13 @@ function normalizeCommLog(entries) {
     .filter(entry => entry !== null);
 }
 
+/**
+ * Normalizes raw step drawer persistence into the expected shape consumed by the
+ * steps module. Handles legacy array formats and coerces booleans.
+ * @param {unknown} rawSteps - Serialized steps payload coming from storage or legacy formats.
+ * @returns {{items: Array<{id: string, label: string, checked: boolean}>, drawerOpen: boolean}}
+ * Normalized steps state compatible with current UI expectations.
+ */
 function normalizeStepsState(rawSteps) {
   if (!rawSteps) {
     return { items: [], drawerOpen: false };
@@ -178,6 +312,11 @@ function normalizeStepsState(rawSteps) {
   return { items: [], drawerOpen: false };
 }
 
+/**
+ * Extracts the persisted schema version from a raw state object.
+ * @param {unknown} raw - Candidate state object with optional metadata.
+ * @returns {number} Discovered version number, defaulting to `0`.
+ */
 function resolveVersion(raw) {
   const version = raw?.meta?.version;
   if (typeof version === 'number' && Number.isFinite(version)) {
@@ -192,6 +331,13 @@ function resolveVersion(raw) {
   return 0;
 }
 
+/**
+ * Migration routine for the pre-v1 schema where communication fields lived at
+ * the root level and containment values used legacy naming. Upgrades the shape
+ * to match version 1 expectations so later migrations can build on it.
+ * @param {unknown} raw - Legacy state object.
+ * @returns {object} Cloned state upgraded to version 1.
+ */
 function migrateLegacyState(raw) {
   const state = cloneState(raw) || {};
   const ops = state && typeof state.ops === 'object' ? { ...state.ops } : {};
@@ -230,12 +376,30 @@ function migrateLegacyState(raw) {
   return state;
 }
 
+/**
+ * Ordered map of migration handlers. Keys represent the version found in
+ * persisted payloads, and values are invoked until {@link APP_STATE_VERSION}
+ * is reached. Additional migrations should be appended with incrementing keys
+ * to preserve replay order.
+ */
 const MIGRATIONS = new Map([
   [0, migrateLegacyState]
 ]);
 
+/**
+ * Registry of state migrations keyed by their originating version. The registry
+ * intentionally mirrors the stored `meta.version` values so that
+ * {@link migrateAppState} can iterate them sequentially until it reaches the
+ * latest {@link APP_STATE_VERSION}.
+ */
 export const MIGRATION_REGISTRY = new Map(MIGRATIONS);
 
+/**
+ * Coerces partially populated or legacy state objects into the canonical
+ * {@link SerializedAppState} structure used across the application.
+ * @param {unknown} raw - Candidate state object after running migrations.
+ * @returns {SerializedAppState} Normalized application state structure.
+ */
 function normalizeAppStateStructure(raw) {
   const incoming = raw && typeof raw === 'object' ? raw : {};
   const preSource = incoming.pre && typeof incoming.pre === 'object' ? incoming.pre : {};
@@ -323,6 +487,13 @@ function normalizeAppStateStructure(raw) {
   };
 }
 
+/**
+ * Migrates a persisted app state object to the latest schema and enforces the
+ * normalized shape expected by the UI.
+ * @param {unknown} raw - Raw state object read from storage.
+ * @returns {SerializedAppState|null} Normalized state when migration succeeds,
+ * otherwise `null` for unprocessable data.
+ */
 export function migrateAppState(raw) {
   if (!raw || typeof raw !== 'object') {
     return null;
@@ -348,6 +519,13 @@ export function migrateAppState(raw) {
   return normalizeAppStateStructure(state);
 }
 
+/**
+ * Serializes a list of cause records before persisting them. Ensures IDs are
+ * present, normalizes finding entries, and strips empty findings to keep the
+ * payload compact.
+ * @param {Array<CauseRecord>} causes - In-memory cause records collected from the UI.
+ * @returns {Array<CauseRecord>} Serialized cause payload suitable for storage.
+ */
 export function serializeCauses(causes) {
   if (!Array.isArray(causes)) return [];
   return causes.map(cause => {
@@ -378,6 +556,13 @@ export function serializeCauses(causes) {
   });
 }
 
+/**
+ * Hydrates serialized cause payloads into editable records for the UI. Missing
+ * identifiers are regenerated for safety, while findings are normalized for
+ * downstream form rendering.
+ * @param {Array<CauseRecord>} serialized - Causes retrieved from storage.
+ * @returns {Array<CauseRecord>} Normalized cause records for application use.
+ */
 export function deserializeCauses(serialized) {
   if (!Array.isArray(serialized)) return [];
   return serialized.map(raw => {
@@ -404,12 +589,24 @@ export function deserializeCauses(serialized) {
   });
 }
 
+/**
+ * Writes the provided app state payload to `localStorage` under
+ * {@link STORAGE_KEY}. The payload is assumed to already be normalized.
+ * @param {SerializedAppState} state - Normalized application state to persist.
+ * @returns {void}
+ */
 export function saveToStorage(state) {
   const payload = state && typeof state === 'object' ? state : {};
   const json = JSON.stringify(payload);
   localStorage.setItem(STORAGE_KEY, json);
 }
 
+/**
+ * Reads the persisted app state from `localStorage`, applying migrations and
+ * normalization as needed.
+ * @returns {SerializedAppState|null} Normalized state when found, otherwise
+ * `null` when storage is empty or invalid.
+ */
 export function restoreFromStorage() {
   const json = localStorage.getItem(STORAGE_KEY);
   if (!json) return null;
@@ -418,6 +615,11 @@ export function restoreFromStorage() {
   return migrateAppState(parsed);
 }
 
+/**
+ * Removes the persisted app state entry from `localStorage`, effectively
+ * resetting the intake experience for the next session.
+ * @returns {void}
+ */
 export function clearStorage() {
   localStorage.removeItem(STORAGE_KEY);
 }
