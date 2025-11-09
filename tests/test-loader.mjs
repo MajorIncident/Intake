@@ -7,6 +7,45 @@ const stubMap = new Map([
   [new URL('./src/toast.js', projectRoot).href, 'toast']
 ]);
 
+const conditionalStubMap = new Map([
+  [new URL('./src/steps.js', projectRoot).href, 'steps'],
+  [new URL('./src/commsDrawer.js', projectRoot).href, 'commsDrawer'],
+  [new URL('./src/summary.js', projectRoot).href, 'summary'],
+  [new URL('./src/preface.js', projectRoot).href, 'preface'],
+  [new URL('./src/comms.js', projectRoot).href, 'comms']
+]);
+
+function shouldUseConditionalStub(kind) {
+  const envValue = typeof process !== 'undefined' ? process.env?.TEST_STUB_MODULES : '';
+  if (typeof envValue === 'string' && envValue.trim()) {
+    const trimmed = envValue.trim();
+    if (trimmed === '*') {
+      return true;
+    }
+    const envParts = trimmed.split(',').map(part => part.trim()).filter(Boolean);
+    if (envParts.includes(kind)) {
+      return true;
+    }
+  }
+  const stubs = globalThis.__testStubModules;
+  if (!stubs) {
+    return false;
+  }
+  if (stubs === '*') {
+    return true;
+  }
+  if (stubs instanceof Set) {
+    return stubs.has(kind);
+  }
+  if (Array.isArray(stubs)) {
+    return stubs.includes(kind);
+  }
+  if (typeof stubs === 'object') {
+    return Boolean(stubs[kind]);
+  }
+  return false;
+}
+
 function createSource(kind) {
   if (kind === 'actionsStore') {
     return `
@@ -35,7 +74,8 @@ function createSource(kind) {
         getAnalysisId: () => '',
         getLikelyCauseId: () => null,
         collectAppState: () => ({}),
-        applyAppState: () => {}
+        applyAppState: () => {},
+        getSummaryState: () => ({})
       };
       function getMocks() {
         return globalThis.__appStateMocks ?? defaultMocks;
@@ -44,6 +84,7 @@ function createSource(kind) {
       export const getLikelyCauseId = (...args) => getMocks().getLikelyCauseId(...args);
       export const collectAppState = (...args) => getMocks().collectAppState?.(...args) ?? {};
       export const applyAppState = (...args) => getMocks().applyAppState?.(...args);
+      export const getSummaryState = (...args) => getMocks().getSummaryState?.(...args) ?? {};
     `;
   }
   if (kind === 'kt') {
@@ -57,6 +98,8 @@ function createSource(kind) {
       }
       export const getPossibleCauses = (...args) => getMocks().getPossibleCauses?.(...args) ?? [];
       export const setPossibleCauses = (...args) => getMocks().setPossibleCauses?.(...args);
+      export const configureKT = (...args) => getMocks().configureKT?.(...args);
+      export const initTable = (...args) => getMocks().initTable?.(...args);
       export const ensurePossibleCausesUI = (...args) => getMocks().ensurePossibleCausesUI?.(...args);
       export const renderCauses = (...args) => getMocks().renderCauses?.(...args);
       export const focusFirstEditableCause = (...args) => getMocks().focusFirstEditableCause?.(...args);
@@ -99,6 +142,87 @@ function createSource(kind) {
       export const showToast = (...args) => getMocks().showToast(...args);
     `;
   }
+  if (kind === 'steps') {
+    return `
+      function getMocks() {
+        const mocks = globalThis.__stepsMocks;
+        if (!mocks) {
+          throw new Error('steps mocks not initialised');
+        }
+        return mocks;
+      }
+      export const initStepsFeature = (...args) => getMocks().initStepsFeature?.(...args);
+    `;
+  }
+  if (kind === 'commsDrawer') {
+    return `
+      function getMocks() {
+        const mocks = globalThis.__commsDrawerMocks;
+        if (!mocks) {
+          throw new Error('commsDrawer mocks not initialised');
+        }
+        return mocks;
+      }
+      export const initCommsDrawer = (...args) => getMocks().initCommsDrawer?.(...args);
+      export const toggleCommsDrawer = (...args) => getMocks().toggleCommsDrawer?.(...args);
+      export const closeCommsDrawer = (...args) => getMocks().closeCommsDrawer?.(...args);
+    `;
+  }
+  if (kind === 'summary') {
+    return `
+      function getMocks() {
+        const mocks = globalThis.__summaryMocks;
+        if (!mocks) {
+          throw new Error('summary mocks not initialised');
+        }
+        return mocks;
+      }
+      export const generateSummary = (...args) => getMocks().generateSummary?.(...args);
+      export const setSummaryStateProvider = (...args) => getMocks().setSummaryStateProvider?.(...args);
+    `;
+  }
+  if (kind === 'preface') {
+    return `
+      function getMocks() {
+        const mocks = globalThis.__prefaceMocks;
+        if (!mocks) {
+          throw new Error('preface mocks not initialised');
+        }
+        return mocks;
+      }
+      export const initPreface = (...args) => getMocks().initPreface?.(...args);
+      export const autoResize = (...args) => getMocks().autoResize?.(...args);
+      export const updatePrefaceTitles = (...args) => getMocks().updatePrefaceTitles?.(...args);
+      export const startMirrorSync = (...args) => getMocks().startMirrorSync?.(...args);
+      export const setBridgeOpenedNow = (...args) => getMocks().setBridgeOpenedNow?.(...args);
+      export const getPrefaceState = (...args) => getMocks().getPrefaceState?.(...args) ?? { ops: {} };
+      export const getObjectFull = (...args) => getMocks().getObjectFull?.(...args) ?? '';
+      export const getDeviationFull = (...args) => getMocks().getDeviationFull?.(...args) ?? '';
+    `;
+  }
+  if (kind === 'comms') {
+    return `
+      function getMocks() {
+        const mocks = globalThis.__commsMocks;
+        if (!mocks) {
+          throw new Error('comms mocks not initialised');
+        }
+        return mocks;
+      }
+      export const initializeCommunications = (...args) => getMocks().initializeCommunications?.(...args);
+      export const logCommunication = (...args) => getMocks().logCommunication?.(...args);
+      export const toggleLogVisibility = (...args) => getMocks().toggleLogVisibility?.(...args);
+      export const setCadence = (...args) => getMocks().setCadence?.(...args);
+      export const setManualNextUpdate = (...args) => getMocks().setManualNextUpdate?.(...args);
+      export const getCommunicationElements = (...args) => getMocks().getCommunicationElements?.(...args) ?? ({
+        internalBtn: null,
+        externalBtn: null,
+        logToggleBtn: null,
+        nextUpdateInput: null,
+        cadenceRadios: []
+      });
+    `;
+  }
   return '';
 }
 
@@ -107,6 +231,12 @@ export async function resolve(specifier, context, defaultResolve) {
   if (stubMap.has(resolution.url)) {
     const kind = stubMap.get(resolution.url);
     return { url: `stub:${kind}` };
+  }
+  if (conditionalStubMap.has(resolution.url)) {
+    const kind = conditionalStubMap.get(resolution.url);
+    if (shouldUseConditionalStub(kind)) {
+      return { url: `stub:${kind}` };
+    }
   }
   return resolution;
 }

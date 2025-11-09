@@ -76,6 +76,31 @@ function saveAppState() {
 }
 
 /**
+ * Restore a previously saved intake snapshot from storage if available.
+ * @param {Object} [options] - Optional dependency overrides used primarily for testing.
+ * @param {() => any} [options.restore=restoreFromStorage] - Function that retrieves the stored snapshot.
+ * @param {(state: any) => void} [options.apply=applyAppState] - Function that applies the stored snapshot to the app.
+ * @param {(message: string) => void} [options.toast=showToast] - Function that announces the restore event.
+ * @returns {boolean} <code>true</code> when a snapshot is restored, otherwise <code>false</code>.
+ */
+function restoreSavedIntake({
+  restore = restoreFromStorage,
+  apply = applyAppState,
+  toast = showToast
+} = {}) {
+  const snapshot = restore();
+  if (!snapshot) {
+    return false;
+  }
+
+  apply(snapshot);
+  if (typeof toast === 'function') {
+    toast('Saved intake reloaded ✨');
+  }
+  return true;
+}
+
+/**
  * Initialize the intake experience by configuring modules, restoring state,
  * and wiring shared lifecycle events.
  * @returns {void}
@@ -103,10 +128,7 @@ function boot() {
 
   setSummaryStateProvider(getSummaryState);
 
-  const restored = restoreFromStorage();
-  if (restored) {
-    applyAppState(restored);
-  }
+  restoreSavedIntake();
 
   const { ops } = getPrefaceState();
   if (!ops.bridgeOpenedUtc) {
@@ -120,6 +142,15 @@ function boot() {
   wireCommsEvents();
   wireBridgeNowButton();
   wireKeyboardShortcuts();
+}
+
+/**
+ * Test-only export to run the restore helper in isolation.
+ * @param {Parameters<typeof restoreSavedIntake>[0]} options - Dependency overrides for the restore helper.
+ * @returns {boolean} Reflects whether a snapshot was restored.
+ */
+export function __testRestoreSavedIntake(options) {
+  return restoreSavedIntake(options);
 }
 
 /**
