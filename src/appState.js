@@ -163,7 +163,13 @@ export function applyAppState(data = {}) {
   const currentAnalysisId = getAnalysisId();
   const hasActionsSnapshot = Object.prototype.hasOwnProperty.call(data, 'actions');
   const actionsResolution = resolveActionsImport(hasActionsSnapshot, savedActionsState, currentAnalysisId);
-  const targetAnalysisId = actionsResolution.analysisId;
+  let targetAnalysisId = actionsResolution.analysisId || currentAnalysisId;
+  if (targetAnalysisId && targetAnalysisId !== currentAnalysisId) {
+    cachedAnalysisId = targetAnalysisId;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(ANALYSIS_ID_KEY, targetAnalysisId);
+    }
+  }
   const importedActions = actionsResolution.shouldImport
     ? importActionsState(targetAnalysisId, actionsResolution.items)
     : listActions(targetAnalysisId);
