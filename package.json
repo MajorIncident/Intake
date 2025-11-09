@@ -2,6 +2,7 @@
   "name": "intake",
   "private": true,
   "scripts": {
-    "dev": "npx live-server --port=4173 --open=index.html"
+    "dev": "npx live-server --port=4173 --open=index.html",
+    "test": "node --test tests/migrateAppState.test.mjs"
   }
 }
