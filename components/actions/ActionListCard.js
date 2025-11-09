@@ -1,6 +1,7 @@
 import { listActions, createAction, patchAction, removeAction, sortActions } from '../../src/actionsStore.js';
 import { OWNER_CATEGORIES } from '../../src/constants.js';
 import { getAnalysisId, getLikelyCauseId } from '../../src/appState.js';
+import { getPossibleCauses, causeHasFailure, buildHypothesisSentence } from '../../src/kt.js';
 import { showToast } from '../../src/toast.js';
 
 export function mountActionListCard(hostEl) {
@@ -32,6 +33,9 @@ export function mountActionListCard(hostEl) {
   let disposeBlockerDialog = null;
   let disposeVerificationDialog = null;
   let disposeOwnerDialog = null;
+  let disposeCausePicker = null;
+
+  let causeLookup = { list: [], map: new Map() };
 
   function fmtETA(dueAt) {
     if (!dueAt) return 'ETA';
@@ -54,15 +58,51 @@ export function mountActionListCard(hostEl) {
            'Planned';
   }
 
+  function refreshCauseLookup() {
+    const source = getPossibleCauses();
+    const list = Array.isArray(source) ? source : [];
+    const map = new Map();
+    list.forEach((cause, index) => {
+      if (cause && typeof cause.id === 'string') {
+        map.set(cause.id, { cause, index });
+      }
+    });
+    causeLookup = { list, map };
+  }
+
+  function getActionCauseId(action) {
+    if (!action || !action.links) return '';
+    const value = action.links.hypothesisId;
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  function formatCauseCode(index) {
+    if (typeof index !== 'number' || index < 0) {
+      return 'Cause';
+    }
+    const number = index + 1;
+    return `C-${String(number).padStart(2, '0')}`;
+  }
+
+  function getLinkableCauses() {
+    return causeLookup.list
+      .map((cause, index) => ({ cause, index }))
+      .filter(entry => entry.cause && !causeHasFailure(entry.cause));
+  }
+
   function render() {
     closeMoreMenu();
     closeBlockerDialog();
+    closeCausePicker();
+    refreshCauseLookup();
     const items = listActions(analysisId);
     listEl.innerHTML = items.map(renderActionRow).join('');
+    const itemMap = new Map(items.map(item => [item.id, item]));
 
     // Wiring per row:
     listEl.querySelectorAll('.action-row').forEach(row => {
       const id = row.dataset.id;
+      const action = itemMap.get(id);
 
       row.querySelector('.status').addEventListener('click', () => advanceStatus(id));
       row.querySelector('.priority').addEventListener('click', () => cyclePriority(id));
@@ -71,6 +111,18 @@ export function mountActionListCard(hostEl) {
       row.querySelector('.verify-button').addEventListener('click', () => verifyAction(id));
       row.querySelector('.more').addEventListener('click', (event) => moreMenu(id, event.currentTarget));
       row.querySelector('.summary__title').addEventListener('dblclick', () => editSummary(id));
+      const changeCauseBtn = row.querySelector('[data-action="change-cause"]');
+      if (changeCauseBtn && action) {
+        changeCauseBtn.addEventListener('click', (event) => {
+          openCausePicker(action, event.currentTarget);
+        });
+      }
+      const unlinkCauseBtn = row.querySelector('[data-action="unlink-cause"]');
+      if (unlinkCauseBtn && action) {
+        unlinkCauseBtn.addEventListener('click', () => {
+          handleCauseLinkSelection(action, '');
+        });
+      }
       row.addEventListener('keydown', (e) => keyControls(e, id));
       row.tabIndex = 0;
     });
@@ -125,9 +177,198 @@ export function mountActionListCard(hostEl) {
     }
   }
 
+  function closeCausePicker() {
+    if (typeof disposeCausePicker === 'function') {
+      disposeCausePicker();
+      disposeCausePicker = null;
+    }
+  }
+
   function isActionLocked(action) {
     if (!action || typeof action !== 'object') return false;
     return action.status === 'Done' || action.status === 'Cancelled';
+  }
+
+  function handleCauseLinkSelection(action, nextId) {
+    if (!action) return;
+    const normalized = typeof nextId === 'string' ? nextId.trim() : '';
+    const current = getActionCauseId(action);
+    if (current === normalized) {
+      closeCausePicker();
+      return;
+    }
+    const nextLinks = { ...(action.links || {}) };
+    nextLinks.hypothesisId = normalized;
+    closeCausePicker();
+    applyPatch(action.id, { links: nextLinks });
+  }
+
+  function openCausePicker(action, anchorEl) {
+    if (!action) return;
+    refreshCauseLookup();
+    closeCausePicker();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'cause-picker-overlay';
+
+    const popover = document.createElement('div');
+    popover.className = 'cause-picker';
+    popover.setAttribute('role', 'dialog');
+    popover.setAttribute('aria-modal', 'true');
+    popover.setAttribute('aria-labelledby', 'causePickerTitle');
+
+    const currentId = getActionCauseId(action);
+    const currentMeta = currentId ? causeLookup.map.get(currentId) : null;
+    const linkable = getLinkableCauses();
+    const notice = currentId && !currentMeta
+      ? `
+        <div class="cause-picker__notice" role="status">
+          The linked cause was ruled out. Choose another option or unlink it.
+        </div>
+      `
+      : '';
+
+    const itemsMarkup = linkable.map(({ cause, index }) => {
+      const causeId = escapeAttribute(cause.id);
+      const heading = `Cause ${formatCauseCode(index)}`;
+      const summary = buildHypothesisSentence(cause);
+      const selected = cause.id === currentId;
+      const selectedAttr = selected ? '1' : '0';
+      return `
+        <li class="cause-picker__list-item">
+          <button type="button" class="cause-picker__option" role="option" aria-selected="${selected ? 'true' : 'false'}" data-selected="${selectedAttr}" data-cause-id="${causeId}">
+            <span class="cause-picker__option-heading">${htmlEscape(heading)}</span>
+            <span class="cause-picker__option-summary">${htmlEscape(summary)}</span>
+          </button>
+        </li>
+      `;
+    }).join('');
+
+    const listMarkup = linkable.length
+      ? `
+        <ul class="cause-picker__list" role="listbox" aria-label="Linkable causes">
+          ${itemsMarkup}
+        </ul>
+      `
+      : `
+        <div class="cause-picker__empty">
+          <p>No eligible causes are available.</p>
+          <p class="cause-picker__empty-hint">Causes marked as failed are hidden automatically.</p>
+        </div>
+      `;
+
+    popover.innerHTML = `
+      <header class="cause-picker__header">
+        <h4 id="causePickerTitle">Link to Cause</h4>
+        <button type="button" class="cause-picker__close" aria-label="Close">×</button>
+      </header>
+      <div class="cause-picker__body">
+        ${notice}
+        ${listMarkup}
+      </div>
+      <footer class="cause-picker__footer">
+        <button type="button" class="cause-picker__button cause-picker__button--ghost" data-action="clear">Unlink</button>
+        <span class="cause-picker__spacer"></span>
+        <button type="button" class="cause-picker__button cause-picker__button--ghost" data-action="cancel">Cancel</button>
+      </footer>
+    `;
+
+    overlay.appendChild(popover);
+    document.body.appendChild(overlay);
+
+    const alignPopover = () => {
+      const popRect = popover.getBoundingClientRect();
+      const anchorRect = anchorEl && typeof anchorEl.getBoundingClientRect === 'function'
+        ? anchorEl.getBoundingClientRect()
+        : null;
+      let top;
+      let left;
+      if (anchorRect) {
+        top = anchorRect.bottom + 8;
+        left = anchorRect.left;
+        if (top + popRect.height > window.innerHeight - 12) {
+          top = Math.max(12, anchorRect.top - popRect.height - 8);
+        }
+        const maxLeft = window.innerWidth - popRect.width - 12;
+        left = Math.min(Math.max(12, left), Math.max(12, maxLeft));
+      } else {
+        top = Math.max(24, (window.innerHeight - popRect.height) / 2);
+        left = Math.max(24, (window.innerWidth - popRect.width) / 2);
+      }
+      popover.style.top = `${top}px`;
+      popover.style.left = `${left}px`;
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeCausePicker();
+      }
+    };
+
+    const onResize = () => {
+      alignPopover();
+    };
+
+    overlay.addEventListener('click', (event) => {
+      if (!popover.contains(event.target)) {
+        closeCausePicker();
+      }
+    });
+
+    const closeBtn = popover.querySelector('.cause-picker__close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        closeCausePicker();
+      });
+    }
+
+    const cancelBtn = popover.querySelector('[data-action="cancel"]');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        closeCausePicker();
+      });
+    }
+
+    const clearBtn = popover.querySelector('[data-action="clear"]');
+    if (clearBtn) {
+      if (!currentId) {
+        clearBtn.disabled = true;
+      }
+      clearBtn.addEventListener('click', () => {
+        handleCauseLinkSelection(action, '');
+      });
+    }
+
+    popover.querySelectorAll('[data-cause-id]').forEach(button => {
+      button.addEventListener('click', () => {
+        const next = button.dataset.causeId || '';
+        handleCauseLinkSelection(action, next);
+      });
+    });
+
+    document.addEventListener('keydown', onKeyDown, true);
+    window.addEventListener('resize', onResize);
+
+    disposeCausePicker = () => {
+      document.removeEventListener('keydown', onKeyDown, true);
+      window.removeEventListener('resize', onResize);
+      overlay.remove();
+      if (anchorEl && typeof anchorEl.focus === 'function') {
+        anchorEl.focus();
+      }
+    };
+
+    requestAnimationFrame(() => {
+      alignPopover();
+      const selectedBtn = popover.querySelector('[data-cause-id][data-selected="1"]');
+      const firstBtn = popover.querySelector('[data-cause-id]');
+      const fallback = (clearBtn && !clearBtn.disabled) ? clearBtn : cancelBtn || closeBtn || firstBtn;
+      const focusTarget = selectedBtn || firstBtn || fallback;
+      if (focusTarget && typeof focusTarget.focus === 'function') {
+        focusTarget.focus();
+      }
+    });
   }
 
   function openOwnerDialog(action) {
@@ -509,6 +750,38 @@ export function mountActionListCard(hostEl) {
     return htmlEscape(value).replace(/\n/g, '&#10;');
   }
 
+  function renderCauseSubtitle(action) {
+    const causeId = getActionCauseId(action);
+    if (!causeId) return '';
+    const meta = causeLookup.map.get(causeId);
+    if (!meta || !meta.cause) {
+      return `
+        <div class="summary__subtitle summary__subtitle--warning" data-cause-id="${escapeAttribute(causeId)}">
+          <span class="summary__subtitle-text">Linked cause is no longer eligible. Choose another option or unlink it.</span>
+          <div class="summary__subtitle-actions">
+            <button type="button" class="summary__subtitle-button" data-action="change-cause">Change</button>
+            <button type="button" class="summary__subtitle-button" data-action="unlink-cause">Unlink</button>
+          </div>
+        </div>
+      `;
+    }
+    const { cause, index } = meta;
+    const code = formatCauseCode(index);
+    const prefix = `Related to Cause ${code}`;
+    const hypothesis = buildHypothesisSentence(cause);
+    const safeHypothesis = htmlEscape(hypothesis);
+    const safePrefix = htmlEscape(prefix);
+    return `
+      <div class="summary__subtitle" data-cause-id="${escapeAttribute(causeId)}">
+        <span class="summary__subtitle-text">${safePrefix} — ${safeHypothesis}</span>
+        <div class="summary__subtitle-actions">
+          <button type="button" class="summary__subtitle-button" data-action="change-cause">Change</button>
+          <button type="button" class="summary__subtitle-button" data-action="unlink-cause">Unlink</button>
+        </div>
+      </div>
+    `;
+  }
+
   const OWNER_OTHER_VALUE = '__OWNER_OTHER__';
   const OWNER_CATEGORY_INDEX = new Map();
   const OWNER_CATEGORY_OPTIONS_HTML = OWNER_CATEGORIES
@@ -751,12 +1024,14 @@ export function mountActionListCard(hostEl) {
     const verifyButtonLabel = verification.result ? 'Update' : 'Verify';
     const verifyState = state;
     const blockerDetail = renderBlockerDetail(it);
+    const causeSubtitle = renderCauseSubtitle(it);
     return `
       <li class="action-row" data-id="${it.id}" data-status="${it.status}" data-priority="${it.priority}">
         <button class="chip chip--status status" data-status="${it.status}" title="Advance status (Space)">${htmlEscape(it.status)}</button>
         <button class="chip chip--priority priority" data-priority="${it.priority}" title="Set priority (1/2/3)">${htmlEscape(it.priority)}</button>
         <div class="summary" title="${detailTitle}">
           <div class="summary__title">${summaryTitle}</div>
+          ${causeSubtitle}
           ${blockerDetail}
           ${detail}
         </div>
@@ -996,6 +1271,7 @@ export function mountActionListCard(hostEl) {
     closeVerificationDialog();
     closeBlockerDialog();
     closeMoreMenu();
+    closeCausePicker();
     openOwnerDialog(it);
   }
   function setEta(id) {
@@ -1003,6 +1279,7 @@ export function mountActionListCard(hostEl) {
     const it = items.find(x => x.id === id);
     if (!it) return;
     closeOwnerDialog();
+    closeCausePicker();
     openEtaPicker(it);
   }
   function formatCheckedAtInput(iso) {
@@ -1024,6 +1301,7 @@ export function mountActionListCard(hostEl) {
     const it = items.find(x => x.id === id);
     if (!it) return;
     closeOwnerDialog();
+    closeCausePicker();
     openVerificationDialog(it);
   }
 
@@ -1151,6 +1429,7 @@ export function mountActionListCard(hostEl) {
     if (!it || !anchorEl) return;
 
     closeMoreMenu();
+    closeCausePicker();
 
     const overlay = document.createElement('div');
     overlay.className = 'action-menu-overlay';
@@ -1260,9 +1539,7 @@ export function mountActionListCard(hostEl) {
           return;
         }
         if (action === 'link') {
-          const likely = getLikelyCauseId();
-          const hyp = prompt('Link to cause id (Enter uses Likely Cause):', likely || '');
-          applyPatch(id, { links: { hypothesisId: hyp || likely || '' } });
+          openCausePicker(it, anchorEl);
         }
       });
     });
