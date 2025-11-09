@@ -679,6 +679,7 @@ export function mountActionListCard(hostEl) {
 
   function renderVerificationDetail(action) {
     const verification = normalizeVerification(action.verification);
+    const ownerNotes = normalizeOwnerForUI(action.owner).notes;
     const state = verificationState(verification);
     const statusText = verification.required
       ? (verification.result ? 'Verified' : 'Verification required')
@@ -715,6 +716,11 @@ export function mountActionListCard(hostEl) {
             <dt>Evidence</dt>
             <dd class="summary__value">${renderEvidenceMarkup(verification.evidence)}</dd>
           </div>
+          ${ownerNotes ? `
+          <div class="summary__detail-row">
+            <dt>Owner notes</dt>
+            <dd class="summary__value">${htmlEscape(ownerNotes).replace(/\n/g, '<br>')}</dd>
+          </div>` : ''}
         </dl>
       `,
       state,
