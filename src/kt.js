@@ -1,3 +1,12 @@
+/**
+ * @file Coordinates the Kepner-Tregoe table lifecycle and related UI helpers.
+ * @module kt
+ * @description Manages the KT (Kepner-Tregoe) analysis table lifecycle, including
+ * bootstrapping DOM anchors, rendering the Possible Causes card, and syncing
+ * shared events such as `intake:actions-updated`. The module wires focus-mode
+ * toggles, evidence entry textareas, and the cause-testing UI so that the
+ * intake experience stays coordinated across modules.
+ */
 import {
   ROWS,
   CAUSE_FINDING_MODES,
@@ -5,12 +14,105 @@ import {
 } from './constants.js';
 import { buildCauseActionCounts } from './causeActionCounts.js';
 
-let autoResize = () => {};
-let saveHandler = () => {};
-let showToastHandler = null;
-let tokensChangeHandler = () => {};
-let getObjectFullFn = () => '';
-let getDeviationFullFn = () => '';
+/**
+ * Default no-op auto-resize implementation used before configuration.
+ * @param {HTMLTextAreaElement} element - Textarea element to resize.
+ * @returns {void}
+ */
+function defaultAutoResize(element){
+  void element;
+}
+/**
+ * Default persistence handler that avoids errors when dependencies are unset.
+ * @returns {void}
+ */
+function defaultSaveHandler(){ /* no-op */ }
+/**
+ * Default toast presenter stub that silences messages when unconfigured.
+ * @param {string} message - Toast body that would have been displayed.
+ * @returns {void}
+ */
+function defaultShowToast(message){
+  void message;
+}
+/**
+ * Default token change handler used until a consumer registers one.
+ * @returns {void}
+ */
+function defaultTokensChangeHandler(){ /* no-op */ }
+/**
+ * Default supplier for the full object description.
+ * @returns {string} Empty fallback description.
+ */
+function defaultGetObjectFull(){
+  return '';
+}
+/**
+ * Default supplier for the full deviation description.
+ * @returns {string} Empty fallback description.
+ */
+function defaultGetDeviationFull(){
+  return '';
+}
+
+let autoResize = defaultAutoResize;
+let saveHandler = defaultSaveHandler;
+let showToastHandler = defaultShowToast;
+let tokensChangeHandler = defaultTokensChangeHandler;
+let getObjectFullFn = defaultGetObjectFull;
+let getDeviationFullFn = defaultGetDeviationFull;
+
+/**
+ * @typedef {object} CauseFinding
+ * @property {string} mode - Normalized finding mode (`assumption`, `yes`, or `fail`).
+ * @property {string} note - Supporting explanation for how the hypothesis handles
+ * the IS / IS NOT evidence pair.
+ */
+
+/**
+ * @typedef {object} PossibleCause
+ * @property {string} id - Stable identifier generated for DOM bindings and persistence.
+ * @property {string} suspect - Working hypothesis of the suspected cause.
+ * @property {string} accusation - Description of the behavior the cause would produce.
+ * @property {string} impact - Statement describing the customer or system impact.
+ * @property {Record<string, CauseFinding>} findings - Map of KT row keys to evaluation details.
+ * @property {boolean} editing - Whether the card is in inline edit mode.
+ * @property {boolean} testingOpen - Whether the test panel is expanded.
+ */
+
+/**
+ * @typedef {object} TableFocusOptions
+ * @property {boolean} [silent] - When true the change avoids saving or firing toast notifications.
+ * Defaults to false.
+ */
+
+/**
+ * @typedef {object} CauseImportRecord
+ * @property {string} q - KT question text used as a row lookup key.
+ * @property {string} is - Evidence that *is* present.
+ * @property {string} no - Evidence that *is not* present.
+ * @property {string} di - Distinctions captured for the row.
+ * @property {string} ch - Recorded changes for the row.
+ */
+
+/**
+ * @typedef {object} BandImportRecord
+ * @property {string} band - Title for a band row in the exported table.
+ */
+
+/**
+ * @typedef {object} KTRowBinding
+ * @property {HTMLTableRowElement} tr - Row element for the KT table entry.
+ * @property {HTMLTableCellElement} th - Header cell containing the prompt.
+ * @property {object} def - Row definition from `ROWS`.
+ * @property {HTMLTextAreaElement} isTA - Textarea capturing IS evidence.
+ * @property {HTMLTextAreaElement} notTA - Textarea capturing IS NOT evidence.
+ * @property {HTMLTextAreaElement} distTA - Textarea capturing distinctions.
+ * @property {HTMLTextAreaElement} chgTA - Textarea capturing changes.
+ * @property {string} [priority] - Optional priority label.
+ * @property {string|null} [bandId] - Associated band grouping identifier.
+ * @property {number} rowNumber - 1-based row number used for focus modes.
+ */
 
 const tbody = document.getElementById('tbody');
 const rowsBuilt = [];
@@ -49,6 +151,24 @@ let deviationIS = null;
 let objectISDirty = false;
 let deviationISDirty = false;
 
+/**
+ * Registers shared dependencies so the KT table can communicate with the
+ * surrounding application shell.
+ * @param {object} [options] - Optional dependency overrides.
+ * @param {(element: HTMLTextAreaElement) => void} [options.autoResize] -
+ * Callback used to auto-resize textarea fields after edits.
+ * @param {() => void} [options.onSave] - Invoked whenever KT state should be
+ * persisted to storage.
+ * @param {(message: string) => void} [options.showToast] - Toast presenter used
+ * for guidance and Likely Cause notifications.
+ * @param {() => void} [options.onTokensChange] - Handler invoked when the
+ * tokenized IS / IS NOT snippets change.
+ * @param {() => string} [options.getObjectFull] - Supplier for the full object
+ * description when placeholder tokens are expanded.
+ * @param {() => string} [options.getDeviationFull] - Supplier for the full
+ * deviation description when placeholder tokens are expanded.
+ * @returns {void}
+ */
 export function configureKT({
   autoResize: autoResizeFn,
   onSave,
@@ -78,6 +198,11 @@ export function configureKT({
   bindActionUpdateListener();
 }
 
+/**
+ * Subscribes to shared action update events so cause badges re-render
+ * automatically.
+ * @returns {void}
+ */
 function bindActionUpdateListener(){
   if(actionUpdateListenerBound) return;
   if(typeof window === 'undefined') return;
@@ -87,6 +212,11 @@ function bindActionUpdateListener(){
   actionUpdateListenerBound = true;
 }
 
+/**
+ * Refreshes the cached action counts map so cause badges stay in sync with
+ * external modules emitting `intake:actions-updated`.
+ * @returns {void}
+ */
 function refreshCauseActionCounts(){
   try{
     const counts = buildCauseActionCounts();
@@ -103,6 +233,11 @@ function refreshCauseActionCounts(){
   }
 }
 
+/**
+ * Looks up the number of actions associated with a cause identifier.
+ * @param {string} id - Cause identifier used when recording actions.
+ * @returns {number} Count of actions tied to the cause.
+ */
 function causeActionCountById(id){
   if(typeof id !== 'string') return 0;
   const key = id.trim();
@@ -110,11 +245,23 @@ function causeActionCountById(id){
   return causeActionCounts.get(key) || 0;
 }
 
+/**
+ * Formats a numeric action count into a friendly badge label.
+ * @param {number} count - Number of actions connected to a cause.
+ * @returns {string} Human-readable text describing the count.
+ */
 function formatCauseActionCount(count){
   if(!Number.isFinite(count) || count <= 0) return 'No actions yet';
   return count === 1 ? '1 action assigned' : `${count} actions assigned`;
 }
 
+/**
+ * Updates the action-count badge for a cause card and mirrors metadata for
+ * screen readers.
+ * @param {HTMLElement} el - Badge element receiving the updates.
+ * @param {PossibleCause} cause - Cause whose actions are being summarized.
+ * @returns {string} Human-readable label describing the action count.
+ */
 function updateCauseActionBadge(el, cause){
   if(!el) return 'No actions yet';
   const count = causeActionCountById(cause?.id);
@@ -125,12 +272,22 @@ function updateCauseActionBadge(el, cause){
   return text;
 }
 
+/**
+ * Delegates to the configured toast handler when available.
+ * @param {string} message - Toast content to present.
+ * @returns {void}
+ */
 function callShowToast(message){
   if(typeof showToastHandler === 'function'){
     showToastHandler(message);
   }
 }
 
+/**
+ * Returns a trimmed snippet extracted from the start of a multi-line string.
+ * @param {string} v - Raw text to summarize.
+ * @returns {string} Short snippet suitable for inline substitution.
+ */
 function firstSnippet(v){
   const s = (v || '').trim();
   if(!s) return '';
@@ -138,22 +295,48 @@ function firstSnippet(v){
   return first.length > 120 ? first.slice(0, 120) : first;
 }
 
+/**
+ * Returns the textarea element bound to the KT "Object IS" cell.
+ * @returns {HTMLTextAreaElement|null} Reference to the textarea or `null`
+ * before the table is initialized.
+ */
 export function getObjectISField(){
   return objectIS;
 }
 
+/**
+ * Returns the textarea element bound to the KT "Deviation IS" cell.
+ * @returns {HTMLTextAreaElement|null} Reference to the textarea or `null`
+ * before the table is initialized.
+ */
 export function getDeviationISField(){
   return deviationIS;
 }
 
+/**
+ * Indicates whether the "Object IS" textarea has been modified since
+ * `initTable()` wired listeners.
+ * @returns {boolean} `true` when edits have been observed.
+ */
 export function isObjectISDirty(){
   return objectISDirty;
 }
 
+/**
+ * Indicates whether the "Deviation IS" textarea has been modified since
+ * `initTable()` wired listeners.
+ * @returns {boolean} `true` when edits have been observed.
+ */
 export function isDeviationISDirty(){
   return deviationISDirty;
 }
 
+/**
+ * Replaces `{OBJECT}` and `{DEVIATION}` tokens with the best available snippets
+ * from the primary KT table inputs.
+ * @param {string} text - Template string containing placeholder tokens.
+ * @returns {string} Token-expanded text safe for UI presentation.
+ */
 export function fillTokens(text){
   const obj = firstSnippet(objectIS?.value)
     || firstSnippet(getObjectFullFn())
@@ -166,6 +349,11 @@ export function fillTokens(text){
     .replace(/\{DEVIATION\}/g, `“${dev}”`);
 }
 
+/**
+ * Normalizes a focus mode string to one of the supported table presets.
+ * @param {string} mode - Requested focus mode.
+ * @returns {string} Valid focus mode slug.
+ */
 function normalizeTableFocusMode(mode){
   if(typeof mode === 'string'){
     const normalized = mode.trim().toLowerCase();
@@ -176,6 +364,12 @@ function normalizeTableFocusMode(mode){
   return DEFAULT_TABLE_FOCUS_MODE;
 }
 
+/**
+ * Determines whether a KT row should be shown for the active focus mode.
+ * @param {KTRowBinding} row - Row metadata for the KT table.
+ * @param {string} mode - Active focus mode slug.
+ * @returns {boolean} Whether the row is visible.
+ */
 function shouldDisplayRowForMode(row, mode){
   const rowNumber = Number(row?.rowNumber);
   if(!Number.isInteger(rowNumber) || rowNumber < 1){
@@ -188,6 +382,11 @@ function shouldDisplayRowForMode(row, mode){
   return allowedRows.includes(rowNumber);
 }
 
+/**
+ * Handles keyboard interactions for the focus mode toggle group.
+ * @param {KeyboardEvent} event - Keyboard event from the toggle group.
+ * @returns {void}
+ */
 function handleFocusToggleKeydown(event){
   if(!focusToggleButtons.length) return;
   const key = event.key;
@@ -226,6 +425,11 @@ function handleFocusToggleKeydown(event){
   }
 }
 
+/**
+ * Locates and wires the focus mode controls to support mouse and keyboard
+ * interactions.
+ * @returns {void}
+ */
 function wireFocusModeControls(){
   if(focusControlsBound) return;
   const group = document.querySelector('.kt-focus-toggle');
@@ -248,10 +452,20 @@ function wireFocusModeControls(){
   focusControlsBound = true;
 }
 
+/**
+ * Returns the current KT table focus mode (rapid, focused, or comprehensive).
+ * @returns {string} Active table mode slug.
+ */
 export function getTableFocusMode(){
   return tableFocusMode;
 }
 
+/**
+ * Sets the current KT table focus mode and optionally suppresses persistence.
+ * @param {string} mode - Requested focus mode slug.
+ * @param {TableFocusOptions} [options] - Behavior flags for the update.
+ * @returns {void}
+ */
 export function setTableFocusMode(mode, options = {}){
   const normalized = normalizeTableFocusMode(mode);
   const previous = tableFocusMode;
@@ -260,6 +474,14 @@ export function setTableFocusMode(mode, options = {}){
   applyTableFocusMode({ silent });
 }
 
+/**
+ * Applies the active focus mode to the DOM, toggling row visibility and
+ * refreshing dependent UI such as previews and progress chips.
+ * @param {TableFocusOptions} [options] - Behavior flags for the application.
+ * @param {boolean} [options.silent] - When true the change will not trigger
+ * persistence callbacks. Defaults to false.
+ * @returns {void}
+ */
 export function applyTableFocusMode({ silent = false } = {}){
   wireFocusModeControls();
   const mode = tableFocusMode;
@@ -290,6 +512,12 @@ export function applyTableFocusMode({ silent = false } = {}){
   updateCauseEvidencePreviews();
 }
 
+/**
+ * Generates the IS NOT placeholder using latest snippets and fallback tokens.
+ * @param {string} baseCopy - Base placeholder copy from constants.
+ * @param {string} isVal - Current IS textarea value for contextual prompts.
+ * @returns {string} Placeholder text for the IS NOT textarea.
+ */
 function mkIsNotPH(baseCopy, isVal){
   const base = (baseCopy || '').trim();
   const isSnippet = firstSnippet(isVal);
@@ -300,6 +528,12 @@ function mkIsNotPH(baseCopy, isVal){
   return base || fillTokens('');
 }
 
+/**
+ * Generates the Distinctions placeholder combining IS and IS NOT snippets.
+ * @param {string} isVal - Current IS textarea value.
+ * @param {string} notVal - Current IS NOT textarea value.
+ * @returns {string} Placeholder text for the Distinctions textarea.
+ */
 function mkDistPH(isVal, notVal){
   const base = fillTokens('');
   const isSnippet = firstSnippet(isVal);
@@ -315,6 +549,11 @@ function mkDistPH(isVal, notVal){
   return lead ? `${lead}\n${base}` : base;
 }
 
+/**
+ * Generates the Changes placeholder referencing the Distinctions snippet.
+ * @param {string} distText - Current Distinctions textarea value.
+ * @returns {string} Placeholder text for the Changes textarea.
+ */
 function mkChangePH(distText){
   const base = fillTokens('');
   const distSnippet = firstSnippet(distText);
@@ -324,6 +563,11 @@ function mkChangePH(distText){
   return base;
 }
 
+/**
+ * Refreshes question headers and placeholders so they reflect the latest
+ * `{OBJECT}` / `{DEVIATION}` tokens.
+ * @returns {void}
+ */
 export function refreshAllTokenizedText(){
   rowsBuilt.forEach(({ th, def, isTA, notTA }) => {
     th.textContent = fillTokens(def.q);
@@ -333,10 +577,20 @@ export function refreshAllTokenizedText(){
   updateCauseEvidencePreviews();
 }
 
+/**
+ * Checks whether a finding mode value matches supported constants.
+ * @param {string} mode - Candidate finding mode.
+ * @returns {boolean} True when the mode is valid.
+ */
 function isValidFindingMode(mode){
   return typeof mode === 'string' && CAUSE_FINDING_MODE_VALUES.includes(mode);
 }
 
+/**
+ * Normalizes persisted finding entries into the shape expected by the UI.
+ * @param {CauseFinding|object|string} entry - Raw finding value.
+ * @returns {CauseFinding} Normalized finding data.
+ */
 function normalizeFindingEntry(entry){
   const normalized = { mode: '', note: '' };
   if(entry && typeof entry === 'object'){
@@ -366,17 +620,32 @@ function normalizeFindingEntry(entry){
   return normalized;
 }
 
+/**
+ * Returns the normalized finding mode for a stored cause evaluation entry.
+ * @param {CauseFinding|object} entry - Raw finding data from persistence.
+ * @returns {string} Normalized mode or an empty string when unset.
+ */
 export function findingMode(entry){
   if(!entry || typeof entry !== 'object') return '';
   const mode = typeof entry.mode === 'string' ? entry.mode : '';
   return isValidFindingMode(mode) ? mode : '';
 }
 
+/**
+ * Returns the supporting note for a cause evaluation entry.
+ * @param {CauseFinding|object} entry - Raw finding data from persistence.
+ * @returns {string} Note text or an empty string when not provided.
+ */
 export function findingNote(entry){
   if(!entry || typeof entry !== 'object') return '';
   return typeof entry.note === 'string' ? entry.note : '';
 }
 
+/**
+ * Determines whether a finding entry has both a mode and a supporting note.
+ * @param {CauseFinding|object} entry - Finding to evaluate.
+ * @returns {boolean} True when the entry is complete.
+ */
 function findingIsComplete(entry){
   const mode = findingMode(entry);
   if(!mode) return false;
@@ -385,6 +654,13 @@ function findingIsComplete(entry){
   return true;
 }
 
+/**
+ * Retrieves and normalizes a stored finding without mutating row progress.
+ * @param {PossibleCause} cause - Cause containing the findings map.
+ * @param {string} key - KT row key used as the lookup identifier.
+ * @returns {CauseFinding|null} Normalized finding payload or `null` when none
+ * is stored.
+ */
 function peekCauseFinding(cause, key){
   if(!cause || !cause.findings || typeof cause.findings !== 'object') return null;
   const existing = cause.findings[key];
@@ -396,6 +672,11 @@ function peekCauseFinding(cause, key){
 
 export { peekCauseFinding };
 
+/**
+ * Checks whether any findings for a cause have been marked as failures.
+ * @param {PossibleCause} cause - Cause being evaluated.
+ * @returns {boolean} `true` when at least one finding is a failure.
+ */
 export function causeHasFailure(cause){
   if(!cause) return false;
   const indexes = evidencePairIndexes();
@@ -409,6 +690,11 @@ export function causeHasFailure(cause){
   return false;
 }
 
+/**
+ * Counts how many findings for a cause rely on the "Assumption" mode.
+ * @param {PossibleCause} cause - Cause being evaluated.
+ * @returns {number} Total assumption findings across visible evidence pairs.
+ */
 export function countCauseAssumptions(cause){
   if(!cause) return 0;
   const indexes = evidencePairIndexes();
@@ -422,6 +708,13 @@ export function countCauseAssumptions(cause){
   return total;
 }
 
+/**
+ * Replaces `<is>` placeholder tokens within note templates for readability.
+ * @param {string} template - Template text containing placeholders.
+ * @param {string} isText - IS evidence text.
+ * @param {string} notText - IS NOT evidence text.
+ * @returns {string} Template with placeholders substituted.
+ */
 function substituteEvidenceTokens(template, isText, notText){
   if(typeof template !== 'string') return '';
   const safeIs = (isText || '').trim() || 'IS column';
@@ -431,10 +724,18 @@ function substituteEvidenceTokens(template, isText, notText){
     .replace(/<is>/gi, safeIs);
 }
 
+/**
+ * Generates a semi-random identifier for a new possible cause.
+ * @returns {string} Unique identifier string.
+ */
 function generateCauseId(){
   return 'cause-' + Math.random().toString(36).slice(2, 8) + '-' + Date.now().toString(36);
 }
 
+/**
+ * Creates a new editable possible-cause shell with default metadata.
+ * @returns {PossibleCause} Fresh cause model ready for editing.
+ */
 export function createEmptyCause(){
   return {
     id: generateCauseId(),
@@ -447,6 +748,11 @@ export function createEmptyCause(){
   };
 }
 
+/**
+ * Builds a fallback label for a cause based on available text content.
+ * @param {PossibleCause} cause - Cause to summarize.
+ * @returns {string} Label used in toasts and toggles.
+ */
 function causeDisplayLabel(cause){
   if(!cause) return '';
   const suspect = typeof cause.suspect === 'string' ? cause.suspect.trim() : '';
@@ -461,6 +767,12 @@ function causeDisplayLabel(cause){
   return index >= 0 ? `Possible Cause ${index + 1}` : 'Selected cause';
 }
 
+/**
+ * Updates the Likely Cause toggle state and accessibility attributes.
+ * @param {HTMLElement} card - Root cause card element.
+ * @param {PossibleCause} cause - Cause associated with the card.
+ * @returns {void}
+ */
 function updateLikelyBadge(card, cause){
   if(!card || !cause) return;
   const toggle = card.querySelector('[data-role="likely-toggle"]');
@@ -487,6 +799,20 @@ function updateLikelyBadge(card, cause){
   }
 }
 
+/**
+ * Persists the Likely Cause selection, coordinating toast messaging and
+ * optional re-renders.
+ * @param {string|null} nextId - Identifier for the new Likely Cause or `null`
+ * to clear it.
+ * @param {object} [options] - Options controlling toast and rendering.
+ * @param {boolean} [options.silent] - When true suppresses toast messaging.
+ * Defaults to false.
+ * @param {string} [options.message] - Optional override for the toast copy.
+ * Defaults to an auto-generated label.
+ * @param {boolean} [options.skipRender] - When true prevents `renderCauses()`
+ * from running. Defaults to false.
+ * @returns {boolean} `true` when the selection changed.
+ */
 function commitLikelyCause(nextId, { silent = false, message = '', skipRender = false } = {}){
   const normalized = typeof nextId === 'string' && nextId.trim() ? nextId.trim() : null;
   const current = typeof likelyCauseId === 'string' && likelyCauseId.trim() ? likelyCauseId : null;
@@ -511,6 +837,11 @@ function commitLikelyCause(nextId, { silent = false, message = '', skipRender = 
   return true;
 }
 
+/**
+ * Toggles the Likely Cause selection for a given cause card.
+ * @param {PossibleCause} cause - Cause whose selection should toggle.
+ * @returns {void}
+ */
 function toggleLikelyCause(cause){
   if(!cause || causeHasFailure(cause)) return;
   const nextId = likelyCauseId === cause.id ? null : cause.id;
@@ -519,11 +850,21 @@ function toggleLikelyCause(cause){
   commitLikelyCause(nextId, { silent: false, message });
 }
 
+/**
+ * Evaluates whether a cause has all hypothesis fields populated.
+ * @param {PossibleCause} cause - Cause to inspect.
+ * @returns {boolean} True when suspect, accusation, and impact are filled.
+ */
 function hasCompleteHypothesis(cause){
   if(!cause) return false;
   return ['suspect', 'accusation', 'impact'].every(key => typeof cause[key] === 'string' && cause[key].trim().length);
 }
 
+/**
+ * Builds a friendly summary sentence for the suspect, accusation, and impact.
+ * @param {PossibleCause} cause - Cause whose hypothesis fields will be read.
+ * @returns {string} Completed sentence guiding the customer impact story.
+ */
 export function buildHypothesisSentence(cause){
   if(!cause) return '';
   const suspect = (cause.suspect || '').trim();
@@ -536,6 +877,11 @@ export function buildHypothesisSentence(cause){
   return `We suspect ${fallback(suspect)} because ${fallback(accusation)}, which results in ${fallback(impact)}.`;
 }
 
+/**
+ * Returns the canonical key for a KT row, typically the prompt text.
+ * @param {number} index - Index within `rowsBuilt`.
+ * @returns {string} Unique row key suitable for use in maps.
+ */
 export function getRowKeyByIndex(index){
   const row = rowsBuilt[index];
   if(row && row.def && row.def.q){
@@ -544,6 +890,11 @@ export function getRowKeyByIndex(index){
   return `row-${index}`;
 }
 
+/**
+ * Guarantees that a cause has a findings map, creating one when missing.
+ * @param {PossibleCause} cause - Cause to initialize.
+ * @returns {Record<string, CauseFinding>} Findings map for the cause.
+ */
 function ensureCauseFindings(cause){
   if(!cause.findings || typeof cause.findings !== 'object'){
     cause.findings = {};
@@ -551,12 +902,26 @@ function ensureCauseFindings(cause){
   return cause.findings;
 }
 
+/**
+ * Retrieves the normalized finding entry for a cause and KT row key.
+ * @param {PossibleCause} cause - Cause containing the findings map.
+ * @param {string} key - KT row key identifier.
+ * @returns {CauseFinding} Normalized finding entry.
+ */
 function getCauseFinding(cause, key){
   const map = ensureCauseFindings(cause);
   map[key] = normalizeFindingEntry(map[key]);
   return map[key];
 }
 
+/**
+ * Sets a property on a finding entry, applying validation for key fields.
+ * @param {PossibleCause} cause - Cause being mutated.
+ * @param {string} key - KT row key identifier.
+ * @param {string} prop - Property to mutate (`mode` or `note`).
+ * @param {unknown} value - Value to store.
+ * @returns {void}
+ */
 function setCauseFindingValue(cause, key, prop, value){
   const entry = getCauseFinding(cause, key);
   if(prop === 'mode'){
@@ -570,6 +935,11 @@ function setCauseFindingValue(cause, key, prop, value){
   }
 }
 
+/**
+ * Checks whether a KT row currently contains both IS and IS NOT evidence.
+ * @param {KTRowBinding} row - Row binding metadata.
+ * @returns {boolean} True when both columns contain text.
+ */
 function rowHasEvidencePair(row){
   if(!row) return false;
   if(row?.tr?.hidden) return false;
@@ -578,6 +948,10 @@ function rowHasEvidencePair(row){
   return Boolean(isText && notText);
 }
 
+/**
+ * Returns the indexes of KT rows that currently contain both IS and IS NOT data.
+ * @returns {number[]} Indexes for rows eligible for cause testing.
+ */
 export function evidencePairIndexes(){
   const indexes = [];
   rowsBuilt.forEach((row, index) => {
@@ -588,6 +962,12 @@ export function evidencePairIndexes(){
   return indexes;
 }
 
+/**
+ * Counts how many eligible evidence pairs have complete findings recorded.
+ * @param {PossibleCause} cause - Cause being evaluated.
+ * @param {number[]} [eligibleIndexes] - Optional subset of row indexes.
+ * @returns {number} Total completed findings.
+ */
 export function countCompletedEvidence(cause, eligibleIndexes){
   let count = 0;
   const indexes = Array.isArray(eligibleIndexes) ? eligibleIndexes : evidencePairIndexes();
@@ -599,6 +979,14 @@ export function countCompletedEvidence(cause, eligibleIndexes){
   return count;
 }
 
+/**
+ * Derives an internal status token for a cause based on hypothesis completeness
+ * and testing progress.
+ * @param {PossibleCause} cause - Cause to evaluate.
+ * @param {number} answered - Count of completed findings.
+ * @param {number} total - Total eligible evidence pairs.
+ * @returns {string} Status token used for styling.
+ */
 function causeStatusState(cause, answered, total){
   if(!hasCompleteHypothesis(cause)) return 'draft';
   if(total === 0) return 'no-evidence';
@@ -608,6 +996,12 @@ function causeStatusState(cause, answered, total){
   return 'explained';
 }
 
+/**
+ * Derives a friendly label for the cause card that reflects hypothesis and
+ * testing state.
+ * @param {PossibleCause} cause - Cause being summarized.
+ * @returns {string} Status label for UI display.
+ */
 export function causeStatusLabel(cause){
   const eligibleIndexes = evidencePairIndexes();
   const total = eligibleIndexes.length;
@@ -621,6 +1015,12 @@ export function causeStatusLabel(cause){
   return 'Explains all evidence';
 }
 
+/**
+ * Updates the progress chip to reflect completed evidence counts and status.
+ * @param {HTMLElement} chip - Chip element displaying progress.
+ * @param {PossibleCause} cause - Cause whose progress is being represented.
+ * @returns {void}
+ */
 function updateCauseProgressChip(chip, cause){
   if(!chip || !cause) return;
   const eligibleIndexes = evidencePairIndexes();
@@ -631,6 +1031,14 @@ function updateCauseProgressChip(chip, cause){
   chip.dataset.status = status;
 }
 
+/**
+ * Updates the textual status summary for a cause, combining progress details
+ * for assistive technology.
+ * @param {HTMLElement} el - Label element to update.
+ * @param {PossibleCause} cause - Cause providing status context.
+ * @param {string} [countText] - Optional evidence summary to append.
+ * @returns {void}
+ */
 function updateCauseStatusLabel(el, cause, countText){
   if(!el) return;
   const status = causeStatusLabel(cause);
@@ -641,6 +1049,12 @@ function updateCauseStatusLabel(el, cause, countText){
   el.setAttribute('aria-label', fullLabel);
 }
 
+/**
+ * Syncs badges, failure states, and assumption counts for a rendered cause card.
+ * @param {HTMLElement} card - Root cause card element.
+ * @param {PossibleCause} cause - Cause backing the card.
+ * @returns {void}
+ */
 function updateCauseCardIndicators(card, cause){
   if(!card || !cause) return;
   const failureEl = card.querySelector('.cause-card__failure');
@@ -668,18 +1082,33 @@ function updateCauseCardIndicators(card, cause){
   updateLikelyBadge(card, cause);
 }
 
+/**
+ * Formats textarea content into a bullet-style preview for cause testing.
+ * @param {string} value - Raw textarea value.
+ * @returns {string} Preview text or a dash placeholder.
+ */
 function previewEvidenceText(value){
   const lines = splitLines(value);
   if(!lines.length) return '—';
   return lines.map(line => `• ${line}`).join('\n');
 }
 
+/**
+ * Splits a block of text into trimmed lines while omitting blanks.
+ * @param {string} text - Raw text content.
+ * @returns {string[]} Array of non-empty lines.
+ */
 function splitLines(text){
   const v = (text || '').trim();
   if(!v) return [];
   return v.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
 }
 
+/**
+ * Creates the remove button for a cause card, wiring persistence handlers.
+ * @param {PossibleCause} cause - Cause associated with the button.
+ * @returns {HTMLButtonElement} Configured remove button element.
+ */
 function makeRemoveButton(cause){
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -695,6 +1124,11 @@ function makeRemoveButton(cause){
   return btn;
 }
 
+/**
+ * Ensures the Possible Causes card and controls exist in the DOM and wires the
+ * add button listener.
+ * @returns {void}
+ */
 export function ensurePossibleCausesUI(){
   let card = document.getElementById('possibleCausesCard');
   if(!card){
@@ -742,6 +1176,11 @@ export function ensurePossibleCausesUI(){
   }
 }
 
+/**
+ * Re-renders the Possible Causes list, syncing status indicators, action
+ * counts, and cause-testing panels.
+ * @returns {void}
+ */
 export function renderCauses(){
   if(!causeList){
     ensurePossibleCausesUI();
@@ -945,6 +1384,15 @@ export function renderCauses(){
   updateCauseEvidencePreviews();
 }
 
+/**
+ * Builds the cause testing panel containing question summaries and finding
+ * controls.
+ * @param {PossibleCause} cause - Cause being tested.
+ * @param {HTMLElement} progressChip - Chip element showing progress counts.
+ * @param {HTMLElement} statusEl - Element displaying the status label.
+ * @param {HTMLElement} card - Cause card container.
+ * @returns {HTMLElement} Panel element ready for rendering.
+ */
 function buildCauseTestPanel(cause, progressChip, statusEl, card){
   const panel = document.createElement('div');
   panel.className = 'cause-test';
@@ -1063,6 +1511,14 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
     const rawIs = row?.isTA?.value || '';
     const rawNot = row?.notTA?.value || '';
 
+    /**
+     * Updates button selection and note fields based on the chosen mode.
+     * @param {string} newMode - Mode to activate.
+     * @param {object} [opts] - Behavior flags for the update.
+     * @param {boolean} [opts.silent] - When true prevents persistence and toast
+     * updates. Defaults to false.
+     * @returns {void}
+     */
     function applyMode(newMode, opts = {}){
       const active = isValidFindingMode(newMode) ? newMode : '';
       buttons.forEach(btn => {
@@ -1128,6 +1584,11 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
   return panel;
 }
 
+/**
+ * Synchronizes the cause-testing panels with the latest KT table evidence and
+ * action counts.
+ * @returns {void}
+ */
 export function updateCauseEvidencePreviews(){
   if(!causeList) return;
   refreshCauseActionCounts();
@@ -1168,6 +1629,11 @@ export function updateCauseEvidencePreviews(){
   });
 }
 
+/**
+ * Focuses the first textarea inside an editing cause card after the DOM
+ * settles.
+ * @returns {void}
+ */
 export function focusFirstEditableCause(){
   requestAnimationFrame(() => {
     const target = causeList?.querySelector('[data-editing="true"] textarea');
@@ -1179,31 +1645,70 @@ export function focusFirstEditableCause(){
   });
 }
 
+/**
+ * Returns the in-memory list of possible causes.
+ * @returns {PossibleCause[]} Cause collection managed by this module.
+ */
 export function getPossibleCauses(){
   return possibleCauses;
 }
 
+/**
+ * Replaces the internal possible-cause collection, typically during imports.
+ * @param {PossibleCause[]} list - New cause records to adopt.
+ * @returns {void}
+ */
 export function setPossibleCauses(list){
   possibleCauses = Array.isArray(list) ? list : [];
 }
 
+/**
+ * Returns the active Likely Cause identifier when one is selected.
+ * @returns {string|null} Likely Cause id or `null` when unset.
+ */
 export function getLikelyCauseId(){
   return typeof likelyCauseId === 'string' && likelyCauseId.trim() ? likelyCauseId : null;
 }
 
+/**
+ * Updates the Likely Cause selection while allowing callers to control side
+ * effects such as rendering and toast messaging.
+ * @param {string|null} nextId - Identifier for the Likely Cause or `null` to clear it.
+ * @param {object} [options] - Optional flags to control side effects.
+ * @param {boolean} [options.silent] - When true suppresses toast messaging.
+ * Defaults to false.
+ * @param {boolean} [options.skipRender] - Skips rerendering the cause list when
+ * true. Defaults to false.
+ * @param {string} [options.message] - Optional toast override. Defaults to the
+ * auto-generated label.
+ * @returns {void}
+ */
 export function setLikelyCauseId(nextId, options = {}){
   const { silent = false, skipRender = false, message = '' } = options || {};
   commitLikelyCause(nextId, { silent, skipRender, message });
 }
 
+/**
+ * Provides the cached references for each KT table row.
+ * @returns {KTRowBinding[]} Row binding metadata collected during `initTable()`.
+ */
 export function getRowsBuilt(){
   return rowsBuilt;
 }
 
+/**
+ * Returns the `<tbody>` element backing the KT table.
+ * @returns {HTMLTableSectionElement|null} Table body element reference.
+ */
 export function getTableElement(){
   return tbody;
 }
 
+/**
+ * Serializes the KT table DOM into an exportable array structure.
+ * @returns {(CauseImportRecord|BandImportRecord)[]} Persistable snapshot of the
+ * table layout.
+ */
 export function exportKTTableState(){
   if(!tbody) return [];
   const out = [];
@@ -1225,6 +1730,11 @@ export function exportKTTableState(){
   return out;
 }
 
+/**
+ * Imports KT table rows from persisted data and refreshes dependent views.
+ * @param {(CauseImportRecord|BandImportRecord)[]} tableData - Serialized table rows.
+ * @returns {void}
+ */
 export function importKTTableState(tableData){
   if(!tbody || !Array.isArray(tableData)) return;
   let index = 0;
@@ -1244,6 +1754,12 @@ export function importKTTableState(tableData){
   refreshAllTokenizedText();
 }
 
+/**
+ * Creates a band header row describing the next section of the KT table.
+ * @param {string} title - Band title.
+ * @param {string} note - Supporting description rendered beside the title.
+ * @returns {HTMLTableRowElement} Rendered band table row.
+ */
 function mkBand(title, note){
   const tr = document.createElement('tr'); tr.className = 'band';
   const bandId = `band-${++bandCounter}`;
@@ -1254,6 +1770,13 @@ function mkBand(title, note){
   return tr;
 }
 
+/**
+ * Creates a full KT evidence row with textareas and placeholder bindings.
+ * @param {object} def - Row definition from `ROWS`.
+ * @param {number} i - 1-based row index for theming.
+ * @param {string|null} bandId - Optional band grouping identifier.
+ * @returns {HTMLTableRowElement} Populated row ready for insertion.
+ */
 function mkRow(def, i, bandId){
   const tr = document.createElement('tr'); tr.dataset.row = i;
   if(bandId){
@@ -1283,9 +1806,21 @@ function mkRow(def, i, bandId){
   distTA.placeholder = mkDistPH('', '');
   chgTA.placeholder = mkChangePH('');
 
-  const refreshIsNot = () => { notTA.placeholder = mkIsNotPH(fillTokens(def.notPH || ''), isTA.value); };
-  const refreshDist = () => { distTA.placeholder = mkDistPH(isTA.value, notTA.value); };
-  const refreshChg = () => { chgTA.placeholder = mkChangePH(distTA.value); };
+    /**
+     * Refreshes the IS NOT placeholder using the latest IS textarea value.
+     * @returns {void}
+     */
+    const refreshIsNot = () => { notTA.placeholder = mkIsNotPH(fillTokens(def.notPH || ''), isTA.value); };
+    /**
+     * Refreshes the Distinctions placeholder using the current IS/IS NOT text.
+     * @returns {void}
+     */
+    const refreshDist = () => { distTA.placeholder = mkDistPH(isTA.value, notTA.value); };
+    /**
+     * Refreshes the Changes placeholder based on the Distinctions textarea.
+     * @returns {void}
+     */
+    const refreshChg = () => { chgTA.placeholder = mkChangePH(distTA.value); };
 
   [isTA, notTA, distTA, chgTA].forEach(t => {
     autoResize(t);
@@ -1326,6 +1861,10 @@ function mkRow(def, i, bandId){
   return tr;
 }
 
+/**
+ * Builds the KT table rows, wires listeners, and primes focus controls.
+ * @returns {void}
+ */
 export function initTable(){
   if(!tbody) return;
   if(rowsBuilt.length){
