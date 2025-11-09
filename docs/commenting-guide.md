@@ -4,7 +4,7 @@ This guide defines how contributors document modules, annotate functions, and ma
 
 ## Module docblocks
 - Begin every runtime module (`src/`, `components/`, automation helpers) with a docblock that describes its purpose, the major exports, and the anchors or storage keys it manages.
-- Summaries should reference related modules so responsibilities remain clear. For example, call out that `src/storage.js` owns migrations for the `kt-intake-full-v2` key while `src/appState.js` collects the shape that storage persists.
+- Summaries should reference related modules so responsibilities remain clear. For example, call out that `src/storage.js` owns migrations for the `kt-intake-full-v2` key, `src/actionsStore.js` normalises actions under `kt-actions-by-analysis-v1`, and `src/appState.js` collects the shape that storage persists.
 - Keep docblocks short but specific. Include links to README sections or additional docs when they exist.
 
 ### Template
@@ -54,7 +54,7 @@ Anchors keep HTML and documentation in sync. Preserve existing tokens and regist
 - Update any relevant README or scoped `AGENTS.md` files so other contributors can discover the anchor quickly.
 
 ## Storage keys & schema documentation
-- All persisted state currently lives under the `kt-intake-full-v2` key (see `src/storage.js`).
+- Primary intake state lives under the `kt-intake-full-v2` key (see `src/storage.js`), while the action list persists separately via `kt-actions-by-analysis-v1` in `src/actionsStore.js`.
 - When adding a new storage key or expanding the schema:
   1. Describe the change in the owning module’s docblock and link to the relevant anchor.
   2. Update `docs/storage-schema.md` via `npm run update:storage-docs` so the structured schema reflects new fields.

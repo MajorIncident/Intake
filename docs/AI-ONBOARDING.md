@@ -21,6 +21,8 @@ This guide summarises the Milestone 2.3 modularisation so AI agents can confiden
 | `src/kt.js` | `configureKT()`, `initTable()`, `ensurePossibleCausesUI()`, `renderCauses()` for the IS/IS NOT workflow. |
 | `src/preface.js` | `initPreface()`, `autoResize()`, `updatePrefaceTitles()`, `startMirrorSync()`, `setBridgeOpenedNow()`, `getPrefaceState()`, `getObjectFull()`, `getDeviationFull()`. |
 | `src/steps.js` | `initStepsFeature()` plus drawer utilities invoked from `main.js`. |
+| `components/actions/ActionListCard.js` | `mountActionListCard()`, `refreshActionList()` render the remediation card and broadcast list updates. |
+| `src/actionsStore.js` | `listActions()`, `createAction()`, `patchAction()`, `removeAction()`, `sortActions()` persisted under `kt-actions-by-analysis-v1`. |
 | `src/storage.js` | `saveToStorage()` / `restoreFromStorage()` that operate on the `kt-intake-full-v2` key. |
 | `src/summary.js` | `generateSummary()`, `setSummaryStateProvider()`, helpers that compose both clipboard output and AI prompts. |
 | `src/toast.js` | `showToast()` for lightweight notifications reused by comms and bootstrapping.
@@ -79,7 +81,7 @@ function boot() {
 ## Safe Extension Checklist
 1. Identify the owning module for the UI you are touching; update that module instead of `main.js`.
 2. Import shared constants from `src/constants.js` rather than duplicating values.
-3. Update serialization helpers when adding inputs to ensure the storage key `kt-intake-full-v2` remains consistent.
+3. Update serialization helpers when adding inputs so `kt-intake-full-v2` and `kt-actions-by-analysis-v1` remain consistent.
 4. Add or update tests/scripts to call `collectAppState()` before mutating the DOM and `applyAppState()` afterward.
 5. Verify summary outputs via `generateSummary()` so AI prompt formats remain stable.
 
