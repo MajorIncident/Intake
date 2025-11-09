@@ -4,6 +4,19 @@ import { getAnalysisId, getLikelyCauseId } from '../../src/appState.js';
 import { getPossibleCauses, causeHasFailure, buildHypothesisSentence } from '../../src/kt.js';
 import { showToast } from '../../src/toast.js';
 
+const ACTIONS_UPDATED_EVENT = 'intake:actions-updated';
+
+function announceActionListChange(detail = {}) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    window.dispatchEvent(new CustomEvent(ACTIONS_UPDATED_EVENT, { detail }));
+  } catch (error) {
+    console.debug('[actions:event]', detail, error);
+  }
+}
+
 export function mountActionListCard(hostEl) {
   const analysisId = getAnalysisId();
 
@@ -126,6 +139,8 @@ export function mountActionListCard(hostEl) {
       row.addEventListener('keydown', (e) => keyControls(e, id));
       row.tabIndex = 0;
     });
+
+    announceActionListChange({ total: items.length });
   }
 
   function handleRefresh() {
