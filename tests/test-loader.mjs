@@ -56,6 +56,7 @@ function createSource(kind) {
         }
         return mocks;
       }
+      export const ACTIONS_STORAGE_KEY = 'kt-actions-by-analysis-v1';
       export const listActions = (...args) => getMocks().listActions(...args);
       export const createAction = (...args) => getMocks().createAction(...args);
       export const patchAction = (...args) => getMocks().patchAction(...args);
@@ -75,7 +76,8 @@ function createSource(kind) {
         getLikelyCauseId: () => null,
         collectAppState: () => ({}),
         applyAppState: () => {},
-        getSummaryState: () => ({})
+        getSummaryState: () => ({}),
+        resetAnalysisId: () => {}
       };
       function getMocks() {
         return globalThis.__appStateMocks ?? defaultMocks;
@@ -85,6 +87,7 @@ function createSource(kind) {
       export const collectAppState = (...args) => getMocks().collectAppState?.(...args) ?? {};
       export const applyAppState = (...args) => getMocks().applyAppState?.(...args);
       export const getSummaryState = (...args) => getMocks().getSummaryState?.(...args) ?? {};
+      export const resetAnalysisId = (...args) => getMocks().resetAnalysisId?.(...args);
     `;
   }
   if (kind === 'kt') {
@@ -152,6 +155,7 @@ function createSource(kind) {
         return mocks;
       }
       export const initStepsFeature = (...args) => getMocks().initStepsFeature?.(...args);
+      export const resetStepsState = (...args) => getMocks().resetStepsState?.(...args);
     `;
   }
   if (kind === 'commsDrawer') {
@@ -163,6 +167,7 @@ function createSource(kind) {
         }
         return mocks;
       }
+      export const COMMS_DRAWER_STORAGE_KEY = 'comms.drawerOpen';
       export const initCommsDrawer = (...args) => getMocks().initCommsDrawer?.(...args);
       export const toggleCommsDrawer = (...args) => getMocks().toggleCommsDrawer?.(...args);
       export const closeCommsDrawer = (...args) => getMocks().closeCommsDrawer?.(...args);
