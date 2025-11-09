@@ -37,6 +37,11 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 - Preserve anchor comments in `index.html` (e.g., `[styles]`, `[section:preface]`) so automation and documentation links remain stable.
 - Keep the UI accessible: reuse layout classes, maintain contrast, and follow the Apple-like spacing guidance in `AGENTS.md`.
 
+## Documentation & anchor hygiene
+- Add or update module docblocks and JSDoc summaries whenever you touch a runtime file. The patterns in [`docs/commenting-guide.md`](docs/commenting-guide.md) are canonical.
+- Register every new anchor in the commenting guide and mirror the change in scoped `AGENTS.md` files so AI agents can locate feature boundaries quickly.
+- Before merging a feature, confirm that affected README sections and any relevant `AGENTS.md` anchors reflect the change set. Treat doc refreshes as part of the feature, not a follow-up task.
+
 ## AI & Automation Notes
 - State helpers provide a stable integration surface:
   ```js
@@ -65,3 +70,4 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 - See `AGENTS.md` for global UI principles, module isolation rules, and contribution contracts.
 - Refer to `index.AGENTS.md` when altering the HTML structure; it documents anchor expectations and storage invariants.
 - For AI-specific onboarding notes, including module extension patterns, read `docs/AI-ONBOARDING.md`.
+- Consult `docs/commenting-guide.md` for required docblocks, anchor formats, and the merge checklist.

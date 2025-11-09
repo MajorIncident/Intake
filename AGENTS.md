@@ -41,6 +41,13 @@ This file applies to the entire repository unless a more specific `AGENTS.md` fi
 - **Persistence:** When storing new data, extend the existing collectors in `src/appState.js` and `src/storage.js`. Document schema changes in module-level comments or scoped `AGENTS.md` files, and rerun `npm run update:storage-docs` so `docs/storage-schema.md` stays accurate.
 - **Summary output:** Update `buildSummaryText()` and helper formatters (e.g., `formatPossibleCausesSummary()`) when introducing new captured data. Match the tone, ordering, and bullet structure already used.
 
+## Self-documenting code & anchors
+- **Module docblocks:** Every module (any `.js` file under `src/`, `components/`, or other runtime directories) must begin with a descriptive docblock explaining its purpose, primary exports, and the anchors it manages. Keep the summary up to date as responsibilities change.
+- **Function documentation:** All exported functions and class methods require JSDoc comments with a one-line summary, parameter annotations, and return details. Internal helpers that mutate shared state or storage must also include summaries so future contributors can trace behaviour quickly.
+- **Anchor format:** When introducing new structural anchors or feature toggles, use HTML comments in the form `<!-- [feature:your-anchor] start -->` / `<!-- [feature:your-anchor] end -->`. Preserve existing anchor tokens, and document every anchor you add in `docs/commenting-guide.md`.
+- **Change checklist:** Before merging a change that adds files, modules, anchors, or storage keys, run through the checklist in `docs/commenting-guide.md`. Confirm that affected README sections and any scoped `AGENTS.md` documents are refreshed with the new anchors, links, or schema notes. Treat README/AGENTS updates as required work, not optional polish.
+- **Reference guide:** Follow the detailed patterns and examples in [`docs/commenting-guide.md`](docs/commenting-guide.md) whenever you add documentation, anchors, or persisted keys. Update that guide alongside behaviour changes so it remains authoritative.
+
 ## Using Sub-Guidelines
 - Specialized editing rules for `index.html` live in `index.AGENTS.md`. Review that file before modifying the intake page.
 - If you introduce new modules or directories, include a scoped `AGENTS.md` that clarifies local conventions and how they interact with the global contract above. State the intent and scope at the top of each document so future contributors understand its coverage.
