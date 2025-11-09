@@ -255,12 +255,6 @@ function collectCauseEvidenceDetails(state, cause){
   };
 }
 
-function formatCauseFindingsSummary(state, cause){
-  if(!cause) return '';
-  const { evidenceBlock } = collectCauseEvidenceDetails(state, cause);
-  return evidenceBlock;
-}
-
 function resolveCauseTitle(cause, index){
   const explicit = typeof cause?.title === 'string' ? cause.title.trim() : '';
   if(explicit){
