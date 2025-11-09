@@ -12,8 +12,8 @@ import path from 'node:path';
 
 /**
  * Execute a Git command and return the trimmed stdout.
- * @param {string} command
- * @returns {string}
+ * @param {string} command Git command string to run against the current repository.
+ * @returns {string} The command's stdout with surrounding whitespace removed.
  */
 function runGit(command) {
   return execSync(command, { stdio: ['ignore', 'pipe', 'inherit'] }).toString().trim();
