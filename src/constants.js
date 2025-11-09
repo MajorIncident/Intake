@@ -1,6 +1,61 @@
-// Immutable data definitions for KT Intake.
-// Centralises configuration and protects it via deep freeze.
+/**
+ * @module constants
+ * Immutable domain data for the KT Intake experience.
+ *
+ * The collections exported from this module define the prompts, owner
+ * categories, and workflow steps that power the UI. Each dataset is created in
+ * a mutable form, then recursively frozen to guarantee that feature modules
+ * cannot mutate the source of truth at runtime. Importers can therefore rely on
+ * the structural contracts documented below without defensive copying.
+ */
 
+/**
+ * Row entries capture either an anchor banner (band/note) or a probing
+ * question. Optional properties are present only when relevant to the UI.
+ *
+ * @typedef {Object} RowDefinition
+ * @property {string} [band] - Section heading grouping related questions.
+ * @property {string} [note] - Contextual helper text shown alongside the band.
+ * @property {string} [q] - Intake question template with `{OBJECT}` tokens.
+ * @property {('p1'|'p2')} [priority] - Visual priority indicator for the row.
+ * @property {string} [isPH] - Prompt for what is happening (Positive Hypothesis).
+ * @property {string} [notPH] - Prompt for what is not happening (Negative Hypothesis).
+ */
+
+/**
+ * @typedef {Object} OwnerSubCategory
+ * @property {string} id - Stable identifier used for storage and analytics.
+ * @property {string} label - Human readable label presented to operators.
+ */
+
+/**
+ * @typedef {Object} OwnerCategory
+ * @property {string} id - Stable identifier for the broader responsibility area.
+ * @property {string} label - Category heading displayed in the UI.
+ * @property {OwnerSubCategory[]} subOwners - Specific roles or teams.
+ */
+
+/**
+ * @typedef {Object} StepPhase
+ * @property {string} id - Phase code mapped to a display badge.
+ * @property {string} label - Readable summary of the phase objective.
+ */
+
+/**
+ * @typedef {Object} StepDefinition
+ * @property {string} id - Identifier for ordering and persistence.
+ * @property {string} phase - Associated {@link StepPhase} `id`.
+ * @property {string} label - Description of the activity for operators to track.
+ */
+
+/**
+ * Recursively applies {@link Object.freeze} to the provided structure so that
+ * nested objects and arrays become deeply immutable.
+ *
+ * @template {object} T
+ * @param {T} obj - Plain object or array to protect from runtime mutation.
+ * @returns {Readonly<T>} The same reference, now deeply frozen.
+ */
 function deepFreeze(obj) {
   Object.getOwnPropertyNames(obj).forEach((name) => {
     const value = obj[name];
@@ -11,6 +66,7 @@ function deepFreeze(obj) {
   return Object.freeze(obj);
 }
 
+/** @type {RowDefinition[]} */
 const ROWS_UNFROZEN = [
   { band: "WHAT", note: "Define the problem precisely (Object & Deviation)." },
 
@@ -110,6 +166,7 @@ export const CAUSE_FINDING_MODES = deepFreeze({
 
 export const CAUSE_FINDING_MODE_VALUES = Object.freeze(Object.values(CAUSE_FINDING_MODES));
 
+/** @type {OwnerCategory[]} */
 const OWNER_CATEGORIES_UNFROZEN = [
   {
     id: 'APPLICATION_PRODUCT',
@@ -289,6 +346,7 @@ const OWNER_CATEGORIES_UNFROZEN = [
 
 export const OWNER_CATEGORIES = deepFreeze(OWNER_CATEGORIES_UNFROZEN);
 
+/** @type {StepPhase[]} */
 const STEPS_PHASES_UNFROZEN = [
   { id:'A', label:'Activate & Frame' },
   { id:'B', label:'Hypothesize, Test & Communicate' },
@@ -299,6 +357,7 @@ const STEPS_PHASES_UNFROZEN = [
 
 export const STEPS_PHASES = deepFreeze(STEPS_PHASES_UNFROZEN);
 
+/** @type {StepDefinition[]} */
 const STEP_DEFINITIONS_UNFROZEN = [
   { id:'1', phase:'A', label:'Pre-analysis completed' },
   { id:'2', phase:'A', label:'Incident Commander assigned' },
