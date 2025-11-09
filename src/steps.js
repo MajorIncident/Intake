@@ -1,3 +1,10 @@
+/**
+ * Steps drawer module responsible for rendering the steps checklist UI,
+ * persisting completion state, and exposing helpers to control the drawer.
+ * Storage keys:
+ * - {@link STEPS_ITEMS_KEY} stores the array of step metadata and checked state.
+ * - {@link STEPS_DRAWER_KEY} stores whether the drawer should open on load.
+ */
 import {
   STEPS_PHASES,
   STEP_DEFINITIONS
@@ -27,6 +34,11 @@ let stepsReturnFocus = null;
 let onFullSave = null;
 let onLogCommunication = null;
 
+/**
+ * Safely parse JSON from persisted localStorage values.
+ * @param {string|null} value Raw string retrieved from localStorage.
+ * @returns {unknown} Parsed value when valid JSON, otherwise null.
+ */
 function parseJsonSafe(value) {
   if (!value) return null;
   try {
@@ -36,6 +48,9 @@ function parseJsonSafe(value) {
   }
 }
 
+/**
+ * Populate in-memory steps state and drawer visibility from localStorage.
+ */
 function hydrateStepsFromLocalStorage() {
   const storedItems = parseJsonSafe(localStorage.getItem(STEPS_ITEMS_KEY));
   const map = new Map();
@@ -64,6 +79,9 @@ function hydrateStepsFromLocalStorage() {
   }
 }
 
+/**
+ * Persist the current steps collection to localStorage.
+ */
 function saveStepsItemsToLocalStorage() {
   try {
     const payload = stepsItems.map(item => ({
@@ -77,6 +95,9 @@ function saveStepsItemsToLocalStorage() {
   }
 }
 
+/**
+ * Persist whether the steps drawer should open on load.
+ */
 function saveStepsDrawerStateToLocalStorage() {
   try {
     localStorage.setItem(STEPS_DRAWER_KEY, JSON.stringify(!!stepsDrawerOpen));
@@ -85,34 +106,56 @@ function saveStepsDrawerStateToLocalStorage() {
   }
 }
 
+/**
+ * Fire the host application's save callback when it has been supplied.
+ */
 function triggerFullSave() {
   if (stepsReady && typeof onFullSave === 'function') {
     onFullSave();
   }
 }
 
+/**
+ * Send a log message to the shared communications logger.
+ * @param {string} message Message to emit to the communications log.
+ */
 function emitStepLog(message) {
   if (typeof onLogCommunication === 'function' && message) {
     onLogCommunication('internal', message);
   }
 }
 
+/**
+ * Calculate checklist progress totals for display.
+ * @returns {{ total: number, completed: number }} Aggregate counts for the drawer.
+ */
 export function getStepsCounts() {
   const total = stepsItems.length;
   const completed = stepsItems.filter(item => item.checked).length;
   return { total, completed };
 }
 
+/**
+ * Format the badge text used in the compact steps toggle button.
+ * @returns {string} Human-readable ratio of completed to total steps.
+ */
 function formatStepsBadge() {
   const { total, completed } = getStepsCounts();
   return `${completed} of ${total}`;
 }
 
+/**
+ * Format the progress label shown at the top of the steps drawer.
+ * @returns {string} Descriptive summary of completed steps for the drawer header.
+ */
 function formatStepsDrawerProgress() {
   const { total, completed } = getStepsCounts();
   return `${completed} of ${total} completed`;
 }
 
+/**
+ * Synchronise the progress badge and drawer progress indicator with current state.
+ */
 function updateStepsProgressUI() {
   const badgeText = formatStepsBadge();
   if (stepsCompletedLabel) {
@@ -123,6 +166,9 @@ function updateStepsProgressUI() {
   }
 }
 
+/**
+ * Toggle the category completion styling based on per-phase step completion.
+ */
 function updateStepsCategoryStates() {
   if (!stepsList) return;
   const countsByPhase = new Map();
@@ -146,6 +192,10 @@ function updateStepsCategoryStates() {
   });
 }
 
+/**
+ * Collect focusable elements currently visible within the steps drawer.
+ * @returns {HTMLElement[]} Ordered list of drawer elements that can receive focus.
+ */
 function getDrawerFocusables() {
   if (!stepsDrawer) return [];
   const nodes = stepsDrawer.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
@@ -157,6 +207,10 @@ function getDrawerFocusables() {
   });
 }
 
+/**
+ * Handle step checkbox toggles, updating state, persistence, and logging.
+ * @param {Event & { currentTarget: HTMLInputElement }} event Change event from a checkbox.
+ */
 function handleStepToggle(event) {
   const checkbox = event.currentTarget;
   if (!checkbox || !checkbox.dataset) return;
@@ -172,6 +226,10 @@ function handleStepToggle(event) {
   emitStepLog(message);
 }
 
+/**
+ * Trap focus within the drawer when tabbing so keyboard users stay inside the overlay.
+ * @param {KeyboardEvent} event Keydown event originating from the drawer element.
+ */
 function handleStepsDrawerKeydown(event) {
   if (event.key !== 'Tab') return;
   const focusables = getDrawerFocusables();
@@ -196,6 +254,10 @@ function handleStepsDrawerKeydown(event) {
   }
 }
 
+/**
+ * Listen for global keyboard shortcuts to open or close the steps drawer.
+ * @param {KeyboardEvent} event Window-level keydown event.
+ */
 function handleStepsGlobalKeydown(event) {
   const key = typeof event.key === 'string' ? event.key.toLowerCase() : '';
   if (key === 's' && event.altKey && !event.ctrlKey && !event.metaKey) {
@@ -209,6 +271,9 @@ function handleStepsGlobalKeydown(event) {
   }
 }
 
+/**
+ * Render the full steps checklist grouped by phase into the drawer.
+ */
 function renderStepsList() {
   if (!stepsList) return;
   stepsList.innerHTML = '';
@@ -272,6 +337,11 @@ function renderStepsList() {
   updateStepsCategoryStates();
 }
 
+/**
+ * Apply drawer visibility changes, optionally skipping focus management or persistence.
+ * @param {boolean} open Whether the drawer should be shown.
+ * @param {{ skipFocus?: boolean, skipSave?: boolean }} [options] Flags controlling focus and persistence.
+ */
 function setStepsDrawer(open, options = {}) {
   const shouldOpen = !!open;
   const skipFocus = !!options.skipFocus;
@@ -318,18 +388,32 @@ function setStepsDrawer(open, options = {}) {
   }
 }
 
+/**
+ * Open the steps drawer overlay and persist the new state.
+ */
 export function openStepsDrawer() {
   setStepsDrawer(true);
 }
 
+/**
+ * Close the steps drawer overlay and persist the new state.
+ */
 export function closeStepsDrawer() {
   setStepsDrawer(false);
 }
 
+/**
+ * Toggle the drawer's visibility, persisting the resulting state.
+ */
 export function toggleStepsDrawer() {
   setStepsDrawer(!stepsDrawerOpen);
 }
 
+/**
+ * Produce a serialisable representation of the steps UI suitable for saving.
+ * @returns {{ items: Array<{ id: string, label: string, checked: boolean }>, drawerOpen: boolean }}
+ * Step data and drawer visibility flag.
+ */
 export function exportStepsState() {
   return {
     items: stepsItems.map(item => ({
@@ -341,6 +425,15 @@ export function exportStepsState() {
   };
 }
 
+/**
+ * Hydrate the steps UI from a previously exported state payload.
+ * @param {{
+ *   items?: Array<{ id?: string|number, stepId?: string|number, label?: string, title?: string, checked?: boolean }>,
+ *   steps?: Array<{ id?: string|number, stepId?: string|number, label?: string, title?: string, checked?: boolean }>,
+ *   drawerOpen?: boolean,
+ *   open?: boolean
+ * }} data Serialized state captured by {@link exportStepsState} or legacy formats.
+ */
 export function importStepsState(data) {
   if (!data) return;
   let incoming = null;
@@ -382,6 +475,10 @@ export function importStepsState(data) {
   saveStepsDrawerStateToLocalStorage();
 }
 
+/**
+ * Retrieve a cloned list of the current steps collection.
+ * @returns {Array<{ id: string, phase: string, label: string, checked: boolean }>} Immutable copy of steps data.
+ */
 export function getStepsItems() {
   return stepsItems.map(item => ({
     id: item.id,
@@ -391,6 +488,11 @@ export function getStepsItems() {
   }));
 }
 
+/**
+ * Initialise the steps drawer by wiring DOM nodes, restoring persisted state, and binding events.
+ * @param {{ onSave?: () => void, onLog?: (channel: string, message: string) => void }} [options]
+ * Optional callbacks for persistence and audit logging.
+ */
 export function initStepsFeature(options = {}) {
   onFullSave = typeof options.onSave === 'function' ? options.onSave : null;
   onLogCommunication = typeof options.onLog === 'function' ? options.onLog : null;
