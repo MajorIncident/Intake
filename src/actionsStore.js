@@ -1,3 +1,11 @@
+/* eslint-disable jsdoc/require-jsdoc -- Module overview documented below. */
+/**
+ * Handles persistence of remediation actions in localStorage under the
+ * `kt-actions-by-analysis-v1` key. This module normalizes owner metadata,
+ * enforces audit trail constraints, and exposes CRUD helpers consumed by the
+ * intake workflow and storage export/import routines.
+ */
+
 const KEY = 'kt-actions-by-analysis-v1';
 const STATUS_ORDER = {
   Blocked: 0,
@@ -19,6 +27,67 @@ const PRIORITY_ORDER = {
 
 const OWNER_SOURCES = new Set(['Manual', 'DirectoryLookup', 'API']);
 
+/**
+ * @typedef {'Manual' | 'DirectoryLookup' | 'API'} ActionOwnerSource
+ */
+
+/**
+ * @typedef {object} ActionOwner
+ * @property {string} name - Display name of the owner.
+ * @property {string} category - Owner classification used for filtering.
+ * @property {string} subOwner - Optional secondary owner label.
+ * @property {string} notes - Free-form notes about the owner.
+ * @property {string} lastAssignedBy - Actor who most recently reassigned the owner.
+ * @property {string} lastAssignedAt - ISO timestamp of the latest assignment.
+ * @property {ActionOwnerSource} source - Provenance of the owner information.
+ */
+
+/**
+ * @typedef {object} ActionAuditEntry
+ * @property {'ownerChanged'} type - Audit entry discriminator.
+ * @property {string} at - ISO timestamp when the entry was recorded.
+ * @property {string} by - Actor responsible for the change.
+ * @property {ActionOwner} before - Snapshot of the previous owner.
+ * @property {ActionOwner} after - Snapshot of the new owner.
+ */
+
+/**
+ * @typedef {object} ActionRecord
+ * @property {string} id - Unique identifier for the action.
+ * @property {string} analysisId - Identifier of the associated analysis.
+ * @property {string} createdAt - ISO timestamp when the action was created.
+ * @property {string} createdBy - Actor that created the action.
+ * @property {string} summary - Short description of the remediation work.
+ * @property {string} detail - Long-form details about the remediation work.
+ * @property {ActionOwner} owner - Current owner metadata.
+ * @property {string} role - Role of the assigned owner.
+ * @property {string} status - Lifecycle status (e.g., Planned, Done).
+ * @property {string} priority - Priority bucket (e.g., P1, P2).
+ * @property {string} dueAt - ISO timestamp representing the due date.
+ * @property {string} startedAt - ISO timestamp when work began.
+ * @property {string} completedAt - ISO timestamp when work completed.
+ * @property {string[]} dependencies - Related action identifiers.
+ * @property {string} risk - Risk rating tied to the action.
+ * @property {{ required: boolean, rollbackPlan?: string }} changeControl - Change control metadata.
+ * @property {{ required: boolean, result?: string }} verification - Verification metadata.
+ * @property {Record<string, string>} links - External references keyed by label.
+ * @property {string} notes - Internal implementation notes.
+ * @property {ActionAuditEntry[]} auditTrail - Change log for owner transitions.
+ */
+
+/**
+ * @typedef {Partial<Omit<ActionRecord, 'analysisId' | 'id' | 'createdAt' | 'createdBy' | 'auditTrail'>> & {
+ *   owner?: Partial<ActionOwner> | string,
+ *   auditTrail?: ActionAuditEntry[],
+ *   changeControl?: Partial<ActionRecord['changeControl']>,
+ *   verification?: Partial<ActionRecord['verification']>
+ * }} ActionPatch
+ */
+
+/**
+ * @typedef {Record<string, ActionRecord[]>} ActionsMap
+ */
+
 const OWNER_TEMPLATE = Object.freeze({
   name: '',
   category: '',
@@ -29,6 +98,34 @@ const OWNER_TEMPLATE = Object.freeze({
   source: 'Manual'
 });
 
+const ACTION_TEMPLATE = Object.freeze({
+  id: '',
+  analysisId: '',
+  createdAt: '',
+  createdBy: '',
+  summary: '',
+  detail: '',
+  owner: OWNER_TEMPLATE,
+  role: '',
+  status: 'Planned',
+  priority: 'P2',
+  dueAt: '',
+  startedAt: '',
+  completedAt: '',
+  dependencies: [],
+  risk: 'None',
+  changeControl: { required: false },
+  verification: { required: false },
+  links: {},
+  notes: '',
+  auditTrail: []
+});
+
+/**
+ * Normalizes arbitrary owner data into the canonical owner shape.
+ * @param {unknown} raw - Raw owner input captured from the UI or persisted data.
+ * @returns {ActionOwner} - Normalized owner payload ready for persistence.
+ */
 function normalizeOwner(raw) {
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
     const owner = { ...OWNER_TEMPLATE };
@@ -65,10 +162,21 @@ function normalizeOwner(raw) {
   return { ...OWNER_TEMPLATE };
 }
 
+/**
+ * Creates a normalized clone of an owner reference.
+ * @param {unknown} owner - Owner candidate to normalize.
+ * @returns {ActionOwner} - Normalized owner copy.
+ */
 function cloneOwner(owner) {
   return normalizeOwner(owner);
 }
 
+/**
+ * Determines whether two owner references are equivalent after normalization.
+ * @param {unknown} a - First owner candidate.
+ * @param {unknown} b - Second owner candidate.
+ * @returns {boolean} - True when the normalized owners match.
+ */
 function ownerEquals(a, b) {
   const left = normalizeOwner(a);
   const right = normalizeOwner(b);
@@ -81,18 +189,38 @@ function ownerEquals(a, b) {
     && left.source === right.source;
 }
 
+/**
+ * Coerces unknown action data into a normalized action record.
+ * @param {unknown} action - Persisted or incoming action payload.
+ * @returns {ActionRecord} - Normalized action record with safe defaults.
+ */
 function normalizeActionRecord(action) {
-  if (!action || typeof action !== 'object') {
-    return { owner: normalizeOwner(null), auditTrail: [] };
-  }
-  const base = { ...action };
-  base.owner = normalizeOwner(action.owner);
-  base.auditTrail = Array.isArray(action.auditTrail)
-    ? action.auditTrail.map(entry => ({ ...entry }))
+  const source = (action && typeof action === 'object' && !Array.isArray(action)) ? action : {};
+  const base = { ...ACTION_TEMPLATE, ...source };
+  base.owner = normalizeOwner(source.owner);
+  base.auditTrail = Array.isArray(source.auditTrail)
+    ? source.auditTrail.map(entry => ({ ...entry }))
     : [];
+  base.dependencies = Array.isArray(source.dependencies) ? [...source.dependencies] : [];
+  base.links = (source.links && typeof source.links === 'object' && !Array.isArray(source.links))
+    ? { ...source.links }
+    : {};
+  const changeControlSource = (source.changeControl && typeof source.changeControl === 'object' && !Array.isArray(source.changeControl))
+    ? source.changeControl
+    : {};
+  base.changeControl = { required: false, ...changeControlSource };
+  const verificationSource = (source.verification && typeof source.verification === 'object' && !Array.isArray(source.verification))
+    ? source.verification
+    : {};
+  base.verification = { required: false, ...verificationSource };
   return base;
 }
 
+/**
+ * Normalizes a persisted actions map into runtime-ready records.
+ * @param {unknown} map - Potentially stale persisted map.
+ * @returns {ActionsMap} - Map keyed by analysis identifier with normalized records.
+ */
 function migrateAll(map) {
   if (!map || typeof map !== 'object') return {};
   const migrated = {};
@@ -103,22 +231,41 @@ function migrateAll(map) {
   return migrated;
 }
 
+/**
+ * Maps an action status to a numeric sorting rank.
+ * @param {string} status - Status label from an action record.
+ * @returns {number} - Sorting rank where lower values bubble to the top.
+ */
 function getStatusRank(status) {
   const rank = STATUS_ORDER[status];
   return typeof rank === 'number' ? rank : Number.POSITIVE_INFINITY;
 }
 
+/**
+ * Maps an action priority to a numeric sorting rank.
+ * @param {string} priority - Priority label from an action record.
+ * @returns {number} - Sorting rank mirroring the risk hierarchy.
+ */
 function getPriorityRank(priority) {
   const rank = PRIORITY_ORDER[priority];
   return typeof rank === 'number' ? rank : Number.POSITIVE_INFINITY;
 }
 
+/**
+ * Converts a due date into a sortable numeric value.
+ * @param {string} dueAt - ISO timestamp or empty string.
+ * @returns {number} - Millisecond timestamp or `Infinity` when unset.
+ */
 function getDueTime(dueAt) {
   if (!dueAt) return Number.POSITIVE_INFINITY;
   const parsed = new Date(dueAt).getTime();
   return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
 }
 
+/**
+ * Reads and normalizes all persisted actions from storage.
+ * @returns {ActionsMap} - Normalized actions keyed by analysis ID.
+ */
 function loadAll() {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY)) || {};
@@ -129,15 +276,20 @@ function loadAll() {
   }
 }
 
+/**
+ * Persists the provided actions map to storage.
+ * @param {ActionsMap} map - Map of actions keyed by analysis ID.
+ * @returns {void} - Nothing.
+ */
 function saveAll(map) {
   localStorage.setItem(KEY, JSON.stringify(map));
 }
 
 /**
- * Snapshot persisted via the app state helpers.
- * @typedef {{ analysisId: string, items: object[] }} PersistedActionsState
+ * Produces a normalized snapshot of actions for the given analysis.
+ * @param {string} analysisId - Identifier of the analysis to export.
+ * @returns {ActionRecord[]} - Snapshot ready for persistence.
  */
-
 export function exportActionsState(analysisId) {
   if (typeof analysisId !== 'string' || !analysisId.trim()) {
     return [];
@@ -148,6 +300,12 @@ export function exportActionsState(analysisId) {
   return list.map(item => ({ ...normalizeActionRecord(item), analysisId: id }));
 }
 
+/**
+ * Replaces the stored actions for an analysis with a provided snapshot.
+ * @param {string} analysisId - Identifier of the analysis to update.
+ * @param {unknown} actions - Snapshot exported from another session.
+ * @returns {ActionRecord[]} - Imported and normalized actions.
+ */
 export function importActionsState(analysisId, actions) {
   if (typeof analysisId !== 'string' || !analysisId.trim()) {
     return [];
@@ -162,12 +320,23 @@ export function importActionsState(analysisId, actions) {
   return nextList;
 }
 
+/**
+ * Lists the normalized actions for an analysis from storage.
+ * @param {string} analysisId - Identifier of the analysis to read.
+ * @returns {ActionRecord[]} - Stored actions or an empty list.
+ */
 export function listActions(analysisId) {
   const all = loadAll();
   return all[analysisId] || [];
 }
 
-export function createAction(analysisId, patch) {
+/**
+ * Creates a new action for an analysis and persists it to storage.
+ * @param {string} analysisId - Identifier of the analysis receiving the action.
+ * @param {ActionPatch} patch - Partial fields used to seed the new record.
+ * @returns {ActionRecord | null} - Newly created action, or null when validation fails.
+ */
+export function createAction(analysisId, patch = {}) {
   const all = loadAll();
   const now = new Date().toISOString();
   const generatedId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -202,6 +371,13 @@ export function createAction(analysisId, patch) {
   return item;
 }
 
+/**
+ * Applies a partial update to an action while enforcing audit trail rules.
+ * @param {string} analysisId - Identifier of the action's analysis.
+ * @param {string} actionId - Identifier of the action to mutate.
+ * @param {ActionPatch} delta - Partial fields representing requested changes.
+ * @returns {ActionRecord | null | { __error: string }} - Updated action, null when not found, or a validation error payload.
+ */
 export function patchAction(analysisId, actionId, delta) {
   const all = loadAll();
   const list = all[analysisId] || [];
@@ -260,6 +436,12 @@ export function patchAction(analysisId, actionId, delta) {
   return next;
 }
 
+/**
+ * Removes an action from storage.
+ * @param {string} analysisId - Identifier of the action's analysis.
+ * @param {string} actionId - Identifier of the action to delete.
+ * @returns {void} - Nothing.
+ */
 export function removeAction(analysisId, actionId) {
   const all = loadAll();
   const list = all[analysisId] || [];
@@ -267,6 +449,11 @@ export function removeAction(analysisId, actionId) {
   saveAll(all);
 }
 
+/**
+ * Sorts and persists actions in their canonical ordering.
+ * @param {string} analysisId - Identifier of the analysis to sort.
+ * @returns {ActionRecord[]} - Sorted actions list.
+ */
 export function sortActions(analysisId) {
   const all = loadAll();
   const list = all[analysisId] || [];
