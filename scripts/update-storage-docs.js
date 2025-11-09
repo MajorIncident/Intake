@@ -99,8 +99,12 @@ function renderMigrationsTable(migrations) {
  */
 async function writeStorageDocs() {
   const canonicalState = migrateAppState({});
-  const fields = collectFields(canonicalState)
-    .sort((a, b) => a.field.localeCompare(b.field));
+  const fields = collectFields(canonicalState);
+  if (!fields.some(entry => entry.field === 'actions')) {
+    const actionDescriptors = collectFields({ analysisId: '', items: [] }, ['actions']);
+    fields.push(...actionDescriptors);
+  }
+  fields.sort((a, b) => a.field.localeCompare(b.field));
 
   const { overrides, migrations } = buildIntroducedOverrides();
 

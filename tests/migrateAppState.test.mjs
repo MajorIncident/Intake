@@ -1,8 +1,22 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { migrateAppState } from '../src/storage.js';
 import { APP_STATE_VERSION } from '../src/appStateVersion.js';
+
+const { normalizeActionSnapshot } = await import('../src/actionsStore.js?actions-tests');
+
+globalThis.__actionsStoreMocks = {
+  normalizeActionSnapshot,
+  listActions: () => [],
+  createAction: () => {},
+  patchAction: () => {},
+  removeAction: () => {},
+  sortActions: () => [],
+  exportActionsState: () => [],
+  importActionsState: () => []
+};
+
+const { migrateAppState } = await import('../src/storage.js?actions-tests');
 
 function getFirstCauseFinding(state, key) {
   if (!state || !Array.isArray(state.causes) || !state.causes.length) {
@@ -94,4 +108,50 @@ test('migrateAppState preserves savedAt for already versioned states', () => {
   assert.equal(migrated.ops.tableFocusMode, '');
   assert.deepEqual(migrated.ops.commLog, []);
   assert.deepEqual(migrated.steps, { items: [], drawerOpen: true });
+});
+
+test('migrateAppState retains sanitized actions snapshots when present', () => {
+  const migrated = migrateAppState({
+    meta: { version: APP_STATE_VERSION, savedAt: null },
+    pre: {},
+    ops: {},
+    steps: { items: [], drawerOpen: false },
+    actions: {
+      analysisId: '  analysis-from-snapshot  ',
+      items: [
+        {
+          id: 'action-123',
+          analysisId: 'outdated-id',
+          summary: 'Restore service',
+          owner: { name: '  Lead Owner  ' },
+          status: 'In-Progress'
+        }
+      ]
+    }
+  });
+
+  assert.ok(migrated);
+  assert.equal(Object.prototype.hasOwnProperty.call(migrated, 'actions'), true);
+  assert.equal(migrated.actions.analysisId, 'analysis-from-snapshot');
+  assert.equal(Array.isArray(migrated.actions.items), true);
+  assert.equal(migrated.actions.items.length, 1);
+  const [action] = migrated.actions.items;
+  assert.equal(action.analysisId, 'analysis-from-snapshot');
+  assert.equal(action.summary, 'Restore service');
+  assert.equal(action.owner.name, 'Lead Owner');
+  assert.equal(action.status, 'In-Progress');
+  assert.deepEqual(action.changeControl, { required: false });
+  assert.deepEqual(action.verification, { required: false });
+});
+
+test('migrateAppState omits actions when legacy snapshots lack the field', () => {
+  const legacy = migrateAppState({
+    meta: { version: 1, savedAt: null },
+    pre: {},
+    ops: {},
+    steps: { items: [], drawerOpen: false }
+  });
+
+  assert.ok(legacy);
+  assert.equal(Object.prototype.hasOwnProperty.call(legacy, 'actions'), false);
 });
