@@ -3,8 +3,11 @@
   "private": true,
   "scripts": {
     "dev": "npx live-server --port=4173 --open=index.html",
-    "test": "node --test tests/migrateAppState.test.mjs",
+    "test": "node --test --loader ./tests/test-loader.mjs tests/migrateAppState.test.mjs tests/actions.feature.test.mjs",
     "update:storage-docs": "node scripts/update-storage-docs.js",
     "check:storage-docs": "node scripts/update-storage-docs.js && git diff --quiet -- docs/storage-schema.md"
+  },
+  "devDependencies": {
+    "jsdom": "^27.1.0"
   }
 }
