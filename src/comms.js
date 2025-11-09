@@ -1,3 +1,10 @@
+/**
+ * @module Communications
+ * Manages communication cadence tracking, stored DOM references, and log visibility
+ * state for the incident intake page. This module owns the countdown timer lifecycle
+ * and ensures cadence updates propagate through the controls card UI.
+ */
+
 let refs = null;
 let commLog = [];
 let commCadence = '';
@@ -8,6 +15,12 @@ let dueToastShown = false;
 let saveHandler = () => {};
 let toastHandler = () => {};
 
+/**
+ * Resolves and memoizes DOM references required by the communications module.
+ * Lazily queries the document once and reuses the stored map for subsequent calls.
+ *
+ * @returns {Object} Cached reference collection for communications controls.
+ */
 function ensureRefs() {
   if (refs) return refs;
   const group = document.getElementById('commCadenceGroup');
@@ -26,11 +39,22 @@ function ensureRefs() {
   return refs;
 }
 
+/**
+ * Normalises the active cadence value to minutes.
+ *
+ * @returns {number|null} Cadence minutes or null when not a finite number.
+ */
 function getCadenceMinutes() {
   const mins = parseInt(commCadence, 10);
   return Number.isFinite(mins) ? mins : null;
 }
 
+/**
+ * Formats a date instance into an `HH:MM` string compatible with time inputs.
+ *
+ * @param {Date} date - Date to convert.
+ * @returns {string} Formatted time string or empty string for invalid dates.
+ */
 function toTimeValue(date) {
   if (!(date instanceof Date) || Number.isNaN(date.valueOf())) return '';
   const hours = String(date.getHours()).padStart(2, '0');
@@ -38,6 +62,12 @@ function toTimeValue(date) {
   return `${hours}:${minutes}`;
 }
 
+/**
+ * Converts an `HH:MM` string into an ISO timestamp representing the next occurrence.
+ *
+ * @param {string} value - Time value from the manual next update input.
+ * @returns {string} ISO string or empty string when the value cannot be parsed.
+ */
 function isoFromTimeValue(value) {
   if (!value) return '';
   const parts = value.split(':');
@@ -53,6 +83,12 @@ function isoFromTimeValue(value) {
   return candidate.toISOString();
 }
 
+/**
+ * Updates the communications controls to reflect whether a cadence is currently due.
+ * Mutates DOM state for alert visibility and card highlighting.
+ *
+ * @param {boolean} isDue - Indicates if the next communication is due immediately.
+ */
 function toggleCommDue(isDue) {
   const { controlsCard, dueAlert } = ensureRefs();
   if (controlsCard) {
@@ -69,6 +105,12 @@ function toggleCommDue(isDue) {
   }
 }
 
+/**
+ * Produces a countdown label describing the remaining time until the next cadence.
+ *
+ * @param {number} ms - Milliseconds until the next communication.
+ * @returns {string} Human-readable countdown string.
+ */
 function formatCountdown(ms) {
   const totalSeconds = Math.max(0, Math.round(ms / 1000));
   const mins = Math.floor(totalSeconds / 60);
@@ -84,6 +126,10 @@ function formatCountdown(ms) {
   return `${secs}s`;
 }
 
+/**
+ * Syncs cadence radio inputs with the stored cadence value.
+ * Mutates radio selection state which is shared across the module.
+ */
 function updateCadenceRadios() {
   const { cadenceRadios } = ensureRefs();
   if (!cadenceRadios || !cadenceRadios.length) return;
@@ -92,6 +138,10 @@ function updateCadenceRadios() {
   });
 }
 
+/**
+ * Re-renders the communications log list and toggle button to match stored entries.
+ * Manipulates DOM nodes and visibility flags based on the current log state.
+ */
 function updateCommLogUI() {
   const { logList, logToggleBtn } = ensureRefs();
   if (!logList) return;
@@ -147,6 +197,10 @@ function updateCommLogUI() {
   }
 }
 
+/**
+ * Refreshes the countdown display and due alerts based on the stored next due ISO.
+ * Handles toast notifications when the cadence becomes due.
+ */
 function updateCadenceState() {
   const { countdown } = ensureRefs();
   if (!countdown) return;
@@ -176,6 +230,10 @@ function updateCadenceState() {
   toggleCommDue(false);
 }
 
+/**
+ * Resets the cadence interval timer and triggers an immediate state refresh.
+ * Updates the shared `cadenceTimerId` to manage interval lifecycles.
+ */
 function scheduleCadenceTick() {
   if (cadenceTimerId) {
     clearInterval(cadenceTimerId);
@@ -184,6 +242,12 @@ function scheduleCadenceTick() {
   updateCadenceState();
 }
 
+/**
+ * Stores the next due date and syncs the manual time input and countdown timer.
+ * Mutates shared cadence state and ensures timers are running.
+ *
+ * @param {Date} date - The upcoming communication deadline.
+ */
 function setNextDue(date) {
   const { nextUpdateInput } = ensureRefs();
   if (!(date instanceof Date) || Number.isNaN(date.valueOf())) return;
@@ -196,6 +260,14 @@ function setNextDue(date) {
   scheduleCadenceTick();
 }
 
+/**
+ * Bootstraps the communications UI by wiring DOM references, handlers, and timers.
+ *
+ * @param {Object} [options] - Optional configuration hooks.
+ * @param {Function} [options.onSave] - Callback invoked whenever communications
+ * state changes require persistence.
+ * @param {Function} [options.showToast] - Callback invoked to present toast alerts.
+ */
 export function initializeCommunications({ onSave, showToast } = {}) {
   saveHandler = typeof onSave === 'function' ? onSave : () => {};
   toastHandler = typeof showToast === 'function' ? showToast : () => {};
@@ -205,6 +277,9 @@ export function initializeCommunications({ onSave, showToast } = {}) {
   scheduleCadenceTick();
 }
 
+/**
+ * Tears down the cadence interval timer so the module stops updating the DOM.
+ */
 export function disposeCommunications() {
   if (cadenceTimerId) {
     clearInterval(cadenceTimerId);
@@ -212,6 +287,12 @@ export function disposeCommunications() {
   }
 }
 
+/**
+ * Records a communication entry, updates the UI, and schedules the next cadence.
+ *
+ * @param {string} type - Communication type identifier (e.g., `internal` or `external`).
+ * @param {string} [message] - Optional freeform detail shown in the log.
+ */
 export function logCommunication(type, message = '') {
   const now = new Date();
   const iso = now.toISOString();
@@ -232,11 +313,19 @@ export function logCommunication(type, message = '') {
   saveHandler();
 }
 
+/**
+ * Toggles whether all communications or the condensed list are displayed.
+ */
 export function toggleLogVisibility() {
   commShowAll = !commShowAll;
   updateCommLogUI();
 }
 
+/**
+ * Updates the cadence selection and recalculates the next due timestamp.
+ *
+ * @param {string} value - Selected cadence value, typically minutes as a string.
+ */
 export function setCadence(value) {
   commCadence = value || '';
   dueToastShown = false;
@@ -261,6 +350,13 @@ export function setCadence(value) {
   saveHandler();
 }
 
+/**
+ * Applies a manually selected next update time and refreshes timers accordingly.
+ *
+ * @param {string} value - `HH:MM` formatted time from the manual next update input.
+ * @param {Object} [options] - Optional behaviour flags.
+ * @param {boolean} [options.skipSave=false] - Prevents calling the save handler when true.
+ */
 export function setManualNextUpdate(value, { skipSave = false } = {}) {
   const { nextUpdateInput } = ensureRefs();
   if (!value) {
@@ -294,6 +390,11 @@ export function setManualNextUpdate(value, { skipSave = false } = {}) {
   }
 }
 
+/**
+ * Collects the current communications state used for persistence.
+ *
+ * @returns {Object} Serializable state snapshot for storage.
+ */
 export function getCommunicationsState() {
   const { nextUpdateInput } = ensureRefs();
   return {
@@ -304,6 +405,15 @@ export function getCommunicationsState() {
   };
 }
 
+/**
+ * Restores persisted communications state and syncs DOM controls.
+ *
+ * @param {Object} [state] - Previously saved communications state payload.
+ * @param {string} [state.commCadence] - Stored cadence value.
+ * @param {Array} [state.commLog] - Previously logged communication entries.
+ * @param {string} [state.commNextDueIso] - ISO timestamp of the upcoming cadence.
+ * @param {string} [state.commNextUpdateTime] - Manual next update time input value.
+ */
 export function applyCommunicationsState(state = {}) {
   const { commCadence: cad = '', commLog: log = [], commNextDueIso: dueIso = '', commNextUpdateTime = '' } = state;
   commCadence = typeof cad === 'string' ? cad : '';
@@ -337,6 +447,11 @@ export function applyCommunicationsState(state = {}) {
   }
 }
 
+/**
+ * Exposes key DOM elements to consumers needing to attach additional listeners.
+ *
+ * @returns {Object} Map of communication control elements.
+ */
 export function getCommunicationElements() {
   const { internalBtn, externalBtn, logToggleBtn, nextUpdateInput, cadenceRadios } = ensureRefs();
   return { internalBtn, externalBtn, logToggleBtn, nextUpdateInput, cadenceRadios };
