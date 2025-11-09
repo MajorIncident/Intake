@@ -39,9 +39,14 @@ function createSource(kind) {
       if (!mocks) {
         throw new Error('kt mocks not initialised');
       }
-      export const getPossibleCauses = (...args) => mocks.getPossibleCauses(...args);
-      export const causeHasFailure = (...args) => mocks.causeHasFailure(...args);
-      export const buildHypothesisSentence = (...args) => mocks.buildHypothesisSentence(...args);
+      export const getPossibleCauses = (...args) => mocks.getPossibleCauses?.(...args) ?? [];
+      export const causeHasFailure = (...args) => mocks.causeHasFailure?.(...args) ?? false;
+      export const buildHypothesisSentence = (...args) => mocks.buildHypothesisSentence?.(...args) ?? '';
+      export const getObjectISField = (...args) => mocks.getObjectISField?.(...args) ?? null;
+      export const getDeviationISField = (...args) => mocks.getDeviationISField?.(...args) ?? null;
+      export const isObjectISDirty = (...args) => mocks.isObjectISDirty?.(...args) ?? false;
+      export const isDeviationISDirty = (...args) => mocks.isDeviationISDirty?.(...args) ?? false;
+      export const refreshAllTokenizedText = (...args) => mocks.refreshAllTokenizedText?.(...args);
     `;
   }
   if (kind === 'toast') {
