@@ -537,8 +537,19 @@ textarea.tableta{
   border:1px solid #dfe5f2; border-radius:12px; padding:12px 14px; outline:none;
   transition:border-color var(--speed), box-shadow var(--speed), background var(--speed);
 }
+textarea.tableta.tableta--muted{
+  background:#edf0f6;
+  border-color:#d7dcec;
+  color:var(--muted);
+}
 textarea.tableta::placeholder{color:#8b93a4;}
+textarea.tableta.tableta--muted::placeholder{color:#9ea6bb;}
 textarea.tableta:focus{border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,122,255,.18); background:#ffffff;}
+textarea.tableta.tableta--muted:focus{
+  background:#f5f7fb;
+  border-color:#c6cfe3;
+  box-shadow:0 0 0 4px rgba(0,122,255,.12);
+}
 
 .analysis-detail{
   display:flex;
