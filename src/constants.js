@@ -16,6 +16,7 @@
  * @typedef {Object} RowDefinition
  * @property {string} [band] - Section heading grouping related questions.
  * @property {string} [note] - Contextual helper text shown alongside the band.
+ * @property {string} [id] - Stable identifier used for persistence.
  * @property {string} [q] - Intake question template with `{OBJECT}` tokens.
  * @property {('p1'|'p2')} [priority] - Visual priority indicator for the row.
  * @property {string} [isPH] - Prompt for what is happening (Positive Hypothesis).
@@ -71,6 +72,7 @@ const ROWS_UNFROZEN = [
   { band: "WHAT", note: "Define the problem precisely (Object & Deviation)." },
 
   {
+    id: 'what-object',
     q: "WHAT — Specific Object/Thing is having the {DEVIATION}",
     priority: 'p1',
     isPH:
@@ -79,6 +81,7 @@ const ROWS_UNFROZEN = [
       "What similar objects could reasonably have, but do NOT have {DEVIATION}?"
   },
   {
+    id: 'what-deviation',
     q: "WHAT — Specific Deviation does the {OBJECT} have?",
     priority: 'p1',
     isPH:
@@ -90,6 +93,7 @@ const ROWS_UNFROZEN = [
   { band: "WHERE", note: "Locate the problem (geography/topology and on the object)." },
 
   {
+    id: 'where-location',
     q: "WHERE — is the {OBJECT} geographically/topology when the {DEVIATION} occurs?",
     priority: 'p1',
     isPH:
@@ -98,6 +102,7 @@ const ROWS_UNFROZEN = [
       "Where would you reasonably expect the {OBJECT} could have been when the {DEVIATION} was observed but we do NOT see it?"
   },
   {
+    id: 'where-on-object',
     q: "WHERE — On the {OBJECT} is the {DEVIATION} observed?",
     priority: 'p2',
     isPH:
@@ -109,6 +114,7 @@ const ROWS_UNFROZEN = [
   { band: "WHEN", note: "Timing and Description" },
 
   {
+    id: 'when-first-observed',
     q: "WHEN — Was the {DEVIATION} First observed for {OBJECT}",
     priority: 'p2',
     isPH:
@@ -117,6 +123,7 @@ const ROWS_UNFROZEN = [
       "When was the last known good for {OBJECT}? When reasonably could we have observed other {DEVIATION} on {OBJECT} but we did not?"
   },
   {
+    id: 'when-pattern',
     q: "WHEN — Since was the first time has {DEVIATION} been logged? What Pattern?",
     isPH:
       "Since first occurrence, when does {DEVIATION} re-occur?\n• What Pattern (continuous/periodic/sporadic/one time)",
@@ -124,6 +131,7 @@ const ROWS_UNFROZEN = [
       "What Similar windows/patterns of times is the {OBJECT} not having {DEVIATION}?"
   },
   {
+    id: 'when-description',
     q: "WHEN — Describe using words When the {DEVIATION} was first seen",
     isPH:
       "At what point in {OBJECT}’s life-cycle did {DEVIATION} appear?\n• Use words like before, during, or after to describe these times and consider multiple lifecycles",
@@ -134,6 +142,7 @@ const ROWS_UNFROZEN = [
   { band: "EXTENT", note: "How big is it? Magnitude, count, scope, trend." },
 
   {
+    id: 'extent-population',
     q: "EXTENT — What is the population or size of {OBJECT} affected?",
     isPH:
       "How many {OBJECT}s have {DEVIATION}?\nTrend (↑/↓/stable)?",
@@ -141,6 +150,7 @@ const ROWS_UNFROZEN = [
       "What population or Comparable object sets have not been affected"
   },
   {
+    id: 'extent-size',
     q: "EXTENT — What is the size of a single {DEVIATION}?",
     isPH:
       "How big is a single {DEVIATION} on {OBJECT}?\nTrend (↑/↓/stable)?",
@@ -148,6 +158,7 @@ const ROWS_UNFROZEN = [
       "What sizes could the {DEVIATION} reasonably have been but were not?"
   },
   {
+    id: 'extent-count',
     q: "EXTENT — How many {DEVIATION} are occuring on each {OBJECT}?",
     isPH:
       "How many instances of {DEVIATION} per {OBJECT}?\nTrend (↑/↓/stable)?",

@@ -89,6 +89,7 @@ let getDeviationFullFn = defaultGetDeviationFull;
 /**
  * @typedef {object} CauseImportRecord
  * @property {string} q - KT question text used as a row lookup key.
+ * @property {string} [questionId] - Stable question identifier when available.
  * @property {string} is - Evidence that *is* present.
  * @property {string} no - Evidence that *is not* present.
  * @property {string} di - Distinctions captured for the row.
@@ -109,6 +110,7 @@ let getDeviationFullFn = defaultGetDeviationFull;
  * @property {HTMLTextAreaElement} notTA - Textarea capturing IS NOT evidence.
  * @property {HTMLTextAreaElement} distTA - Textarea capturing distinctions.
  * @property {HTMLTextAreaElement} chgTA - Textarea capturing changes.
+ * @property {string} [questionId] - Stable identifier for the question row.
  * @property {string} [priority] - Optional priority label.
  * @property {string|null} [bandId] - Associated band grouping identifier.
  * @property {number} rowNumber - 1-based row number used for focus modes.
@@ -1705,6 +1707,78 @@ export function getTableElement(){
 }
 
 /**
+ * Determines whether a cached row binding represents a question with textareas.
+ * @param {KTRowBinding|object|null|undefined} binding - Candidate row metadata.
+ * @returns {boolean} True when the binding references a question row.
+ */
+function isQuestionRow(binding){
+  if(!binding || typeof binding !== 'object'){
+    return false;
+  }
+  return Boolean(binding.isTA && binding.notTA && binding.distTA && binding.chgTA);
+}
+
+/**
+ * Refreshes contextual placeholders for a given KT question binding.
+ * @param {KTRowBinding} binding - Row binding containing textarea references.
+ * @returns {void}
+ */
+function refreshQuestionPlaceholders(binding){
+  if(!isQuestionRow(binding)){
+    return;
+  }
+  const { def = {}, isTA, notTA, distTA, chgTA } = binding;
+  if(notTA){
+    notTA.placeholder = mkIsNotPH(fillTokens(def.notPH || ''), isTA?.value || '');
+  }
+  if(distTA){
+    distTA.placeholder = mkDistPH(isTA?.value || '', notTA?.value || '');
+  }
+  if(chgTA){
+    chgTA.placeholder = mkChangePH(distTA?.value || '');
+  }
+}
+
+/**
+ * Updates a KT question textarea using its stable identifier.
+ * @param {string} questionId - Stable identifier for the question row.
+ * @param {'is'|'no'|'di'|'ch'} field - Field slug representing the textarea.
+ * @param {string|number} value - Value to assign to the textarea.
+ * @returns {HTMLTextAreaElement|null} The textarea that received the update.
+ */
+export function updateQuestionField(questionId, field, value){
+  if(typeof questionId !== 'string' || !questionId.trim()){
+    return null;
+  }
+  const binding = rowsBuilt.find(row => row && row.questionId === questionId.trim());
+  if(!isQuestionRow(binding)){
+    return null;
+  }
+  const map = {
+    is: binding.isTA,
+    no: binding.notTA,
+    di: binding.distTA,
+    ch: binding.chgTA
+  };
+  const target = map[field];
+  if(!target){
+    return null;
+  }
+  let nextValue = '';
+  if(typeof value === 'string'){
+    nextValue = value;
+  }else if(typeof value === 'number'){
+    nextValue = String(value);
+  }
+  if(target.value !== nextValue){
+    target.value = nextValue;
+  }
+  autoResize(target);
+  refreshQuestionPlaceholders(binding);
+  return target;
+}
+
+/**
  * Serializes the KT table DOM into an exportable array structure.
  * @returns {(CauseImportRecord|BandImportRecord)[]} Persistable snapshot of the
  * table layout.
@@ -1719,13 +1793,18 @@ export function exportKTTableState(){
     }
     const th = tr.querySelector('th');
     const textareas = tr.querySelectorAll('textarea');
-    out.push({
+    const questionId = typeof tr.dataset.questionId === 'string' ? tr.dataset.questionId.trim() : '';
+    const record = {
       q: th?.textContent.trim() || '',
       is: textareas[0]?.value || '',
       no: textareas[1]?.value || '',
       di: textareas[2]?.value || '',
       ch: textareas[3]?.value || ''
-    });
+    };
+    if(questionId){
+      record.questionId = questionId;
+    }
+    out.push(record);
   });
   return out;
 }
@@ -1738,16 +1817,6 @@ export function exportKTTableState(){
 export function importKTTableState(tableData){
   if(!tbody) return;
   const data = Array.isArray(tableData) ? tableData : [];
-  let index = 0;
-  const nextRecord = () => {
-    while(index < data.length){
-      const candidate = data[index++];
-      if(candidate && !candidate.band){
-        return candidate;
-      }
-    }
-    return null;
-  };
   const normalizeValue = value => {
     if(typeof value === 'string'){
       return value;
@@ -1757,17 +1826,128 @@ export function importKTTableState(tableData){
     }
     return '';
   };
-  [...tbody.querySelectorAll('tr')].forEach(tr => {
-    if(tr.classList.contains('band')) return;
-    const th = tr.querySelector('th');
-    const label = th?.textContent.trim() || '';
-    const match = data.find(entry => entry && !entry.band && entry.q === label);
-    const record = match ?? nextRecord() ?? { is: '', no: '', di: '', ch: '' };
-    const textareas = tr.querySelectorAll('textarea');
-    if(textareas[0]){ textareas[0].value = normalizeValue(record.is); autoResize(textareas[0]); }
-    if(textareas[1]){ textareas[1].value = normalizeValue(record.no); autoResize(textareas[1]); }
-    if(textareas[2]){ textareas[2].value = normalizeValue(record.di); autoResize(textareas[2]); }
-    if(textareas[3]){ textareas[3].value = normalizeValue(record.ch); autoResize(textareas[3]); }
+  const questionEntries = [];
+  data.forEach(entry => {
+    if(entry && !entry.band){
+      questionEntries.push(entry);
+    }
+  });
+  const usedIndexes = new Set();
+  const byId = new Map();
+  const byLabel = new Map();
+  questionEntries.forEach((entry, idx) => {
+    const questionId = typeof entry.questionId === 'string' ? entry.questionId.trim() : '';
+    if(questionId && !byId.has(questionId)){
+      byId.set(questionId, { entry, index: idx });
+    }
+    const label = typeof entry.q === 'string' ? entry.q.trim() : '';
+    if(label){
+      const bucket = byLabel.get(label) || [];
+      bucket.push({ entry, index: idx });
+      byLabel.set(label, bucket);
+    }
+  });
+  let sequentialIndex = 0;
+  const claimSequential = () => {
+    while(sequentialIndex < questionEntries.length){
+      const idx = sequentialIndex++;
+      if(usedIndexes.has(idx)){
+        continue;
+      }
+      usedIndexes.add(idx);
+      return questionEntries[idx];
+    }
+    for(let i = 0; i < questionEntries.length; i += 1){
+      if(!usedIndexes.has(i)){
+        usedIndexes.add(i);
+        return questionEntries[i];
+      }
+    }
+    return null;
+  };
+  const claimById = id => {
+    if(!id) return null;
+    const ref = byId.get(id);
+    if(!ref) return null;
+    if(usedIndexes.has(ref.index)) return null;
+    usedIndexes.add(ref.index);
+    return ref.entry;
+  };
+  const claimByLabel = label => {
+    const key = (label || '').trim();
+    if(!key) return null;
+    const bucket = byLabel.get(key);
+    if(!bucket) return null;
+    for(const ref of bucket){
+      if(usedIndexes.has(ref.index)){
+        continue;
+      }
+      usedIndexes.add(ref.index);
+      return ref.entry;
+    }
+    return null;
+  };
+
+  let bindings = rowsBuilt.filter(binding => isQuestionRow(binding));
+  if(!bindings.length){
+    bindings = [...tbody.querySelectorAll('tr')]
+      .filter(tr => !tr.classList.contains('band'))
+      .map(tr => {
+        const th = tr.querySelector('th');
+        const textareas = tr.querySelectorAll('textarea');
+        return {
+          tr,
+          th,
+          def: {},
+          isTA: textareas[0] || null,
+          notTA: textareas[1] || null,
+          distTA: textareas[2] || null,
+          chgTA: textareas[3] || null,
+          questionId: typeof tr.dataset.questionId === 'string' ? tr.dataset.questionId.trim() : ''
+        };
+      })
+      .filter(binding => isQuestionRow(binding));
+  }
+  bindings.forEach(binding => {
+    const questionId = typeof binding.questionId === 'string' ? binding.questionId.trim() : '';
+    const label = binding.th?.textContent.trim() || '';
+    let record = questionId ? claimById(questionId) : null;
+    if(!record && label){
+      record = claimByLabel(label);
+    }
+    if(!record){
+      record = claimSequential();
+    }
+    const resolved = record || {};
+    const values = {
+      is: normalizeValue(resolved.is),
+      no: normalizeValue(resolved.no),
+      di: normalizeValue(resolved.di),
+      ch: normalizeValue(resolved.ch)
+    };
+    const textareaMap = {
+      is: binding.isTA,
+      no: binding.notTA,
+      di: binding.distTA,
+      ch: binding.chgTA
+    };
+    ['is', 'no', 'di', 'ch'].forEach(field => {
+      const val = values[field];
+      let updated = null;
+      if(questionId){
+        updated = updateQuestionField(questionId, field, val);
+      }
+      if(!updated){
+        const fallback = textareaMap[field];
+        if(fallback){
+          if(fallback.value !== val){
+            fallback.value = val;
+          }
+          autoResize(fallback);
+        }
+      }
+    });
+    refreshQuestionPlaceholders(binding);
   });
   refreshAllTokenizedText();
 }
@@ -1800,6 +1980,9 @@ function mkRow(def, i, bandId){
   if(bandId){
     tr.dataset.bandId = bandId;
   }
+  if(def.id){
+    tr.dataset.questionId = def.id;
+  }
   if(def.priority){
     tr.dataset.priority = def.priority;
   }
@@ -1824,33 +2007,36 @@ function mkRow(def, i, bandId){
   distTA.placeholder = mkDistPH('', '');
   chgTA.placeholder = mkChangePH('');
 
-    /**
-     * Refreshes the IS NOT placeholder using the latest IS textarea value.
-     * @returns {void}
-     */
-    const refreshIsNot = () => { notTA.placeholder = mkIsNotPH(fillTokens(def.notPH || ''), isTA.value); };
-    /**
-     * Refreshes the Distinctions placeholder using the current IS/IS NOT text.
-     * @returns {void}
-     */
-    const refreshDist = () => { distTA.placeholder = mkDistPH(isTA.value, notTA.value); };
-    /**
-     * Refreshes the Changes placeholder based on the Distinctions textarea.
-     * @returns {void}
-     */
-    const refreshChg = () => { chgTA.placeholder = mkChangePH(distTA.value); };
+  const fieldLookup = new Map([
+    [isTA, 'is'],
+    [notTA, 'no'],
+    [distTA, 'di'],
+    [chgTA, 'ch']
+  ]);
+
+  const binding = {
+    tr,
+    th,
+    def,
+    isTA,
+    notTA,
+    distTA,
+    chgTA,
+    questionId: def.id || '',
+    priority: def.priority || '',
+    bandId: bandId || null,
+    rowNumber: i
+  };
 
   [isTA, notTA, distTA, chgTA].forEach(t => {
     autoResize(t);
     t.addEventListener('input', () => {
       autoResize(t);
-      if(t === isTA){
-        refreshIsNot();
-        refreshDist();
-      }else if(t === notTA){
-        refreshDist();
-      }else if(t === distTA){
-        refreshChg();
+      const field = fieldLookup.get(t);
+      if(def.id && field){
+        updateQuestionField(def.id, field, t.value);
+      }else{
+        refreshQuestionPlaceholders(binding);
       }
       saveHandler();
       if(t === isTA || t === notTA){
@@ -1864,18 +2050,8 @@ function mkRow(def, i, bandId){
   tdIS.appendChild(isTA); tdNOT.appendChild(notTA); tdDIST.appendChild(distTA); tdCHG.appendChild(chgTA);
   tr.append(th, tdIS, tdNOT, tdDIST, tdCHG);
 
-  rowsBuilt.push({
-    tr,
-    th,
-    def,
-    isTA,
-    notTA,
-    distTA,
-    chgTA,
-    priority: def.priority || '',
-    bandId: bandId || null,
-    rowNumber: i
-  });
+  rowsBuilt.push(binding);
+  refreshQuestionPlaceholders(binding);
   return tr;
 }
 
