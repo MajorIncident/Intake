@@ -183,7 +183,7 @@ function updateStepsCategoryStates() {
       entry.completed += 1;
     }
   });
-  const categories = stepsList.querySelectorAll('details[data-phase]');
+  const categories = stepsList.querySelectorAll('.steps-category[data-phase]');
   categories.forEach(category => {
     const phaseId = category.dataset.phase;
     const counts = countsByPhase.get(phaseId);
@@ -287,12 +287,11 @@ function renderStepsList() {
   STEPS_PHASES.forEach(phase => {
     const items = grouped.get(phase.id);
     if (!items || !items.length) return;
-    const details = document.createElement('details');
-    details.className = 'steps-category';
-    details.dataset.phase = phase.id;
-    details.open = true;
-    const summary = document.createElement('summary');
-    summary.className = 'steps-category__header';
+    const category = document.createElement('section');
+    category.className = 'steps-category';
+    category.dataset.phase = phase.id;
+    const header = document.createElement('div');
+    header.className = 'steps-category__header';
     const textWrap = document.createElement('div');
     textWrap.className = 'steps-category__header-text';
     const phaseEl = document.createElement('span');
@@ -307,9 +306,9 @@ function renderStepsList() {
     chevron.className = 'steps-category__chevron';
     chevron.setAttribute('aria-hidden', 'true');
     chevron.textContent = '⌄';
-    summary.appendChild(textWrap);
-    summary.appendChild(chevron);
-    details.appendChild(summary);
+    header.appendChild(textWrap);
+    header.appendChild(chevron);
+    category.appendChild(header);
     const container = document.createElement('div');
     container.className = 'steps-category__items';
     items.forEach(step => {
@@ -328,11 +327,11 @@ function renderStepsList() {
       row.appendChild(label);
       container.appendChild(row);
     });
-    details.appendChild(container);
+    category.appendChild(container);
     if (items.every(step => step.checked)) {
-      details.classList.add('steps-category--complete');
+      category.classList.add('steps-category--complete');
     }
-    stepsList.appendChild(details);
+    stepsList.appendChild(category);
   });
   updateStepsCategoryStates();
 }
