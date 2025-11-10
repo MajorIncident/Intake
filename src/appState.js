@@ -185,9 +185,8 @@ export function applyAppState(data = {}) {
   applyPrefaceState({ pre, impact, ops: opsWithoutComms });
   applyCommunicationsState({ commCadence, commLog, commNextDueIso, commNextUpdateTime });
 
-  if (Array.isArray(table) && table.length) {
-    importKTTableState(table);
-  }
+  const normalizedTable = Array.isArray(table) ? table : [];
+  importKTTableState(normalizedTable);
 
   setTableFocusMode(savedFocusMode, { silent: true });
 

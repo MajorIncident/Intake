@@ -20,7 +20,8 @@ beforeEach(() => {
     setInterval: globalThis.setInterval,
     clearInterval: globalThis.clearInterval,
     localStorage: globalThis.localStorage,
-    sessionStorage: globalThis.sessionStorage
+    sessionStorage: globalThis.sessionStorage,
+    CustomEvent: globalThis.CustomEvent
   };
 
   dom = new JSDOM('<!doctype html><html><head></head><body></body></html>', {
@@ -56,6 +57,7 @@ beforeEach(() => {
   globalThis.clearInterval = window.clearInterval.bind(window);
   globalThis.localStorage = window.localStorage;
   globalThis.sessionStorage = window.sessionStorage;
+  globalThis.CustomEvent = window.CustomEvent;
 
   if (!window.HTMLElement.prototype.focus) {
     window.HTMLElement.prototype.focus = () => {};
@@ -99,6 +101,11 @@ afterEach(() => {
     globalThis.sessionStorage = previousGlobals.sessionStorage;
   } else {
     delete globalThis.sessionStorage;
+  }
+  if (previousGlobals.CustomEvent) {
+    globalThis.CustomEvent = previousGlobals.CustomEvent;
+  } else {
+    delete globalThis.CustomEvent;
   }
 
   previousGlobals = {};
@@ -333,4 +340,151 @@ test('main: start fresh restores the steps badge to 0 of 28', async () => {
   const toastArgs = showToastSpy.mock.calls.at(-1)?.arguments ?? [];
   assert.equal(toastArgs[0], 'Intake reset. Ready for a new incident ✨', 'toast message matches expectation');
   assert.equal(resetAnalysisSpy.mock.calls.length >= 2, true, 'analysis id cache cleared twice');
+});
+
+test('main: start fresh clears KT table evidence fields', async () => {
+  const { document } = globalThis;
+  document.body.innerHTML = `
+    <button id="genSummaryBtn"></button>
+    <button id="generateAiSummaryBtn"></button>
+    <button id="startFreshBtn"></button>
+    <button id="commsBtn"></button>
+    <button id="commsCloseBtn"></button>
+    <div id="commsBackdrop"></div>
+    <div id="causeList"></div>
+    <table>
+      <tbody id="tbody">
+        <tr>
+          <th>What is happening?</th>
+          <td><textarea id="ktIsField" class="tableta">System unavailable</textarea></td>
+          <td><textarea id="ktNotField" class="tableta">Feature X unaffected</textarea></td>
+          <td><textarea id="ktDistField" class="tableta">Only premium tenants</textarea></td>
+          <td><textarea id="ktChangeField" class="tableta">New deployment</textarea></td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+
+  const isField = document.getElementById('ktIsField');
+  const notField = document.getElementById('ktNotField');
+  const distField = document.getElementById('ktDistField');
+  const changeField = document.getElementById('ktChangeField');
+
+  process.env.TEST_STUB_MODULES = 'steps,commsDrawer,summary,preface,comms';
+
+  const realKT = await import(`../src/kt.js?actual=${Math.random()}`);
+  const autoResizeSpy = mock.fn();
+  realKT.configureKT({ autoResize: autoResizeSpy });
+
+  const realAppState = await import(`../src/appState.js?actual=${Math.random()}`);
+  const applySpy = mock.fn(state => realAppState.applyAppState(state));
+  const resetAnalysisSpy = mock.fn();
+
+  globalThis.__appStateMocks = {
+    getAnalysisId: () => 'analysis-old',
+    getLikelyCauseId: () => null,
+    collectAppState: mock.fn(() => ({})),
+    applyAppState: applySpy,
+    getSummaryState: mock.fn(() => ({})),
+    resetAnalysisId: resetAnalysisSpy
+  };
+
+  globalThis.__ktMocks = {
+    configureKT: mock.fn(),
+    initTable: mock.fn(),
+    ensurePossibleCausesUI: mock.fn(),
+    renderCauses: mock.fn(),
+    getPossibleCauses: mock.fn(() => []),
+    setPossibleCauses: mock.fn(),
+    focusFirstEditableCause: mock.fn(),
+    updateCauseEvidencePreviews: mock.fn(),
+    exportKTTableState: mock.fn(() => []),
+    importKTTableState: rows => realKT.importKTTableState(rows),
+    getRowsBuilt: mock.fn(() => []),
+    causeHasFailure: mock.fn(() => false),
+    causeStatusLabel: mock.fn(() => ''),
+    getLikelyCauseId: mock.fn(() => null),
+    setLikelyCauseId: mock.fn(),
+    countCauseAssumptions: mock.fn(() => 0),
+    evidencePairIndexes: mock.fn(() => []),
+    countCompletedEvidence: mock.fn(() => 0),
+    getRowKeyByIndex: mock.fn(() => ''),
+    peekCauseFinding: mock.fn(() => null),
+    findingMode: mock.fn(() => ''),
+    findingNote: mock.fn(() => ''),
+    buildHypothesisSentence: mock.fn(() => ''),
+    fillTokens: mock.fn(text => text),
+    getTableElement: mock.fn(() => document.getElementById('tbody')),
+    getTableFocusMode: mock.fn(() => ''),
+    setTableFocusMode: mock.fn()
+  };
+
+  const showToastSpy = mock.fn();
+  globalThis.__toastMocks = {
+    showToast: showToastSpy
+  };
+
+  globalThis.__stepsMocks = {
+    initStepsFeature: mock.fn(),
+    resetStepsState: mock.fn()
+  };
+  globalThis.__commsDrawerMocks = {
+    initCommsDrawer: mock.fn(),
+    toggleCommsDrawer: mock.fn(),
+    closeCommsDrawer: mock.fn()
+  };
+  globalThis.__summaryMocks = {
+    generateSummary: mock.fn(),
+    setSummaryStateProvider: mock.fn()
+  };
+  globalThis.__prefaceMocks = {
+    initPreface: mock.fn(),
+    autoResize: mock.fn(),
+    updatePrefaceTitles: mock.fn(),
+    startMirrorSync: mock.fn(),
+    setBridgeOpenedNow: mock.fn(),
+    getPrefaceState: mock.fn(() => ({ ops: {} })),
+    getObjectFull: mock.fn(() => ''),
+    getDeviationFull: mock.fn(() => '')
+  };
+  globalThis.__commsMocks = {
+    initializeCommunications: mock.fn(),
+    logCommunication: mock.fn(),
+    toggleLogVisibility: mock.fn(),
+    setCadence: mock.fn(),
+    setManualNextUpdate: mock.fn(),
+    getCommunicationElements: mock.fn(() => ({
+      internalBtn: null,
+      externalBtn: null,
+      logToggleBtn: null,
+      nextUpdateInput: null,
+      cadenceRadios: []
+    }))
+  };
+  globalThis.__actionsStoreMocks = {
+    listActions: mock.fn(() => []),
+    createAction: mock.fn(),
+    patchAction: mock.fn(),
+    removeAction: mock.fn(),
+    sortActions: mock.fn(),
+    exportActionsState: mock.fn(() => []),
+    importActionsState: mock.fn(() => []),
+    normalizeActionSnapshot: mock.fn(payload => payload ?? {})
+  };
+
+  await import(`../main.js?startFresh=${Math.random()}`);
+
+  document.dispatchEvent(new window.Event('DOMContentLoaded'));
+
+  const startFreshBtn = document.getElementById('startFreshBtn');
+  assert.ok(startFreshBtn, 'start fresh button renders');
+  startFreshBtn.click();
+
+  assert.equal(isField.value, '', 'IS textarea cleared');
+  assert.equal(notField.value, '', 'IS NOT textarea cleared');
+  assert.equal(distField.value, '', 'Distinctions textarea cleared');
+  assert.equal(changeField.value, '', 'Changes textarea cleared');
+  assert.equal(autoResizeSpy.mock.calls.length, 4, 'autoResize invoked for each KT textarea');
+  assert.equal(applySpy.mock.calls.length, 1, 'applyAppState invoked once');
+  assert.equal(resetAnalysisSpy.mock.calls.length >= 2, true, 'analysis id reset around start fresh');
 });
