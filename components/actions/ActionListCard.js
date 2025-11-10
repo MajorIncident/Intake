@@ -74,7 +74,20 @@ function announceActionListChange(detail = {}) {
  * @returns {void}
  */
 export function mountActionListCard(hostEl) {
-  const analysisId = getAnalysisId();
+  let cachedAnalysisId = typeof getAnalysisId() === 'string' ? getAnalysisId() : '';
+
+  /**
+   * Resolve the active analysis identifier, falling back to the last known value.
+   *
+   * @returns {string} Currently active analysis identifier or an empty string when unknown.
+   */
+  function getCurrentAnalysisId() {
+    const next = getAnalysisId();
+    if (typeof next === 'string' && next.trim()) {
+      cachedAnalysisId = next.trim();
+    }
+    return cachedAnalysisId;
+  }
 
   hostEl.innerHTML = `
     <section class="card" id="action-card">
@@ -164,6 +177,7 @@ export function mountActionListCard(hostEl) {
     closeBlockerDialog();
     closeCausePicker();
     refreshCauseLookup();
+    const analysisId = getCurrentAnalysisId();
     const items = listActions(analysisId);
     listEl.innerHTML = items.map(renderActionRow).join('');
     const itemMap = new Map(items.map(item => [item.id, item]));
@@ -205,6 +219,7 @@ export function mountActionListCard(hostEl) {
    * @returns {void}
    */
   function handleRefresh() {
+    const analysisId = getCurrentAnalysisId();
     sortActions(analysisId);
     render();
     toast('Actions sorted by priority and ETA.');
@@ -1127,6 +1142,7 @@ export function mountActionListCard(hostEl) {
   }
 
   function editSummary(id) {
+    const analysisId = getCurrentAnalysisId();
     const items = listActions(analysisId);
     const action = items.find(x => x.id === id);
     if (!action) return;
@@ -1208,6 +1224,7 @@ export function mountActionListCard(hostEl) {
   }
 
   function applyPatch(id, delta, onOk, onError) {
+    const analysisId = getCurrentAnalysisId();
     const res = patchAction(analysisId, id, delta);
     if (res && res.__error) {
       if (typeof onError === 'function') {
@@ -1339,6 +1356,7 @@ export function mountActionListCard(hostEl) {
    * @returns {void}
    */
   function advanceStatus(id) {
+    const analysisId = getCurrentAnalysisId();
     const items = listActions(analysisId);
     const it = items.find(x => x.id === id);
     if (!it) return;
@@ -1352,6 +1370,7 @@ export function mountActionListCard(hostEl) {
    * @returns {void}
    */
   function cyclePriority(id) {
+    const analysisId = getCurrentAnalysisId();
     const items = listActions(analysisId);
     const it = items.find(x => x.id === id);
     if (!it) return;
@@ -1359,6 +1378,7 @@ export function mountActionListCard(hostEl) {
     applyPatch(id, { priority: next });
   }
   function setOwner(id) {
+    const analysisId = getCurrentAnalysisId();
     const items = listActions(analysisId);
     const it = items.find(x => x.id === id);
     if (!it) return;
@@ -1370,6 +1390,7 @@ export function mountActionListCard(hostEl) {
     openOwnerDialog(it);
   }
   function setEta(id) {
+    const analysisId = getCurrentAnalysisId();
     const items = listActions(analysisId);
     const it = items.find(x => x.id === id);
     if (!it) return;
@@ -1392,6 +1413,7 @@ export function mountActionListCard(hostEl) {
   }
 
   function verifyAction(id) {
+    const analysisId = getCurrentAnalysisId();
     const items = listActions(analysisId);
     const it = items.find(x => x.id === id);
     if (!it) return;
@@ -1519,6 +1541,7 @@ export function mountActionListCard(hostEl) {
     });
   }
   function moreMenu(id, anchorEl) {
+    const analysisId = getCurrentAnalysisId();
     const items = listActions(analysisId);
     const it = items.find(x => x.id === id);
     if (!it || !anchorEl) return;
@@ -1610,6 +1633,7 @@ export function mountActionListCard(hostEl) {
         closeMoreMenu();
         if (action === 'delete') {
           if (confirm('Delete this action?')) {
+            const analysisId = getCurrentAnalysisId();
             removeAction(analysisId, id);
             render();
           }
@@ -1773,6 +1797,7 @@ export function mountActionListCard(hostEl) {
   function add() {
     const summary = input.value.trim();
     if (!summary) return;
+    const analysisId = getCurrentAnalysisId();
     const item = createAction(analysisId, { summary, links: { hypothesisId: getLikelyCauseId() || undefined } });
     if (item) { input.value = ''; render(); input.focus(); }
   }
