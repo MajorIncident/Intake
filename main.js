@@ -40,6 +40,7 @@ import {
   resetAnalysisId
 } from './src/appState.js';
 import { showToast } from './src/toast.js';
+import { exportAppStateToFile, importAppStateFromFile } from './src/fileTransfer.js';
 
 /**
  * Query the document for the first element that matches the provided CSS selector.
@@ -165,6 +166,7 @@ function boot() {
   wireCommsEvents();
   wireStartFreshButton();
   wireBridgeNowButton();
+  wireFileTransferControls();
   wireKeyboardShortcuts();
 }
 
@@ -243,6 +245,64 @@ function wireStartFreshButton() {
 function wireBridgeNowButton() {
   const btn = $('#bridgeSetNowBtn');
   on(btn, 'click', setBridgeOpenedNow);
+}
+
+/**
+ * Connects the Save/Load buttons to the file transfer helpers.
+ * @returns {void}
+ */
+function wireFileTransferControls() {
+  const saveBtn = $('#saveToFileBtn');
+  const loadBtn = $('#loadFromFileBtn');
+  const fileInput = $('#importFileInput');
+
+  on(saveBtn, 'click', () => {
+    const result = exportAppStateToFile();
+    if (result && typeof result === 'object') {
+      if (!result.success && result.error) {
+        console.error('Export failed:', result.error);
+      }
+      if (result.message) {
+        showToast(result.message);
+      }
+    }
+  });
+
+  if (loadBtn && fileInput) {
+    on(loadBtn, 'click', () => {
+      fileInput.value = '';
+      fileInput.click();
+    });
+
+    on(fileInput, 'change', async event => {
+      const input = event.target;
+      const file = input && input.files && input.files.length ? input.files[0] : null;
+      if (!file) {
+        return;
+      }
+
+      let result;
+      try {
+        result = await importAppStateFromFile(file);
+      } catch (error) {
+        console.error('Import failed:', error);
+        showToast('Import failed due to an unexpected error.');
+        input.value = '';
+        return;
+      }
+
+      input.value = '';
+
+      if (result && typeof result === 'object') {
+        if (!result.success && result.error) {
+          console.error('Import failed:', result.error);
+        }
+        if (result.message) {
+          showToast(result.message);
+        }
+      }
+    });
+  }
 }
 
 /**
