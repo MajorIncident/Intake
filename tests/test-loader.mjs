@@ -12,7 +12,8 @@ const conditionalStubMap = new Map([
   [new URL('./src/commsDrawer.js', projectRoot).href, 'commsDrawer'],
   [new URL('./src/summary.js', projectRoot).href, 'summary'],
   [new URL('./src/preface.js', projectRoot).href, 'preface'],
-  [new URL('./src/comms.js', projectRoot).href, 'comms']
+  [new URL('./src/comms.js', projectRoot).href, 'comms'],
+  [new URL('./src/fileTransfer.js', projectRoot).href, 'fileTransfer']
 ]);
 
 function shouldUseConditionalStub(kind) {
@@ -143,6 +144,19 @@ function createSource(kind) {
         return mocks;
       }
       export const showToast = (...args) => getMocks().showToast(...args);
+    `;
+  }
+  if (kind === 'fileTransfer') {
+    return `
+      function getMocks() {
+        const mocks = globalThis.__fileTransferMocks;
+        if (!mocks) {
+          throw new Error('fileTransfer mocks not initialised');
+        }
+        return mocks;
+      }
+      export const exportAppStateToFile = (...args) => getMocks().exportAppStateToFile?.(...args);
+      export const importAppStateFromFile = (...args) => getMocks().importAppStateFromFile?.(...args);
     `;
   }
   if (kind === 'steps') {

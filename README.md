@@ -6,6 +6,7 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 - Clone or download this repository.
 - Open `index.html` in any modern browser. No build step or server is required.
 - The page will load previous work from `localStorage` (keys: `kt-intake-full-v2` for the intake form and `kt-actions-by-analysis-v1` for action plans) and is immediately ready for edits, summary generation, or AI prompt creation.
+- Use the header controls to **Save to File** (exports a JSON snapshot) or **Load from File** (imports a previously saved snapshot) when you need to move an intake between browsers or machines.
 
 ## Entry Point & Boot Logic
 - `index.html` declares the full UI layout and loads the JavaScript bundle via `<script type="module" src="main.js"></script>`.
@@ -28,6 +29,7 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 | `src/comms.js` | Handles comms logging, cadence timers, and restoring the communications pane. |
 | `src/summary.js` | Generates formatted summaries and AI prompts; exposes `generateSummary()` and state providers. |
 | `src/toast.js` | Minimal toast notification system used by comms and global alerts. |
+| `src/fileTransfer.js` | Bridges `collectAppState()` / `applyAppState()` with Blob/FileReader APIs for Save/Load workflows. |
 | `components/actions/ActionListCard.js` | Renders the action list card UI, wires inline editing, and notifies listeners when actions change. |
 | `src/actionsStore.js` | Persists actions by analysis ID under `kt-actions-by-analysis-v1`, providing CRUD and sorting helpers for the card UI. |
 | `main.js` | Entry point that imports every module, wires shared events, and runs `boot()`. |
