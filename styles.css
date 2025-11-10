@@ -535,16 +535,16 @@ textarea.tableta{
   transition:border-color var(--speed), box-shadow var(--speed), background var(--speed);
 }
 textarea.tableta.tableta--muted{
-  background:#edf0f6;
-  border-color:#d7dcec;
+  background:#e2e6f0;
+  border-color:#c9d0e3;
   color:var(--muted);
 }
 textarea.tableta::placeholder{color:#8b93a4;}
-textarea.tableta.tableta--muted::placeholder{color:#9ea6bb;}
+textarea.tableta.tableta--muted::placeholder{color:#8f97ab;}
 textarea.tableta:focus{border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,122,255,.18); background:#ffffff;}
 textarea.tableta.tableta--muted:focus{
-  background:#f5f7fb;
-  border-color:#c6cfe3;
+  background:#ecf0f7;
+  border-color:#bcc6dd;
   box-shadow:0 0 0 4px rgba(0,122,255,.12);
 }
 
