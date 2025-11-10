@@ -1736,20 +1736,38 @@ export function exportKTTableState(){
  * @returns {void}
  */
 export function importKTTableState(tableData){
-  if(!tbody || !Array.isArray(tableData)) return;
+  if(!tbody) return;
+  const data = Array.isArray(tableData) ? tableData : [];
   let index = 0;
+  const nextRecord = () => {
+    while(index < data.length){
+      const candidate = data[index++];
+      if(candidate && !candidate.band){
+        return candidate;
+      }
+    }
+    return null;
+  };
+  const normalizeValue = value => {
+    if(typeof value === 'string'){
+      return value;
+    }
+    if(typeof value === 'number'){
+      return String(value);
+    }
+    return '';
+  };
   [...tbody.querySelectorAll('tr')].forEach(tr => {
     if(tr.classList.contains('band')) return;
     const th = tr.querySelector('th');
     const label = th?.textContent.trim() || '';
-    const match = tableData.find(entry => !entry.band && entry.q === label);
-    const record = match || tableData[index++];
-    if(!record) return;
+    const match = data.find(entry => entry && !entry.band && entry.q === label);
+    const record = match ?? nextRecord() ?? { is: '', no: '', di: '', ch: '' };
     const textareas = tr.querySelectorAll('textarea');
-    if(textareas[0]){ textareas[0].value = record.is || ''; autoResize(textareas[0]); }
-    if(textareas[1]){ textareas[1].value = record.no || ''; autoResize(textareas[1]); }
-    if(textareas[2]){ textareas[2].value = record.di || ''; autoResize(textareas[2]); }
-    if(textareas[3]){ textareas[3].value = record.ch || ''; autoResize(textareas[3]); }
+    if(textareas[0]){ textareas[0].value = normalizeValue(record.is); autoResize(textareas[0]); }
+    if(textareas[1]){ textareas[1].value = normalizeValue(record.no); autoResize(textareas[1]); }
+    if(textareas[2]){ textareas[2].value = normalizeValue(record.di); autoResize(textareas[2]); }
+    if(textareas[3]){ textareas[3].value = normalizeValue(record.ch); autoResize(textareas[3]); }
   });
   refreshAllTokenizedText();
 }
