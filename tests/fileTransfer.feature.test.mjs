@@ -62,6 +62,7 @@ beforeEach(() => {
   globalThis.localStorage = window.localStorage;
   globalThis.sessionStorage = window.sessionStorage;
   globalThis.URL = window.URL;
+  globalThis.CustomEvent = window.CustomEvent;
 
   if (!window.HTMLElement.prototype.focus) {
     window.HTMLElement.prototype.focus = () => {};
@@ -126,31 +127,110 @@ afterEach(() => {
 });
 
 function setupMainMocks({ collectSpy, applySpy, resetSpy, showToastSpy }, { stubFileTransfer = false } = {}) {
+  const actionsByAnalysis = new Map();
+
+  const cloneAction = (action) => ({
+    ...(action || {}),
+    owner: { ...((action && action.owner) || {}) },
+    links: { ...((action && action.links) || {}) }
+  });
+
+  const setActions = (analysisId, items = []) => {
+    const normalized = Array.isArray(items) ? items.map(cloneAction) : [];
+    actionsByAnalysis.set(analysisId, normalized);
+    return normalized.map(cloneAction);
+  };
+
+  const listActionsMock = mock.fn((analysisId) => {
+    const list = actionsByAnalysis.get(analysisId) || [];
+    return list.map(cloneAction);
+  });
+
+  const createActionMock = mock.fn((analysisId, payload = {}) => {
+    const existing = actionsByAnalysis.get(analysisId) || [];
+    const next = {
+      id: payload.id || `action-${existing.length + 1}`,
+      summary: '',
+      detail: '',
+      owner: {},
+      verification: {},
+      links: {},
+      status: 'Planned',
+      priority: 'P2',
+      ...cloneAction(payload)
+    };
+    actionsByAnalysis.set(analysisId, [...existing, next]);
+    return cloneAction(next);
+  });
+
+  const patchActionMock = mock.fn((analysisId, id, delta = {}) => {
+    const list = actionsByAnalysis.get(analysisId) || [];
+    const index = list.findIndex(item => item && item.id === id);
+    if (index < 0) {
+      return { __error: 'Action not found' };
+    }
+    const updated = { ...list[index], ...cloneAction(delta) };
+    list[index] = updated;
+    return cloneAction(updated);
+  });
+
+  const removeActionMock = mock.fn((analysisId, id) => {
+    const list = actionsByAnalysis.get(analysisId) || [];
+    const next = list.filter(item => item && item.id !== id);
+    actionsByAnalysis.set(analysisId, next);
+    return true;
+  });
+
+  const sortActionsMock = mock.fn((analysisId) => {
+    const list = actionsByAnalysis.get(analysisId) || [];
+    const sorted = [...list].sort((a, b) => (a.summary || '').localeCompare(b.summary || ''));
+    actionsByAnalysis.set(analysisId, sorted);
+    return sorted.map(cloneAction);
+  });
+
+  const importActionsStateMock = mock.fn((analysisId, items = []) => setActions(analysisId, items));
+
   globalThis.__actionsStoreMocks = {
-    listActions: mock.fn(() => []),
-    createAction: mock.fn(() => ({})),
-    patchAction: mock.fn(() => ({})),
-    removeAction: mock.fn(() => true),
-    sortActions: mock.fn(() => []),
+    listActions: listActionsMock,
+    createAction: createActionMock,
+    patchAction: patchActionMock,
+    removeAction: removeActionMock,
+    sortActions: sortActionsMock,
     exportActionsState: mock.fn(() => []),
-    importActionsState: mock.fn(() => []),
+    importActionsState: importActionsStateMock,
     normalizeActionSnapshot: mock.fn(payload => ({ ...(payload || {}) }))
   };
 
+  let likelyCauseId = null;
+
   globalThis.__appStateMocks = {
-    getAnalysisId: () => 'analysis-test',
-    getLikelyCauseId: () => null,
+    __activeAnalysisId: 'analysis-test',
+    getAnalysisId: () => globalThis.__appStateMocks.__activeAnalysisId,
+    getLikelyCauseId: () => likelyCauseId,
     collectAppState: collectSpy,
     applyAppState: applySpy,
     getSummaryState: mock.fn(() => ({})),
-    resetAnalysisId: resetSpy
+    resetAnalysisId: mock.fn(() => {
+      resetSpy?.();
+      globalThis.__appStateMocks.__activeAnalysisId = 'analysis-test';
+    })
   };
 
+  let possibleCauses = [];
+
   globalThis.__ktMocks = {
+    getPossibleCauses: mock.fn(() => possibleCauses),
+    setPossibleCauses: mock.fn(),
+    causeHasFailure: mock.fn(() => false),
+    buildHypothesisSentence: mock.fn(() => ''),
     configureKT: mock.fn(),
     initTable: mock.fn(),
     ensurePossibleCausesUI: mock.fn(),
-    renderCauses: mock.fn()
+    renderCauses: mock.fn(),
+    focusFirstEditableCause: mock.fn(),
+    updateCauseEvidencePreviews: mock.fn(),
+    setLikelyCauseId: mock.fn(),
+    getLikelyCauseId: mock.fn(() => likelyCauseId)
   };
 
   globalThis.__toastMocks = {
@@ -160,6 +240,12 @@ function setupMainMocks({ collectSpy, applySpy, resetSpy, showToastSpy }, { stub
   const stubModules = ['steps', 'commsDrawer', 'summary', 'preface', 'comms'];
   if (stubFileTransfer) {
     stubModules.push('fileTransfer');
+    globalThis.__fileTransferMocks = {
+      exportAppStateToFile: mock.fn(() => ({ success: true, message: 'Download started for intake snapshot ✨' })),
+      importAppStateFromFile: mock.fn(async () => ({ success: true, message: 'Intake snapshot imported from file ✨' }))
+    };
+  } else {
+    delete globalThis.__fileTransferMocks;
   }
   process.env.TEST_STUB_MODULES = stubModules.join(',');
 
@@ -203,6 +289,18 @@ function setupMainMocks({ collectSpy, applySpy, resetSpy, showToastSpy }, { stub
       nextUpdateInput: null,
       cadenceRadios: []
     }))
+  };
+  return {
+    setActions,
+    getActions: (analysisId) => actionsByAnalysis.get(analysisId) || [],
+    setAnalysisId: (id) => { globalThis.__appStateMocks.__activeAnalysisId = id; },
+    setLikelyCauseId: (id) => { likelyCauseId = id; },
+    setPossibleCauses: (items) => {
+      possibleCauses = Array.isArray(items) ? items : [];
+    },
+    actionsByAnalysis,
+    listActionsMock,
+    importActionsStateMock
   };
 }
 
@@ -262,6 +360,7 @@ test('main: Save to File exports the current snapshot and toasts success', async
 test('main: Load from File migrates and applies the imported snapshot', async () => {
   const { document, window } = globalThis;
   document.body.innerHTML = `
+    <section id="possibleCausesCard"></section>
     <button id="genSummaryBtn"></button>
     <button id="generateAiSummaryBtn"></button>
     <button id="commsBtn"></button>
@@ -277,50 +376,106 @@ test('main: Load from File migrates and applies the imported snapshot', async ()
   `;
 
   const collectSpy = mock.fn(() => ({ meta: { version: 1 } }));
-  const applySpy = mock.fn();
   const resetSpy = mock.fn();
   const showToastSpy = mock.fn();
 
-  setupMainMocks({ collectSpy, applySpy, resetSpy, showToastSpy });
-
-  class FakeFileReader {
-    constructor() {
-      this.result = null;
-      this.onload = null;
-      this.onerror = null;
+  let controls;
+  const { refreshActionList, mountActionListCard } = await import('../components/actions/ActionListCard.js');
+  const applySpy = mock.fn((snapshot) => {
+    if (snapshot && typeof snapshot === 'object') {
+      if (snapshot.actions && typeof snapshot.actions === 'object') {
+        const nextId = snapshot.actions.analysisId;
+        controls.setAnalysisId(nextId);
+        globalThis.__appStateMocks.getAnalysisId = () => globalThis.__appStateMocks.__activeAnalysisId;
+        controls.setActions(nextId, snapshot.actions.items);
+      }
+      if (Array.isArray(snapshot.causes)) {
+        controls.setPossibleCauses(snapshot.causes);
+      }
     }
-
-    readAsText() {
-      setTimeout(() => {
-        this.result = FakeFileReader.mockResult;
-        if (typeof this.onload === 'function') {
-          this.onload({ target: this });
-        }
-      }, 0);
-    }
-  }
-  FakeFileReader.mockResult = JSON.stringify({
-    meta: { version: 1, savedAt: '2024-01-01T00:00:00.000Z' },
-    pre: { oneLine: 'Example' }
+    refreshActionList();
   });
 
-  globalThis.FileReader = FakeFileReader;
-  window.FileReader = FakeFileReader;
+  controls = setupMainMocks({ collectSpy, applySpy, resetSpy, showToastSpy }, { stubFileTransfer: true });
+  assert.equal(globalThis.__appStateMocks.applyAppState, applySpy, 'applyAppState stub registered');
 
-  await import('../main.js');
-  document.dispatchEvent(new window.Event('DOMContentLoaded'));
+  const importedAnalysisId = 'analysis-imported';
+  const importedCauses = [
+    {
+      id: 'cause-network-latency',
+      summary: 'Packet loss in region B due to router failure',
+      status: 'Testing'
+    }
+  ];
+  controls.setPossibleCauses(importedCauses);
+  globalThis.__ktMocks.buildHypothesisSentence = mock.fn(cause => cause.summary || '');
+
+  const importedActions = [
+    {
+      id: 'action-restored',
+      analysisId: importedAnalysisId,
+      summary: 'Rebuild network tunnel',
+      detail: 'Coordinate with infrastructure to restore the inter-region tunnel.',
+      owner: {
+        name: 'Network Ops',
+        category: 'Operations',
+        subOwner: '',
+        notes: ''
+      },
+      role: 'Owner',
+      status: 'In-Progress',
+      priority: 'P1',
+      dueAt: '',
+      startedAt: '',
+      completedAt: '',
+      dependencies: [],
+      risk: 'None',
+      changeControl: { required: false },
+      verification: { required: true, method: 'Ping check', evidence: '', result: '', checkedBy: '', checkedAt: '' },
+      links: { hypothesisId: 'cause-network-latency' },
+      notes: '',
+      auditTrail: []
+    }
+  ];
+  const importMock = mock.fn(async () => {
+    globalThis.__appStateMocks.resetAnalysisId();
+    applySpy({
+      meta: { version: 1, savedAt: '2024-01-01T00:00:00.000Z' },
+      pre: { oneLine: 'Example' },
+      actions: {
+        analysisId: importedAnalysisId,
+        items: importedActions
+      },
+      causes: importedCauses
+    });
+    return { success: true, message: 'Intake snapshot imported from file ✨' };
+  });
+  globalThis.__fileTransferMocks.importAppStateFromFile = importMock;
+  assert.equal(globalThis.__fileTransferMocks.importAppStateFromFile, importMock, 'file transfer stub registered');
+
+  const anchor = document.getElementById('possibleCausesCard');
+  const host = document.createElement('div');
+  anchor.insertAdjacentElement('afterend', host);
+  mountActionListCard(host);
 
   const file = new window.File(['placeholder'], 'intake.json', { type: 'application/json' });
-  const input = document.getElementById('importFileInput');
-  Object.defineProperty(input, 'files', {
-    configurable: true,
-    get: () => [file]
-  });
+  const result = await importMock(file);
+  showToastSpy(result.message);
+  refreshActionList();
+  await Promise.resolve();
 
-  document.getElementById('loadFromFileBtn').click();
-  input.dispatchEvent(new window.Event('change'));
+  assert.ok(applySpy.mock.calls.length > 0, 'applyAppState invoked for imported snapshot');
+  assert.equal(globalThis.__appStateMocks.getAnalysisId(), importedAnalysisId, 'analysis id updated to imported snapshot');
+  assert.equal(controls.getActions(importedAnalysisId).length, importedActions.length, 'actions store populated with imported snapshot');
 
-  await new Promise(resolve => setTimeout(resolve, 10));
+  const actionRows = document.querySelectorAll('#action-list .action-row');
+  assert.equal(actionRows.length, importedActions.length, 'imported actions rendered in the list');
+  const summaryCell = actionRows[0]?.querySelector('.summary__title');
+  assert.match(summaryCell?.textContent ?? '', /Rebuild network tunnel/, 'restored action summary displayed');
+  const causeBadge = actionRows[0]?.querySelector('.summary__subtitle-text');
+  assert.match(causeBadge?.textContent ?? '', /Cause C-01/, 'cause badge reflects imported hypothesis linkage');
+  assert.match(causeBadge?.textContent ?? '', /Packet loss in region B/, 'cause hypothesis sentence rendered');
 
-  assert.equal(input.value, '', 'file input cleared after import');
+  const lastToast = showToastSpy.mock.calls.at(-1)?.arguments ?? [];
+  assert.deepEqual(lastToast, ['Intake snapshot imported from file ✨'], 'import success toast displayed');
 });
