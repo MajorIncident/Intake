@@ -132,6 +132,17 @@ const TABLE_MODE_ROWS = Object.freeze({
 });
 const DEFAULT_TABLE_FOCUS_MODE = 'rapid';
 
+/**
+ * Row prompts whose Distinctions/Changes fields should appear semi-disabled.
+ * @type {Set<string>}
+ */
+const SEMI_DISABLED_DISTINCTION_ROWS = new Set([
+  'WHAT — Specific Deviation does the {OBJECT} have?',
+  'EXTENT — What is the population or size of {OBJECT} affected?',
+  'EXTENT — What is the size of a single {DEVIATION}?',
+  'EXTENT — How many {DEVIATION} are occuring on each {OBJECT}?'
+]);
+
 const ROW_THEME_ASSIGNMENTS = Object.freeze({
   1: 'blue',
   2: 'blue',
@@ -1818,6 +1829,12 @@ function mkRow(def, i, bandId){
   const notTA = document.createElement('textarea'); notTA.className = 'tableta';
   const distTA = document.createElement('textarea'); distTA.className = 'tableta';
   const chgTA = document.createElement('textarea'); chgTA.className = 'tableta';
+
+  const semiDisabled = SEMI_DISABLED_DISTINCTION_ROWS.has(def.q);
+  if(semiDisabled){
+    distTA.classList.add('tableta--muted');
+    chgTA.classList.add('tableta--muted');
+  }
 
   isTA.placeholder = fillTokens(def.isPH || '');
   notTA.placeholder = mkIsNotPH(fillTokens(def.notPH || ''), '');
