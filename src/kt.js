@@ -356,10 +356,10 @@ export function isDeviationISDirty(){
 export function fillTokens(text){
   const obj = firstSnippet(objectIS?.value)
     || firstSnippet(getObjectFullFn())
-    || 'the object';
+    || 'object';
   const dev = firstSnippet(deviationIS?.value)
     || firstSnippet(getDeviationFullFn())
-    || 'the deviation';
+    || 'deviation';
   return (text || '')
     .replace(/\{OBJECT\}/g, `“${obj}”`)
     .replace(/\{DEVIATION\}/g, `“${dev}”`);
