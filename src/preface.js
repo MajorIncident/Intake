@@ -188,10 +188,10 @@ export function updatePrefaceTitles() {
   }
 
   if (labelNow) {
-    labelNow.textContent = objectAnchor ? `Describe now for ${objectAnchor}` : 'Describe now';
+    labelNow.textContent = objectAnchor ? `What is happening now to ${objectAnchor}?` : 'What is happening now?';
   }
   if (labelHealthy) {
-    labelHealthy.textContent = objectAnchor ? `Define normal for ${objectAnchor}` : 'Define normal';
+    labelHealthy.textContent = objectAnchor ? `What does healthy look like here for ${objectAnchor}?` : 'What does healthy look like?';
   }
 
   if (objectAnchor && now) {
