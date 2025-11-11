@@ -183,6 +183,11 @@ h2#docSubtitle{margin:12px 0 8px; font-size:16px; font-weight:700; color:#2a3957
   font-family:"SF Pro Display","SF Pro Text",-apple-system,system-ui,ui-sans-serif;
   font-size:15px; font-weight:700; letter-spacing:.32px; text-transform:uppercase; color:#1d2845;
 }
+.kt-section-title{
+  margin:0 0 16px;
+  font-family:"SF Pro Display","SF Pro Text",-apple-system,system-ui,ui-sans-serif;
+  font-size:15px; font-weight:700; letter-spacing:.32px; text-transform:uppercase; color:#1d2845;
+}
 .preface-stack{display:flex; flex-direction:column;}
 .grid{ display:grid; gap:12px; }
 .grid.cols-2{ grid-template-columns:1fr 1fr; }
