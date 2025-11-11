@@ -17,6 +17,7 @@ import { showToast } from '../../src/toast.js';
 const ACTIONS_UPDATED_EVENT = 'intake:actions-updated';
 const REFRESH_CLEANUP_KEY = Symbol('intake:action-list-refresh-cleanup');
 const refreshSubscribers = new Set();
+const ACTION_REORDER_HIGHLIGHT_DURATION_MS = 1100;
 
 /**
  * Adds a handler that will run when {@link refreshActionList} broadcasts a refresh.
@@ -75,6 +76,8 @@ function announceActionListChange(detail = {}) {
  */
 export function mountActionListCard(hostEl) {
   let cachedAnalysisId = typeof getAnalysisId() === 'string' ? getAnalysisId() : '';
+  let lastRenderedAnalysisId = '';
+  let lastRenderedOrder = [];
 
   /**
    * Resolve the active analysis identifier, falling back to the last known value.
@@ -181,7 +184,23 @@ export function mountActionListCard(hostEl) {
     closeCausePicker();
     refreshCauseLookup();
     const analysisId = getCurrentAnalysisId();
-    const items = listActions(analysisId);
+    if (analysisId !== lastRenderedAnalysisId) {
+      lastRenderedAnalysisId = analysisId;
+      lastRenderedOrder = [];
+    }
+    const sourceItems = listActions(analysisId);
+    const items = Array.isArray(sourceItems)
+      ? sourceItems.filter(item => item && typeof item.id === 'string')
+      : [];
+    const currentOrder = items.map(item => item.id);
+    const previousPositions = new Map(lastRenderedOrder.map((id, index) => [id, index]));
+    const reorderedIds = new Set();
+    currentOrder.forEach((id, index) => {
+      const previousIndex = previousPositions.get(id);
+      if (typeof previousIndex === 'number' && previousIndex !== index) {
+        reorderedIds.add(id);
+      }
+    });
     listEl.innerHTML = items.map(renderActionRow).join('');
     const itemMap = new Map(items.map(item => [item.id, item]));
 
@@ -211,8 +230,15 @@ export function mountActionListCard(hostEl) {
       }
       row.addEventListener('keydown', (e) => keyControls(e, id));
       row.tabIndex = 0;
+      if (reorderedIds.has(id)) {
+        row.classList.add('action-row--reordered');
+        setTimeout(() => {
+          row.classList.remove('action-row--reordered');
+        }, ACTION_REORDER_HIGHLIGHT_DURATION_MS);
+      }
     });
 
+    lastRenderedOrder = currentOrder.slice();
     announceActionListChange({ total: items.length });
   }
 

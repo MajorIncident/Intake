@@ -642,6 +642,29 @@ textarea.tableta.tableta--muted:focus{
   box-shadow:0 6px 16px rgba(15,24,36,.06);
   transition:border-color var(--speed), box-shadow var(--speed), transform var(--speed);
 }
+.action-row--reordered{
+  animation:actionRowReordered 1100ms ease-out;
+}
+@keyframes actionRowReordered{
+  0%{
+    transform:translateY(-4px);
+    box-shadow:0 16px 32px rgba(0,122,255,.25);
+    border-color:rgba(0,122,255,.45);
+    background:linear-gradient(180deg,rgba(0,122,255,.18) 0%,rgba(0,122,255,.12) 100%);
+  }
+  60%{
+    transform:translateY(-1px);
+    box-shadow:0 10px 24px rgba(0,122,255,.18);
+    border-color:rgba(0,122,255,.3);
+    background:linear-gradient(180deg,rgba(0,122,255,.12) 0%,rgba(0,122,255,.08) 100%);
+  }
+  100%{
+    transform:translateY(0);
+    box-shadow:0 6px 16px rgba(15,24,36,.06);
+    border-color:#e4e8f4;
+    background:linear-gradient(180deg,#ffffff 0%,#f8faff 100%);
+  }
+}
 .action-row.is-selected{
   border-color:rgba(0,122,255,.45);
   box-shadow:0 8px 22px rgba(0,122,255,.18);
