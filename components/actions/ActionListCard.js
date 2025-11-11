@@ -17,6 +17,50 @@ import { showToast } from '../../src/toast.js';
 const ACTIONS_UPDATED_EVENT = 'intake:actions-updated';
 const REFRESH_CLEANUP_KEY = Symbol('intake:action-list-refresh-cleanup');
 const refreshSubscribers = new Set();
+const ACTION_REORDER_HIGHLIGHT_DURATION_MS = 1100;
+
+/**
+ * Derives identifiers that kept their relative ordering between renders.
+ *
+ * @param {string[]} previousOrder - Row identifiers from the prior render.
+ * @param {string[]} currentOrder - Row identifiers from the current render.
+ * @returns {Set<string>} Identifier set that preserved ordering.
+ */
+function computeStableSequence(previousOrder, currentOrder) {
+  if (!Array.isArray(previousOrder) || !Array.isArray(currentOrder)) {
+    return new Set();
+  }
+  const previousLength = previousOrder.length;
+  const currentLength = currentOrder.length;
+  if (previousLength === 0 || currentLength === 0) {
+    return new Set();
+  }
+  const matrix = Array.from({ length: previousLength + 1 }, () => new Array(currentLength + 1).fill(0));
+  for (let i = 1; i <= previousLength; i += 1) {
+    for (let j = 1; j <= currentLength; j += 1) {
+      if (previousOrder[i - 1] === currentOrder[j - 1]) {
+        matrix[i][j] = matrix[i - 1][j - 1] + 1;
+      } else {
+        matrix[i][j] = Math.max(matrix[i - 1][j], matrix[i][j - 1]);
+      }
+    }
+  }
+  const stable = [];
+  let i = previousLength;
+  let j = currentLength;
+  while (i > 0 && j > 0) {
+    if (previousOrder[i - 1] === currentOrder[j - 1]) {
+      stable.push(previousOrder[i - 1]);
+      i -= 1;
+      j -= 1;
+    } else if (matrix[i - 1][j] >= matrix[i][j - 1]) {
+      i -= 1;
+    } else {
+      j -= 1;
+    }
+  }
+  return new Set(stable);
+}
 
 /**
  * Adds a handler that will run when {@link refreshActionList} broadcasts a refresh.
@@ -75,6 +119,8 @@ function announceActionListChange(detail = {}) {
  */
 export function mountActionListCard(hostEl) {
   let cachedAnalysisId = typeof getAnalysisId() === 'string' ? getAnalysisId() : '';
+  let lastRenderedAnalysisId = '';
+  let lastRenderedOrder = [];
 
   /**
    * Resolve the active analysis identifier, falling back to the last known value.
@@ -181,7 +227,43 @@ export function mountActionListCard(hostEl) {
     closeCausePicker();
     refreshCauseLookup();
     const analysisId = getCurrentAnalysisId();
-    const items = listActions(analysisId);
+    if (analysisId !== lastRenderedAnalysisId) {
+      lastRenderedAnalysisId = analysisId;
+      lastRenderedOrder = [];
+    }
+    const sourceItems = listActions(analysisId);
+    const items = Array.isArray(sourceItems)
+      ? sourceItems.filter(item => item && typeof item.id === 'string')
+      : [];
+    const currentOrder = items.map(item => item.id);
+    const previousPositions = new Map(lastRenderedOrder.map((id, index) => [id, index]));
+    const movedIds = [];
+    const highlightTargets = new Set();
+    currentOrder.forEach((id, index) => {
+      const previousIndex = previousPositions.get(id);
+      const isNew = typeof previousIndex !== 'number';
+      const hasMoved = typeof previousIndex === 'number' && previousIndex !== index;
+      if (isNew) {
+        highlightTargets.add(id);
+        return;
+      }
+      if (hasMoved) {
+        movedIds.push(id);
+      }
+    });
+    if (highlightTargets.size === 0 && movedIds.length > 0) {
+      const stableIds = computeStableSequence(lastRenderedOrder, currentOrder);
+      movedIds.forEach(id => {
+        if (!stableIds.has(id)) {
+          highlightTargets.add(id);
+        }
+      });
+    }
+    if (highlightTargets.size === 0 && movedIds.length > 0) {
+      movedIds.forEach(id => {
+        highlightTargets.add(id);
+      });
+    }
     listEl.innerHTML = items.map(renderActionRow).join('');
     const itemMap = new Map(items.map(item => [item.id, item]));
 
@@ -211,8 +293,15 @@ export function mountActionListCard(hostEl) {
       }
       row.addEventListener('keydown', (e) => keyControls(e, id));
       row.tabIndex = 0;
+      if (highlightTargets.has(id)) {
+        row.classList.add('action-row--reordered');
+        setTimeout(() => {
+          row.classList.remove('action-row--reordered');
+        }, ACTION_REORDER_HIGHLIGHT_DURATION_MS);
+      }
     });
 
+    lastRenderedOrder = currentOrder.slice();
     announceActionListChange({ total: items.length });
   }
 
