@@ -824,7 +824,7 @@ export function buildSummaryText(stateInput, options = {}){
   const bridgeLines = [
     summaryLineRaw('Bridge Opened (UTC)', bridgeOpenedUtc?.value ?? document.getElementById('bridgeOpenedUtc')?.value),
     summaryLineRaw('Incident Commander', icName?.value ?? document.getElementById('icName')?.value),
-    summaryLineRaw('Bridge Coordinator', bcName?.value ?? document.getElementById('bcName')?.value),
+    summaryLineRaw('Broadscope Captain', bcName?.value ?? document.getElementById('bcName')?.value),
     summaryLineRaw('SEM/Ops Lead', semOpsName?.value ?? document.getElementById('semOpsName')?.value),
     summaryLineRaw('Severity', severity?.value ?? document.getElementById('severity')?.value)
   ];
