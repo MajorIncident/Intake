@@ -486,6 +486,66 @@ export function formatPossibleCausesSummary(stateInput){
 }
 
 /**
+ * Normalizes a due date or ETA field into ISO text when valid.
+ * @param {string|number|Date} value - Raw due date reference from an action.
+ * @returns {string} ISO timestamp or the original string when parsing fails.
+ */
+function formatActionEta(value){
+  if(!value) return '';
+  const raw = value instanceof Date ? value.toISOString() : value;
+  if(typeof raw !== 'string'){ return ''; }
+  const trimmed = raw.trim();
+  if(!trimmed){ return ''; }
+  const parsed = new Date(trimmed);
+  if(Number.isNaN(parsed.valueOf())){ return trimmed; }
+  return parsed.toISOString();
+}
+
+/**
+ * Converts the remediation actions list into readable bullet points.
+ * @param {object} [stateInput] - Optional state override; defaults to the registered provider when omitted.
+ * @returns {string} Bullet-formatted action summary with notes.
+ */
+export function formatActionsSummary(stateInput){
+  const state = resolveState(stateInput);
+  const actions = Array.isArray(state?.actions) ? state.actions : [];
+  if(!actions.length){
+    return '• No action items recorded.';
+  }
+
+  const lines = actions.map((action, index) => {
+    if(!action) return null;
+    const titleRaw = typeof action.summary === 'string' ? action.summary.trim() : '';
+    const fallbackTitle = typeof action.title === 'string' ? action.title.trim() : '';
+    const title = titleRaw || fallbackTitle || `Action ${index + 1}`;
+    const status = typeof action.status === 'string' && action.status.trim()
+      ? action.status.trim()
+      : 'Status unknown';
+    const priority = typeof action.priority === 'string' && action.priority.trim()
+      ? action.priority.trim()
+      : 'Priority unknown';
+    const eta = formatActionEta(action.dueAt);
+    const ownerName = typeof action?.owner?.name === 'string' && action.owner.name.trim()
+      ? action.owner.name.trim()
+      : 'Unassigned';
+    const metaParts = [`Status: ${status}`, `Priority: ${priority}`, `Owner: ${ownerName}`];
+    if(eta){ metaParts.push(`ETA: ${eta}`); }
+
+    const actionNotes = inlineSummaryText(action.notes);
+    const ownerNotes = inlineSummaryText(action?.owner?.notes);
+    const notesParts = [];
+    if(actionNotes){ notesParts.push(actionNotes); }
+    if(ownerNotes){ notesParts.push(`Owner Notes: ${ownerNotes}`); }
+    if(!notesParts.length){ notesParts.push('No notes provided.'); }
+    const notesText = notesParts.join(' | ');
+
+    return `• ${title} — ${metaParts.join(' | ')}. Notes: ${notesText}`;
+  }).filter(Boolean);
+
+  return lines.join('\n');
+}
+
+/**
  * Summarizes the task checklist, grouped by phase, to show overall completion
  * and outstanding categories.
  * @param {object} [stateInput] - Optional state override; defaults to the
@@ -870,6 +930,9 @@ export function buildSummaryText(stateInput, options = {}){
   }
   pushSection('— Possible Causes —', possibleSummary);
 
+  const actionsSummary = formatActionsSummary(state);
+  pushSection('— Action Items —', actionsSummary);
+
   const ktOut = formatKTTableSummary(state);
   if(ktOut.trim().length){
     pushSection('— KT IS / IS NOT —', ktOut);
@@ -1035,6 +1098,7 @@ I will paste all the known information next. Analyze it and reply with the two f
 
 export default {
   buildSummaryText,
+  formatActionsSummary,
   formatPossibleCausesSummary,
   formatStepsSummary,
   formatKTTableSummary,

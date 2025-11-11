@@ -74,6 +74,25 @@ test('summary: renders populated sections and normalises communication timestamp
     tbody: { querySelectorAll: () => [] }
   };
 
+  state.actions = [
+    {
+      summary: 'Build rollback plan',
+      status: 'In-Progress',
+      priority: 'P1',
+      dueAt: '2024-01-01T18:30:00Z',
+      notes: 'Investigating rollback paths',
+      owner: { name: 'Jordan Lee', notes: 'Coordinating with DB team' }
+    },
+    {
+      summary: 'Notify regulators',
+      status: 'Planned',
+      priority: 'P2',
+      dueAt: '',
+      notes: '',
+      owner: { name: 'Taylor Kim', notes: '' }
+    }
+  ];
+
   const text = buildSummaryText(state);
 
   assert.ok(text.includes('— Preface —'));
@@ -82,11 +101,23 @@ test('summary: renders populated sections and normalises communication timestamp
   assert.ok(text.includes('— Steps Checklist —'));
   assert.ok(text.includes('— ⭐ Likely Cause —'));
   assert.ok(text.includes('— Possible Causes —'));
+  assert.ok(text.includes('— Action Items —'));
 
   assert.match(
     text,
     /— Communications —\nLast Internal Update: 2024-01-01T15:00:00\.000Z\nLast External Update: 2024-01-01T15:30:00\.000Z\nNext Update: 2024-01-01T16:00:00\.000Z/
   );
+
+  const possibleIndex = text.indexOf('— Possible Causes —');
+  const actionsIndex = text.indexOf('— Action Items —');
+  const ktIndex = text.indexOf('— KT IS / IS NOT —');
+  assert.ok(possibleIndex >= 0 && actionsIndex > possibleIndex, 'Action section should follow possible causes');
+  if(ktIndex >= 0){
+    assert.ok(ktIndex > actionsIndex, 'KT section should follow actions');
+  }
+
+  assert.ok(text.includes('• Build rollback plan — Status: In-Progress | Priority: P1 | Owner: Jordan Lee | ETA: 2024-01-01T18:30:00.000Z. Notes: Investigating rollback paths | Owner Notes: Coordinating with DB team'));
+  assert.ok(text.includes('• Notify regulators — Status: Planned | Priority: P2 | Owner: Taylor Kim. Notes: No notes provided.'));
 });
 
 
@@ -136,7 +167,8 @@ test('summary: omits optional sections when inputs are empty', () => {
     countCompletedEvidence: () => 0,
     causeHasFailure: () => false,
     causeStatusLabel: () => '',
-    tbody: { querySelectorAll: () => [] }
+    tbody: { querySelectorAll: () => [] },
+    actions: []
   };
 
   const text = buildSummaryText(state);
@@ -148,6 +180,8 @@ test('summary: omits optional sections when inputs are empty', () => {
   assert.ok(!text.includes('— ⭐ Likely Cause —'));
   assert.ok(text.includes('— Possible Causes —'));
   assert.ok(text.includes('No possible causes captured.'));
+  assert.ok(text.includes('— Action Items —'));
+  assert.ok(text.includes('No action items recorded.'));
 });
 
 
@@ -212,6 +246,8 @@ test('summary: generateSummary writes output to the summary card', async () => {
     tbody: { querySelectorAll: () => [] },
     showToast: mock.fn(() => {})
   };
+
+  state.actions = [];
 
   const expected = buildSummaryText(state);
 

@@ -237,6 +237,8 @@ export function getSummaryState() {
   const summaryElements = getSummaryElements();
   const commElements = getCommunicationElements();
   const commState = getCommunicationsState();
+  const analysisId = getAnalysisId();
+  const actions = listActions(analysisId);
   return {
     ...summaryElements,
     getContainmentStatus,
@@ -267,7 +269,8 @@ export function getSummaryState() {
     likelyCauseId: getLikelyCauseId(),
     getObjectFull,
     getDeviationFull,
-    showToast
+    showToast,
+    actions: Array.isArray(actions) ? actions : []
   };
 }
 
