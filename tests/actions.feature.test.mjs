@@ -598,3 +598,88 @@ test('appState: applyAppState adopts imported action snapshots and updates the c
 
   host.remove();
 });
+
+test('actions: remounting releases the global shortcut handler', async (t) => {
+  const actions = [
+    makeAction({ id: 'action-alpha', summary: 'Alpha build recovery' })
+  ];
+
+  const actionsStoreMocks = {
+    listActions: mock.fn(() => actions),
+    createAction: mock.fn(() => null),
+    patchAction: mock.fn(() => null),
+    removeAction: mock.fn(() => null),
+    sortActions: mock.fn(() => null),
+    normalizePriorityLabel: mock.fn((priority) => priority)
+  };
+  const previousActionsMocks = globalThis.__actionsStoreMocks;
+  globalThis.__actionsStoreMocks = actionsStoreMocks;
+
+  const appStateMocks = {
+    getAnalysisId: () => ANALYSIS_ID,
+    getLikelyCauseId: () => null
+  };
+  const previousAppStateMocks = globalThis.__appStateMocks;
+  globalThis.__appStateMocks = appStateMocks;
+
+  const ktMocks = {
+    getPossibleCauses: () => [],
+    causeHasFailure: () => false,
+    buildHypothesisSentence: () => ''
+  };
+  const previousKtMocks = globalThis.__ktMocks;
+  globalThis.__ktMocks = ktMocks;
+
+  const toastMocks = {
+    showToast: () => {}
+  };
+  const previousToastMocks = globalThis.__toastMocks;
+  globalThis.__toastMocks = toastMocks;
+
+  t.after(() => {
+    if (previousActionsMocks) {
+      globalThis.__actionsStoreMocks = previousActionsMocks;
+    } else {
+      delete globalThis.__actionsStoreMocks;
+    }
+    if (previousAppStateMocks) {
+      globalThis.__appStateMocks = previousAppStateMocks;
+    } else {
+      delete globalThis.__appStateMocks;
+    }
+    if (previousKtMocks) {
+      globalThis.__ktMocks = previousKtMocks;
+    } else {
+      delete globalThis.__ktMocks;
+    }
+    if (previousToastMocks) {
+      globalThis.__toastMocks = previousToastMocks;
+    } else {
+      delete globalThis.__toastMocks;
+    }
+  });
+
+  const { mountActionListCard } = await import('../components/actions/ActionListCard.js');
+
+  const host = document.createElement('div');
+  document.body.append(host);
+
+  mountActionListCard(host);
+  const firstInput = host.querySelector('#action-new');
+  assert.ok(firstInput, 'first mount renders quick add input');
+  const firstFocusSpy = mock.fn();
+  firstInput.focus = firstFocusSpy;
+
+  mountActionListCard(host);
+  const secondInput = host.querySelector('#action-new');
+  assert.ok(secondInput, 'second mount renders quick add input');
+  const secondFocusSpy = mock.fn();
+  secondInput.focus = secondFocusSpy;
+
+  document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'n', bubbles: true }));
+
+  assert.equal(firstFocusSpy.mock.calls.length, 0, 'previous mount shortcut handler removed');
+  assert.equal(secondFocusSpy.mock.calls.length, 1, 'current mount handles shortcut once');
+
+  host.remove();
+});
