@@ -209,8 +209,8 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
   objectPrefill.dispatchEvent(new window.Event('input', { bubbles: true }));
   assert.equal(document.getElementById('docTitle').textContent, 'KT Intake');
   assert.equal(document.getElementById('docSubtitle').textContent, '');
-  assert.equal(document.getElementById('labelNow').textContent, 'What is happening now to the object?');
-  assert.equal(document.getElementById('labelHealthy').textContent, 'What does healthy look like here for the object?');
+  assert.equal(document.getElementById('labelNow').textContent, 'What is happening now to object?');
+  assert.equal(document.getElementById('labelHealthy').textContent, 'What does healthy look like here for object?');
 
   applyPrefaceState({
     ops: { containStatus: 'mitigation' }
