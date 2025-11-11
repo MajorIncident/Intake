@@ -172,8 +172,8 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
   objectPrefill.dispatchEvent(new window.Event('input', { bubbles: true }));
 
   assert.equal(objectISField.value, 'Edge Router service');
-  assert.equal(document.getElementById('labelNow').textContent, 'Describe now for Edge Router service');
-  assert.equal(document.getElementById('labelHealthy').textContent, 'Define normal for Edge Router service');
+  assert.equal(document.getElementById('labelNow').textContent, 'What is happening now to Edge Router service?');
+  assert.equal(document.getElementById('labelHealthy').textContent, 'What does healthy look like here for Edge Router service?');
   assert.equal(document.getElementById('docTitle').textContent, 'KT Intake');
   assert.equal(document.getElementById('docSubtitle').textContent, '');
   assert.equal(document.title, 'KT Intake');
@@ -193,15 +193,15 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
   assert.equal(document.getElementById('docTitle').textContent, 'Edge Router service — Traffic drop for users');
   assert.equal(document.getElementById('docSubtitle').textContent, '');
   assert.equal(document.title, 'Edge Router service — Traffic drop for users · KT Intake');
-  assert.equal(document.getElementById('labelHealthy').textContent, 'Define normal for Edge Router service');
+  assert.equal(document.getElementById('labelHealthy').textContent, 'What does healthy look like here for Edge Router service?');
 
   deviationISField.value = '';
   nowField.value = '';
   nowField.dispatchEvent(new window.Event('input', { bubbles: true }));
   assert.equal(document.getElementById('docTitle').textContent, 'KT Intake');
   assert.equal(document.getElementById('docSubtitle').textContent, '');
-  assert.equal(document.getElementById('labelNow').textContent, 'Describe now for Edge Router service');
-  assert.equal(document.getElementById('labelHealthy').textContent, 'Define normal for Edge Router service');
+  assert.equal(document.getElementById('labelNow').textContent, 'What is happening now to Edge Router service?');
+  assert.equal(document.getElementById('labelHealthy').textContent, 'What does healthy look like here for Edge Router service?');
   assert.equal(document.title, 'KT Intake');
 
   objectISField.value = '';
@@ -209,8 +209,8 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
   objectPrefill.dispatchEvent(new window.Event('input', { bubbles: true }));
   assert.equal(document.getElementById('docTitle').textContent, 'KT Intake');
   assert.equal(document.getElementById('docSubtitle').textContent, '');
-  assert.equal(document.getElementById('labelNow').textContent, 'Describe now for the object');
-  assert.equal(document.getElementById('labelHealthy').textContent, 'Define normal for the object');
+  assert.equal(document.getElementById('labelNow').textContent, 'What is happening now to object?');
+  assert.equal(document.getElementById('labelHealthy').textContent, 'What does healthy look like here for object?');
 
   applyPrefaceState({
     ops: { containStatus: 'mitigation' }
