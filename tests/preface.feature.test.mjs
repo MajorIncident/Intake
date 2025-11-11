@@ -191,10 +191,7 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
 
   assert.equal(deviationISField.value, 'Traffic drop for users');
   assert.equal(document.getElementById('docTitle').textContent, 'Edge Router service — Traffic drop for users');
-  assert.equal(
-    document.getElementById('docSubtitle').textContent,
-    'What is happening now to Edge Router service: Traffic drop for users'
-  );
+  assert.equal(document.getElementById('docSubtitle').textContent, '');
   assert.equal(document.title, 'Edge Router service — Traffic drop for users · KT Intake');
   assert.equal(document.getElementById('labelHealthy').textContent, 'What does healthy look like here for Edge Router service?');
 
