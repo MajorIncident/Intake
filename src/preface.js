@@ -182,7 +182,7 @@ export function updatePrefaceTitles() {
       docTitle.textContent = 'KT Intake';
     }
     if (docSubtitle) {
-      docSubtitle.textContent = 'Describe Problem';
+      docSubtitle.textContent = '';
     }
     document.title = 'KT Intake';
   }

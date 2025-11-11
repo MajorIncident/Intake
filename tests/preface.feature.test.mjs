@@ -92,7 +92,7 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
   document.body.innerHTML = `
     <main>
       <h1 id="docTitle">KT Intake</h1>
-      <p id="docSubtitle">Describe Problem</p>
+      <p id="docSubtitle"></p>
       <label id="labelNow" for="now"></label>
       <label id="labelHealthy" for="healthy"></label>
       <textarea id="oneLine"></textarea>
@@ -175,7 +175,7 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
   assert.equal(document.getElementById('labelNow').textContent, 'What is happening now to Edge Router service?');
   assert.equal(document.getElementById('labelHealthy').textContent, 'What does healthy look like here for Edge Router service?');
   assert.equal(document.getElementById('docTitle').textContent, 'KT Intake');
-  assert.equal(document.getElementById('docSubtitle').textContent, 'Describe Problem');
+  assert.equal(document.getElementById('docSubtitle').textContent, '');
   assert.equal(document.title, 'KT Intake');
 
   const oneLine = document.getElementById('oneLine');
@@ -202,7 +202,7 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
   nowField.value = '';
   nowField.dispatchEvent(new window.Event('input', { bubbles: true }));
   assert.equal(document.getElementById('docTitle').textContent, 'KT Intake');
-  assert.equal(document.getElementById('docSubtitle').textContent, 'Describe Problem');
+  assert.equal(document.getElementById('docSubtitle').textContent, '');
   assert.equal(document.getElementById('labelNow').textContent, 'What is happening now to Edge Router service?');
   assert.equal(document.getElementById('labelHealthy').textContent, 'What does healthy look like here for Edge Router service?');
   assert.equal(document.title, 'KT Intake');
@@ -211,7 +211,7 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
   objectPrefill.value = '';
   objectPrefill.dispatchEvent(new window.Event('input', { bubbles: true }));
   assert.equal(document.getElementById('docTitle').textContent, 'KT Intake');
-  assert.equal(document.getElementById('docSubtitle').textContent, 'Describe Problem');
+  assert.equal(document.getElementById('docSubtitle').textContent, '');
   assert.equal(document.getElementById('labelNow').textContent, 'What is happening now to the object?');
   assert.equal(document.getElementById('labelHealthy').textContent, 'What does healthy look like here for the object?');
 
