@@ -138,12 +138,9 @@ function createSource(kind) {
       export const setLikelyCauseId = (...args) => getMocks().setLikelyCauseId?.(...args);
       export const countCauseAssumptions = (...args) => getMocks().countCauseAssumptions?.(...args) ?? 0;
       export const evidencePairIndexes = (...args) => getMocks().evidencePairIndexes?.(...args) ?? [];
-      export const countCompletedEvidence = (...args) => getMocks().countCompletedEvidence?.(...args) ?? 0;
       export const getRowKeyByIndex = (...args) => getMocks().getRowKeyByIndex?.(...args) ?? '';
-      export const peekCauseFinding = (...args) => getMocks().peekCauseFinding?.(...args) ?? null;
-      export const findingMode = (...args) => getMocks().findingMode?.(...args) ?? '';
-      export const findingNote = (...args) => getMocks().findingNote?.(...args) ?? '';
       export const buildHypothesisSentence = (...args) => getMocks().buildHypothesisSentence?.(...args) ?? '';
+      export const buildCauseDecisionSummary = (...args) => getMocks().buildCauseDecisionSummary?.(...args) ?? '';
       export const fillTokens = (...args) => getMocks().fillTokens?.(...args) ?? '';
       export const getTableElement = (...args) => getMocks().getTableElement?.(...args) ?? null;
       export const getTableFocusMode = (...args) => getMocks().getTableFocusMode?.(...args) ?? '';

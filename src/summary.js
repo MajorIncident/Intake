@@ -6,7 +6,7 @@
  * possible cause progress into a cohesive block of text that can be copied or
  * shared with AI assistants.
  */
-import { CAUSE_FINDING_MODES, STEPS_PHASES } from './constants.js';
+import { STEPS_PHASES } from './constants.js';
 
 let stateProvider = () => ({ });
 
@@ -256,126 +256,6 @@ function nextUpdateSummaryLine(state){
   return '';
 }
 
-const CAUSE_STATUS_LABELS = Object.freeze({
-  not_tested: 'Not tested yet',
-  in_progress: 'Testing',
-  completed: 'Explains all evidence',
-  failed: 'Failed testing'
-});
-
-/**
- * Provides fallback labels for KT evidence dimensions.
- * @param {string} dim - Dimension key (WHAT, WHERE, WHEN, EXTENT).
- * @returns {string} Friendly description associated with the dimension.
- */
-function dimensionPhrase(dim){
-  switch((dim || '').toUpperCase()){
-    case 'WHAT':
-      return 'Describe the object/deviation';
-    case 'WHERE':
-      return 'Describe where it occurs';
-    case 'WHEN':
-      return 'Describe when it was first seen';
-    case 'EXTENT':
-      return 'Describe size/scope/impact';
-    default:
-      return 'Evidence detail';
-  }
-}
-
-/**
- * Builds aggregate evidence details for a possible cause, including progress
- * counts and rich bullet output sourced from KT evidence rows.
- * @param {object} state - Summary state accessor that exposes evidence lookup
- *   helpers (e.g., `evidencePairIndexes`, `peekCauseFinding`).
- * @param {object} cause - Possible cause record currently being summarized.
- * @returns {{total: number, complete: number, failedCount: number, evidenceBlock: string}}
- *   Breakdown of evidence completion and formatted walkthrough text.
- */
-function collectCauseEvidenceDetails(state, cause){
-  const evidenceIndexes = typeof state?.evidencePairIndexes === 'function'
-    ? state.evidencePairIndexes()
-    : [];
-  const total = evidenceIndexes.length;
-  const rows = Array.isArray(state?.rowsBuilt) ? state.rowsBuilt : [];
-  const canInspectEntries = typeof state?.peekCauseFinding === 'function'
-    && typeof state?.findingMode === 'function'
-    && typeof state?.findingNote === 'function';
-  const entries = [];
-
-  if(canInspectEntries){
-    evidenceIndexes.forEach(index => {
-      const key = typeof state?.getRowKeyByIndex === 'function'
-        ? state.getRowKeyByIndex(index)
-        : `row-${index}`;
-      const entry = state.peekCauseFinding(cause, key);
-      if(!entry) return;
-      const mode = state.findingMode(entry);
-      const rawNote = typeof state.findingNote === 'function' ? state.findingNote(entry) : '';
-      const note = typeof rawNote === 'string' ? rawNote.trim() : '';
-      if(!mode) return;
-      const row = rows[index];
-      const rawHeader = row?.def?.q || row?.th?.textContent || '';
-      let dimensionKey = '';
-      let dimensionDetail = '';
-      if(rawHeader){
-        const parts = rawHeader.split('—');
-        if(parts.length > 1){
-          dimensionKey = parts[0].trim().toUpperCase();
-          dimensionDetail = parts.slice(1).join('—').trim();
-        }else{
-          dimensionDetail = rawHeader.trim();
-        }
-      }
-      const formattedNote = note ? inlineText(note) : '';
-      entries.push({
-        mode,
-        note,
-        formattedNote,
-        dimensionKey,
-        dimensionDetail
-      });
-    });
-  }
-
-  const completedRaw = typeof state?.countCompletedEvidence === 'function'
-    ? state.countCompletedEvidence(cause, evidenceIndexes)
-    : entries.filter(entry => entry.note).length;
-  const complete = Math.max(0, Math.min(total, completedRaw || 0));
-
-  const failedCount = entries.filter(entry => entry.mode === CAUSE_FINDING_MODES.FAIL).length
-    || (typeof state?.causeHasFailure === 'function' && state.causeHasFailure(cause) ? 1 : 0);
-
-  const evidenceLines = entries.map(entry => {
-    const { mode, formattedNote, note, dimensionKey, dimensionDetail } = entry;
-    const header = dimensionKey
-      ? `${dimensionKey} — ${dimensionDetail || dimensionPhrase(dimensionKey)}`
-      : (dimensionDetail || dimensionPhrase(''));
-    let detail = '';
-    if(mode === CAUSE_FINDING_MODES.FAIL){
-      detail = formattedNote ? `Fails because: ${formattedNote}` : 'Fails';
-    }else if(mode === CAUSE_FINDING_MODES.YES){
-      detail = formattedNote ? `Pass: ${formattedNote}` : 'Pass';
-    }else if(mode === CAUSE_FINDING_MODES.ASSUMPTION){
-      detail = formattedNote ? `Needs assumption: ${formattedNote}` : 'Needs assumption';
-    }else{
-      detail = formattedNote || note || '';
-    }
-    return `  • ${header}\n    - ${detail}`;
-  });
-
-  const evidenceBlock = evidenceLines.length
-    ? `Evidence walkthrough:\n${evidenceLines.join('\n')}`
-    : '';
-
-  return {
-    total,
-    complete,
-    failedCount,
-    evidenceBlock
-  };
-}
-
 /**
  * Resolves a cause title, falling back to a numbered placeholder.
  * @param {object} cause - Cause entry that may contain a `title`.
@@ -397,39 +277,6 @@ function resolveCauseTitle(cause, index){
  * @param {{failedCount: number, total: number, complete: number}} details - Evidence metrics for the cause.
  * @returns {string} Human-friendly status string.
  */
-function describeCauseStatus(state, cause, details){
-  const statusRaw = typeof cause?.status === 'string' ? cause.status.trim().toLowerCase() : '';
-  if(statusRaw && CAUSE_STATUS_LABELS[statusRaw]){
-    return CAUSE_STATUS_LABELS[statusRaw];
-  }
-
-  if(typeof state?.causeStatusLabel === 'function'){
-    const label = state.causeStatusLabel(cause) || '';
-    const normalized = label.trim().toLowerCase();
-    if(normalized.includes('failed')) return CAUSE_STATUS_LABELS.failed;
-    if(normalized.includes('explains')) return CAUSE_STATUS_LABELS.completed;
-    if(normalized.includes('testing')) return CAUSE_STATUS_LABELS.in_progress;
-    if(normalized.includes('not tested') || normalized.includes('ready to test') || normalized.includes('waiting')){
-      return CAUSE_STATUS_LABELS.not_tested;
-    }
-    if(normalized.includes('draft') || normalized.includes('editing')){
-      return CAUSE_STATUS_LABELS.not_tested;
-    }
-  }
-
-  if(details.failedCount > 0) return CAUSE_STATUS_LABELS.failed;
-  if(details.total === 0){
-    return details.complete > 0 ? CAUSE_STATUS_LABELS.in_progress : CAUSE_STATUS_LABELS.not_tested;
-  }
-  if(details.complete >= details.total && details.total > 0){
-    return CAUSE_STATUS_LABELS.completed;
-  }
-  if(details.complete > 0){
-    return CAUSE_STATUS_LABELS.in_progress;
-  }
-  return CAUSE_STATUS_LABELS.not_tested;
-}
-
 /**
  * Converts the possible cause workspace into formatted text sections that show
  * likely and remaining hypotheses with evidence progress.
@@ -448,15 +295,16 @@ export function formatPossibleCausesSummary(stateInput){
   const buildHypothesisSentence = typeof state?.buildHypothesisSentence === 'function'
     ? state.buildHypothesisSentence
     : () => '';
+  const buildDecisionSummary = typeof state?.buildCauseDecisionSummary === 'function'
+    ? state.buildCauseDecisionSummary
+    : () => '';
   const likelyIdRaw = typeof state?.likelyCauseId === 'string' ? state.likelyCauseId.trim() : '';
   const likelyId = likelyIdRaw || null;
 
   const described = causes.map((cause, index) => {
     if(!cause) return null;
-    const details = collectCauseEvidenceDetails(state, cause);
-    const statusText = describeCauseStatus(state, cause, details);
-    const failFlag = details.failedCount > 0 ? ' • Failed on at least one check' : '';
     const summaryText = buildHypothesisSentence(cause) || '—';
+    const decisionText = buildDecisionSummary(cause) || 'Decision pending.';
     const confidenceRaw = typeof cause?.confidence === 'string' ? cause.confidence.trim().toLowerCase() : '';
     const confidenceLabel = confidenceRaw && ['low', 'medium', 'high'].includes(confidenceRaw)
       ? confidenceRaw.charAt(0).toUpperCase() + confidenceRaw.slice(1)
@@ -465,17 +313,13 @@ export function formatPossibleCausesSummary(stateInput){
 
     const lines = [
       `• ${resolveCauseTitle(cause, index)}: ${summaryText}`,
-      `  Status: ${statusText}`,
-      `  Progress: ${details.complete}/${details.total} evidence checks${failFlag}`
+      `  Decision: ${decisionText}`
     ];
     if(confidenceLabel){
       lines.push(`  Confidence: ${confidenceLabel}`);
     }
     if(evidenceNote){
       lines.push(`  Evidence: ${evidenceNote}`);
-    }
-    if(details.evidenceBlock){
-      lines.push(details.evidenceBlock);
     }
     return {
       id: typeof cause?.id === 'string' ? cause.id : `cause-${index}`,
