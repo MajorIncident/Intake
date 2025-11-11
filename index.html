@@ -70,88 +70,128 @@ Anchors present:
 
       <div class="card" id="problem-summary">
         <h3>Problem Summary</h3>
+        <p class="card-subtitle">What’s broken — one sentence</p>
         <div class="grid">
-          <div class="field">
-            <label for="oneLine">In one sentence, what is broken for you right now?</label>
+          <div class="field field--with-subtext">
+            <label for="oneLine">Describe the problem</label>
             <textarea id="oneLine" placeholder="" rows="2"></textarea>
+            <div class="field-subtext-container">
+              <button type="button" class="field-subtext-trigger" aria-label="Example: Describe the problem" aria-describedby="oneLine-subtext">
+                <span aria-hidden="true">?</span>
+              </button>
+              <span id="oneLine-subtext" class="field-subtext" role="tooltip">Example: Checkout API returning 500s; users cannot complete purchases.</span>
+            </div>
           </div>
         </div>
       </div>
 
       <div class="card" id="evidence-objects">
         <h3>Evidence &amp; Object</h3>
-        <div class="inline">
-          <span class="chip-label">Detection Source</span>
-          <div class="chipset" role="group" aria-label="Detection Source">
-            <div class="chip">
-              <input type="checkbox" id="detectMonitoring" />
-              <label for="detectMonitoring">Monitoring</label>
+        <div class="card-section">
+          <div class="card-section-header">
+            <h4>Evidence</h4>
+            <p class="card-section-subtitle">Prove it exists</p>
+          </div>
+          <div class="inline">
+            <span class="chip-label">Detection source</span>
+            <div class="chipset" role="group" aria-label="Detection source">
+              <div class="chip">
+                <input type="checkbox" id="detectMonitoring" />
+                <label for="detectMonitoring">Monitoring</label>
+              </div>
+              <div class="chip">
+                <input type="checkbox" id="detectUserReport" />
+                <label for="detectUserReport">User report</label>
+              </div>
+              <div class="chip">
+                <input type="checkbox" id="detectAutomation" />
+                <label for="detectAutomation">Automation</label>
+              </div>
+              <div class="chip">
+                <input type="checkbox" id="detectOther" />
+                <label for="detectOther">Other</label>
+              </div>
             </div>
-            <div class="chip">
-              <input type="checkbox" id="detectUserReport" />
-              <label for="detectUserReport">User Report</label>
+          </div>
+          <div class="inline">
+            <span class="chip-label">Evidence tags</span>
+            <div class="chipset" role="group" aria-label="Evidence tags">
+              <div class="chip">
+                <input type="checkbox" id="evScreenshot" />
+                <label for="evScreenshot">Screenshot</label>
+              </div>
+              <div class="chip">
+                <input type="checkbox" id="evLogs" />
+                <label for="evLogs">Logs</label>
+              </div>
+              <div class="chip">
+                <input type="checkbox" id="evMetrics" />
+                <label for="evMetrics">Metrics</label>
+              </div>
+              <div class="chip">
+                <input type="checkbox" id="evRepro" />
+                <label for="evRepro">Repro</label>
+              </div>
+              <div class="chip">
+                <input type="checkbox" id="evOther" />
+                <label for="evOther">Other</label>
+              </div>
             </div>
-            <div class="chip">
-              <input type="checkbox" id="detectAutomation" />
-              <label for="detectAutomation">Automation</label>
-            </div>
-            <div class="chip">
-              <input type="checkbox" id="detectOther" />
-              <label for="detectOther">Other</label>
+          </div>
+          <div class="grid">
+            <div class="field field--with-subtext">
+              <label for="proof">Show the evidence</label>
+              <textarea id="proof" placeholder=""></textarea>
+              <div class="field-subtext-container">
+                <button type="button" class="field-subtext-trigger" aria-label="Examples: Show the evidence" aria-describedby="proof-subtext">
+                  <span aria-hidden="true">?</span>
+                </button>
+                <span id="proof-subtext" class="field-subtext" role="tooltip">Examples: alerts, logs, metrics, screenshots, repro steps.</span>
+              </div>
             </div>
           </div>
         </div>
-        <div class="inline">
-          <span class="chip-label">Evidence Collected</span>
-          <div class="chipset" role="group" aria-label="Evidence Collected">
-            <div class="chip">
-              <input type="checkbox" id="evScreenshot" />
-              <label for="evScreenshot">Screenshot</label>
-            </div>
-            <div class="chip">
-              <input type="checkbox" id="evLogs" />
-              <label for="evLogs">Logs</label>
-            </div>
-            <div class="chip">
-              <input type="checkbox" id="evMetrics" />
-              <label for="evMetrics">Metrics</label>
-            </div>
-            <div class="chip">
-              <input type="checkbox" id="evRepro" />
-              <label for="evRepro">Repro</label>
-            </div>
-            <div class="chip">
-              <input type="checkbox" id="evOther" />
-              <label for="evOther">Other</label>
-            </div>
+        <div class="card-section">
+          <div class="card-section-header">
+            <h4>Object</h4>
+            <p class="card-section-subtitle">What is affected</p>
           </div>
-        </div>
-        <div class="grid cols-2">
-          <div class="field">
-            <label for="proof">What proves a deviation exists?</label>
-            <small>Examples: alerts, error messages, metric spikes/drops, log lines, screenshots, reproducible steps.</small>
-            <textarea id="proof" placeholder=""></textarea>
-          </div>
-          <div class="field">
-            <label for="objectPrefill">What is the specific object being affected?</label>
-            <small>Hardware name and model, Function/Module/Method, Container/Service/API, datastore/volume/bucket/table, network element, identity/policy/role, pipeline/job.</small>
+          <div class="field field--with-subtext">
+            <label for="objectPrefill">Name the object</label>
             <textarea id="objectPrefill" placeholder=""></textarea>
+            <div class="field-subtext-container">
+              <button type="button" class="field-subtext-trigger" aria-label="Examples: Name the object" aria-describedby="objectPrefill-subtext">
+                <span aria-hidden="true">?</span>
+              </button>
+              <span id="objectPrefill-subtext" class="field-subtext" role="tooltip">Be specific: service/module/container, cluster/region, role/policy, dataset/queue/topic.</span>
+            </div>
           </div>
         </div>
       </div>
 
       <div class="card" id="baseline-current">
         <h3>Baseline vs Current</h3>
+        <p class="card-subtitle">Normal vs now</p>
         <div class="grid cols-2">
-          <div class="field">
-            <label id="labelHealthy" for="healthy">What does healthy look like here?</label>
-            <small>What was the expected behavior?</small>
+          <div class="field field--with-subtext">
+            <label id="labelHealthy" for="healthy">Define normal</label>
             <textarea id="healthy" placeholder=""></textarea>
+            <div class="field-subtext-container">
+              <button type="button" class="field-subtext-trigger" aria-label="Example: Define normal" aria-describedby="healthy-subtext">
+                <span aria-hidden="true">?</span>
+              </button>
+              <span id="healthy-subtext" class="field-subtext" role="tooltip">Example: Latency &lt;150 ms; error rate &lt;1%.</span>
+            </div>
           </div>
-          <div class="field">
-            <label id="labelNow" for="now">What is happening now?</label>
-            <small>What has been verified and measured vs same baseline (same metrics as above)? What symptom is being presented?</small>
+          <div class="field field--with-subtext">
+            <label id="labelNow" for="now">Describe now</label>
             <textarea id="now" placeholder=""></textarea>
+            <div class="field-subtext-container">
+              <button type="button" class="field-subtext-trigger" aria-label="Example: Describe now" aria-describedby="now-subtext">
+                <span aria-hidden="true">?</span>
+              </button>
+              <span id="now-subtext" class="field-subtext" role="tooltip">Example: Latency &gt;3 s; error rate 27%; retries spiking.</span>
+            </div>
           </div>
         </div>
       </div>
@@ -166,29 +206,61 @@ Anchors present:
     <!-- [section:impact] start -->
     <div class="card impact">
       <h3>Impact</h3>
+      <p class="card-subtitle">Who, how much, when</p>
       <div class="grid cols-3 gap-24">
-        <div class="field">
-          <h3>Current Impact</h3>
-          <label for="impactNow">Current Impact</label>
-          <small>Who/what is affected now? Quantify: users/tenants/regions, transactions failing, SLI/SLO deltas (avail %, p95/p99, error %), data at risk (loss/corruption/exposure), workarounds.</small>
+        <div class="field field--with-subtext">
+          <div class="field-group-header">
+            <h4>Current Impact</h4>
+            <p class="field-group-subtitle">Affected right now</p>
+          </div>
+          <label for="impactNow">Quantify impact</label>
           <textarea id="impactNow" placeholder=""></textarea>
+          <div class="field-subtext-container">
+            <button type="button" class="field-subtext-trigger" aria-label="Examples: Quantify impact" aria-describedby="impactNow-subtext">
+              <span aria-hidden="true">?</span>
+            </button>
+            <span id="impactNow-subtext" class="field-subtext" role="tooltip">Users/regions/tenants, failed transactions, SLO/SLA deltas, data at risk, workarounds.</span>
+          </div>
         </div>
-        <div class="field">
-          <h3>Future Impact</h3>
-          <label for="impactFuture">Future Impact</label>
-          <small>If unresolved what happens? Blast radius growth, SLO/SLA breach, revenue/penalties, compliance, backlog/consumer lag, churn, on-call fatigue.</small>
+        <div class="field field--with-subtext">
+          <div class="field-group-header">
+            <h4>Future Impact</h4>
+            <p class="field-group-subtitle">If we do nothing</p>
+          </div>
+          <label for="impactFuture">Project risk</label>
           <textarea id="impactFuture" placeholder=""></textarea>
+          <div class="field-subtext-container">
+            <button type="button" class="field-subtext-trigger" aria-label="Examples: Project risk" aria-describedby="impactFuture-subtext">
+              <span aria-hidden="true">?</span>
+            </button>
+            <span id="impactFuture-subtext" class="field-subtext" role="tooltip">Blast radius growth, penalties, backlog/churn, compliance exposure.</span>
+          </div>
         </div>
-        <div class="field">
-          <h3>Timeframe</h3>
-          <label for="impactTime">Timeframe</label>
-          <small>When will the Future Impact become Current Impact? (Best Estimate). What deadlines/SLAs do we need to be aware of?</small>
+        <div class="field field--with-subtext">
+          <div class="field-group-header">
+            <h4>Timeframe</h4>
+            <p class="field-group-subtitle">Deadlines and SLAs</p>
+          </div>
+          <label for="impactTime">State deadlines</label>
           <textarea id="impactTime" placeholder=""></textarea>
+          <div class="field-subtext-container">
+            <button type="button" class="field-subtext-trigger" aria-label="Examples: State deadlines" aria-describedby="impactTime-subtext">
+              <span aria-hidden="true">?</span>
+            </button>
+            <span id="impactTime-subtext" class="field-subtext" role="tooltip">When future impact becomes current; SLA breach times.</span>
+          </div>
         </div>
       </div>
       <div class="grid cols-3 gap-24 containment-grid">
-        <fieldset class="field contain-status">
+        <fieldset class="field contain-status field--with-subtext">
           <legend>Service Recovery Stage</legend>
+          <p class="field-group-subtitle">Recovery status</p>
+          <div class="field-subtext-container">
+            <button type="button" class="field-subtext-trigger" aria-label="Tip: Service recovery stage" aria-describedby="containStatus-subtext">
+              <span aria-hidden="true">?</span>
+            </button>
+            <span id="containStatus-subtext" class="field-subtext" role="tooltip">Pick one to align updates.</span>
+          </div>
           <div class="containment-radios" role="radiogroup" aria-label="Service Recovery Stage">
             <div class="radio-option">
               <input type="radio" id="containAssessing" name="containStatus" value="assessing" />
@@ -200,7 +272,7 @@ Anchors present:
             </div>
             <div class="radio-option">
               <input type="radio" id="containStabilized" name="containStatus" value="stabilized" />
-              <label for="containStabilized">Stabilized/Workaround Active</label>
+              <label for="containStabilized">Stabilized/Workaround active</label>
             </div>
             <div class="radio-option">
               <input type="radio" id="containFixInProgress" name="containStatus" value="fixInProgress" />
@@ -220,9 +292,19 @@ Anchors present:
             </div>
           </div>
         </fieldset>
-        <div class="field containment-description">
-          <label for="containDesc">Containment Description</label>
-          <input type="text" id="containDesc" placeholder="What immediate step reduces risk?" />
+        <div class="field containment-description field--with-subtext">
+          <div class="field-group-header">
+            <h4>Containment Description</h4>
+            <p class="field-group-subtitle">First step that reduces risk</p>
+          </div>
+          <label for="containDesc">Contain the issue</label>
+          <input type="text" id="containDesc" placeholder="" />
+          <div class="field-subtext-container">
+            <button type="button" class="field-subtext-trigger" aria-label="Example: Contain the issue" aria-describedby="containDesc-subtext">
+              <span aria-hidden="true">?</span>
+            </button>
+            <span id="containDesc-subtext" class="field-subtext" role="tooltip">Example: Shift traffic from AZ-3 to stop error propagation.</span>
+          </div>
         </div>
       </div>
     </div>

@@ -179,9 +179,36 @@ h2#docSubtitle{margin:12px 0 8px; font-size:16px; font-weight:700; color:#2a3957
   padding:20px 22px 24px; margin:0 0 32px;
 }
 .card h3{
-  margin:0 0 16px;
+  margin:0 0 12px;
   font-family:"SF Pro Display","SF Pro Text",-apple-system,system-ui,ui-sans-serif;
   font-size:15px; font-weight:700; letter-spacing:.32px; text-transform:uppercase; color:#1d2845;
+}
+.card-subtitle{
+  margin:-4px 0 20px;
+  font-size:13px;
+  color:var(--muted);
+  line-height:1.5;
+}
+.card-section{margin:0 0 24px;}
+.card-section:last-of-type{margin-bottom:0;}
+.card-section-header,
+.field-group-header{display:flex; flex-direction:column; gap:4px; margin:0 0 16px;}
+.card-section-header h4,
+.field-group-header h4,
+.impact .field h4{
+  margin:0;
+  font-size:14px;
+  font-weight:700;
+  letter-spacing:-0.01em;
+  color:#1d2845;
+  font-family:"SF Pro Display","SF Pro Text",-apple-system,system-ui,ui-sans-serif;
+}
+.card-section-subtitle,
+.field-group-subtitle{
+  margin:0;
+  font-size:12px;
+  color:var(--muted);
+  line-height:1.5;
 }
 .kt-section-title{
   margin:0 0 12px;
@@ -214,6 +241,64 @@ h2#docSubtitle{margin:12px 0 8px; font-size:16px; font-weight:700; color:#2a3957
 .gap-24{ gap:24px; }
 .field label{display:block; font-weight:700; margin-bottom:6px;}
 .field small{display:block; color:var(--muted); margin-top:4px;}
+.field--with-subtext{position:relative;}
+.field--with-subtext label{padding-right:32px;}
+.field--with-subtext .field-group-header{padding-right:32px;}
+.field--with-subtext legend{padding-right:32px;}
+.field-subtext-container{
+  position:absolute;
+  top:0;
+  right:0;
+  display:inline-flex;
+  align-items:flex-start;
+  gap:6px;
+}
+.field-subtext-trigger{
+  appearance:none;
+  border:0;
+  background:#eef1f8;
+  color:#3b4962;
+  border-radius:999px;
+  width:24px;
+  height:24px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+  font-size:13px;
+  cursor:pointer;
+  transition:background var(--speed), color var(--speed), box-shadow var(--speed);
+}
+.field-subtext-trigger:hover{background:#e2e7f3; color:#1d2845;}
+.field-subtext-trigger:focus{
+  outline:none;
+  box-shadow:0 0 0 3px rgba(0,122,255,.2);
+  background:#dfe7ff;
+  color:#1d2845;
+}
+.field-subtext{
+  background:#f2f4f9;
+  border:1px solid #dfe5f2;
+  border-radius:10px;
+  padding:6px 8px;
+  font-size:12px;
+  color:#3b4962;
+  line-height:1.4;
+  box-shadow:0 10px 24px rgba(15,23,42,.12);
+  max-width:260px;
+  opacity:0;
+  transform:translateY(-6px);
+  transition:opacity var(--speed), transform var(--speed);
+  pointer-events:none;
+  z-index:5;
+}
+.field-subtext-container:hover .field-subtext,
+.field-subtext-container:focus-within .field-subtext{
+  opacity:1;
+  transform:translateY(0);
+  pointer-events:auto;
+}
+.field-subtext-trigger span{display:inline-block; line-height:1;}
 fieldset.field{border:0; padding:0; margin:0;}
 fieldset.field legend{font-weight:700; margin-bottom:6px; font-size:14px; color:#1d2845;}
 .field textarea, .field input[type="text"]{
@@ -295,34 +380,16 @@ fieldset.field legend{font-weight:700; margin-bottom:6px; font-size:14px; color:
 /* Impact strip */
 .impact{ padding:18px; }
 .impact > h3{
-  margin:0 0 18px;
+  margin:0 0 10px;
   font-size:17px;
   font-weight:700;
   letter-spacing:-0.02em;
   color:#1f2b40;
   font-family:"SF Pro Display","SF Pro Text",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 }
+.impact .card-subtitle{margin:0 0 24px; font-size:13px; color:var(--muted); line-height:1.5;}
 .impact .field{padding:4px 0;}
-.impact .field h3{
-  margin:0 0 6px;
-  font-size:15px;
-  font-weight:600;
-  letter-spacing:-0.015em;
-  color:#22324b;
-  font-family:"SF Pro Display","SF Pro Text",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-}
-.impact .field label{
-  font-size:13px;
-  font-weight:600;
-  letter-spacing:-0.01em;
-  color:#3b4962;
-  margin-bottom:8px;
-}
-.impact .field small{
-  font-size:12px;
-  line-height:1.55;
-  letter-spacing:0;
-}
+.impact .field label{font-size:13px; font-weight:600; letter-spacing:-0.01em; color:#3b4962; margin-bottom:8px;}
 .impact textarea{
   font-family:"SF Pro Text","SF Pro Display",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   font-size:14px;
