@@ -167,7 +167,7 @@ export function updatePrefaceTitles() {
 
   const objectFull = getObjectFull();
   const deviationFull = getDeviationFull();
-  const objectAnchor = compactText(objectFull, 80) || 'the object';
+  const objectAnchor = compactText(objectFull, 80) || 'object';
 
   if (objectFull && deviationFull) {
     if (docTitle) {
