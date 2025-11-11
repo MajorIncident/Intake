@@ -276,3 +276,86 @@ test('kt causes: updates evidence previews and emits toast/save callbacks', asyn
   assert.equal(toastSpy.mock.calls.length, 1, 'setLikelyCauseId emits a toast message');
   assert.equal(toastSpy.mock.calls[0].arguments[0], 'Likely Cause set to: Alpha subsystem.');
 });
+
+test('kt causes: hypothesis editor normalizes inputs and stores summary metadata', async () => {
+  const ktModule = await loadKtModule();
+  const rows = ktModule.getRowsBuilt();
+  rows.length = 0;
+
+  const saveSpy = mock.fn();
+  ktModule.configureKT({ autoResize: () => {}, onSave: saveSpy, showToast: () => {} });
+
+  const cause = {
+    id: 'cause-h1',
+    suspect: '',
+    accusation: '',
+    impact: '',
+    findings: {},
+    editing: true,
+    summaryText: '',
+    confidence: '',
+    evidence: ''
+  };
+  ktModule.setPossibleCauses([cause]);
+  ktModule.renderCauses();
+
+  const { document } = dom.window;
+  const previewBody = document.querySelector('.cause-hypothesis-form__preview-body');
+  assert.equal(previewBody.textContent, 'Add suspect, accusation, and impact to craft a strong hypothesis.');
+
+  const suspectArea = document.getElementById('cause-h1-suspect');
+  suspectArea.value = 'Primer lot 7C. ';
+  suspectArea.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  await new Promise(resolve => setTimeout(resolve, 250));
+
+  const accusationArea = document.getElementById('cause-h1-accusation');
+  accusationArea.value = 'Temperature 160°F';
+  accusationArea.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  await new Promise(resolve => setTimeout(resolve, 250));
+
+  const accusationHint = document.getElementById('cause-h1-accusation-hint');
+  assert.equal(accusationHint.hidden, false);
+  assert.match(accusationHint.textContent, /Try describing an action or condition/);
+
+  accusationArea.value = 'Changed to 160°F.';
+  accusationArea.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  await new Promise(resolve => setTimeout(resolve, 250));
+  assert.equal(accusationHint.hidden, true);
+
+  const impactArea = document.getElementById('cause-h1-impact');
+  impactArea.value = '  Uneven coverage and fisheyes..  ';
+  impactArea.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  await new Promise(resolve => setTimeout(resolve, 250));
+
+  assert.equal(
+    previewBody.textContent,
+    'We suspect Primer lot 7C because Changed to 160°F. This could lead to Uneven coverage and fisheyes.'
+  );
+
+  const metaToggle = document.querySelector('.hypothesis-meta-toggle');
+  assert.equal(metaToggle.textContent, 'Add supporting details');
+  metaToggle.click();
+
+  const mediumOption = document.querySelector('.hypothesis-confidence__option input[value="medium"]');
+  mediumOption.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+  assert.equal(cause.confidence, 'medium');
+  const selectedOption = document.querySelector('.hypothesis-confidence__option.is-selected input[value="medium"]');
+  assert.ok(selectedOption, 'selected confidence option receives styling state');
+
+  const evidenceArea = document.getElementById('cause-h1-evidence');
+  evidenceArea.value = '  Evidence from humidity logs  ';
+  evidenceArea.dispatchEvent(new dom.window.Event('blur', { bubbles: true }));
+  assert.equal(cause.evidence, 'Evidence from humidity logs');
+
+  const saveButton = document.querySelector('.cause-controls .btn-mini');
+  const beforeSaveCalls = saveSpy.mock.calls.length;
+  saveButton.click();
+  assert.equal(saveSpy.mock.calls.length, beforeSaveCalls + 1, 'saving the hypothesis persists state');
+  assert.equal(
+    cause.summaryText,
+    'We suspect Primer lot 7C because Changed to 160°F. This could lead to Uneven coverage and fisheyes.'
+  );
+  assert.equal(cause.suspect, 'Primer lot 7C');
+  assert.equal(cause.accusation, 'Changed to 160°F');
+  assert.equal(cause.impact, 'Uneven coverage and fisheyes');
+});
