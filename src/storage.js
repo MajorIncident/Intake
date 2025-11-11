@@ -11,7 +11,6 @@
  * `restoreFromStorage`, `clearStorage`).
  */
 
-import { CAUSE_FINDING_MODES, CAUSE_FINDING_MODE_VALUES } from './constants.js';
 import { APP_STATE_VERSION } from './appStateVersion.js';
 import { normalizeActionSnapshot, ACTIONS_STORAGE_KEY } from './actionsStore.js';
 import { STEPS_ITEMS_KEY, STEPS_DRAWER_KEY } from './steps.js';
@@ -19,21 +18,19 @@ import { COMMS_DRAWER_STORAGE_KEY } from './commsDrawer.js';
 /* eslint-enable jsdoc/require-jsdoc */
 
 /**
- * @typedef {object} CauseFinding
- * @property {string} mode - Normalized finding classification.
- * @property {string} note - Supporting note captured for the finding.
- */
-
-/**
  * @typedef {object} CauseRecord
  * @property {string} id - Stable identifier used for UI reconciliation.
  * @property {string} suspect - Primary suspect description.
  * @property {string} accusation - Hypothesis about the cause mechanics.
  * @property {string} impact - Summary of the incident impact.
- * @property {Record<string, CauseFinding>} findings - Evidence grouped by finding key.
  * @property {string} summaryText - Cached hypothesis summary sentence.
  * @property {('low'|'medium'|'high'|'')} confidence - Optional confidence metadata.
  * @property {string} evidence - Optional supporting evidence snippet.
+ * @property {('explains'|'conditional'|'does_not_explain'|'')} decision - Stored decision outcome.
+ * @property {string} explanation_is - Reasoning describing how the cause matches the IS evidence.
+ * @property {string} explanation_is_not - Reasoning describing why the cause does not appear in the IS NOT evidence.
+ * @property {string} assumptions - Assumptions that must hold for the cause to be valid.
+ * @property {{text: string, owner: string, eta: string}} next_test - Planned validation metadata.
  * @property {boolean} editing - Whether the UI currently edits the record.
  * @property {boolean} testingOpen - Whether the testing drawer is expanded.
 */
@@ -113,63 +110,20 @@ function generateCauseId() {
  * @param {unknown} mode - Candidate mode value to validate.
  * @returns {boolean} `true` when the mode is recognized.
  */
-function isValidFindingMode(mode) {
-  return typeof mode === 'string' && CAUSE_FINDING_MODE_VALUES.includes(mode);
+function normalizeDecisionValue(decision) {
+  if (typeof decision !== 'string') return '';
+  const trimmed = decision.trim().toLowerCase();
+  return ['explains', 'conditional', 'does_not_explain'].includes(trimmed) ? trimmed : '';
 }
 
-/**
- * Coerces persisted finding entries into the `{mode, note}` format.
- * @param {unknown} entry - Raw finding entry possibly stored in legacy shapes.
- * @returns {CauseFinding} Normalized finding record.
- */
-function normalizeFindingEntry(entry) {
-  const normalized = { mode: '', note: '' };
-  if (entry && typeof entry === 'object') {
-    if (typeof entry.mode === 'string') {
-      const mode = entry.mode.trim().toLowerCase();
-      if (isValidFindingMode(mode)) {
-        normalized.mode = mode;
-      }
-    }
-    if (typeof entry.note === 'string') {
-      normalized.note = entry.note;
-    } else if (typeof entry.note === 'number') {
-      normalized.note = String(entry.note);
-    }
-    const explainIs = typeof entry.explainIs === 'string' ? entry.explainIs.trim() : '';
-    const explainNot = typeof entry.explainNot === 'string' ? entry.explainNot.trim() : '';
-    if (!normalized.mode && (explainIs || explainNot)) {
-      normalized.mode = CAUSE_FINDING_MODES.YES;
-      normalized.note = [explainIs, explainNot].filter(Boolean).join('\n');
-    } else if (normalized.mode && !normalized.note && (explainIs || explainNot)) {
-      normalized.note = [explainIs, explainNot].filter(Boolean).join('\n');
-    }
-  } else if (typeof entry === 'string') {
-    normalized.mode = CAUSE_FINDING_MODES.YES;
-    normalized.note = entry;
+function normalizeNextTestValue(raw) {
+  if (!raw || typeof raw !== 'object') {
+    return { text: '', owner: '', eta: '' };
   }
-  return normalized;
-}
-
-/**
- * Extracts a normalized finding mode from an entry.
- * @param {unknown} entry - Finding entry to inspect.
- * @returns {string} Valid finding mode or an empty string.
- */
-function findingMode(entry) {
-  if (!entry || typeof entry !== 'object') return '';
-  const mode = typeof entry.mode === 'string' ? entry.mode : '';
-  return isValidFindingMode(mode) ? mode : '';
-}
-
-/**
- * Extracts the note associated with a finding entry.
- * @param {unknown} entry - Finding entry to inspect.
- * @returns {string} Finding note or an empty string.
- */
-function findingNote(entry) {
-  if (!entry || typeof entry !== 'object') return '';
-  return typeof entry.note === 'string' ? entry.note : '';
+  const text = typeof raw.text === 'string' ? raw.text : '';
+  const owner = typeof raw.owner === 'string' ? raw.owner : '';
+  const eta = typeof raw.eta === 'string' ? raw.eta : '';
+  return { text, owner, eta };
 }
 
 /**
@@ -581,22 +535,9 @@ export function serializeCauses(causes) {
   if (!Array.isArray(causes)) return [];
   return causes.map(cause => {
     const record = cause && typeof cause === 'object' ? cause : {};
-    const findings = {};
-    if (record.findings && typeof record.findings === 'object') {
-      Object.keys(record.findings).forEach(key => {
-        const normalized = normalizeFindingEntry(record.findings[key]);
-        const mode = findingMode(normalized);
-        const note = findingNote(normalized);
-        if (mode || note.trim()) {
-          findings[key] = { mode, note };
-          record.findings[key] = normalized;
-        } else {
-          delete record.findings[key];
-        }
-      });
-    }
     const confidenceRaw = typeof record.confidence === 'string' ? record.confidence.trim().toLowerCase() : '';
     const normalizedConfidence = ['low', 'medium', 'high'].includes(confidenceRaw) ? confidenceRaw : '';
+    const nextTest = normalizeNextTestValue(record.next_test);
     return {
       id: typeof record.id === 'string' && record.id ? record.id : generateCauseId(),
       suspect: typeof record.suspect === 'string' ? record.suspect : '',
@@ -605,7 +546,11 @@ export function serializeCauses(causes) {
       summaryText: typeof record.summaryText === 'string' ? record.summaryText : '',
       confidence: normalizedConfidence,
       evidence: typeof record.evidence === 'string' ? record.evidence : '',
-      findings,
+      decision: normalizeDecisionValue(record.decision),
+      explanation_is: typeof record.explanation_is === 'string' ? record.explanation_is : '',
+      explanation_is_not: typeof record.explanation_is_not === 'string' ? record.explanation_is_not : '',
+      assumptions: typeof record.assumptions === 'string' ? record.assumptions : '',
+      next_test: nextTest,
       editing: !!record.editing,
       testingOpen: !!record.testingOpen
     };
@@ -624,7 +569,8 @@ export function deserializeCauses(serialized) {
   return serialized.map(raw => {
     const confidenceRaw = typeof raw?.confidence === 'string' ? raw.confidence.trim().toLowerCase() : '';
     const normalizedConfidence = ['low', 'medium', 'high'].includes(confidenceRaw) ? confidenceRaw : '';
-    const cause = {
+    const nextTest = normalizeNextTestValue(raw?.next_test);
+    return {
       id: typeof raw?.id === 'string' ? raw.id : generateCauseId(),
       suspect: typeof raw?.suspect === 'string' ? raw.suspect : '',
       accusation: typeof raw?.accusation === 'string' ? raw.accusation : '',
@@ -632,21 +578,14 @@ export function deserializeCauses(serialized) {
       summaryText: typeof raw?.summaryText === 'string' ? raw.summaryText : '',
       confidence: normalizedConfidence,
       evidence: typeof raw?.evidence === 'string' ? raw.evidence : '',
-      findings: {},
+      decision: normalizeDecisionValue(raw?.decision),
+      explanation_is: typeof raw?.explanation_is === 'string' ? raw.explanation_is : '',
+      explanation_is_not: typeof raw?.explanation_is_not === 'string' ? raw.explanation_is_not : '',
+      assumptions: typeof raw?.assumptions === 'string' ? raw.assumptions : '',
+      next_test: nextTest,
       editing: !!raw?.editing,
       testingOpen: !!raw?.testingOpen
     };
-    if (raw && raw.findings && typeof raw.findings === 'object') {
-      Object.keys(raw.findings).forEach(key => {
-        const normalized = normalizeFindingEntry(raw.findings[key]);
-        const mode = findingMode(normalized);
-        const note = findingNote(normalized);
-        if (mode || note.trim()) {
-          cause.findings[key] = normalized;
-        }
-      });
-    }
-    return cause;
   });
 }
 
