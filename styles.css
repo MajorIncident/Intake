@@ -954,9 +954,9 @@ textarea.tableta.tableta--muted:focus{
 #action-card .chip--status[data-status="Deferred"],
 #action-card .chip--status[data-status="Cancelled"]{background:#f3f4f9; border-color:#e1e4ef; color:#5b6475;}
 #action-card .chip--priority{min-width:60px; font-variant-numeric:tabular-nums;}
-#action-card .chip--priority[data-priority="P1"]{background:#fdecec; border-color:#f5b9b9; color:#c13232;}
-#action-card .chip--priority[data-priority="P2"]{background:#fff4d6; border-color:#f9dca2; color:#a66a00;}
-#action-card .chip--priority[data-priority="P3"]{background:#f1f5ff; border-color:#d9e3ff; color:#1d45a6;}
+#action-card .chip--priority[data-priority="High"]{background:#fdecec; border-color:#f5b9b9; color:#c13232;}
+#action-card .chip--priority[data-priority="Med"]{background:#fff4d6; border-color:#f9dca2; color:#a66a00;}
+#action-card .chip--priority[data-priority="Low"]{background:#f1f5ff; border-color:#d9e3ff; color:#1d45a6;}
 #action-card .chip--pill{padding:8px 14px; min-width:72px; background:#ffffff;}
 #action-card .chip--pill:hover,
 #action-card .chip--pill:focus{background:#f6f8ff;}

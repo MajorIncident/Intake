@@ -156,7 +156,7 @@ function setupMainMocks({ collectSpy, applySpy, resetSpy, showToastSpy }, { stub
       verification: {},
       links: {},
       status: 'Planned',
-      priority: 'P2',
+      priority: 'Med',
       ...cloneAction(payload)
     };
     actionsByAnalysis.set(analysisId, [...existing, next]);
@@ -424,7 +424,7 @@ test('main: Load from File migrates and applies the imported snapshot', async ()
       },
       role: 'Owner',
       status: 'In-Progress',
-      priority: 'P1',
+      priority: 'High',
       dueAt: '',
       startedAt: '',
       completedAt: '',

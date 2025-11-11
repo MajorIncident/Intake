@@ -34,7 +34,7 @@ function makeAction(overrides = {}) {
     },
     role: overrides.role || '',
     status: overrides.status || 'Planned',
-    priority: overrides.priority || 'P2',
+    priority: overrides.priority || 'Med',
     dueAt: overrides.dueAt || '',
     startedAt: overrides.startedAt || '',
     completedAt: overrides.completedAt || '',
@@ -171,9 +171,9 @@ test('actions: integrates with the store when users interact with the list', asy
   ]);
   const PRIORITY_ORDER = new Map([
     ['Blocked', 0],
-    ['P1', 1],
-    ['P2', 2],
-    ['P3', 3],
+    ['High', 1],
+    ['Med', 2],
+    ['Low', 3],
     ['Deferred', 4],
     ['Cancelled', 5]
   ]);
@@ -202,8 +202,8 @@ test('actions: integrates with the store when users interact with the list', asy
   });
 
   let actions = [
-    makeAction({ id: 'action-z', summary: 'Zeta patch routers', priority: 'P3', createdAt: '2024-01-01T01:00:00.000Z' }),
-    makeAction({ id: 'action-b', summary: 'Beta calibrate sensors', priority: 'P2', createdAt: '2024-01-01T00:00:00.000Z' })
+    makeAction({ id: 'action-z', summary: 'Zeta patch routers', priority: 'Low', createdAt: '2024-01-01T01:00:00.000Z' }),
+    makeAction({ id: 'action-b', summary: 'Beta calibrate sensors', priority: 'Med', createdAt: '2024-01-01T00:00:00.000Z' })
   ];
   let creationCounter = 0;
 
@@ -216,7 +216,7 @@ test('actions: integrates with the store when users interact with the list', asy
         id: 'action-created',
         summary: patch.summary,
         links: patch.links,
-        priority: patch.priority || 'P2',
+        priority: patch.priority || 'Med',
         createdAt
       });
       actions = [newItem, ...actions];
@@ -313,7 +313,7 @@ test('actions: integrates with the store when users interact with the list', asy
   let patchArgs = actionsStoreMocks.patchAction.mock.calls[0].arguments;
   assert.equal(patchArgs[0], ANALYSIS_ID);
   assert.equal(patchArgs[1], 'action-z');
-  assert.deepEqual(patchArgs[2], { priority: 'P1' });
+  assert.deepEqual(patchArgs[2], { priority: 'High' });
   assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 2, 'sortActions invoked after reprioritization');
 
   rows = host.querySelectorAll('.action-row');
@@ -388,7 +388,7 @@ test('appState: applyAppState adopts imported action snapshots and updates the c
       },
       role: 'Owner',
       status: 'Planned',
-      priority: 'P1',
+      priority: 'High',
       dueAt: '',
       startedAt: '',
       completedAt: '',
