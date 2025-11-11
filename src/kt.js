@@ -7,10 +7,12 @@
  * toggles, evidence entry textareas, and the cause-testing UI so that the
  * intake experience stays coordinated across modules.
  */
-import { ROWS } from './constants.js';
+import {
+  ROWS,
+  CAUSE_FINDING_MODES,
+  CAUSE_FINDING_MODE_VALUES
+} from './constants.js';
 import { buildCauseActionCounts } from './causeActionCounts.js';
-import { createAction } from './actionsStore.js';
-import { getAnalysisId } from './appState.js';
 
 /**
  * Default no-op auto-resize implementation used before configuration.
@@ -61,19 +63,22 @@ let getObjectFullFn = defaultGetObjectFull;
 let getDeviationFullFn = defaultGetDeviationFull;
 
 /**
+ * @typedef {object} CauseFinding
+ * @property {string} mode - Normalized finding mode (`assumption`, `yes`, or `fail`).
+ * @property {string} note - Supporting explanation for how the hypothesis handles
+ * the IS / IS NOT evidence pair.
+ */
+
+/**
  * @typedef {object} PossibleCause
  * @property {string} id - Stable identifier generated for DOM bindings and persistence.
  * @property {string} suspect - Working hypothesis of the suspected cause.
  * @property {string} accusation - Description of the behavior the cause would produce.
  * @property {string} impact - Statement describing the customer or system impact.
+ * @property {Record<string, CauseFinding>} findings - Map of KT row keys to evaluation details.
  * @property {string} summaryText - Cached hypothesis summary rendered in the card view.
  * @property {('low'|'medium'|'high'|'')} confidence - Optional confidence signal persisted with the hypothesis.
  * @property {string} evidence - Optional supporting evidence statement persisted with the hypothesis.
- * @property {('explains'|'conditional'|'does_not_explain'|'')} decision - Stored decision outcome for the hypothesis.
- * @property {string} explanation_is - Reason this cause explains the observed pattern.
- * @property {string} explanation_is_not - Reason the cause does not appear in unaffected cases.
- * @property {string} assumptions - Assumptions required for the cause to hold true.
- * @property {{text: string, owner: string, eta: string}} next_test - Planned validation step metadata.
  * @property {boolean} editing - Whether the card is in inline edit mode.
  * @property {boolean} testingOpen - Whether the test panel is expanded.
  */
@@ -589,319 +594,134 @@ export function refreshAllTokenizedText(){
 }
 
 /**
- * Normalizes a stored decision value into the supported vocabulary.
- * @param {unknown} value - Raw decision input.
- * @returns {('explains'|'conditional'|'does_not_explain'|'')} Normalized decision token.
+ * Checks whether a finding mode value matches supported constants.
+ * @param {string} mode - Candidate finding mode.
+ * @returns {boolean} True when the mode is valid.
  */
-function normalizeDecision(value){
-  if(typeof value !== 'string') return '';
-  const trimmed = value.trim().toLowerCase();
-  if(trimmed === 'explains' || trimmed === 'conditional' || trimmed === 'does_not_explain'){
-    return trimmed;
-  }
-  return '';
+function isValidFindingMode(mode){
+  return typeof mode === 'string' && CAUSE_FINDING_MODE_VALUES.includes(mode);
 }
 
 /**
- * Ensures the `next_test` payload exists on a cause record and contains trimmed values.
- * @param {PossibleCause} cause - Cause record being normalized.
- * @returns {{text: string, owner: string, eta: string}} Normalized next test object.
+ * Normalizes persisted finding entries into the shape expected by the UI.
+ * @param {CauseFinding|object|string} entry - Raw finding value.
+ * @returns {CauseFinding} Normalized finding data.
  */
-function ensureNextTest(cause){
-  if(!cause || typeof cause !== 'object'){
-    return { text: '', owner: '', eta: '' };
-  }
-  let record = cause.next_test;
-  if(!record || typeof record !== 'object'){
-    record = { text: '', owner: '', eta: '' };
-  }
-  if(typeof record.text !== 'string'){
-    record.text = '';
-  }
-  if(typeof record.owner !== 'string'){
-    record.owner = '';
-  }
-  if(typeof record.eta !== 'string'){
-    record.eta = '';
-  }
-  cause.next_test = record;
-  return record;
-}
-
-/**
- * Checks whether a string contains non-whitespace characters.
- * @param {unknown} value - Candidate string value.
- * @returns {boolean} True when the value is a non-empty string after trimming.
- */
-function hasMeaningfulText(value){
-  return typeof value === 'string' && value.trim().length > 0;
-}
-
-/**
- * Derives the current decision metadata for a cause including readiness state.
- * @param {PossibleCause} cause - Cause record being inspected.
- * @returns {{
- *   decision: ('explains'|'conditional'|'does_not_explain'|''),
- *   explanationIs: string,
- *   explanationNot: string,
- *   assumptions: string,
- *   nextTest: { text: string, owner: string, eta: string },
- *   status: ('pending'|'explained'|'conditional'|'conditional-pending'|'failed'),
- *   label: string
- * }} Structured decision metadata.
- */
-function computeDecisionState(cause){
-  const decision = normalizeDecision(cause?.decision);
-  const explanationIs = typeof cause?.explanation_is === 'string'
-    ? cause.explanation_is.trim()
-    : '';
-  const explanationNot = typeof cause?.explanation_is_not === 'string'
-    ? cause.explanation_is_not.trim()
-    : '';
-  const assumptions = typeof cause?.assumptions === 'string'
-    ? cause.assumptions.trim()
-    : '';
-  const nextTest = ensureNextTest(cause);
-  const nextTestText = nextTest.text.trim();
-  const nextTestOwner = nextTest.owner.trim();
-  const nextTestEta = nextTest.eta.trim();
-
-  if(!decision){
-    return {
-      decision: '',
-      explanationIs,
-      explanationNot,
-      assumptions,
-      nextTest,
-      status: 'pending',
-      label: 'Decision pending'
-    };
-  }
-
-  if(decision === 'does_not_explain'){
-    return {
-      decision,
-      explanationIs,
-      explanationNot,
-      assumptions,
-      nextTest,
-      status: 'failed',
-      label: 'Does not explain'
-    };
-  }
-
-  if(decision === 'explains'){
-    if(explanationIs && explanationNot){
-      return {
-        decision,
-        explanationIs,
-        explanationNot,
-        assumptions,
-        nextTest,
-        status: 'explained',
-        label: 'Explains the pattern'
-      };
+function normalizeFindingEntry(entry){
+  const normalized = { mode: '', note: '' };
+  if(entry && typeof entry === 'object'){
+    if(typeof entry.mode === 'string'){
+      const mode = entry.mode.trim().toLowerCase();
+      if(isValidFindingMode(mode)){
+        normalized.mode = mode;
+      }
     }
-    return {
-      decision,
-      explanationIs,
-      explanationNot,
-      assumptions,
-      nextTest,
-      status: 'pending',
-      label: 'Add reasoning details'
-    };
+    if(typeof entry.note === 'string'){
+      normalized.note = entry.note;
+    }else if(typeof entry.note === 'number'){
+      normalized.note = String(entry.note);
+    }
+    const explainIs = typeof entry.explainIs === 'string' ? entry.explainIs.trim() : '';
+    const explainNot = typeof entry.explainNot === 'string' ? entry.explainNot.trim() : '';
+    if(!normalized.mode && (explainIs || explainNot)){
+      normalized.mode = CAUSE_FINDING_MODES.YES;
+      normalized.note = [explainIs, explainNot].filter(Boolean).join('\n');
+    }else if(normalized.mode && !normalized.note && (explainIs || explainNot)){
+      normalized.note = [explainIs, explainNot].filter(Boolean).join('\n');
+    }
+  }else if(typeof entry === 'string'){
+    normalized.mode = CAUSE_FINDING_MODES.YES;
+    normalized.note = entry;
   }
-
-  const hasAssumption = Boolean(assumptions);
-  const hasTestPlan = Boolean(nextTestText);
-  const testComplete = Boolean(nextTestText && nextTestOwner && nextTestEta);
-
-  if(hasAssumption && testComplete){
-    return {
-      decision,
-      explanationIs,
-      explanationNot,
-      assumptions,
-      nextTest,
-      status: 'conditional',
-      label: 'Explains only if assumption holds'
-    };
-  }
-
-  if(hasAssumption && hasTestPlan){
-    return {
-      decision,
-      explanationIs,
-      explanationNot,
-      assumptions,
-      nextTest,
-      status: 'conditional-pending',
-      label: 'Add owner and ETA to test it'
-    };
-  }
-
-  if(hasAssumption){
-    return {
-      decision,
-      explanationIs,
-      explanationNot,
-      assumptions,
-      nextTest,
-      status: 'conditional-pending',
-      label: 'Add a test plan to verify'
-    };
-  }
-
-  return {
-    decision,
-    explanationIs,
-    explanationNot,
-    assumptions,
-    nextTest,
-    status: 'pending',
-    label: 'Describe the required assumption'
-  };
+  return normalized;
 }
 
 /**
- * Checks whether the selected cause decision rules out the hypothesis.
+ * Returns the normalized finding mode for a stored cause evaluation entry.
+ * @param {CauseFinding|object} entry - Raw finding data from persistence.
+ * @returns {string} Normalized mode or an empty string when unset.
+ */
+export function findingMode(entry){
+  if(!entry || typeof entry !== 'object') return '';
+  const mode = typeof entry.mode === 'string' ? entry.mode : '';
+  return isValidFindingMode(mode) ? mode : '';
+}
+
+/**
+ * Returns the supporting note for a cause evaluation entry.
+ * @param {CauseFinding|object} entry - Raw finding data from persistence.
+ * @returns {string} Note text or an empty string when not provided.
+ */
+export function findingNote(entry){
+  if(!entry || typeof entry !== 'object') return '';
+  return typeof entry.note === 'string' ? entry.note : '';
+}
+
+/**
+ * Determines whether a finding entry has both a mode and a supporting note.
+ * @param {CauseFinding|object} entry - Finding to evaluate.
+ * @returns {boolean} True when the entry is complete.
+ */
+function findingIsComplete(entry){
+  const mode = findingMode(entry);
+  if(!mode) return false;
+  const note = findingNote(entry).trim();
+  if(!note) return false;
+  return true;
+}
+
+/**
+ * Retrieves and normalizes a stored finding without mutating row progress.
+ * @param {PossibleCause} cause - Cause containing the findings map.
+ * @param {string} key - KT row key used as the lookup identifier.
+ * @returns {CauseFinding|null} Normalized finding payload or `null` when none
+ * is stored.
+ */
+function peekCauseFinding(cause, key){
+  if(!cause || !cause.findings || typeof cause.findings !== 'object') return null;
+  const existing = cause.findings[key];
+  if(!existing) return null;
+  const normalized = normalizeFindingEntry(existing);
+  cause.findings[key] = normalized;
+  return normalized;
+}
+
+export { peekCauseFinding };
+
+/**
+ * Checks whether any findings for a cause have been marked as failures.
  * @param {PossibleCause} cause - Cause being evaluated.
- * @returns {boolean} `true` when the decision is `does_not_explain`.
+ * @returns {boolean} `true` when at least one finding is a failure.
  */
 export function causeHasFailure(cause){
-  return computeDecisionState(cause).status === 'failed';
+  if(!cause) return false;
+  const indexes = evidencePairIndexes();
+  if(!indexes.length) return false;
+  for(let i = 0; i < indexes.length; i++){
+    const entry = peekCauseFinding(cause, getRowKeyByIndex(indexes[i]));
+    if(entry && findingMode(entry) === CAUSE_FINDING_MODES.FAIL){
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
- * Counts how many assumptions are tracked for a conditional hypothesis.
+ * Counts how many findings for a cause rely on the "Assumption" mode.
  * @param {PossibleCause} cause - Cause being evaluated.
- * @returns {number} Number of active assumptions (0 or 1).
+ * @returns {number} Total assumption findings across visible evidence pairs.
  */
 export function countCauseAssumptions(cause){
-  const state = computeDecisionState(cause);
-  if(state.decision !== 'conditional') return 0;
-  return state.assumptions ? 1 : 0;
-}
-
-/**
- * Formats an ETA string into a friendly label.
- * @param {string} eta - ISO timestamp or free-form ETA value.
- * @returns {string} Human-readable ETA label.
- */
-function formatEtaLabel(eta){
-  const trimmed = typeof eta === 'string' ? eta.trim() : '';
-  if(!trimmed) return 'Add ETA';
-  const parsed = new Date(trimmed);
-  if(Number.isNaN(parsed.valueOf())){
-    return trimmed;
-  }
-  return parsed.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-/**
- * Converts a local datetime input value into an ISO string.
- * @param {string} value - Raw value from a `datetime-local` input.
- * @returns {string} ISO timestamp or an empty string when invalid.
- */
-function normalizeEtaInput(value){
-  if(typeof value !== 'string' || !value.trim()) return '';
-  const parsed = new Date(value);
-  if(Number.isNaN(parsed.valueOf())) return '';
-  return parsed.toISOString();
-}
-
-/**
- * Builds a conversational preview of the current decision state including
- * placeholders for incomplete reasoning.
- * @param {PossibleCause} cause - Cause backing the preview.
- * @returns {string} Natural language preview sentence.
- */
-function buildDecisionPreviewText(cause){
-  const decision = normalizeDecision(cause?.decision);
-  const explanationIsRaw = typeof cause?.explanation_is === 'string' ? cause.explanation_is : '';
-  const explanationNotRaw = typeof cause?.explanation_is_not === 'string' ? cause.explanation_is_not : '';
-  const assumptionsRaw = typeof cause?.assumptions === 'string' ? cause.assumptions : '';
-  const nextTest = ensureNextTest(cause);
-  const ellipsis = '…';
-
-  if(decision === 'explains'){
-    const because = explanationIsRaw.trim() || ellipsis;
-    const unaffected = explanationNotRaw.trim() || ellipsis;
-    return `This cause explains the pattern because ${because}, and it does not appear in the unaffected cases because ${unaffected}.`;
-  }
-
-  if(decision === 'conditional'){
-    const assumption = assumptionsRaw.trim() || ellipsis;
-    const test = nextTest.text.trim() || ellipsis;
-    const owner = nextTest.owner.trim();
-    const eta = nextTest.eta.trim();
-    const meta = [];
-    if(owner){ meta.push(owner); }
-    if(eta){ meta.push(formatEtaLabel(eta)); }
-    const metaText = meta.length ? ` (${meta.join(', ')})` : '';
-    return `This cause explains the data only if ${assumption}. Test: ${test}${metaText}.`;
-  }
-
-  if(decision === 'does_not_explain'){
-    const reason = explanationIsRaw.trim() || ellipsis;
-    return `This cause fails because ${reason}.`;
-  }
-
-  return 'Choose a decision to start building the reasoning.';
-}
-
-/**
- * Produces the canonical summary sentence for the decision outcome, omitting
- * empty fragments as required by the auto-summary templates.
- * @param {PossibleCause} cause - Cause record being summarised.
- * @returns {string} Completed decision summary sentence.
- */
-export function buildCauseDecisionSummary(cause){
-  const decision = normalizeDecision(cause?.decision);
-  const explanationIs = typeof cause?.explanation_is === 'string' ? cause.explanation_is.trim() : '';
-  const explanationNot = typeof cause?.explanation_is_not === 'string' ? cause.explanation_is_not.trim() : '';
-  const assumptions = typeof cause?.assumptions === 'string' ? cause.assumptions.trim() : '';
-  const nextTest = ensureNextTest(cause);
-  const testText = nextTest.text.trim();
-  const owner = nextTest.owner.trim();
-  const eta = nextTest.eta.trim();
-
-  if(decision === 'explains'){
-    const parts = ['Explains.'];
-    if(explanationIs){
-      parts.push(`This cause explains the pattern because ${explanationIs}.`);
+  if(!cause) return 0;
+  const indexes = evidencePairIndexes();
+  let total = 0;
+  indexes.forEach(idx => {
+    const entry = peekCauseFinding(cause, getRowKeyByIndex(idx));
+    if(entry && findingMode(entry) === CAUSE_FINDING_MODES.ASSUMPTION){
+      total++;
     }
-    if(explanationNot){
-      parts.push(`It is not present in unaffected cases because ${explanationNot}.`);
-    }
-    return parts.join(' ').trim();
-  }
-
-  if(decision === 'conditional'){
-    const parts = ['Explains only if.'];
-    if(assumptions){
-      parts.push(`This cause explains the data only if ${assumptions}.`);
-    }
-    if(testText){
-      const meta = [];
-      if(owner){ meta.push(owner); }
-      if(eta){ meta.push(formatEtaLabel(eta)); }
-      const metaText = meta.length ? ` (${meta.join(', ')})` : '';
-      parts.push(`Test: ${testText}${metaText}.`);
-    }
-    return parts.join(' ').trim();
-  }
-
-  if(decision === 'does_not_explain'){
-    const reason = explanationIs || explanationNot;
-    if(reason){
-      return `Does not explain. This cause fails because ${reason.trim()}.`;
-    }
-    return 'Does not explain.';
-  }
-
-  return '';
+  });
+  return total;
 }
 
 /**
@@ -941,11 +761,7 @@ export function createEmptyCause(){
     summaryText: '',
     confidence: '',
     evidence: '',
-    decision: '',
-    explanation_is: '',
-    explanation_is_not: '',
-    assumptions: '',
-    next_test: { text: '', owner: '', eta: '' },
+    findings: {},
     editing: true,
     testingOpen: false
   };
@@ -1200,6 +1016,51 @@ export function getRowKeyByIndex(index){
 }
 
 /**
+ * Guarantees that a cause has a findings map, creating one when missing.
+ * @param {PossibleCause} cause - Cause to initialize.
+ * @returns {Record<string, CauseFinding>} Findings map for the cause.
+ */
+function ensureCauseFindings(cause){
+  if(!cause.findings || typeof cause.findings !== 'object'){
+    cause.findings = {};
+  }
+  return cause.findings;
+}
+
+/**
+ * Retrieves the normalized finding entry for a cause and KT row key.
+ * @param {PossibleCause} cause - Cause containing the findings map.
+ * @param {string} key - KT row key identifier.
+ * @returns {CauseFinding} Normalized finding entry.
+ */
+function getCauseFinding(cause, key){
+  const map = ensureCauseFindings(cause);
+  map[key] = normalizeFindingEntry(map[key]);
+  return map[key];
+}
+
+/**
+ * Sets a property on a finding entry, applying validation for key fields.
+ * @param {PossibleCause} cause - Cause being mutated.
+ * @param {string} key - KT row key identifier.
+ * @param {string} prop - Property to mutate (`mode` or `note`).
+ * @param {unknown} value - Value to store.
+ * @returns {void}
+ */
+function setCauseFindingValue(cause, key, prop, value){
+  const entry = getCauseFinding(cause, key);
+  if(prop === 'mode'){
+    const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+    entry.mode = isValidFindingMode(normalized) ? normalized : '';
+    if(!entry.mode){ entry.note = ''; }
+  }else if(prop === 'note'){
+    entry.note = typeof value === 'string' ? value : '';
+  }else{
+    entry[prop] = value;
+  }
+}
+
+/**
  * Checks whether a KT row currently contains both IS and IS NOT evidence.
  * @param {KTRowBinding} row - Row binding metadata.
  * @returns {boolean} True when both columns contain text.
@@ -1232,53 +1093,67 @@ export function evidencePairIndexes(){
  * @param {number[]} [eligibleIndexes] - Optional subset of row indexes.
  * @returns {number} Total completed findings.
  */
+export function countCompletedEvidence(cause, eligibleIndexes){
+  let count = 0;
+  const indexes = Array.isArray(eligibleIndexes) ? eligibleIndexes : evidencePairIndexes();
+  indexes.forEach(index => {
+    const key = getRowKeyByIndex(index);
+    const entry = peekCauseFinding(cause, key);
+    if(entry && findingIsComplete(entry)){ count++; }
+  });
+  return count;
+}
+
 /**
  * Derives an internal status token for a cause based on hypothesis completeness
- * and recorded decision state.
+ * and testing progress.
  * @param {PossibleCause} cause - Cause to evaluate.
+ * @param {number} answered - Count of completed findings.
+ * @param {number} total - Total eligible evidence pairs.
  * @returns {string} Status token used for styling.
  */
-function causeStatusState(cause){
+function causeStatusState(cause, answered, total){
   if(!hasCompleteHypothesis(cause)) return 'draft';
-  const state = computeDecisionState(cause);
-  switch(state.status){
-    case 'failed':
-      return 'failed';
-    case 'explained':
-      return 'explained';
-    case 'conditional':
-      return 'conditional';
-    case 'conditional-pending':
-      return 'conditional-pending';
-    default:
-      return 'pending';
-  }
+  if(total === 0) return 'no-evidence';
+  if(causeHasFailure(cause)) return 'failed';
+  if(answered === 0) return 'not-tested';
+  if(answered < total) return 'testing';
+  return 'explained';
 }
 
 /**
  * Derives a friendly label for the cause card that reflects hypothesis and
- * decision progress.
+ * testing state.
  * @param {PossibleCause} cause - Cause being summarized.
  * @returns {string} Status label for UI display.
  */
 export function causeStatusLabel(cause){
+  const eligibleIndexes = evidencePairIndexes();
+  const total = eligibleIndexes.length;
+  const answered = countCompletedEvidence(cause, eligibleIndexes);
   if(cause?.editing) return 'Editing hypothesis';
   if(!hasCompleteHypothesis(cause)) return 'Draft hypothesis';
-  const state = computeDecisionState(cause);
-  return state.label || 'Decision pending';
+  if(total === 0) return rowsBuilt.length ? 'Waiting for KT evidence pairs' : 'Ready to test';
+  if(causeHasFailure(cause)) return 'Failed testing';
+  if(answered === 0) return 'Not tested yet';
+  if(answered < total) return 'Testing in progress';
+  return 'Explains all evidence';
 }
 
 /**
- * Updates the progress chip to reflect the current decision status.
+ * Updates the progress chip to reflect completed evidence counts and status.
  * @param {HTMLElement} chip - Chip element displaying progress.
  * @param {PossibleCause} cause - Cause whose progress is being represented.
  * @returns {void}
  */
 function updateCauseProgressChip(chip, cause){
   if(!chip || !cause) return;
-  const state = computeDecisionState(cause);
-  chip.textContent = state.label;
-  chip.dataset.status = causeStatusState(cause);
+  const eligibleIndexes = evidencePairIndexes();
+  const total = eligibleIndexes.length;
+  const answered = countCompletedEvidence(cause, eligibleIndexes);
+  chip.textContent = total ? `${answered}/${total} evidence checks` : 'No KT evidence pairs yet';
+  const status = causeStatusState(cause, answered, total);
+  chip.dataset.status = status;
 }
 
 /**
@@ -1352,86 +1227,6 @@ function splitLines(text){
   const v = (text || '').trim();
   if(!v) return [];
   return v.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-}
-
-/**
- * Collects IS / IS NOT evidence summaries for display in the cause test panel.
- * @returns {Array<{question: string, isLines: string[], notLines: string[]}>} Evidence entries.
- */
-function collectEvidenceSummaries(){
-  const entries = [];
-  rowsBuilt.forEach(row => {
-    if(!rowHasEvidencePair(row)) return;
-    const question = row?.th?.textContent?.trim() || fillTokens(row?.def?.q || '');
-    const isLines = splitLines(row?.isTA?.value || '');
-    const notLines = splitLines(row?.notTA?.value || '');
-    if(isLines.length || notLines.length){
-      entries.push({ question, isLines, notLines });
-    }
-  });
-  return entries;
-}
-
-/**
- * Renders the evidence summary content into the provided container element.
- * @param {HTMLElement} container - Evidence container element.
- * @returns {void}
- */
-function renderEvidenceContent(container){
-  if(!container) return;
-  container.innerHTML = '';
-  const entries = collectEvidenceSummaries();
-  if(!entries.length){
-    const empty = document.createElement('p');
-    empty.className = 'cause-test__evidence-empty';
-    empty.textContent = 'Add IS / IS NOT pairs to compare this cause against the data.';
-    container.append(empty);
-    return;
-  }
-
-  const isSection = document.createElement('section');
-  isSection.className = 'cause-test__evidence-section';
-  const isHeading = document.createElement('h5');
-  isHeading.textContent = 'IS evidence';
-  const isList = document.createElement('ul');
-  isList.className = 'cause-test__evidence-list';
-  entries.forEach(entry => {
-    entry.isLines.forEach(line => {
-      const item = document.createElement('li');
-      item.innerHTML = `<span class="cause-test__evidence-term">${entry.question}</span><span class="cause-test__evidence-detail">${line}</span>`;
-      isList.append(item);
-    });
-  });
-  if(!isList.children.length){
-    const placeholder = document.createElement('li');
-    placeholder.className = 'cause-test__evidence-placeholder';
-    placeholder.textContent = 'No IS statements recorded yet.';
-    isList.append(placeholder);
-  }
-  isSection.append(isHeading, isList);
-
-  const notSection = document.createElement('section');
-  notSection.className = 'cause-test__evidence-section';
-  const notHeading = document.createElement('h5');
-  notHeading.textContent = 'IS NOT evidence';
-  const notList = document.createElement('ul');
-  notList.className = 'cause-test__evidence-list';
-  entries.forEach(entry => {
-    entry.notLines.forEach(line => {
-      const item = document.createElement('li');
-      item.innerHTML = `<span class="cause-test__evidence-term">${entry.question}</span><span class="cause-test__evidence-detail">${line}</span>`;
-      notList.append(item);
-    });
-  });
-  if(!notList.children.length){
-    const placeholder = document.createElement('li');
-    placeholder.className = 'cause-test__evidence-placeholder';
-    placeholder.textContent = 'No IS NOT statements recorded yet.';
-    notList.append(placeholder);
-  }
-  notSection.append(notHeading, notList);
-
-  container.append(isSection, notSection);
 }
 
 /**
@@ -1857,418 +1652,193 @@ export function renderCauses(){
  */
 function buildCauseTestPanel(cause, progressChip, statusEl, card){
   const panel = document.createElement('div');
-  panel.className = 'cause-test cause-test--redesign';
+  panel.className = 'cause-test';
   const actionBadge = card?.querySelector('[data-role="action-count"]');
-  const nextTest = ensureNextTest(cause);
-
-  const header = document.createElement('header');
-  header.className = 'cause-test__header';
-  const title = document.createElement('h4');
-  title.textContent = 'Would this cause explain the pattern we see?';
-  const subtitle = document.createElement('p');
-  subtitle.className = 'cause-test__subtitle';
-  subtitle.textContent = 'Look at the IS / IS NOT evidence. Trust the data.';
-  const pill = document.createElement('span');
-  pill.className = 'cause-test__tag';
-  pill.textContent = `Possible Cause: ${causeDisplayLabel(cause)}`;
-  header.append(title, subtitle, pill);
-  panel.append(header);
-
-  const layout = document.createElement('div');
-  layout.className = 'cause-test__layout';
-
-  const evidenceColumn = document.createElement('aside');
-  evidenceColumn.className = 'cause-test__column cause-test__column--evidence';
-  const evidenceCard = document.createElement('div');
-  evidenceCard.className = 'cause-test__evidence-card';
-  const evidenceContent = document.createElement('div');
-  evidenceContent.className = 'cause-test__evidence-content';
-  evidenceContent.dataset.role = 'cause-test-evidence';
-  renderEvidenceContent(evidenceContent);
-  evidenceCard.append(evidenceContent);
-  evidenceColumn.append(evidenceCard);
-
-  const decisionColumn = document.createElement('section');
-  decisionColumn.className = 'cause-test__column cause-test__column--decision';
-
-  const segments = document.createElement('div');
-  segments.className = 'cause-test__segments';
-  const decisionButtons = [];
-  const options = [
-    { value: 'explains', label: 'Explains' },
-    { value: 'conditional', label: 'Explains only if' },
-    { value: 'does_not_explain', label: 'Does not explain' }
-  ];
-  options.forEach(option => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'cause-test__segment';
-    btn.dataset.value = option.value;
-    btn.textContent = option.label;
-    btn.addEventListener('click', () => {
-      setActiveDecision(option.value);
-    });
-    decisionButtons.push(btn);
-    segments.append(btn);
-  });
-  decisionColumn.append(segments);
-
-  const fieldsWrap = document.createElement('div');
-  fieldsWrap.className = 'cause-test__fields';
-
-  const explainsGroup = document.createElement('div');
-  explainsGroup.className = 'cause-test__group';
-  const explainDo = createPromptField(
-    'How does this cause explain what we DO see (IS evidence)?',
-    'It creates/introduces/causes…',
-    cause.explanation_is,
-    value => {
-      cause.explanation_is = value;
-      persist();
-      updatePreview();
-    }
-  );
-  const explainNot = createPromptField(
-    'Why would it NOT appear in the IS NOT evidence?',
-    'Because those cases don’t involve/have…',
-    cause.explanation_is_not,
-    value => {
-      cause.explanation_is_not = value;
-      persist();
-      updatePreview();
-    }
-  );
-  explainsGroup.append(explainDo.field, explainNot.field);
-
-  const conditionalGroup = document.createElement('div');
-  conditionalGroup.className = 'cause-test__group';
-  const assumptionField = createPromptField(
-    'What assumption must be true for this cause to explain the data?',
-    'Assumes that only Line 1 uses…',
-    cause.assumptions,
-    value => {
-      cause.assumptions = value;
-      persist();
-      updatePreview();
-      updateConvertVisibility();
-    }
-  );
-  const testField = createPromptField(
-    'What should we check to verify that assumption?',
-    'Outline the validation or measurement that will prove it.',
-    nextTest.text,
-    value => {
-      nextTest.text = value;
-      persist();
-      updatePreview();
-      updateConvertVisibility();
-    }
-  );
-  conditionalGroup.append(assumptionField.field, testField.field);
-
-  const testControls = document.createElement('div');
-  testControls.className = 'cause-test__test-controls';
-  const ownerBtn = document.createElement('button');
-  ownerBtn.type = 'button';
-  ownerBtn.className = 'chip chip--pill cause-test__owner';
-  const etaBtn = document.createElement('button');
-  etaBtn.type = 'button';
-  etaBtn.className = 'chip chip--pill cause-test__eta';
-  const convertBtn = document.createElement('button');
-  convertBtn.type = 'button';
-  convertBtn.className = 'cause-test__convert';
-  convertBtn.textContent = 'Convert to Action';
-  convertBtn.hidden = true;
-  convertBtn.addEventListener('click', handleConvertToAction);
-
-  ownerBtn.addEventListener('click', () => {
-    openOwnerDialog(nextTest.owner, value => {
-      nextTest.owner = value;
-      updateOwnerButton();
-      persist();
-      updatePreview();
-      updateConvertVisibility();
-    });
-  });
-
-  etaBtn.addEventListener('click', () => {
-    openEtaDialog(nextTest.eta, value => {
-      nextTest.eta = value;
-      updateEtaButton();
-      persist();
-      updatePreview();
-      updateConvertVisibility();
-    });
-  });
-
-  testControls.append(ownerBtn, etaBtn);
-  conditionalGroup.append(testControls, convertBtn);
-
-  const failGroup = document.createElement('div');
-  failGroup.className = 'cause-test__group';
-  const failField = createPromptField(
-    'What evidence contradicts this cause?',
-    'It cannot explain because…',
-    cause.explanation_is,
-    value => {
-      cause.explanation_is = value;
-      persist();
-      updatePreview();
-    }
-  );
-  failGroup.append(failField.field);
-
-  fieldsWrap.append(explainsGroup, conditionalGroup, failGroup);
-  decisionColumn.append(fieldsWrap);
-
-  layout.append(evidenceColumn, decisionColumn);
-  panel.append(layout);
-
-  const preview = document.createElement('div');
-  preview.className = 'cause-test__preview';
-  preview.textContent = buildDecisionPreviewText(cause);
-  panel.append(preview);
-
-  setActiveDecision(normalizeDecision(cause.decision) || '');
-  updateOwnerButton();
-  updateEtaButton();
-  updateConvertVisibility();
-
-  return panel;
-
-  function createPromptField(labelText, placeholder, value, onInput){
-    const field = document.createElement('label');
-    field.className = 'cause-test__prompt';
-    const label = document.createElement('span');
-    label.className = 'cause-test__prompt-label';
-    label.textContent = labelText;
-    const textarea = document.createElement('textarea');
-    textarea.className = 'cause-test__textarea';
-    textarea.placeholder = placeholder;
-    textarea.value = typeof value === 'string' ? value : '';
-    textarea.addEventListener('input', event => {
-      onInput(event.target.value);
-      autoResize(textarea);
-    });
-    autoResize(textarea);
-    field.append(label, textarea);
-    return { field, textarea };
+  const intro = document.createElement('p');
+  intro.className = 'cause-test__intro';
+  intro.textContent = 'For each KT row, choose how this hypothesis handles the IS / IS NOT evidence and document your reasoning.';
+  panel.appendChild(intro);
+  if(!rowsBuilt.length){
+    const empty = document.createElement('div');
+    empty.className = 'cause-empty';
+    empty.textContent = 'Add IS / IS NOT evidence first to begin testing this cause.';
+    panel.appendChild(empty);
+    return panel;
   }
-
-  function setActiveDecision(nextValue){
-    const normalized = normalizeDecision(nextValue);
-    cause.decision = normalized;
-    decisionButtons.forEach(btn => {
-      btn.classList.toggle('is-selected', btn.dataset.value === normalized);
-    });
-    explainsGroup.hidden = normalized !== 'explains';
-    conditionalGroup.hidden = normalized !== 'conditional';
-    failGroup.hidden = normalized !== 'does_not_explain';
-    persist();
-    updatePreview();
-    updateConvertVisibility();
+  const eligibleIndexes = evidencePairIndexes();
+  if(!eligibleIndexes.length){
+    const empty = document.createElement('div');
+    empty.className = 'cause-empty';
+    empty.textContent = 'Add IS / IS NOT evidence pairs to begin testing this cause.';
+    panel.appendChild(empty);
+    return panel;
   }
-
-  function updatePreview(){
-    preview.textContent = buildDecisionPreviewText(cause);
-  }
-
-  function persist(){
-    const countText = updateCauseActionBadge(actionBadge, cause);
-    updateCauseProgressChip(progressChip, cause);
-    updateCauseStatusLabel(statusEl, cause, countText);
-    updateCauseCardIndicators(card, cause);
-    saveHandler();
-  }
-
-  function updateOwnerButton(){
-    const owner = nextTest.owner && nextTest.owner.trim();
-    if(owner){
-      ownerBtn.textContent = owner;
-      ownerBtn.dataset.empty = '0';
-    }else{
-      ownerBtn.textContent = 'Assign owner';
-      ownerBtn.dataset.empty = '1';
-    }
-  }
-
-  function updateEtaButton(){
-    const eta = nextTest.eta && nextTest.eta.trim();
-    etaBtn.textContent = eta ? formatEtaLabel(eta) : 'Add ETA';
-    etaBtn.dataset.empty = eta ? '0' : '1';
-  }
-
-  function updateConvertVisibility(){
-    const state = computeDecisionState(cause);
-    const ready = state.decision === 'conditional'
-      && state.nextTest.text.trim()
-      && state.nextTest.owner.trim()
-      && state.nextTest.eta.trim();
-    convertBtn.hidden = !ready;
-  }
-
-  function handleConvertToAction(){
-    const analysisId = getAnalysisId();
-    const summary = nextTest.text.trim();
-    if(!summary){
-      callShowToast('Add a short test summary before converting this to an action.');
-      return;
-    }
-    const detailParts = [];
-    const hypothesis = buildHypothesisSentence(cause);
-    if(hypothesis){ detailParts.push(`Hypothesis: ${hypothesis}`); }
-    const decisionSummary = buildCauseDecisionSummary(cause);
-    if(decisionSummary){ detailParts.push(decisionSummary); }
-    const detail = detailParts.join('\n\n');
-    const ownerName = nextTest.owner.trim();
-    const dueAt = nextTest.eta.trim();
-    const payload = {
-      summary,
-      detail,
-      dueAt,
-      owner: ownerName ? { name: ownerName } : '',
-      links: { hypothesisId: cause.id }
-    };
-    let created = null;
-    try{
-      created = createAction(analysisId, payload);
-    }catch(_){
-      created = null;
-    }
-    if(created){
-      callShowToast('Test converted into an action item.');
-      try{
-        window.dispatchEvent(new CustomEvent(ACTIONS_UPDATED_EVENT, { detail: { source: 'cause-test', causeId: cause.id } }));
-      }catch(_){ /* no-op */ }
-      refreshCauseActionCounts();
+  eligibleIndexes.forEach(index => {
+    const row = rowsBuilt[index];
+    const rowKey = getRowKeyByIndex(index);
+    const finding = getCauseFinding(cause, rowKey);
+    const rowEl = document.createElement('section');
+    rowEl.className = 'cause-eval-row';
+    rowEl.dataset.rowIndex = index;
+    rowEl.dataset.rowKey = rowKey;
+    rowEl.hidden = Boolean(row?.tr?.hidden);
+    const qText = document.createElement('div');
+    qText.className = 'cause-eval-question-text';
+    qText.dataset.role = 'question';
+    qText.textContent = row?.th?.textContent?.trim() || fillTokens(row?.def?.q || '');
+    rowEl.appendChild(qText);
+    const evidenceWrap = document.createElement('div');
+    evidenceWrap.className = 'cause-evidence-wrap';
+    const isBlock = document.createElement('div');
+    isBlock.className = 'cause-evidence-block';
+    isBlock.dataset.rowIndex = index;
+    isBlock.dataset.type = 'is';
+    const isLabel = document.createElement('span');
+    isLabel.className = 'cause-evidence-label';
+    isLabel.textContent = 'IS evidence';
+    const isValue = document.createElement('div');
+    isValue.className = 'cause-evidence-text';
+    isValue.dataset.role = 'is-value';
+    isValue.textContent = previewEvidenceText(row?.isTA?.value || '');
+    isBlock.append(isLabel, isValue);
+    const notBlock = document.createElement('div');
+    notBlock.className = 'cause-evidence-block';
+    notBlock.dataset.rowIndex = index;
+    notBlock.dataset.type = 'not';
+    const notLabel = document.createElement('span');
+    notLabel.className = 'cause-evidence-label';
+    notLabel.textContent = 'IS NOT evidence';
+    const notValue = document.createElement('div');
+    notValue.className = 'cause-evidence-text';
+    notValue.dataset.role = 'not-value';
+    notValue.textContent = previewEvidenceText(row?.notTA?.value || '');
+    notBlock.append(notLabel, notValue);
+    evidenceWrap.append(isBlock, notBlock);
+    rowEl.appendChild(evidenceWrap);
+    const inputsWrap = document.createElement('div');
+    inputsWrap.className = 'cause-eval-inputs';
+    const optionWrap = document.createElement('div');
+    optionWrap.className = 'cause-eval-options';
+    const noteField = document.createElement('div');
+    noteField.className = 'field cause-eval-note';
+    noteField.hidden = true;
+    const noteLabel = document.createElement('label');
+    noteLabel.dataset.role = 'note-label';
+    const noteInput = document.createElement('textarea');
+    noteInput.dataset.role = 'finding-note';
+    noteInput.value = findingNote(finding);
+    noteInput.placeholder = 'Select an option to describe this relationship.';
+    noteInput.setAttribute('data-min-height', '120');
+    noteInput.disabled = true;
+    noteInput.addEventListener('input', e => {
+      setCauseFindingValue(cause, rowKey, 'note', e.target.value);
+      autoResize(noteInput);
+      updateCauseProgressChip(progressChip, cause);
       const countText = updateCauseActionBadge(actionBadge, cause);
       updateCauseStatusLabel(statusEl, cause, countText);
-      updateConvertVisibility();
-    }else{
-      callShowToast('Unable to create the action. Try again after adding more detail.');
-    }
-  }
+      updateCauseCardIndicators(card, cause);
+      saveHandler();
+    });
+    autoResize(noteInput);
+    noteField.append(noteLabel, noteInput);
+    inputsWrap.append(optionWrap, noteField);
+    rowEl.appendChild(inputsWrap);
 
-  function openOwnerDialog(initialValue, onSave){
-    let overlay = document.querySelector('.owner-picker-overlay[data-role="cause-test-owner"]');
-    if(overlay){ overlay.remove(); }
-    overlay = document.createElement('div');
-    overlay.className = 'owner-picker-overlay';
-    overlay.dataset.role = 'cause-test-owner';
-    overlay.innerHTML = `
-      <div class="owner-picker" role="dialog" aria-modal="true" aria-labelledby="causeTestOwnerTitle" aria-describedby="causeTestOwnerDesc">
-        <header class="owner-picker__header">
-          <div class="owner-picker__heading">
-            <h4 id="causeTestOwnerTitle">Assign Owner</h4>
-            <p id="causeTestOwnerDesc" class="owner-picker__subtitle">Choose who will run this test.</p>
-          </div>
-          <button type="button" class="owner-picker__close" aria-label="Close">×</button>
-        </header>
-        <form class="owner-picker__form">
-          <label class="owner-picker__field">
-            <span class="owner-picker__label">Owner Name</span>
-            <input type="text" name="ownerName" autocomplete="off" placeholder="e.g., Jane Doe" value="${initialValue ? initialValue.replace(/"/g, '&quot;') : ''}" />
-          </label>
-          <footer class="owner-picker__actions">
-            <button type="button" class="owner-picker__button owner-picker__button--ghost" data-action="clear">Clear</button>
-            <span class="owner-picker__spacer"></span>
-            <button type="button" class="owner-picker__button owner-picker__button--ghost" data-action="cancel">Cancel</button>
-            <button type="submit" class="owner-picker__button owner-picker__button--primary" data-action="assign">Assign Owner</button>
-          </footer>
-        </form>
-      </div>
-    `;
-    const close = () => {
-      document.removeEventListener('keydown', onKeyDown, true);
-      overlay.remove();
-    };
-    const onKeyDown = event => {
-      if(event.key === 'Escape'){ event.preventDefault(); close(); }
-    };
-    const form = overlay.querySelector('form');
-    const nameInput = form.querySelector('input[name="ownerName"]');
-    const closeBtn = overlay.querySelector('.owner-picker__close');
-    form.addEventListener('submit', event => {
-      event.preventDefault();
-      const value = nameInput.value.trim();
-      onSave(value);
-      close();
-    });
-    form.querySelector('[data-action="cancel"]').addEventListener('click', close);
-    form.querySelector('[data-action="clear"]').addEventListener('click', () => {
-      nameInput.value = '';
-      onSave('');
-      close();
-    });
-    closeBtn.addEventListener('click', close);
-    overlay.addEventListener('click', event => {
-      if(event.target === overlay){ close(); }
-    });
-    document.addEventListener('keydown', onKeyDown, true);
-    document.body.appendChild(overlay);
-    nameInput.focus();
-  }
-
-  function openEtaDialog(initialValue, onSave){
-    let overlay = document.querySelector('.eta-picker-overlay[data-role="cause-test-eta"]');
-    if(overlay){ overlay.remove(); }
-    overlay = document.createElement('div');
-    overlay.className = 'eta-picker-overlay';
-    overlay.dataset.role = 'cause-test-eta';
-    const initialLocal = initialValue ? new Date(initialValue) : null;
-    const initialLocalValue = initialLocal && !Number.isNaN(initialLocal.valueOf())
-      ? new Date(initialLocal.getTime() - initialLocal.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-      : '';
-    overlay.innerHTML = `
-      <div class="eta-picker" role="dialog" aria-modal="true" aria-labelledby="causeTestEtaTitle">
-        <header class="eta-picker__header">
-          <h4 id="causeTestEtaTitle">Set ETA</h4>
-          <button type="button" class="eta-picker__close" aria-label="Close">×</button>
-        </header>
-        <div class="eta-picker__body">
-          <label class="eta-picker__field">
-            <span>Due date</span>
-            <input type="datetime-local" value="${initialLocalValue}" />
-          </label>
-        </div>
-        <footer class="eta-picker__actions">
-          <button type="button" class="eta-picker__button eta-picker__button--ghost" data-action="clear">Clear</button>
-          <span class="eta-picker__spacer"></span>
-          <button type="button" class="eta-picker__button eta-picker__button--ghost" data-action="cancel">Cancel</button>
-          <button type="button" class="eta-picker__button eta-picker__button--primary" data-action="save">Save ETA</button>
-        </footer>
-      </div>
-    `;
-    const close = () => {
-      document.removeEventListener('keydown', onKeyDown, true);
-      overlay.remove();
-    };
-    const onKeyDown = event => {
-      if(event.key === 'Escape'){ event.preventDefault(); close(); }
-    };
-    const input = overlay.querySelector('input');
-    overlay.querySelector('[data-action="cancel"]').addEventListener('click', close);
-    overlay.querySelector('[data-action="clear"]').addEventListener('click', () => {
-      onSave('');
-      close();
-    });
-    overlay.querySelector('[data-action="save"]').addEventListener('click', () => {
-      const iso = normalizeEtaInput(input.value);
-      if(!iso){
-        onSave('');
-      }else{
-        onSave(iso);
+    const optionDefs = [
+      {
+        mode: CAUSE_FINDING_MODES.ASSUMPTION,
+        buttonLabel: 'Explains Only if…',
+        noteLabel: 'What assumptions are necessary to explain why we see it on the <is> and not the <is not>?',
+        placeholder: 'List the assumptions required so we observe <is> while avoiding <is not>.'
+      },
+      {
+        mode: CAUSE_FINDING_MODES.YES,
+        buttonLabel: 'Yes, because…',
+        noteLabel: 'How does this naturally explain that we see <is> and that we don\'t see <is not>?',
+        placeholder: 'Describe how this cause naturally creates <is> and avoids <is not>.'
+      },
+      {
+        mode: CAUSE_FINDING_MODES.FAIL,
+        buttonLabel: 'Does not explain…',
+        noteLabel: 'Why can\'t we explain the <is> being present, but not the <is not>?',
+        placeholder: 'Explain why this cause cannot produce <is> without contradicting <is not>.'
       }
-      close();
+    ];
+    const buttons = [];
+    const rawIs = row?.isTA?.value || '';
+    const rawNot = row?.notTA?.value || '';
+
+    /**
+     * Updates button selection and note fields based on the chosen mode.
+     * @param {string} newMode - Mode to activate.
+     * @param {object} [opts] - Behavior flags for the update.
+     * @param {boolean} [opts.silent] - When true prevents persistence and toast
+     * updates. Defaults to false.
+     * @returns {void}
+     */
+    function applyMode(newMode, opts = {}){
+      const active = isValidFindingMode(newMode) ? newMode : '';
+      buttons.forEach(btn => {
+        btn.element.classList.toggle('is-selected', btn.mode === active);
+      });
+      if(active){
+        const config = optionDefs.find(def => def.mode === active);
+        const labelTemplate = config?.noteLabel || '';
+        const placeholderTemplate = config?.placeholder || '';
+        noteLabel.textContent = substituteEvidenceTokens(labelTemplate, rawIs, rawNot);
+        noteLabel.dataset.template = labelTemplate;
+        noteInput.placeholder = substituteEvidenceTokens(placeholderTemplate, rawIs, rawNot);
+        noteInput.dataset.placeholderTemplate = placeholderTemplate;
+        noteInput.disabled = false;
+        noteField.hidden = false;
+      }else{
+        noteLabel.textContent = '';
+        delete noteLabel.dataset.template;
+        noteInput.placeholder = 'Select an option to describe this relationship.';
+        delete noteInput.dataset.placeholderTemplate;
+        noteInput.value = '';
+        noteInput.disabled = true;
+        noteField.hidden = true;
+        setCauseFindingValue(cause, rowKey, 'note', '');
+      }
+      autoResize(noteInput);
+      if(!opts.silent){
+        updateCauseProgressChip(progressChip, cause);
+        const countText = updateCauseActionBadge(actionBadge, cause);
+        updateCauseStatusLabel(statusEl, cause, countText);
+        updateCauseCardIndicators(card, cause);
+        saveHandler();
+      }
+    }
+
+    optionDefs.forEach(def => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cause-eval-option';
+      btn.textContent = def.buttonLabel;
+      btn.dataset.mode = def.mode;
+      btn.addEventListener('click', () => {
+        const entry = getCauseFinding(cause, rowKey);
+        const current = findingMode(entry);
+        if(current === def.mode){
+          setCauseFindingValue(cause, rowKey, 'mode', '');
+          applyMode('');
+        }else{
+          setCauseFindingValue(cause, rowKey, 'mode', def.mode);
+          applyMode(def.mode);
+        }
+      });
+      optionWrap.appendChild(btn);
+      buttons.push({ element: btn, mode: def.mode });
     });
-    overlay.querySelector('.eta-picker__close').addEventListener('click', close);
-    overlay.addEventListener('click', event => {
-      if(event.target === overlay){ close(); }
-    });
-    document.addEventListener('keydown', onKeyDown, true);
-    document.body.appendChild(overlay);
-    input.focus();
-  }
+
+    const startingMode = findingMode(finding);
+    noteInput.value = findingNote(finding);
+    autoResize(noteInput);
+    applyMode(startingMode, { silent: true });
+    panel.appendChild(rowEl);
+  });
+  return panel;
 }
 
 /**
@@ -2279,6 +1849,28 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
 export function updateCauseEvidencePreviews(){
   if(!causeList) return;
   refreshCauseActionCounts();
+  causeList.querySelectorAll('.cause-eval-row').forEach(rowEl => {
+    const index = parseInt(rowEl.dataset.rowIndex, 10);
+    if(Number.isNaN(index) || !rowsBuilt[index]) return;
+    const row = rowsBuilt[index];
+    rowEl.hidden = Boolean(row?.tr?.hidden);
+    const questionEl = rowEl.querySelector('[data-role="question"]');
+    if(questionEl){ questionEl.textContent = row?.th?.textContent?.trim() || fillTokens(row?.def?.q || ''); }
+    const isValue = rowEl.querySelector('[data-role="is-value"]');
+    const rawIs = row?.isTA?.value || '';
+    const rawNot = row?.notTA?.value || '';
+    if(isValue){ isValue.textContent = previewEvidenceText(rawIs); }
+    const notValue = rowEl.querySelector('[data-role="not-value"]');
+    if(notValue){ notValue.textContent = previewEvidenceText(rawNot); }
+    const noteLabel = rowEl.querySelector('[data-role="note-label"]');
+    if(noteLabel && noteLabel.dataset.template){
+      noteLabel.textContent = substituteEvidenceTokens(noteLabel.dataset.template, rawIs, rawNot);
+    }
+    const noteInput = rowEl.querySelector('textarea[data-role="finding-note"]');
+    if(noteInput && noteInput.dataset.placeholderTemplate){
+      noteInput.placeholder = substituteEvidenceTokens(noteInput.dataset.placeholderTemplate, rawIs, rawNot);
+    }
+  });
   causeList.querySelectorAll('.cause-card').forEach(card => {
     const id = card?.dataset?.causeId;
     if(!id) return;
@@ -2291,32 +1883,6 @@ export function updateCauseEvidencePreviews(){
     const countText = updateCauseActionBadge(actionBadge, cause);
     if(statusEl){ updateCauseStatusLabel(statusEl, cause, countText); }
     updateCauseCardIndicators(card, cause);
-    const evidenceContainer = card.querySelector('.cause-test__evidence-content');
-    if(evidenceContainer){ renderEvidenceContent(evidenceContainer); }
-    const previewEl = card.querySelector('.cause-test__preview');
-    if(previewEl){ previewEl.textContent = buildDecisionPreviewText(cause); }
-    const ownerBtn = card.querySelector('.cause-test__owner');
-    const etaBtn = card.querySelector('.cause-test__eta');
-    const convertBtn = card.querySelector('.cause-test__convert');
-    const nextTest = ensureNextTest(cause);
-    if(ownerBtn){
-      const owner = nextTest.owner.trim();
-      ownerBtn.textContent = owner || 'Assign owner';
-      ownerBtn.dataset.empty = owner ? '0' : '1';
-    }
-    if(etaBtn){
-      const eta = nextTest.eta.trim();
-      etaBtn.textContent = eta ? formatEtaLabel(eta) : 'Add ETA';
-      etaBtn.dataset.empty = eta ? '0' : '1';
-    }
-    if(convertBtn){
-      const state = computeDecisionState(cause);
-      const ready = state.decision === 'conditional'
-        && state.nextTest.text.trim()
-        && state.nextTest.owner.trim()
-        && state.nextTest.eta.trim();
-      convertBtn.hidden = !ready;
-    }
   });
 }
 

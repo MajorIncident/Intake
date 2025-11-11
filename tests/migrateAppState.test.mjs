@@ -18,6 +18,18 @@ globalThis.__actionsStoreMocks = {
 
 const { migrateAppState } = await import('../src/storage.js?actions-tests');
 
+function getFirstCauseFinding(state, key) {
+  if (!state || !Array.isArray(state.causes) || !state.causes.length) {
+    return null;
+  }
+  const cause = state.causes[0];
+  if (!cause || typeof cause !== 'object') {
+    return null;
+  }
+  const findings = cause.findings || {};
+  return findings[key] || null;
+}
+
 test('migrateAppState normalizes legacy states without meta', () => {
   const legacyState = {
     pre: { oneLine: 'Legacy summary', proof: 'Evidence' },
@@ -61,12 +73,10 @@ test('migrateAppState normalizes legacy states without meta', () => {
   assert.equal(migrated.ops.commLog.length, 1);
   assert.equal(migrated.ops.tableFocusMode, '', 'missing focus mode defaults to an empty string');
 
-  assert.equal(Array.isArray(migrated.causes), true, 'causes are normalised into an array');
-  const [migratedCause] = migrated.causes;
-  assert.ok(migratedCause, 'a migrated cause should be present');
-  assert.equal(migratedCause.decision, '', 'legacy findings convert to empty decisions');
-  assert.equal(migratedCause.explanation_is, '', 'legacy explanation fields default to empty strings');
-  assert.deepEqual(migratedCause.next_test, { text: '', owner: '', eta: '' }, 'next test scaffold is present');
+  const finding = getFirstCauseFinding(migrated, 'primary');
+  assert.ok(finding, 'cause findings should be preserved');
+  assert.equal(finding.mode, 'yes', 'legacy findings convert to valid modes');
+  assert.equal(finding.note, 'Cache misses are elevated');
 
   assert.equal(Array.isArray(migrated.table), true);
   assert.equal(migrated.likelyCauseId, '5', 'numeric likely cause ids are stringified');
