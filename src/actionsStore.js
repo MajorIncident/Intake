@@ -22,13 +22,30 @@ const STATUS_ORDER = {
   Cancelled: 5,
 };
 
+/**
+ * Canonical priority labels ordered from most to least urgent.
+ * @type {readonly string[]}
+ */
+export const PRIORITY_SEQUENCE = Object.freeze(['High', 'Med', 'Low']);
+
+const LEGACY_PRIORITY_ALIASES = Object.freeze({
+  P1: 'High',
+  P2: 'Med',
+  P3: 'Low'
+});
+
+const SUPPORTED_PRIORITY_LABELS = new Set([...PRIORITY_SEQUENCE, 'Blocked', 'Deferred', 'Cancelled']);
+
 const PRIORITY_ORDER = {
   Blocked: 0,
-  P1: 1,
-  P2: 2,
-  P3: 3,
+  High: 1,
+  Med: 2,
+  Low: 3,
   Deferred: 4,
   Cancelled: 5,
+  P1: 1,
+  P2: 2,
+  P3: 3
 };
 
 const OWNER_SOURCES = new Set(['Manual', 'DirectoryLookup', 'API']);
@@ -68,7 +85,7 @@ const OWNER_SOURCES = new Set(['Manual', 'DirectoryLookup', 'API']);
  * @property {ActionOwner} owner - Current owner metadata.
  * @property {string} role - Role of the assigned owner.
  * @property {string} status - Lifecycle status (e.g., Planned, Done).
- * @property {string} priority - Priority bucket (e.g., P1, P2).
+ * @property {string} priority - Priority bucket (e.g., High, Med).
  * @property {string} dueAt - ISO timestamp representing the due date.
  * @property {string} startedAt - ISO timestamp when work began.
  * @property {string} completedAt - ISO timestamp when work completed.
@@ -114,7 +131,7 @@ const ACTION_TEMPLATE = Object.freeze({
   owner: OWNER_TEMPLATE,
   role: '',
   status: 'Planned',
-  priority: 'P2',
+  priority: 'Med',
   dueAt: '',
   startedAt: '',
   completedAt: '',
@@ -169,6 +186,27 @@ function normalizeOwner(raw) {
 }
 
 /**
+ * Normalizes an arbitrary priority label into the canonical vocabulary.
+ * Legacy P1/P2/P3 values are mapped to High/Med/Low respectively.
+ *
+ * @param {unknown} priority - Raw priority input captured from the UI or persisted data.
+ * @returns {string} - Sanitized priority label.
+ */
+export function normalizePriorityLabel(priority) {
+  if (typeof priority !== 'string') {
+    return 'Med';
+  }
+  const trimmed = priority.trim();
+  if (!trimmed) return 'Med';
+  const alias = LEGACY_PRIORITY_ALIASES[trimmed];
+  const normalized = alias || trimmed;
+  if (SUPPORTED_PRIORITY_LABELS.has(normalized)) {
+    return normalized;
+  }
+  return 'Med';
+}
+
+/**
  * Creates a normalized clone of an owner reference.
  * @param {unknown} owner - Owner candidate to normalize.
  * @returns {ActionOwner} - Normalized owner copy.
@@ -219,6 +257,7 @@ function normalizeActionRecord(action) {
     ? source.verification
     : {};
   base.verification = { required: false, ...verificationSource };
+  base.priority = normalizePriorityLabel(base.priority);
   return base;
 }
 
@@ -367,7 +406,7 @@ export function createAction(analysisId, patch = {}) {
     owner: normalizeOwner(patch.owner),
     role: patch.role || '',
     status: 'Planned',
-    priority: patch.priority || 'P2',
+    priority: normalizePriorityLabel(patch.priority),
     dueAt: patch.dueAt || '',
     startedAt: '',
     completedAt: '',
@@ -407,6 +446,7 @@ export function patchAction(analysisId, actionId, delta) {
   const baseAuditTrail = Array.isArray(curr.auditTrail) ? [...curr.auditTrail] : [];
 
   const next = { ...curr, ...sanitizedDelta };
+  next.priority = normalizePriorityLabel(next.priority);
   next.owner = baseOwner;
   next.auditTrail = baseAuditTrail;
 

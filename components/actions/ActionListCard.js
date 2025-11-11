@@ -8,7 +8,7 @@
  * - {@link refreshActionList}: Broadcasts a refresh to all subscribed handlers.
  * - {@link mountActionListCard}: Mounts the card markup and binds DOM listeners.
  */
-import { listActions, createAction, patchAction, removeAction, sortActions } from '../../src/actionsStore.js';
+import { listActions, createAction, patchAction, removeAction, sortActions, PRIORITY_SEQUENCE, normalizePriorityLabel } from '../../src/actionsStore.js';
 import { OWNER_CATEGORIES } from '../../src/constants.js';
 import { getAnalysisId, getLikelyCauseId } from '../../src/appState.js';
 import { getPossibleCauses, causeHasFailure, buildHypothesisSentence } from '../../src/kt.js';
@@ -1126,7 +1126,7 @@ export function mountActionListCard(hostEl) {
     return `
       <li class="action-row" data-id="${it.id}" data-status="${it.status}" data-priority="${it.priority}">
         <button class="chip chip--status status" data-status="${it.status}" title="Advance status (Space)">${htmlEscape(it.status)}</button>
-        <button class="chip chip--priority priority" data-priority="${it.priority}" title="Set priority (1/2/3)">${htmlEscape(it.priority)}</button>
+        <button class="chip chip--priority priority" data-priority="${it.priority}" title="Set priority (1=High, 2=Med, 3=Low)">${htmlEscape(it.priority)}</button>
         <div class="summary" title="${detailTitle}">
           <div class="summary__title">${summaryTitle}</div>
           ${causeSubtitle}
@@ -1365,7 +1365,23 @@ export function mountActionListCard(hostEl) {
     applyPatch(id, { status: next });
   }
   /**
-   * Rotates the action priority (P1 → P2 → P3) and persists the result.
+   * Determines the next priority label in the canonical rotation.
+   *
+   * @param {string} current - Current priority label rendered in the row.
+   * @returns {string} - Next priority to apply.
+   */
+  function getNextPriority(current) {
+    const normalized = normalizePriorityLabel(current);
+    const index = PRIORITY_SEQUENCE.indexOf(normalized);
+    if (index < 0) {
+      return PRIORITY_SEQUENCE[0];
+    }
+    const nextIndex = (index + 1) % PRIORITY_SEQUENCE.length;
+    return PRIORITY_SEQUENCE[nextIndex];
+  }
+
+  /**
+   * Rotates the action priority (High → Med → Low) and persists the result.
    *
    * @param {string} id - Identifier of the action to reprioritise.
    * @returns {void}
@@ -1375,7 +1391,7 @@ export function mountActionListCard(hostEl) {
     const items = listActions(analysisId);
     const it = items.find(x => x.id === id);
     if (!it) return;
-    const next = it.priority === 'P1' ? 'P2' : it.priority === 'P2' ? 'P3' : 'P1';
+    const next = getNextPriority(it.priority);
     applyPatch(id, { priority: next });
   }
   function setOwner(id) {
@@ -1789,9 +1805,9 @@ export function mountActionListCard(hostEl) {
     if (e.key === 'V' || e.key === 'v') { e.preventDefault(); verifyAction(id); }
     if (e.key === 'O' || e.key === 'o') { e.preventDefault(); setOwner(id); }
     if (e.key === 'E' || e.key === 'e') { e.preventDefault(); setEta(id); }
-    if (e.key === '1') applyPatch(id, { priority: 'P1' });
-    if (e.key === '2') applyPatch(id, { priority: 'P2' });
-    if (e.key === '3') applyPatch(id, { priority: 'P3' });
+    if (e.key === '1') applyPatch(id, { priority: 'High' });
+    if (e.key === '2') applyPatch(id, { priority: 'Med' });
+    if (e.key === '3') applyPatch(id, { priority: 'Low' });
   }
 
   // Quick add

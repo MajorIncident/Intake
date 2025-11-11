@@ -58,6 +58,20 @@ function createSource(kind) {
         return mocks;
       }
       export const ACTIONS_STORAGE_KEY = 'kt-actions-by-analysis-v1';
+      export const PRIORITY_SEQUENCE = Object.freeze(['High', 'Med', 'Low']);
+      const LEGACY_PRIORITY_ALIASES = { P1: 'High', P2: 'Med', P3: 'Low' };
+      const SUPPORTED_PRIORITY_LABELS = new Set([...PRIORITY_SEQUENCE, 'Blocked', 'Deferred', 'Cancelled']);
+      const baseNormalizePriorityLabel = (priority) => {
+        if (typeof priority !== 'string') return 'Med';
+        const trimmed = priority.trim();
+        if (!trimmed) return 'Med';
+        const alias = LEGACY_PRIORITY_ALIASES[trimmed];
+        const normalized = alias || trimmed;
+        if (SUPPORTED_PRIORITY_LABELS.has(normalized)) {
+          return normalized;
+        }
+        return 'Med';
+      };
       export const listActions = (...args) => getMocks().listActions(...args);
       export const createAction = (...args) => getMocks().createAction(...args);
       export const patchAction = (...args) => getMocks().patchAction(...args);
@@ -68,6 +82,13 @@ function createSource(kind) {
       export const normalizeActionSnapshot = (...args) => (
         getMocks().normalizeActionSnapshot?.(...args) ?? ({ ...(args[0] && typeof args[0] === 'object' ? args[0] : {}) })
       );
+      export const normalizePriorityLabel = (...args) => {
+        const mocks = getMocks();
+        if (typeof mocks.normalizePriorityLabel === 'function') {
+          return mocks.normalizePriorityLabel(...args);
+        }
+        return baseNormalizePriorityLabel(...args);
+      };
     `;
   }
   if (kind === 'appState') {
