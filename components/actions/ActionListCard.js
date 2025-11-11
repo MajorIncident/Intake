@@ -1234,6 +1234,7 @@ export function mountActionListCard(hostEl) {
       }
       return null;
     }
+    sortActions(analysisId);
     render();
     if (onOk) onOk(res);
     return res;
@@ -1799,7 +1800,12 @@ export function mountActionListCard(hostEl) {
     if (!summary) return;
     const analysisId = getCurrentAnalysisId();
     const item = createAction(analysisId, { summary, links: { hypothesisId: getLikelyCauseId() || undefined } });
-    if (item) { input.value = ''; render(); input.focus(); }
+    if (item) {
+      sortActions(analysisId);
+      input.value = '';
+      render();
+      input.focus();
+    }
   }
   addBtn.addEventListener('click', add);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') add(); });

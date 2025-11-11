@@ -161,19 +161,63 @@ afterEach(() => {
 });
 
 test('actions: integrates with the store when users interact with the list', async (t) => {
+  const STATUS_ORDER = new Map([
+    ['Blocked', 0],
+    ['In-Progress', 1],
+    ['Planned', 2],
+    ['Deferred', 3],
+    ['Done', 4],
+    ['Cancelled', 5]
+  ]);
+  const PRIORITY_ORDER = new Map([
+    ['Blocked', 0],
+    ['P1', 1],
+    ['P2', 2],
+    ['P3', 3],
+    ['Deferred', 4],
+    ['Cancelled', 5]
+  ]);
+
+  const getStatusRank = (status) => STATUS_ORDER.get(status) ?? Number.POSITIVE_INFINITY;
+  const getPriorityRank = (priority) => PRIORITY_ORDER.get(priority) ?? Number.POSITIVE_INFINITY;
+  const getDueTime = (dueAt) => {
+    if (!dueAt) return Number.POSITIVE_INFINITY;
+    const parsed = Date.parse(dueAt);
+    return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
+  };
+  const sortSnapshot = (list) => [...list].sort((a, b) => {
+    const statusDiff = getStatusRank(a.status) - getStatusRank(b.status);
+    if (statusDiff !== 0) return statusDiff;
+
+    const priorityDiff = getPriorityRank(a.priority) - getPriorityRank(b.priority);
+    if (priorityDiff !== 0) return priorityDiff;
+
+    const etaDiff = getDueTime(a.dueAt) - getDueTime(b.dueAt);
+    if (etaDiff !== 0) return etaDiff;
+
+    const aCreated = a.createdAt || '';
+    const bCreated = b.createdAt || '';
+    if (aCreated === bCreated) return 0;
+    return aCreated < bCreated ? -1 : 1;
+  });
+
   let actions = [
-    makeAction({ id: 'action-z', summary: 'Zeta patch routers', priority: 'P3' }),
-    makeAction({ id: 'action-b', summary: 'Beta calibrate sensors', priority: 'P2' })
+    makeAction({ id: 'action-z', summary: 'Zeta patch routers', priority: 'P3', createdAt: '2024-01-01T01:00:00.000Z' }),
+    makeAction({ id: 'action-b', summary: 'Beta calibrate sensors', priority: 'P2', createdAt: '2024-01-01T00:00:00.000Z' })
   ];
+  let creationCounter = 0;
 
   const actionsStoreMocks = {
     listActions: mock.fn(() => actions.map(action => ({ ...action }))),
     createAction: mock.fn((analysisId, patch) => {
+      creationCounter += 1;
+      const createdAt = new Date(Date.parse('2024-01-01T02:00:00.000Z') + creationCounter * 60000).toISOString();
       const newItem = makeAction({
         id: 'action-created',
         summary: patch.summary,
         links: patch.links,
-        priority: patch.priority || 'P2'
+        priority: patch.priority || 'P2',
+        createdAt
       });
       actions = [newItem, ...actions];
       return newItem;
@@ -191,7 +235,7 @@ test('actions: integrates with the store when users interact with the list', asy
       return true;
     }),
     sortActions: mock.fn(() => {
-      actions = [...actions].sort((a, b) => b.summary.localeCompare(a.summary));
+      actions = sortSnapshot(actions);
       return actions;
     }),
     exportActionsState: mock.fn(() => []),
@@ -242,6 +286,9 @@ test('actions: integrates with the store when users interact with the list', asy
   const addBtn = host.querySelector('#action-add');
   assert.ok(input && addBtn, 'quick add controls render');
 
+  const focusSpy = mock.fn();
+  input.focus = focusSpy;
+
   input.value = 'Alpha build recovery';
   addBtn.click();
 
@@ -249,20 +296,44 @@ test('actions: integrates with the store when users interact with the list', asy
   const createArgs = actionsStoreMocks.createAction.mock.calls[0].arguments;
   assert.equal(createArgs[0], ANALYSIS_ID);
   assert.deepEqual(createArgs[1].links, { hypothesisId: 'cause-mocked' });
+  assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 1, 'sortActions invoked after quick add');
+  assert.equal(focusSpy.mock.calls.length, 1, 'quick add refocuses the input');
+  assert.equal(input.value, '', 'quick add input clears after creation');
 
   let rows = host.querySelectorAll('.action-row');
   assert.equal(rows.length, actions.length, 'render reflects newly created action');
-  assert.match(rows[0].textContent, /Alpha build recovery/, 'new action appears first');
+  assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'render reflects sorted order after creation');
 
-  const firstRow = rows[0];
-  firstRow.focus();
-  firstRow.dispatchEvent(new window.KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+  const reprioritizeRow = host.querySelector('.action-row[data-id="action-z"]');
+  assert.ok(reprioritizeRow, 'target row exists before reprioritization');
+  reprioritizeRow.focus();
+  reprioritizeRow.dispatchEvent(new window.KeyboardEvent('keydown', { key: '1', bubbles: true }));
 
-  assert.ok(actionsStoreMocks.patchAction.mock.calls.length >= 1, 'patchAction invoked for keyboard shortcut');
-  const lastPatch = actionsStoreMocks.patchAction.mock.calls.at(-1).arguments;
-  assert.equal(lastPatch[0], ANALYSIS_ID);
-  assert.equal(lastPatch[1], 'action-created');
-  assert.deepEqual(lastPatch[2], { status: 'In-Progress' });
+  assert.equal(actionsStoreMocks.patchAction.mock.calls.length, 1, 'patchAction invoked for reprioritization');
+  let patchArgs = actionsStoreMocks.patchAction.mock.calls[0].arguments;
+  assert.equal(patchArgs[0], ANALYSIS_ID);
+  assert.equal(patchArgs[1], 'action-z');
+  assert.deepEqual(patchArgs[2], { priority: 'P1' });
+  assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 2, 'sortActions invoked after reprioritization');
+
+  rows = host.querySelectorAll('.action-row');
+  assert.equal(rows.length, actions.length, 'list re-renders after reprioritizing');
+  assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'sorted order refreshed after reprioritizing');
+
+  const createdRow = host.querySelector('.action-row[data-id="action-created"]');
+  assert.ok(createdRow, 'new action row rendered');
+  createdRow.focus();
+  createdRow.dispatchEvent(new window.KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+
+  assert.equal(actionsStoreMocks.patchAction.mock.calls.length, 2, 'patchAction invoked for status shortcut');
+  patchArgs = actionsStoreMocks.patchAction.mock.calls.at(-1).arguments;
+  assert.equal(patchArgs[0], ANALYSIS_ID);
+  assert.equal(patchArgs[1], 'action-created');
+  assert.deepEqual(patchArgs[2], { status: 'In-Progress' });
+  assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 3, 'sortActions invoked after status change');
+
+  rows = host.querySelectorAll('.action-row');
+  assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'sorted order refreshed after status change');
 
   const rowToDelete = host.querySelector('.action-row[data-id="action-z"]');
   assert.ok(rowToDelete, 'target row exists before deletion');
@@ -285,9 +356,9 @@ test('actions: integrates with the store when users interact with the list', asy
   assert.ok(refreshBtn, 'refresh control renders');
   refreshBtn.click();
 
-  assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 1, 'sortActions invoked via refresh button');
+  assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 4, 'sortActions invoked via refresh button');
   rows = host.querySelectorAll('.action-row');
-  assert.match(rows[0].textContent, /Beta calibrate sensors/, 'sorted order rendered');
+  assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'sorted order rendered');
 
   actions = [...actions, makeAction({ id: 'action-omega', summary: 'Omega finalize rollout' })];
   refreshActionList();
