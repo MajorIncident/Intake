@@ -174,7 +174,7 @@ export function updatePrefaceTitles() {
       docTitle.textContent = `${objectFull} — ${deviationFull}`;
     }
     if (docSubtitle) {
-      docSubtitle.textContent = `What is happening now to ${objectAnchor}: ${deviationFull}`;
+      docSubtitle.textContent = '';
     }
     document.title = `${compactText(objectFull, 50)} — ${compactText(deviationFull, 50)} · KT Intake`;
   } else {
