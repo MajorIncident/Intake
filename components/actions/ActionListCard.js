@@ -110,12 +110,15 @@ export function mountActionListCard(hostEl) {
   const addBtn = hostEl.querySelector('#action-add');
   const listEl = hostEl.querySelector('#action-list');
   const refreshBtn = hostEl.querySelector('#action-refresh');
+  const SORT_TOAST_MESSAGE = 'Actions sorted by priority and ETA.';
+  const AUTO_SORT_DELAY_MS = 3000;
   let disposeEtaPicker = null;
   let disposeMoreMenu = null;
   let disposeBlockerDialog = null;
   let disposeVerificationDialog = null;
   let disposeOwnerDialog = null;
   let disposeCausePicker = null;
+  let autoSortTimer = null;
 
   let causeLookup = { list: [], map: new Map() };
 
@@ -220,9 +223,10 @@ export function mountActionListCard(hostEl) {
    */
   function handleRefresh() {
     const analysisId = getCurrentAnalysisId();
+    cancelPendingAutoSort();
     sortActions(analysisId);
     render();
-    toast('Actions sorted by priority and ETA.');
+    toast(SORT_TOAST_MESSAGE);
   }
 
   function toast(msg) {
@@ -231,6 +235,44 @@ export function mountActionListCard(hostEl) {
       return;
     }
     console.info('[action]', msg);
+  }
+
+  /**
+   * Cancels any queued automatic sort so manual refreshes or new timers replace it.
+   *
+   * @returns {void}
+   */
+  function cancelPendingAutoSort() {
+    if (autoSortTimer) {
+      clearTimeout(autoSortTimer);
+      autoSortTimer = null;
+    }
+  }
+
+  /**
+   * Defers the canonical sort to avoid immediate list jumps while editing.
+   *
+   * @returns {void}
+   */
+  function scheduleAutoSort() {
+    cancelPendingAutoSort();
+    autoSortTimer = setTimeout(() => {
+      autoSortTimer = null;
+      const analysisId = getCurrentAnalysisId();
+      if (!analysisId) {
+        return;
+      }
+      const before = listActions(analysisId);
+      const beforeOrder = Array.isArray(before) ? before.map(action => action.id) : [];
+      const sorted = sortActions(analysisId);
+      const afterOrder = Array.isArray(sorted) ? sorted.map(action => action.id) : [];
+      const changed = beforeOrder.length !== afterOrder.length
+        || afterOrder.some((id, index) => id !== beforeOrder[index]);
+      render();
+      if (changed) {
+        toast(SORT_TOAST_MESSAGE);
+      }
+    }, AUTO_SORT_DELAY_MS);
   }
 
   function closeEtaPicker() {
@@ -1234,8 +1276,8 @@ export function mountActionListCard(hostEl) {
       }
       return null;
     }
-    sortActions(analysisId);
     render();
+    scheduleAutoSort();
     if (onOk) onOk(res);
     return res;
   }
@@ -1817,9 +1859,9 @@ export function mountActionListCard(hostEl) {
     const analysisId = getCurrentAnalysisId();
     const item = createAction(analysisId, { summary, links: { hypothesisId: getLikelyCauseId() || undefined } });
     if (item) {
-      sortActions(analysisId);
       input.value = '';
       render();
+      scheduleAutoSort();
       input.focus();
     }
   }
@@ -1843,8 +1885,12 @@ export function mountActionListCard(hostEl) {
     hostEl[REFRESH_CLEANUP_KEY]();
   }
   const unregisterRefresh = registerActionListRefresh(render);
+  const cleanup = () => {
+    cancelPendingAutoSort();
+    unregisterRefresh();
+  };
   if (hostEl) {
-    hostEl[REFRESH_CLEANUP_KEY] = unregisterRefresh;
+    hostEl[REFRESH_CLEANUP_KEY] = cleanup;
   }
 
   render();

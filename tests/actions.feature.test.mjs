@@ -10,6 +10,7 @@ import { afterEach, beforeEach, mock, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
 const ANALYSIS_ID = 'analysis-test';
+const AUTO_SORT_DELAY = 3000;
 
 let dom = null;
 let previousGlobals = {};
@@ -261,11 +262,14 @@ test('actions: integrates with the store when users interact with the list', asy
   };
   globalThis.__toastMocks = toastMocks;
 
+  mock.timers.enable({ apis: ['setTimeout'] });
+
   t.after(() => {
     delete globalThis.__actionsStoreMocks;
     delete globalThis.__appStateMocks;
     delete globalThis.__ktMocks;
     delete globalThis.__toastMocks;
+    mock.timers.reset();
   });
 
   const { mountActionListCard, refreshActionList } = await import('../components/actions/ActionListCard.js');
@@ -296,13 +300,20 @@ test('actions: integrates with the store when users interact with the list', asy
   const createArgs = actionsStoreMocks.createAction.mock.calls[0].arguments;
   assert.equal(createArgs[0], ANALYSIS_ID);
   assert.deepEqual(createArgs[1].links, { hypothesisId: 'cause-mocked' });
-  assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 1, 'sortActions invoked after quick add');
+  assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 0, 'auto sort defers after quick add');
   assert.equal(focusSpy.mock.calls.length, 1, 'quick add refocuses the input');
   assert.equal(input.value, '', 'quick add input clears after creation');
 
   let rows = host.querySelectorAll('.action-row');
   assert.equal(rows.length, actions.length, 'render reflects newly created action');
-  assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'render reflects sorted order after creation');
+  assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'render reflects current store order before auto sort');
+
+  mock.timers.tick(AUTO_SORT_DELAY);
+
+  assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 1, 'sortActions invoked after quick add delay');
+
+  rows = host.querySelectorAll('.action-row');
+  assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'render reflects sorted order after delayed refresh');
 
   const reprioritizeRow = host.querySelector('.action-row[data-id="action-z"]');
   assert.ok(reprioritizeRow, 'target row exists before reprioritization');
@@ -314,10 +325,17 @@ test('actions: integrates with the store when users interact with the list', asy
   assert.equal(patchArgs[0], ANALYSIS_ID);
   assert.equal(patchArgs[1], 'action-z');
   assert.deepEqual(patchArgs[2], { priority: 'High' });
-  assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 2, 'sortActions invoked after reprioritization');
+  assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 1, 'auto sort defers after reprioritization');
 
   rows = host.querySelectorAll('.action-row');
   assert.equal(rows.length, actions.length, 'list re-renders after reprioritizing');
+  assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'current order rendered before delayed sort');
+
+  mock.timers.tick(AUTO_SORT_DELAY);
+
+  assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 2, 'sortActions invoked after reprioritization delay');
+
+  rows = host.querySelectorAll('.action-row');
   assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'sorted order refreshed after reprioritizing');
 
   const createdRow = host.querySelector('.action-row[data-id="action-created"]');
@@ -330,7 +348,14 @@ test('actions: integrates with the store when users interact with the list', asy
   assert.equal(patchArgs[0], ANALYSIS_ID);
   assert.equal(patchArgs[1], 'action-created');
   assert.deepEqual(patchArgs[2], { status: 'In-Progress' });
-  assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 3, 'sortActions invoked after status change');
+  assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 2, 'auto sort defers after status change');
+
+  rows = host.querySelectorAll('.action-row');
+  assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'current order rendered before status sort');
+
+  mock.timers.tick(AUTO_SORT_DELAY);
+
+  assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 3, 'sortActions invoked after status change delay');
 
   rows = host.querySelectorAll('.action-row');
   assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'sorted order refreshed after status change');
