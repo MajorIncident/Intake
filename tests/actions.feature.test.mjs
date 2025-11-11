@@ -320,11 +320,7 @@ test('actions: integrates with the store when users interact with the list', asy
 
   rows = host.querySelectorAll('.action-row');
   const sortedOrder = readOrder();
-  const movedAfterInitialSort = sortedOrder.filter((id, index) => {
-    const previousIndex = previousOrder.indexOf(id);
-    return previousIndex !== -1 && previousIndex !== index;
-  });
-  assert.deepEqual(readHighlighted().slice().sort(), [...new Set(movedAfterInitialSort)].sort(), 'auto sort highlights rows that changed position');
+  assert.deepEqual(readHighlighted(), ['action-b'], 'auto sort highlights the row that changes its relative ordering');
   previousOrder = sortedOrder;
   mock.timers.tick(REORDER_HIGHLIGHT_DURATION);
   assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'render reflects sorted order after delayed refresh');
@@ -352,11 +348,7 @@ test('actions: integrates with the store when users interact with the list', asy
 
   rows = host.querySelectorAll('.action-row');
   const postRepriorSortOrder = readOrder();
-  const movedAfterRepriorSort = postRepriorSortOrder.filter((id, index) => {
-    const previousIndex = previousOrder.indexOf(id);
-    return previousIndex !== -1 && previousIndex !== index;
-  });
-  assert.deepEqual(readHighlighted().slice().sort(), [...new Set(movedAfterRepriorSort)].sort(), 'reprioritization sort highlights moved rows');
+  assert.deepEqual(readHighlighted(), ['action-z'], 'reprioritization sort highlights the reprioritized row only');
   previousOrder = postRepriorSortOrder;
   mock.timers.tick(REORDER_HIGHLIGHT_DURATION);
   assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'sorted order refreshed after reprioritizing');
@@ -383,11 +375,7 @@ test('actions: integrates with the store when users interact with the list', asy
 
   rows = host.querySelectorAll('.action-row');
   const postStatusSortOrder = readOrder();
-  const movedAfterStatusSort = postStatusSortOrder.filter((id, index) => {
-    const previousIndex = previousOrder.indexOf(id);
-    return previousIndex !== -1 && previousIndex !== index;
-  });
-  assert.deepEqual(readHighlighted().slice().sort(), [...new Set(movedAfterStatusSort)].sort(), 'status change sort highlights moved rows');
+  assert.deepEqual(readHighlighted(), ['action-created'], 'status change sort highlights the updated row only');
   previousOrder = postStatusSortOrder;
   mock.timers.tick(REORDER_HIGHLIGHT_DURATION);
   assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'sorted order refreshed after status change');
