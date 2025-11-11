@@ -1959,24 +1959,35 @@ export function mountActionListCard(hostEl) {
   refreshBtn.addEventListener('click', handleRefresh);
 
   // Global shortcuts
-  document.addEventListener('keydown', e => {
-    if (e.altKey || e.metaKey || e.ctrlKey) return;
-    const tag = (e.target && e.target.tagName ? e.target.tagName.toLowerCase() : '');
-    if (tag === 'input' || tag === 'textarea') return;
-    if (e.target && e.target.isContentEditable) return;
-    if (e.key === 'N' || e.key === 'n') {
-      e.preventDefault();
-      input.focus();
+  function handleGlobalShortcut(event) {
+    if (event.altKey || event.metaKey || event.ctrlKey) {
+      return;
     }
-  });
+    const tag = event.target && event.target.tagName ? event.target.tagName.toLowerCase() : '';
+    if (tag === 'input' || tag === 'textarea') {
+      return;
+    }
+    if (event.target && event.target.isContentEditable) {
+      return;
+    }
+    if (event.key === 'N' || event.key === 'n') {
+      event.preventDefault();
+      if (input && typeof input.focus === 'function') {
+        input.focus();
+      }
+    }
+  }
 
   if (hostEl && typeof hostEl[REFRESH_CLEANUP_KEY] === 'function') {
     hostEl[REFRESH_CLEANUP_KEY]();
   }
+
+  document.addEventListener('keydown', handleGlobalShortcut);
   const unregisterRefresh = registerActionListRefresh(render);
   const cleanup = () => {
     cancelPendingAutoSort();
     unregisterRefresh();
+    document.removeEventListener('keydown', handleGlobalShortcut);
   };
   if (hostEl) {
     hostEl[REFRESH_CLEANUP_KEY] = cleanup;
