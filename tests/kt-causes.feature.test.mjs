@@ -332,20 +332,17 @@ test('kt causes: hypothesis editor normalizes inputs and stores summary metadata
     'We suspect Primer lot 7C because Changed to 160°F. This could lead to Uneven coverage and fisheyes.'
   );
 
+  const inspirationDetails = document.querySelector('.field-examples');
+  assert.equal(inspirationDetails, null, 'Need inspiration helper removed');
+
   const metaToggle = document.querySelector('.hypothesis-meta-toggle');
-  assert.equal(metaToggle.textContent, 'Add supporting details');
-  metaToggle.click();
-
-  const mediumOption = document.querySelector('.hypothesis-confidence__option input[value="medium"]');
-  mediumOption.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
-  assert.equal(cause.confidence, 'medium');
-  const selectedOption = document.querySelector('.hypothesis-confidence__option.is-selected input[value="medium"]');
-  assert.ok(selectedOption, 'selected confidence option receives styling state');
-
+  assert.equal(metaToggle, null, 'supporting details toggle removed');
+  const confidenceOption = document.querySelector('.hypothesis-confidence__option');
+  assert.equal(confidenceOption, null, 'confidence buttons removed');
   const evidenceArea = document.getElementById('cause-h1-evidence');
-  evidenceArea.value = '  Evidence from humidity logs  ';
-  evidenceArea.dispatchEvent(new dom.window.Event('blur', { bubbles: true }));
-  assert.equal(cause.evidence, 'Evidence from humidity logs');
+  assert.equal(evidenceArea, null, 'evidence textarea removed');
+  assert.equal(cause.confidence, '', 'confidence remains unchanged when metadata inputs are absent');
+  assert.equal(cause.evidence, '', 'evidence remains unchanged when metadata inputs are absent');
 
   const saveButton = document.querySelector('.cause-controls .btn-mini');
   const beforeSaveCalls = saveSpy.mock.calls.length;
