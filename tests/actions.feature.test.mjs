@@ -11,6 +11,7 @@ import { JSDOM } from 'jsdom';
 
 const ANALYSIS_ID = 'analysis-test';
 const AUTO_SORT_DELAY = 3000;
+const REORDER_HIGHLIGHT_DURATION = 1100;
 
 let dom = null;
 let previousGlobals = {};
@@ -284,6 +285,10 @@ test('actions: integrates with the store when users interact with the list', asy
 
   mountActionListCard(host);
 
+  const readOrder = () => Array.from(host.querySelectorAll('.action-row')).map(row => row.dataset.id);
+  const readHighlighted = () => Array.from(host.querySelectorAll('.action-row.action-row--reordered')).map(row => row.dataset.id);
+  let previousOrder = readOrder();
+
   assert.equal(updates.at(-1)?.total, actions.length, 'initial render emits total count');
 
   const input = host.querySelector('#action-new');
@@ -307,12 +312,21 @@ test('actions: integrates with the store when users interact with the list', asy
   let rows = host.querySelectorAll('.action-row');
   assert.equal(rows.length, actions.length, 'render reflects newly created action');
   assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'render reflects current store order before auto sort');
+  previousOrder = readOrder();
 
   mock.timers.tick(AUTO_SORT_DELAY);
 
   assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 1, 'sortActions invoked after quick add delay');
 
   rows = host.querySelectorAll('.action-row');
+  const sortedOrder = readOrder();
+  const movedAfterInitialSort = sortedOrder.filter((id, index) => {
+    const previousIndex = previousOrder.indexOf(id);
+    return previousIndex !== -1 && previousIndex !== index;
+  });
+  assert.deepEqual(readHighlighted().slice().sort(), [...new Set(movedAfterInitialSort)].sort(), 'auto sort highlights rows that changed position');
+  previousOrder = sortedOrder;
+  mock.timers.tick(REORDER_HIGHLIGHT_DURATION);
   assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'render reflects sorted order after delayed refresh');
 
   const reprioritizeRow = host.querySelector('.action-row[data-id="action-z"]');
@@ -330,12 +344,21 @@ test('actions: integrates with the store when users interact with the list', asy
   rows = host.querySelectorAll('.action-row');
   assert.equal(rows.length, actions.length, 'list re-renders after reprioritizing');
   assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'current order rendered before delayed sort');
+  previousOrder = readOrder();
 
   mock.timers.tick(AUTO_SORT_DELAY);
 
   assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 2, 'sortActions invoked after reprioritization delay');
 
   rows = host.querySelectorAll('.action-row');
+  const postRepriorSortOrder = readOrder();
+  const movedAfterRepriorSort = postRepriorSortOrder.filter((id, index) => {
+    const previousIndex = previousOrder.indexOf(id);
+    return previousIndex !== -1 && previousIndex !== index;
+  });
+  assert.deepEqual(readHighlighted().slice().sort(), [...new Set(movedAfterRepriorSort)].sort(), 'reprioritization sort highlights moved rows');
+  previousOrder = postRepriorSortOrder;
+  mock.timers.tick(REORDER_HIGHLIGHT_DURATION);
   assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'sorted order refreshed after reprioritizing');
 
   const createdRow = host.querySelector('.action-row[data-id="action-created"]');
@@ -352,12 +375,21 @@ test('actions: integrates with the store when users interact with the list', asy
 
   rows = host.querySelectorAll('.action-row');
   assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'current order rendered before status sort');
+  previousOrder = readOrder();
 
   mock.timers.tick(AUTO_SORT_DELAY);
 
   assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 3, 'sortActions invoked after status change delay');
 
   rows = host.querySelectorAll('.action-row');
+  const postStatusSortOrder = readOrder();
+  const movedAfterStatusSort = postStatusSortOrder.filter((id, index) => {
+    const previousIndex = previousOrder.indexOf(id);
+    return previousIndex !== -1 && previousIndex !== index;
+  });
+  assert.deepEqual(readHighlighted().slice().sort(), [...new Set(movedAfterStatusSort)].sort(), 'status change sort highlights moved rows');
+  previousOrder = postStatusSortOrder;
+  mock.timers.tick(REORDER_HIGHLIGHT_DURATION);
   assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'sorted order refreshed after status change');
 
   const rowToDelete = host.querySelector('.action-row[data-id="action-z"]');
@@ -376,6 +408,7 @@ test('actions: integrates with the store when users interact with the list', asy
   rows = host.querySelectorAll('.action-row');
   assert.equal(rows.length, actions.length, 'list re-renders after deletion');
   assert.ok(!host.querySelector('.action-row[data-id="action-z"]'), 'deleted row removed from DOM');
+  previousOrder = readOrder();
 
   const refreshBtn = host.querySelector('#action-refresh');
   assert.ok(refreshBtn, 'refresh control renders');
@@ -383,6 +416,14 @@ test('actions: integrates with the store when users interact with the list', asy
 
   assert.equal(actionsStoreMocks.sortActions.mock.calls.length, 4, 'sortActions invoked via refresh button');
   rows = host.querySelectorAll('.action-row');
+  const refreshOrder = readOrder();
+  const movedAfterRefresh = refreshOrder.filter((id, index) => {
+    const previousIndex = previousOrder.indexOf(id);
+    return previousIndex !== -1 && previousIndex !== index;
+  });
+  assert.deepEqual(movedAfterRefresh, [], 'manual refresh does not change row ordering');
+  assert.deepEqual(readHighlighted(), [], 'manual refresh avoids reorder highlight');
+  previousOrder = refreshOrder;
   assert.deepEqual(Array.from(rows).map(row => row.dataset.id), actions.map(action => action.id), 'sorted order rendered');
 
   actions = [...actions, makeAction({ id: 'action-omega', summary: 'Omega finalize rollout' })];
@@ -391,6 +432,7 @@ test('actions: integrates with the store when users interact with the list', asy
   rows = host.querySelectorAll('.action-row');
   assert.equal(rows.length, actions.length, 'refreshActionList re-renders current store state');
   assert.match(rows[rows.length - 1].textContent, /Omega finalize rollout/, 'new store item appears after refresh');
+  previousOrder = readOrder();
   assert.equal(updates.at(-1)?.total, actions.length, 'refresh dispatch emits the latest count');
 });
 
