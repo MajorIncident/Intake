@@ -11,55 +11,6 @@ import { JSDOM } from 'jsdom';
 
 import * as summaryModule from '../src/summary.js';
 
-function buildCauseDecisionSummaryForTests(cause) {
-  if (!cause || typeof cause !== 'object') {
-    return '';
-  }
-  const decision = typeof cause.decision === 'string' ? cause.decision.trim() : '';
-  const explanationIs = typeof cause.explanation_is === 'string' ? cause.explanation_is.trim() : '';
-  const explanationNot = typeof cause.explanation_is_not === 'string' ? cause.explanation_is_not.trim() : '';
-  const assumptions = typeof cause.assumptions === 'string' ? cause.assumptions.trim() : '';
-  const nextTest = cause.next_test && typeof cause.next_test === 'object'
-    ? cause.next_test
-    : { text: '', owner: '', eta: '' };
-  const testText = typeof nextTest.text === 'string' ? nextTest.text.trim() : '';
-  const owner = typeof nextTest.owner === 'string' ? nextTest.owner.trim() : '';
-  const eta = typeof nextTest.eta === 'string' ? nextTest.eta.trim() : '';
-
-  if (decision === 'explains') {
-    const parts = ['Explains.'];
-    if (explanationIs) {
-      parts.push(`This cause explains the pattern because ${explanationIs}.`);
-    }
-    if (explanationNot) {
-      parts.push(`It is not present in unaffected cases because ${explanationNot}.`);
-    }
-    return parts.join(' ').trim();
-  }
-
-  if (decision === 'conditional') {
-    const parts = ['Explains only if.'];
-    if (assumptions) {
-      parts.push(`This cause explains the data only if ${assumptions}.`);
-    }
-    if (testText) {
-      const meta = [];
-      if (owner) meta.push(owner);
-      if (eta) meta.push(eta);
-      const metaText = meta.length ? ` (${meta.join(', ')})` : '';
-      parts.push(`Test: ${testText}${metaText}.`);
-    }
-    return parts.join(' ').trim();
-  }
-
-  if (decision === 'does_not_explain') {
-    const reason = explanationIs || explanationNot;
-    return reason ? `Does not explain. This cause fails because ${reason}.` : 'Does not explain.';
-  }
-
-  return '';
-}
-
 const { buildSummaryText, generateSummary } = summaryModule;
 
 afterEach(() => {
@@ -106,32 +57,20 @@ test('summary: renders populated sections and normalises communication timestamp
     ],
     getStepsCounts: () => ({ total: 2, completed: 1 }),
     possibleCauses: [
-      {
-        id: 'cause-1',
-        suspect: 'Database replication lag',
-        accusation: 'Write quorum timing out',
-        impact: 'Payments backlog builds up',
-        decision: 'explains',
-        explanation_is: 'Replication lag blocks writes until quorum resumes',
-        explanation_is_not: 'Regions that stay healthy promote replicas instantly',
-        assumptions: '',
-        next_test: { text: '', owner: '', eta: '' }
-      },
-      {
-        id: 'cause-2',
-        suspect: 'Network saturation',
-        accusation: 'Proxy drops packets when load spikes',
-        impact: 'Transactions retry until timeout',
-        decision: 'conditional',
-        explanation_is: '',
-        explanation_is_not: '',
-        assumptions: 'Traffic is pinned to the same proxy fleet',
-        next_test: { text: 'Check proxy routing distribution.', owner: 'Jordan', eta: '2024-01-02T00:00:00.000Z' }
-      }
+      { id: 'cause-1', title: 'Database replication lag', status: 'completed' },
+      { id: 'cause-2', title: 'Network saturation', status: 'in_progress' }
     ],
     likelyCauseId: 'cause-1',
-    buildHypothesisSentence: (cause) => `${cause.suspect} is impacting payments`,
-    buildCauseDecisionSummary: buildCauseDecisionSummaryForTests,
+    buildHypothesisSentence: (cause) => `${cause.title} is impacting payments`,
+    evidencePairIndexes: () => [],
+    rowsBuilt: [],
+    peekCauseFinding: () => null,
+    getRowKeyByIndex: () => '',
+    findingMode: () => '',
+    findingNote: () => '',
+    countCompletedEvidence: () => 0,
+    causeHasFailure: () => false,
+    causeStatusLabel: () => '',
     tbody: { querySelectorAll: () => [] }
   };
 
@@ -177,23 +116,6 @@ test('summary: renders populated sections and normalises communication timestamp
     assert.ok(ktIndex > actionsIndex, 'KT section should follow actions');
   }
 
-  assert.ok(
-    text.includes('Decision: Explains. This cause explains the pattern because Replication lag blocks writes until quorum resumes.'),
-    'Likely cause includes the Explains decision summary'
-  );
-  assert.ok(
-    text.includes('It is not present in unaffected cases because Regions that stay healthy promote replicas instantly.'),
-    'Likely cause summary includes IS NOT rationale'
-  );
-  assert.ok(
-    text.includes('Decision: Explains only if. This cause explains the data only if Traffic is pinned to the same proxy fleet.'),
-    'Secondary causes include conditional summary'
-  );
-  assert.ok(
-    text.includes('Test: Check proxy routing distribution.'),
-    'Conditional summary references the planned test'
-  );
-
   assert.ok(text.includes('• Build rollback plan — Status: In-Progress | Priority: P1 | Owner: Jordan Lee | ETA: 2024-01-01T18:30:00.000Z. Notes: Investigating rollback paths | Owner Notes: Coordinating with DB team'));
   assert.ok(text.includes('• Notify regulators — Status: Planned | Priority: P2 | Owner: Taylor Kim. Notes: No notes provided.'));
 });
@@ -236,7 +158,15 @@ test('summary: omits optional sections when inputs are empty', () => {
     possibleCauses: [],
     likelyCauseId: '',
     buildHypothesisSentence: () => '',
-    buildCauseDecisionSummary: () => '',
+    evidencePairIndexes: () => [],
+    rowsBuilt: [],
+    peekCauseFinding: () => null,
+    getRowKeyByIndex: () => '',
+    findingMode: () => '',
+    findingNote: () => '',
+    countCompletedEvidence: () => 0,
+    causeHasFailure: () => false,
+    causeStatusLabel: () => '',
     tbody: { querySelectorAll: () => [] },
     actions: []
   };

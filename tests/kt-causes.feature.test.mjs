@@ -121,7 +121,6 @@ beforeEach(() => {
 
   if (globalThis.__actionsStoreMocks) {
     globalThis.__actionsStoreMocks.listActions = () => [];
-    globalThis.__actionsStoreMocks.createAction = () => { throw new Error('not implemented'); };
   }
   if (globalThis.__appStateMocks) {
     globalThis.__appStateMocks.getAnalysisId = () => 'analysis-test';
@@ -183,28 +182,8 @@ test('kt causes: refreshes action badges from mocked counts', async () => {
   ktModule.configureKT({ autoResize: () => {}, onSave: saveSpy, showToast: toastSpy });
 
   ktModule.setPossibleCauses([
-    {
-      id: 'cause-a',
-      suspect: 'Caching layer',
-      accusation: '',
-      impact: '',
-      decision: '',
-      explanation_is: '',
-      explanation_is_not: '',
-      assumptions: '',
-      next_test: { text: '', owner: '', eta: '' }
-    },
-    {
-      id: 'cause-b',
-      suspect: 'Queue backlog',
-      accusation: '',
-      impact: '',
-      decision: '',
-      explanation_is: '',
-      explanation_is_not: '',
-      assumptions: '',
-      next_test: { text: '', owner: '', eta: '' }
-    }
+    { id: 'cause-a', suspect: 'Caching layer', accusation: '', impact: '', findings: {} },
+    { id: 'cause-b', suspect: 'Queue backlog', accusation: '', impact: '', findings: {} }
   ]);
   ktModule.renderCauses();
 
@@ -222,41 +201,17 @@ test('kt causes: refreshes action badges from mocked counts', async () => {
   assert.equal(listActionsMock.mock.calls[0].arguments[0], 'analysis-test');
 });
 
-test('kt causes: decision flow updates evidence, preview, and action conversion', async () => {
+test('kt causes: updates evidence previews and emits toast/save callbacks', async () => {
   const ktModule = await loadKtModule();
   const rows = ktModule.getRowsBuilt();
   rows.length = 0;
 
   const saveSpy = mock.fn();
   const toastSpy = mock.fn();
-  const createActionMock = mock.fn(() => ({ id: 'action-42' }));
-  globalThis.__actionsStoreMocks.createAction = createActionMock;
-
   ktModule.configureKT({ autoResize: () => {}, onSave: saveSpy, showToast: toastSpy });
 
-  const cause = {
-    id: 'cause-a',
-    suspect: 'Alpha subsystem',
-    accusation: 'Queues the wrong shard',
-    impact: 'Customers see long waits',
-    decision: '',
-    explanation_is: '',
-    explanation_is_not: '',
-    assumptions: '',
-    next_test: { text: '', owner: '', eta: '' },
-    testingOpen: true
-  };
+  const cause = { id: 'cause-a', suspect: 'Alpha subsystem', findings: {} };
   ktModule.setPossibleCauses([cause]);
-  ktModule.ensurePossibleCausesUI();
-  ktModule.renderCauses();
-
-  const { document: doc } = dom.window;
-  const card = doc.querySelector('.cause-card');
-  assert.ok(card, `Cause card should render for testing flow. DOM: ${doc.body.innerHTML}`);
-  const evidenceContent = card.querySelector('.cause-test__evidence-content');
-  const preview = card.querySelector('.cause-test__preview');
-  const [explainsBtn, conditionalBtn, failBtn] = card.querySelectorAll('.cause-test__segment');
-  void failBtn; // not used in this flow but ensures destructuring remains stable.
 
   const isTextarea = document.createElement('textarea');
   const notTextarea = document.createElement('textarea');
@@ -264,97 +219,62 @@ test('kt causes: decision flow updates evidence, preview, and action conversion'
   notTextarea.value = 'Beta detail';
   rows.push({
     tr: { hidden: false },
-    th: { textContent: 'WHERE — Where is the failure?' },
-    def: { q: 'WHERE — Where is {OBJECT} misbehaving?' },
+    th: { textContent: 'Where is it failing?' },
+    def: { q: 'Where is {OBJECT} misbehaving?' },
     isTA: isTextarea,
     notTA: notTextarea
   });
 
+  const causeList = document.getElementById('causeList');
+  const rowEl = document.createElement('section');
+  rowEl.className = 'cause-eval-row';
+  rowEl.dataset.rowIndex = '0';
+
+  const questionEl = document.createElement('div');
+  questionEl.dataset.role = 'question';
+
+  const evidenceWrap = document.createElement('div');
+  const isValue = document.createElement('div');
+  isValue.dataset.role = 'is-value';
+  const notValue = document.createElement('div');
+  notValue.dataset.role = 'not-value';
+  evidenceWrap.append(isValue, notValue);
+
+  const inputsWrap = document.createElement('div');
+  const noteField = document.createElement('div');
+  const noteLabel = document.createElement('label');
+  noteLabel.dataset.role = 'note-label';
+  noteLabel.dataset.template = 'Explain <is> vs <is not>';
+  const noteInput = document.createElement('textarea');
+  noteInput.dataset.role = 'finding-note';
+  noteInput.dataset.placeholderTemplate = 'Notes about <is>';
+  noteField.append(noteLabel, noteInput);
+  inputsWrap.append(noteField);
+
+  rowEl.append(questionEl, evidenceWrap, inputsWrap);
+  causeList.append(rowEl);
+
   ktModule.updateCauseEvidencePreviews();
 
-  const sections = evidenceContent.querySelectorAll('section');
-  assert.equal(sections.length, 2, 'renders IS and IS NOT sections');
-  const isItems = sections[0].querySelectorAll('li');
-  assert.equal(isItems.length, 1, 'shows each IS evidence line');
-  assert.ok(isItems[0].textContent.includes('Alpha detail'));
-  const notItems = sections[1].querySelectorAll('li');
-  assert.equal(notItems.length, 1, 'shows each IS NOT evidence line');
-  assert.ok(notItems[0].textContent.includes('Beta detail'));
+  assert.equal(questionEl.textContent, 'Where is it failing?');
+  assert.equal(isValue.textContent, '• Alpha detail');
+  assert.equal(notValue.textContent, '• Beta detail');
+  assert.equal(noteLabel.textContent, 'Explain Alpha detail vs Beta detail');
+  assert.equal(noteInput.placeholder, 'Notes about Alpha detail');
 
-  explainsBtn.click();
-  const groups = card.querySelectorAll('.cause-test__group');
-  const explainsGroup = groups[0];
-  const conditionalGroup = groups[1];
-  const failGroup = groups[2];
-  assert.equal(explainsGroup.hidden, false, 'explains group visible when explains selected');
-  assert.equal(conditionalGroup.hidden, true, 'conditional group hidden when explains selected');
-  assert.equal(failGroup.hidden, true, 'fail group hidden when explains selected');
+  isTextarea.value = 'Alpha detail\nDelta factor';
+  notTextarea.value = '';
+  ktModule.updateCauseEvidencePreviews();
 
-  const explainTextareas = explainsGroup.querySelectorAll('textarea');
-  const explainIsField = explainTextareas[0];
-  const explainNotField = explainTextareas[1];
-  assert.ok(explainIsField && explainNotField, 'Explains prompts render textareas');
-  explainIsField.value = 'It introduces latency.';
-  explainIsField.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
-  explainNotField.value = 'Because unaffected paths use cached data.';
-  explainNotField.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  assert.equal(isValue.textContent, '• Alpha detail\n• Delta factor');
+  assert.equal(notValue.textContent, '—');
+  assert.equal(noteLabel.textContent, 'Explain Alpha detail\nDelta factor vs IS NOT column');
+  assert.equal(noteInput.placeholder, 'Notes about Alpha detail\nDelta factor');
 
-  assert.ok(preview.textContent.includes('This cause explains the pattern because It introduces latency.'), 'preview reflects IS reasoning');
-  assert.ok(preview.textContent.includes('unaffected cases because Because unaffected paths use cached data.'), 'preview reflects IS NOT reasoning');
-
-  conditionalBtn.click();
-  assert.equal(explainsGroup.hidden, true, 'explains group hidden after selecting conditional');
-  assert.equal(conditionalGroup.hidden, false, 'conditional prompts visible');
-
-  const conditionalTextareas = conditionalGroup.querySelectorAll('textarea');
-  const assumptionField = conditionalTextareas[0];
-  const testField = conditionalTextareas[1];
-  assert.ok(assumptionField && testField, 'Conditional prompts render textareas');
-  assert.equal(conditionalTextareas.length, 2, `Expected two conditional textareas, found ${conditionalTextareas.length}`);
-  const ownerBtn = card.querySelector('.cause-test__owner');
-  const etaBtn = card.querySelector('.cause-test__eta');
-  const convertBtn = card.querySelector('.cause-test__convert');
-
-  assumptionField.value = 'Only shard A routes through the proxy.';
-  assumptionField.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
-  testField.value = 'Inspect routing tables for shard A.';
-  testField.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
-
-  assert.equal(convertBtn.hidden, true, 'convert button hidden until owner and ETA captured');
-
-  assert.equal(cause.assumptions, 'Only shard A routes through the proxy.', 'assumptions persisted to cause state');
-  assert.equal(cause.next_test.text, 'Inspect routing tables for shard A.', 'test summary persisted to cause state');
-
-  ownerBtn.click();
-  const ownerOverlay = doc.querySelector('.owner-picker-overlay[data-role="cause-test-owner"]');
-  const ownerInput = ownerOverlay.querySelector('input[name="ownerName"]');
-  ownerInput.value = 'Jordan Lee';
-  ownerOverlay.querySelector('form').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
-
-  assert.equal(ownerBtn.textContent, 'Jordan Lee');
-  assert.equal(cause.next_test.owner, 'Jordan Lee', 'owner persisted to cause state');
-  assert.equal(convertBtn.hidden, true, 'convert still hidden until ETA captured');
-
-  etaBtn.click();
-  const etaOverlay = doc.querySelector('.eta-picker-overlay[data-role="cause-test-eta"]');
-  const etaInput = etaOverlay.querySelector('input[type="datetime-local"]');
-  etaInput.value = '2024-05-01T12:30';
-  etaOverlay.querySelector('[data-action="save"]').click();
-
-  assert.equal(etaBtn.dataset.empty, '0');
-  assert.ok(cause.next_test.eta.endsWith('Z'), 'eta stored as ISO string');
-  assert.equal(convertBtn.hidden, false, 'convert button appears once test, owner, and ETA are set');
-
-  convertBtn.click();
-
-  assert.equal(createActionMock.mock.calls.length, 1, 'convert to action delegates to action store');
-  const payload = createActionMock.mock.calls[0].arguments[1];
-  assert.equal(payload.summary, 'Inspect routing tables for shard A.');
-  assert.equal(payload.owner.name, 'Jordan Lee');
-  assert.ok(payload.detail.includes('Hypothesis:'));
-  assert.ok(payload.detail.includes('Explains only if.'));
-  assert.equal(toastSpy.mock.calls.at(-1).arguments[0], 'Test converted into an action item.');
-  assert.ok(saveSpy.mock.calls.length >= 3, 'decision edits trigger autosave');
+  ktModule.setLikelyCauseId('cause-a', { skipRender: true });
+  assert.equal(saveSpy.mock.calls.length, 1, 'setLikelyCauseId triggers the save callback');
+  assert.equal(toastSpy.mock.calls.length, 1, 'setLikelyCauseId emits a toast message');
+  assert.equal(toastSpy.mock.calls[0].arguments[0], 'Likely Cause set to: Alpha subsystem.');
 });
 
 test('kt causes: hypothesis editor normalizes inputs and stores summary metadata', async () => {
@@ -370,6 +290,7 @@ test('kt causes: hypothesis editor normalizes inputs and stores summary metadata
     suspect: '',
     accusation: '',
     impact: '',
+    findings: {},
     editing: true,
     summaryText: '',
     confidence: '',
