@@ -516,6 +516,10 @@ tbody th{
   border-top:1px solid var(--line); border-bottom:1px solid var(--line);
 }
 .band th span{opacity:.85; font-weight:600; color:#6b768a}
+#ktTable{
+  margin:0 0 32px;
+}
+
 #ktTable tbody tr[data-row-theme] > th{
   position:relative;
   background-clip:padding-box;
