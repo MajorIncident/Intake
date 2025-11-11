@@ -172,6 +172,19 @@ body.comms-drawer-open{overflow:hidden;}
   .comms-drawer{width:100%; border-radius:0; box-shadow:none;}
 }
 .wrap{max-width:1240px; margin:0 auto 40px; padding:0 12px;}
+
+.site-footer{
+  max-width:1240px;
+  margin:40px auto 32px;
+  padding:0 12px;
+  text-align:center;
+  color:var(--muted);
+  font-size:13px;
+}
+.site-footer a{color:var(--accent); text-decoration:none;}
+.site-footer a:hover,
+.site-footer a:focus{text-decoration:underline;}
+
 h2#docSubtitle{margin:12px 0 8px; font-size:16px; font-weight:700; color:#2a3957; white-space:pre-wrap;}
 
 .card{
