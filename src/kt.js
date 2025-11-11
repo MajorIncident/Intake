@@ -76,6 +76,9 @@ let getDeviationFullFn = defaultGetDeviationFull;
  * @property {string} accusation - Description of the behavior the cause would produce.
  * @property {string} impact - Statement describing the customer or system impact.
  * @property {Record<string, CauseFinding>} findings - Map of KT row keys to evaluation details.
+ * @property {string} summaryText - Cached hypothesis summary rendered in the card view.
+ * @property {('low'|'medium'|'high'|'')} confidence - Optional confidence signal captured via the metadata toggle.
+ * @property {string} evidence - Optional supporting evidence statement captured from the metadata toggle.
  * @property {boolean} editing - Whether the card is in inline edit mode.
  * @property {boolean} testingOpen - Whether the test panel is expanded.
  */
@@ -755,6 +758,9 @@ export function createEmptyCause(){
     suspect: '',
     accusation: '',
     impact: '',
+    summaryText: '',
+    confidence: '',
+    evidence: '',
     findings: {},
     editing: true,
     testingOpen: false
@@ -863,31 +869,182 @@ function toggleLikelyCause(cause){
   commitLikelyCause(nextId, { silent: false, message });
 }
 
+const HYPOTHESIS_HARD_MIN = 3;
+const HYPOTHESIS_SOFT_MIN = 8;
+const HYPOTHESIS_PREVIEW_LIMIT = 240;
+const TRAILING_PUNCTUATION_PATTERN = /[\s]*[.,;:!?]+$/u;
+
 /**
- * Evaluates whether a cause has all hypothesis fields populated.
+ * Normalizes hypothesis field input by trimming whitespace, collapsing spacing,
+ * and removing trailing punctuation while preserving intentional casing.
+ * @param {string} value - Raw textarea value captured from the UI.
+ * @returns {string} Sanitized field text ready for persistence.
+ */
+function normalizeHypothesisValue(value){
+  if(typeof value !== 'string') return '';
+  const collapsed = value.trim().replace(/\s+/g, ' ');
+  if(!collapsed){
+    return '';
+  }
+  return collapsed.replace(TRAILING_PUNCTUATION_PATTERN, '').trim();
+}
+
+/**
+ * Normalizes optional evidence metadata by trimming and collapsing whitespace
+ * while preserving intentional punctuation.
+ * @param {string} value - Evidence text captured from the metadata panel.
+ * @returns {string} Sanitized evidence description.
+ */
+function normalizeEvidenceValue(value){
+  if(typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  return trimmed.replace(/\s+/g, ' ');
+}
+
+/**
+ * Collapses lengthy preview text to the configured character limit while
+ * preserving whole-word readability where practical.
+ * @param {string} value - Text to evaluate for truncation.
+ * @returns {string} Possibly truncated text with an ellipsis suffix.
+ */
+function truncateForPreview(value){
+  if(typeof value !== 'string') return '';
+  if(value.length <= HYPOTHESIS_PREVIEW_LIMIT){
+    return value;
+  }
+  const slice = value.slice(0, HYPOTHESIS_PREVIEW_LIMIT).replace(/\s+$/u, '');
+  return `${slice}…`;
+}
+
+/**
+ * Determines whether optional hypothesis metadata controls should be rendered
+ * based on global intake settings.
+ * @returns {boolean} True when metadata controls should be visible.
+ */
+function isHypothesisMetadataEnabled(){
+  if(typeof window === 'undefined'){
+    return true;
+  }
+  const candidates = [
+    window.intakeSettings,
+    window.__INTAKE_SETTINGS__,
+    window.__INTAKE_FLAGS__,
+    window.intakeFeatureFlags
+  ];
+  for(const source of candidates){
+    if(!source || typeof source !== 'object') continue;
+    if(typeof source.hypothesisMetadataEnabled === 'boolean'){
+      return source.hypothesisMetadataEnabled;
+    }
+    if(typeof source.hypothesisMetadata === 'boolean'){
+      return source.hypothesisMetadata;
+    }
+    if(source.features && typeof source.features === 'object'){
+      const featureFlag = source.features.hypothesisMetadata;
+      if(typeof featureFlag === 'boolean'){
+        return featureFlag;
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * Detects whether the supplied text includes a verb-like pattern, signalling
+ * that the accusation describes an action or condition.
+ * @param {string} text - Text to inspect for verb candidates.
+ * @returns {boolean} True when a verb-like token is detected.
+ */
+function hasVerbCandidate(text){
+  if(typeof text !== 'string' || !text.trim()){ return false; }
+  const lowered = text.trim().toLowerCase();
+  const patterns = [
+    /\b(?:using|use|used|changed|change|changing|set|setting|sets|causing|cause|caused|failing|failed|not\s+following|not\s+replacing|not\s+cleaning|missing|skipping|ignoring|drifting|overheating|leaking|contaminating)\b/u,
+    /\b[a-z]+ing\b/u,
+    /\b[a-z]+ed\b/u,
+    /\b(?:is|are|was|were)\s+[a-z]+ing\b/u,
+    /\bto\s+[a-z]+\b/u
+  ];
+  return patterns.some(pattern => pattern.test(lowered));
+}
+
+/**
+ * Determines whether a hypothesis field satisfies the hard minimum length
+ * requirement after normalization.
+ * @param {string} value - Candidate field value.
+ * @returns {boolean} True when the hard minimum is met.
+ */
+function meetsHardMinimum(value){
+  return normalizeHypothesisValue(value).length >= HYPOTHESIS_HARD_MIN;
+}
+
+/**
+ * Builds a neutral hypothesis summary following the KT template, optionally
+ * preparing text for preview scenarios.
+ * @param {PossibleCause} cause - Cause providing suspect, accusation, and impact.
+ * @param {{ preview?: boolean }} [options] - Rendering options for the summary.
+ * @returns {string} Summary sentence(s) adhering to Section 6 requirements.
+ */
+function composeHypothesisSummary(cause, { preview = false } = {}){
+  if(!cause) return '';
+  const suspectClean = normalizeHypothesisValue(cause.suspect || '');
+  const accusationClean = normalizeHypothesisValue(cause.accusation || '');
+  const impactClean = normalizeHypothesisValue(cause.impact || '');
+
+  const hasSuspect = suspectClean.length > 0;
+  const hasAccusation = accusationClean.length > 0;
+  const hasImpact = impactClean.length > 0;
+
+  if(!hasSuspect && !hasAccusation && !hasImpact){
+    return 'Add suspect, accusation, and impact to craft a strong hypothesis.';
+  }
+
+  if(!hasSuspect || !hasAccusation){
+    return 'Add suspect and accusation to generate a preview.';
+  }
+
+  const suspectText = preview ? truncateForPreview(suspectClean) : suspectClean;
+  const accusationText = preview ? truncateForPreview(accusationClean) : accusationClean;
+  const impactText = preview ? truncateForPreview(impactClean) : impactClean;
+
+  const sentences = [`We suspect ${suspectText} because ${accusationText}.`];
+  if(hasImpact){
+    sentences.push(`This could lead to ${impactText}.`);
+  }
+  return sentences.join(' ');
+}
+
+/**
+ * Evaluates whether a cause has the required hypothesis fields populated.
  * @param {PossibleCause} cause - Cause to inspect.
- * @returns {boolean} True when suspect, accusation, and impact are filled.
+ * @returns {boolean} True when suspect and accusation satisfy minimum length.
  */
 function hasCompleteHypothesis(cause){
   if(!cause) return false;
-  return ['suspect', 'accusation', 'impact'].every(key => typeof cause[key] === 'string' && cause[key].trim().length);
+  return meetsHardMinimum(cause.suspect) && meetsHardMinimum(cause.accusation);
 }
 
 /**
  * Builds a friendly summary sentence for the suspect, accusation, and impact.
+ * Prefers the cached summary text when available to preserve saved phrasing.
  * @param {PossibleCause} cause - Cause whose hypothesis fields will be read.
  * @returns {string} Completed sentence guiding the customer impact story.
  */
 export function buildHypothesisSentence(cause){
   if(!cause) return '';
-  const suspect = (cause.suspect || '').trim();
-  const accusation = (cause.accusation || '').trim();
-  const impact = (cause.impact || '').trim();
-  if(!suspect && !accusation && !impact){
-    return 'Add suspect, accusation, and impact to craft a strong hypothesis.';
+  const stored = typeof cause.summaryText === 'string' ? cause.summaryText.trim() : '';
+  if(stored){
+    return stored;
   }
-  const fallback = text => (text && text.trim()) ? text.trim() : '…';
-  return `We suspect ${fallback(suspect)} because ${fallback(accusation)}, which results in ${fallback(impact)}.`;
+  const legacy = typeof cause.hypothesis === 'string' ? cause.hypothesis.trim() : '';
+  if(legacy){
+    return legacy;
+  }
+  const legacySummary = typeof cause.summary === 'string' ? cause.summary.trim() : '';
+  if(legacySummary){
+    return legacySummary;
+  }
+  return composeHypothesisSummary(cause, { preview: false });
 }
 
 /**
@@ -1270,71 +1427,233 @@ export function renderCauses(){
     summaryEl.textContent = buildHypothesisSentence(cause);
     card.append(summaryEl);
     if(cause.editing){
+      summaryEl.hidden = true;
       const helper = document.createElement('small');
       helper.className = 'cause-card__helper subtle';
-      helper.textContent = 'Answer the prompts to refine the hypothesis statement.';
+      helper.textContent = 'Use the suspect, accusation, and impact prompts to capture this hypothesis.';
       card.append(helper);
+
       const form = document.createElement('div');
-      form.className = 'cause-card__form';
-      const suspectField = document.createElement('div');
-      suspectField.className = 'field';
-      const suspectLabel = document.createElement('label');
-      suspectLabel.textContent = 'What/Who is the Suspect?';
-      const suspectInput = document.createElement('textarea');
-      suspectInput.value = cause.suspect || '';
-      suspectInput.placeholder = 'Name the component, service, team, or actor you believe is responsible.';
-      suspectInput.setAttribute('data-min-height', '120');
-      suspectInput.addEventListener('input', e => {
-        cause.suspect = e.target.value;
-        autoResize(suspectInput);
-        summaryEl.textContent = buildHypothesisSentence(cause);
-        const countText = updateCauseActionBadge(actionCountEl, cause);
-        updateCauseStatusLabel(statusEl, cause, countText);
-        updateCauseProgressChip(chip, cause);
-        saveHandler();
+      form.className = 'cause-card__form cause-hypothesis-form';
+
+      const fieldsWrap = document.createElement('div');
+      fieldsWrap.className = 'cause-hypothesis-form__fields';
+      const previewSection = document.createElement('section');
+      previewSection.className = 'cause-hypothesis-form__preview';
+      const previewHeading = document.createElement('h4');
+      previewHeading.className = 'cause-hypothesis-form__preview-title';
+      previewHeading.textContent = 'Preview';
+      const previewBody = document.createElement('p');
+      previewBody.className = 'cause-hypothesis-form__preview-body';
+      previewBody.textContent = composeHypothesisSummary(cause, { preview: true });
+      previewSection.append(previewHeading, previewBody);
+
+      const fieldState = {};
+      const fieldConfigs = [
+        {
+          key: 'suspect',
+          label: 'Suspect (Object — the thing we are blaming)',
+          placeholder: 'e.g., New employees, Wash tank settings, Supplier batch 42',
+          helper: 'Name the component, material, process, team, or condition you think is causing the deviation. Be specific.',
+          examples: ['New employees', 'Wash tank settings', 'Primer lot 7C', 'Spray booth humidity control'],
+          required: true
+        },
+        {
+          key: 'accusation',
+          label: 'Accusation (Deviation — what’s wrong with the suspect?)',
+          placeholder: 'e.g., Using unapproved hand cream; Temperature changed from 180°F to 160°F',
+          helper: 'Describe the behavior, change, or condition that is different or defective. Use observable facts, not opinions.',
+          examples: ['Using unapproved hand cream', 'Set to low pressure', 'Expired primer used', 'Filter not replaced'],
+          required: true
+        },
+        {
+          key: 'impact',
+          label: 'Impact (How could this cause the problem?)',
+          placeholder: 'e.g., Leaves a film that prevents paint adhesion; Causes moisture entrapment leading to blistering',
+          helper: 'Explain the mechanism: how this deviation could produce the customer or system impact.',
+          examples: ['Residue that resists paint', 'Poor adhesion causing peel', 'Uneven coverage and fisheyes'],
+          required: false
+        }
+      ];
+
+      /** @type {Array<'suspect'|'accusation'|'impact'>} */
+      const editableKeys = ['suspect', 'accusation', 'impact'];
+
+      fieldConfigs.forEach(config => {
+        const field = document.createElement('div');
+        field.className = 'field hypothesis-field';
+        const inputId = `${cause.id}-${config.key}`;
+        const helperId = `${inputId}-helper`;
+        const hintId = `${inputId}-hint`;
+
+        const label = document.createElement('label');
+        label.setAttribute('for', inputId);
+        label.textContent = config.label;
+
+        const textarea = document.createElement('textarea');
+        textarea.id = inputId;
+        textarea.value = typeof cause[config.key] === 'string' ? cause[config.key] : '';
+        textarea.placeholder = config.placeholder;
+        textarea.setAttribute('data-min-height', '120');
+
+        const helperText = document.createElement('small');
+        helperText.id = helperId;
+        helperText.textContent = config.helper;
+
+        const hint = document.createElement('p');
+        hint.className = 'field-hint subtle';
+        hint.id = hintId;
+        hint.hidden = true;
+
+        const examples = document.createElement('details');
+        examples.className = 'field-examples';
+        const summary = document.createElement('summary');
+        summary.textContent = 'Need inspiration?';
+        const list = document.createElement('ul');
+        list.className = 'field-examples__list';
+        config.examples.forEach(example => {
+          const item = document.createElement('li');
+          item.textContent = example;
+          list.appendChild(item);
+        });
+        examples.append(summary, list);
+
+        textarea.setAttribute('aria-describedby', `${helperId} ${hintId}`.trim());
+
+        textarea.addEventListener('input', event => {
+          cause[config.key] = event.target.value;
+          fieldState[config.key].touched = true;
+          autoResize(textarea);
+          queuePreviewUpdate();
+        });
+
+        textarea.addEventListener('blur', event => {
+          const normalized = normalizeHypothesisValue(event.target.value);
+          if(event.target.value !== normalized){
+            event.target.value = normalized;
+            autoResize(textarea);
+          }
+          cause[config.key] = normalized;
+          fieldState[config.key].touched = true;
+          queuePreviewUpdate({ immediate: true, persist: true });
+        });
+
+        autoResize(textarea);
+
+        field.append(label, textarea, helperText, hint, examples);
+        fieldsWrap.append(field);
+        fieldState[config.key] = { textarea, hint, required: config.required, touched: false };
       });
-      autoResize(suspectInput);
-      suspectField.append(suspectLabel, suspectInput);
-      const accusationField = document.createElement('div');
-      accusationField.className = 'field';
-      const accusationLabel = document.createElement('label');
-      accusationLabel.textContent = 'What is the Accusation?';
-      const accusationInput = document.createElement('textarea');
-      accusationInput.value = cause.accusation || '';
-      accusationInput.placeholder = 'Describe the behavior, change, or failure you believe is occurring.';
-      accusationInput.setAttribute('data-min-height', '120');
-      accusationInput.addEventListener('input', e => {
-        cause.accusation = e.target.value;
-        autoResize(accusationInput);
-        summaryEl.textContent = buildHypothesisSentence(cause);
-        const countText = updateCauseActionBadge(actionCountEl, cause);
-        updateCauseStatusLabel(statusEl, cause, countText);
-        updateCauseProgressChip(chip, cause);
-        saveHandler();
-      });
-      autoResize(accusationInput);
-      accusationField.append(accusationLabel, accusationInput);
-      const impactField = document.createElement('div');
-      impactField.className = 'field';
-      const impactLabel = document.createElement('label');
-      impactLabel.textContent = 'So What? How does this create the problem?';
-      const impactInput = document.createElement('textarea');
-      impactInput.value = cause.impact || '';
-      impactInput.placeholder = 'Clarify how this cause would produce the customer or system impact.';
-      impactInput.setAttribute('data-min-height', '120');
-      impactInput.addEventListener('input', e => {
-        cause.impact = e.target.value;
-        autoResize(impactInput);
-        summaryEl.textContent = buildHypothesisSentence(cause);
-        const countText = updateCauseActionBadge(actionCountEl, cause);
-        updateCauseStatusLabel(statusEl, cause, countText);
-        updateCauseProgressChip(chip, cause);
-        saveHandler();
-      });
-      autoResize(impactInput);
-      impactField.append(impactLabel, impactInput);
-      form.append(suspectField, accusationField, impactField);
+
+      form.append(fieldsWrap, previewSection);
+
+      const metadataEnabled = isHypothesisMetadataEnabled();
+      let metadataPanel = null;
+      if(metadataEnabled){
+        let metadataExpanded = Boolean((cause.confidence || '').trim() || (cause.evidence || '').trim());
+        const footer = document.createElement('div');
+        footer.className = 'cause-hypothesis-form__footer';
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'hypothesis-meta-toggle';
+        const updateToggleCopy = () => {
+          toggle.textContent = metadataExpanded ? 'Hide supporting details' : 'Add supporting details';
+          toggle.setAttribute('aria-expanded', metadataExpanded ? 'true' : 'false');
+          if(metadataPanel){
+            metadataPanel.hidden = !metadataExpanded;
+          }
+        };
+        toggle.addEventListener('click', () => {
+          metadataExpanded = !metadataExpanded;
+          updateToggleCopy();
+        });
+
+        metadataPanel = document.createElement('div');
+        metadataPanel.className = 'hypothesis-meta-panel';
+        metadataPanel.hidden = !metadataExpanded;
+
+        const confidenceField = document.createElement('fieldset');
+        confidenceField.className = 'field hypothesis-confidence';
+        const confidenceLegend = document.createElement('legend');
+        confidenceLegend.textContent = 'Confidence';
+        confidenceField.append(confidenceLegend);
+
+        const confidenceOptions = [
+          { value: 'low', label: 'Low' },
+          { value: 'medium', label: 'Medium' },
+          { value: 'high', label: 'High' }
+        ];
+        const confidenceGroup = document.createElement('div');
+        confidenceGroup.className = 'hypothesis-confidence__options';
+        confidenceGroup.setAttribute('role', 'radiogroup');
+        confidenceGroup.setAttribute('aria-label', 'Confidence');
+
+        confidenceOptions.forEach(option => {
+          const optionId = `${cause.id}-confidence-${option.value}`;
+          const wrapper = document.createElement('label');
+          wrapper.className = 'hypothesis-confidence__option';
+          wrapper.setAttribute('for', optionId);
+
+          const radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = `${cause.id}-confidence`;
+          radio.id = optionId;
+          radio.value = option.value;
+          radio.checked = cause.confidence === option.value;
+          radio.addEventListener('change', () => {
+            cause.confidence = option.value;
+            confidenceGroup.querySelectorAll('.hypothesis-confidence__option').forEach(node => {
+              node.classList.toggle('is-selected', node === wrapper);
+            });
+            saveHandler();
+          });
+
+          const labelText = document.createElement('span');
+          labelText.textContent = option.label;
+          wrapper.append(radio, labelText);
+          if(radio.checked){
+            wrapper.classList.add('is-selected');
+          }
+          confidenceGroup.append(wrapper);
+        });
+
+        confidenceField.append(confidenceGroup);
+
+        const evidenceField = document.createElement('div');
+        evidenceField.className = 'field hypothesis-evidence';
+        const evidenceId = `${cause.id}-evidence`;
+        const evidenceLabel = document.createElement('label');
+        evidenceLabel.setAttribute('for', evidenceId);
+        evidenceLabel.textContent = 'What evidence supports this possibility?';
+        const evidenceInput = document.createElement('textarea');
+        evidenceInput.id = evidenceId;
+        evidenceInput.value = typeof cause.evidence === 'string' ? cause.evidence : '';
+        evidenceInput.placeholder = '';
+        evidenceInput.setAttribute('data-min-height', '80');
+        evidenceInput.addEventListener('input', () => {
+          autoResize(evidenceInput);
+        });
+        evidenceInput.addEventListener('blur', event => {
+          const normalized = normalizeEvidenceValue(event.target.value);
+          if(event.target.value !== normalized){
+            event.target.value = normalized;
+            autoResize(evidenceInput);
+          }
+          cause.evidence = normalized;
+          saveHandler();
+        });
+        autoResize(evidenceInput);
+
+        evidenceField.append(evidenceLabel, evidenceInput);
+
+        metadataPanel.append(confidenceField, evidenceField);
+        footer.append(toggle, metadataPanel);
+        updateToggleCopy();
+        form.append(footer);
+      }
+
       card.append(form);
+
       const controls = document.createElement('div');
       controls.className = 'cause-controls';
       const saveBtn = document.createElement('button');
@@ -1342,10 +1661,27 @@ export function renderCauses(){
       saveBtn.className = 'btn-mini';
       saveBtn.textContent = 'Save hypothesis';
       saveBtn.addEventListener('click', () => {
-        if(!hasCompleteHypothesis(cause)){
-          callShowToast('Fill in all three prompts to save this possible cause.');
+        editableKeys.forEach(key => {
+          const { textarea } = fieldState[key];
+          const normalized = normalizeHypothesisValue(textarea.value);
+          if(textarea.value !== normalized){
+            textarea.value = normalized;
+            autoResize(textarea);
+          }
+          cause[key] = normalized;
+        });
+
+        const suspectOk = meetsHardMinimum(cause.suspect);
+        const accusationOk = meetsHardMinimum(cause.accusation);
+        queuePreviewUpdate({ immediate: true });
+        if(!suspectOk || !accusationOk){
+          callShowToast('Add suspect and accusation details (at least 3 characters each) before saving.');
           return;
         }
+
+        cause.summaryText = composeHypothesisSummary(cause, { preview: false });
+        summaryEl.hidden = false;
+        summaryEl.textContent = cause.summaryText;
         cause.editing = false;
         renderCauses();
         saveHandler();
@@ -1353,6 +1689,80 @@ export function renderCauses(){
       controls.append(saveBtn);
       controls.append(makeRemoveButton(cause));
       card.append(controls);
+
+      let previewTimeout = null;
+      function queuePreviewUpdate({ immediate = false, persist = false } = {}){
+        const runner = () => {
+          const draft = {
+            suspect: fieldState.suspect.textarea.value,
+            accusation: fieldState.accusation.textarea.value,
+            impact: fieldState.impact.textarea.value
+          };
+
+          const suspectNormalized = normalizeHypothesisValue(draft.suspect);
+          const accusationNormalized = normalizeHypothesisValue(draft.accusation);
+          const impactNudgeEligible = fieldState.impact.touched
+            || suspectNormalized.length >= HYPOTHESIS_HARD_MIN
+            || accusationNormalized.length >= HYPOTHESIS_HARD_MIN;
+
+          editableKeys.forEach(key => {
+            const { textarea, hint, required } = fieldState[key];
+            cause[key] = textarea.value;
+            const normalized = normalizeHypothesisValue(textarea.value);
+            const hints = [];
+            if(normalized.length && normalized.length < HYPOTHESIS_SOFT_MIN){
+              hints.push('Add a bit more detail so others can test this.');
+            }
+            if(required && !normalized.length && fieldState[key].touched){
+              hints.push('This field is required to frame the hypothesis.');
+            }
+            if(key === 'impact' && !normalized.length && impactNudgeEligible){
+              hints.push('Describe the impact so others can trace the mechanism.');
+            }
+            if(key === 'accusation' && normalized.length >= HYPOTHESIS_HARD_MIN && !hasVerbCandidate(normalized)){
+              hints.push('Try describing an action or condition (e.g., “Using…”, “Changed…”, “Not following…”).');
+            }
+            const message = hints.join(' ');
+            if(message){
+              hint.textContent = message;
+              hint.hidden = false;
+            }else{
+              hint.hidden = true;
+              hint.textContent = '';
+            }
+          });
+
+          previewBody.textContent = composeHypothesisSummary(draft, { preview: true });
+          const countText = updateCauseActionBadge(actionCountEl, cause);
+          updateCauseStatusLabel(statusEl, cause, countText);
+          updateCauseProgressChip(chip, cause);
+          updateCauseCardIndicators(card, cause);
+
+          if(persist){
+            editableKeys.forEach(key => {
+              const normalized = normalizeHypothesisValue(fieldState[key].textarea.value);
+              cause[key] = normalized;
+              if(fieldState[key].textarea.value !== normalized){
+                fieldState[key].textarea.value = normalized;
+                autoResize(fieldState[key].textarea);
+              }
+            });
+            saveHandler();
+          }
+        };
+
+        if(immediate){
+          runner();
+          return;
+        }
+
+        if(previewTimeout){
+          clearTimeout(previewTimeout);
+        }
+        previewTimeout = setTimeout(runner, 200);
+      }
+
+      queuePreviewUpdate({ immediate: true });
     }else{
       const controls = document.createElement('div');
       controls.className = 'cause-controls';

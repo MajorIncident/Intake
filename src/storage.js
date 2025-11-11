@@ -31,9 +31,12 @@ import { COMMS_DRAWER_STORAGE_KEY } from './commsDrawer.js';
  * @property {string} accusation - Hypothesis about the cause mechanics.
  * @property {string} impact - Summary of the incident impact.
  * @property {Record<string, CauseFinding>} findings - Evidence grouped by finding key.
+ * @property {string} summaryText - Cached hypothesis summary sentence.
+ * @property {('low'|'medium'|'high'|'')} confidence - Optional confidence metadata.
+ * @property {string} evidence - Optional supporting evidence snippet.
  * @property {boolean} editing - Whether the UI currently edits the record.
  * @property {boolean} testingOpen - Whether the testing drawer is expanded.
- */
+*/
 
 /**
  * @typedef {object} SerializedAppState
@@ -592,11 +595,16 @@ export function serializeCauses(causes) {
         }
       });
     }
+    const confidenceRaw = typeof record.confidence === 'string' ? record.confidence.trim().toLowerCase() : '';
+    const normalizedConfidence = ['low', 'medium', 'high'].includes(confidenceRaw) ? confidenceRaw : '';
     return {
       id: typeof record.id === 'string' && record.id ? record.id : generateCauseId(),
       suspect: typeof record.suspect === 'string' ? record.suspect : '',
       accusation: typeof record.accusation === 'string' ? record.accusation : '',
       impact: typeof record.impact === 'string' ? record.impact : '',
+      summaryText: typeof record.summaryText === 'string' ? record.summaryText : '',
+      confidence: normalizedConfidence,
+      evidence: typeof record.evidence === 'string' ? record.evidence : '',
       findings,
       editing: !!record.editing,
       testingOpen: !!record.testingOpen
@@ -614,11 +622,16 @@ export function serializeCauses(causes) {
 export function deserializeCauses(serialized) {
   if (!Array.isArray(serialized)) return [];
   return serialized.map(raw => {
+    const confidenceRaw = typeof raw?.confidence === 'string' ? raw.confidence.trim().toLowerCase() : '';
+    const normalizedConfidence = ['low', 'medium', 'high'].includes(confidenceRaw) ? confidenceRaw : '';
     const cause = {
       id: typeof raw?.id === 'string' ? raw.id : generateCauseId(),
       suspect: typeof raw?.suspect === 'string' ? raw.suspect : '',
       accusation: typeof raw?.accusation === 'string' ? raw.accusation : '',
       impact: typeof raw?.impact === 'string' ? raw.impact : '',
+      summaryText: typeof raw?.summaryText === 'string' ? raw.summaryText : '',
+      confidence: normalizedConfidence,
+      evidence: typeof raw?.evidence === 'string' ? raw.evidence : '',
       findings: {},
       editing: !!raw?.editing,
       testingOpen: !!raw?.testingOpen

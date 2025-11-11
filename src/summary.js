@@ -456,11 +456,24 @@ export function formatPossibleCausesSummary(stateInput){
     const details = collectCauseEvidenceDetails(state, cause);
     const statusText = describeCauseStatus(state, cause, details);
     const failFlag = details.failedCount > 0 ? ' • Failed on at least one check' : '';
+    const summaryText = buildHypothesisSentence(cause) || '—';
+    const confidenceRaw = typeof cause?.confidence === 'string' ? cause.confidence.trim().toLowerCase() : '';
+    const confidenceLabel = confidenceRaw && ['low', 'medium', 'high'].includes(confidenceRaw)
+      ? confidenceRaw.charAt(0).toUpperCase() + confidenceRaw.slice(1)
+      : '';
+    const evidenceNote = typeof cause?.evidence === 'string' ? cause.evidence.trim() : '';
+
     const lines = [
-      `• ${resolveCauseTitle(cause, index)}: ${buildHypothesisSentence(cause)}`,
+      `• ${resolveCauseTitle(cause, index)}: ${summaryText}`,
       `  Status: ${statusText}`,
       `  Progress: ${details.complete}/${details.total} evidence checks${failFlag}`
     ];
+    if(confidenceLabel){
+      lines.push(`  Confidence: ${confidenceLabel}`);
+    }
+    if(evidenceNote){
+      lines.push(`  Evidence: ${evidenceNote}`);
+    }
     if(details.evidenceBlock){
       lines.push(details.evidenceBlock);
     }
