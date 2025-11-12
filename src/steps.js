@@ -10,6 +10,8 @@ import {
   STEP_DEFINITIONS
 } from './constants.js';
 
+const STEP_FILTERS = ['all', 'active', 'complete'];
+
 export const STEPS_ITEMS_KEY = 'steps.items';
 export const STEPS_DRAWER_KEY = 'steps.drawerOpen';
 
@@ -20,6 +22,11 @@ let stepsBackdrop = null;
 let stepsList = null;
 let stepsCloseBtn = null;
 let stepsDrawerProgress = null;
+let stepsTools = null;
+let stepsSearchInput = null;
+let stepsSearchClearBtn = null;
+let stepsEmptyState = null;
+let stepsEmptyStateMessage = null;
 
 let stepsItems = STEP_DEFINITIONS.map(def => ({
   id: def.id,
@@ -33,6 +40,12 @@ let stepsReady = false;
 let stepsReturnFocus = null;
 let onFullSave = null;
 let onLogCommunication = null;
+let currentStepsFilter = 'all';
+let stepsSearchQueryRaw = '';
+let stepsSearchQuery = '';
+
+const stepsFilterButtons = new Map();
+const collapsedPhases = new Set();
 
 /**
  * Safely parse JSON from persisted localStorage values.
@@ -126,6 +139,94 @@ function emitStepLog(message) {
 }
 
 /**
+ * Show or hide the search clear button based on the current query.
+ */
+function syncSearchClearVisibility() {
+  if (!stepsSearchClearBtn) return;
+  const hasQuery = stepsSearchQueryRaw.trim().length > 0;
+  stepsSearchClearBtn.hidden = !hasQuery;
+}
+
+/**
+ * Apply the selected checklist filter and update toggle button states.
+ * @param {string} filterId Identifier from {@link STEP_FILTERS}.
+ */
+function setStepsFilter(filterId) {
+  const target = typeof filterId === 'string' ? filterId.toLowerCase() : '';
+  if (!STEP_FILTERS.includes(target)) return;
+  currentStepsFilter = target;
+  stepsFilterButtons.forEach((button, id) => {
+    const isActive = id === currentStepsFilter;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+  });
+  applyStepsFilters();
+}
+
+/**
+ * Click handler for the segmented checklist filter buttons.
+ * @param {MouseEvent & { currentTarget: HTMLButtonElement }} event Event payload from the filter button.
+ */
+function handleStepsFilterClick(event) {
+  const button = event.currentTarget;
+  if (!button || !button.dataset) return;
+  const filterId = button.dataset.filter;
+  if (!filterId || filterId === currentStepsFilter) return;
+  setStepsFilter(filterId);
+}
+
+/**
+ * Handle search box typing, updating the in-memory query and results.
+ * @param {Event & { currentTarget: HTMLInputElement }} event Input event payload from the search field.
+ */
+function handleStepsSearchInput(event) {
+  const input = event.currentTarget;
+  if (!input) return;
+  stepsSearchQueryRaw = input.value || '';
+  stepsSearchQuery = stepsSearchQueryRaw.trim().toLowerCase();
+  syncSearchClearVisibility();
+  applyStepsFilters();
+}
+
+/**
+ * Reset the search field and restore the unfiltered checklist.
+ */
+function handleStepsSearchClear() {
+  stepsSearchQueryRaw = '';
+  stepsSearchQuery = '';
+  if (stepsSearchInput) {
+    stepsSearchInput.value = '';
+    stepsSearchInput.focus();
+  }
+  syncSearchClearVisibility();
+  applyStepsFilters();
+}
+
+/**
+ * Update the empty state message when filters hide all checklist items.
+ * @param {boolean} hasVisibleCategories Indicates whether any checklist sections remain visible.
+ */
+function updateStepsEmptyState(hasVisibleCategories) {
+  if (!stepsEmptyState) return;
+  if (hasVisibleCategories) {
+    stepsEmptyState.hidden = true;
+    return;
+  }
+  let message = 'All steps are complete! Adjust filters to review the checklist.';
+  if (stepsSearchQueryRaw.trim()) {
+    message = `No steps match “${stepsSearchQueryRaw.trim()}”. Try another keyword or reset the filters.`;
+  } else if (currentStepsFilter === 'active') {
+    message = 'Every phase is complete. Switch back to “All” to review the checklist.';
+  } else if (currentStepsFilter === 'complete') {
+    message = 'No completed steps yet. Work through the checklist to build momentum.';
+  }
+  if (stepsEmptyStateMessage) {
+    stepsEmptyStateMessage.textContent = message;
+  }
+  stepsEmptyState.hidden = false;
+}
+
+/**
  * Calculate checklist progress totals for display.
  * @returns {{ total: number, completed: number }} Aggregate counts for the drawer.
  */
@@ -187,9 +288,110 @@ function updateStepsCategoryStates() {
   categories.forEach(category => {
     const phaseId = category.dataset.phase;
     const counts = countsByPhase.get(phaseId);
-    const isComplete = !!counts && counts.total > 0 && counts.completed === counts.total;
+    const total = counts ? counts.total : 0;
+    const completed = counts ? counts.completed : 0;
+    const isComplete = total > 0 && completed === total;
     category.classList.toggle('steps-category--complete', isComplete);
+    category.dataset.total = String(total);
+    category.dataset.completed = String(completed);
+    const countLabel = category.querySelector('.steps-category__count');
+    if (countLabel) {
+      countLabel.textContent = `${completed}/${total}`;
+    }
   });
+  applyStepsFilters();
+}
+
+/**
+ * Apply the active filter and search query to the rendered checklist.
+ */
+function applyStepsFilters() {
+  if (!stepsList) {
+    updateStepsEmptyState(true);
+    return;
+  }
+  const categories = stepsList.querySelectorAll('.steps-category[data-phase]');
+  let anyVisible = false;
+  categories.forEach(category => {
+    const phaseId = category.dataset.phase || '';
+    const total = Number.parseInt(category.dataset.total || '0', 10) || 0;
+    const completed = Number.parseInt(category.dataset.completed || '0', 10) || 0;
+    const items = category.querySelectorAll('.steps-item');
+    let visibleSteps = 0;
+    items.forEach(item => {
+      const label = item.querySelector('label');
+      const text = label && typeof label.textContent === 'string'
+        ? label.textContent.toLowerCase()
+        : '';
+      const matchesQuery = !stepsSearchQuery || text.includes(stepsSearchQuery);
+      item.hidden = !matchesQuery;
+      if (matchesQuery) {
+        visibleSteps += 1;
+      }
+    });
+
+    const matchesFilter = (
+      currentStepsFilter === 'all'
+      || (currentStepsFilter === 'active' && completed < total)
+      || (currentStepsFilter === 'complete' && total > 0 && completed === total)
+    );
+    const shouldShowCategory = matchesFilter && visibleSteps > 0;
+    category.hidden = !shouldShowCategory;
+    category.setAttribute('aria-hidden', shouldShowCategory ? 'false' : 'true');
+    const container = category.querySelector('.steps-category__items');
+    const header = category.querySelector('.steps-category__header');
+    if (!container) {
+      if (shouldShowCategory) {
+        anyVisible = true;
+      }
+      return;
+    }
+
+    if (!shouldShowCategory) {
+      container.hidden = true;
+      if (header) {
+        header.setAttribute('aria-expanded', 'false');
+      }
+      return;
+    }
+
+    anyVisible = true;
+    if (stepsSearchQuery) {
+      category.classList.remove('is-collapsed');
+      container.hidden = false;
+      if (header) {
+        header.setAttribute('aria-expanded', 'true');
+      }
+      return;
+    }
+
+    const shouldCollapse = collapsedPhases.has(phaseId);
+    category.classList.toggle('is-collapsed', shouldCollapse);
+    container.hidden = shouldCollapse;
+    if (header) {
+      header.setAttribute('aria-expanded', shouldCollapse ? 'false' : 'true');
+    }
+  });
+  updateStepsEmptyState(anyVisible);
+}
+
+/**
+ * Toggle collapse state for a checklist category.
+ * @param {MouseEvent & { currentTarget: HTMLButtonElement }} event Triggering click event.
+ */
+function handleStepsCategoryToggle(event) {
+  const trigger = event.currentTarget;
+  if (!trigger) return;
+  const category = trigger.closest('.steps-category');
+  if (!category) return;
+  const phaseId = category.dataset.phase;
+  if (!phaseId) return;
+  if (collapsedPhases.has(phaseId)) {
+    collapsedPhases.delete(phaseId);
+  } else {
+    collapsedPhases.add(phaseId);
+  }
+  applyStepsFilters();
 }
 
 /**
@@ -290,9 +492,11 @@ function renderStepsList() {
     const category = document.createElement('section');
     category.className = 'steps-category';
     category.dataset.phase = phase.id;
-    const header = document.createElement('div');
+    const header = document.createElement('button');
+    header.type = 'button';
     header.className = 'steps-category__header';
-    const textWrap = document.createElement('div');
+    header.addEventListener('click', handleStepsCategoryToggle);
+    const textWrap = document.createElement('span');
     textWrap.className = 'steps-category__header-text';
     const phaseEl = document.createElement('span');
     phaseEl.className = 'steps-category__phase';
@@ -302,15 +506,24 @@ function renderStepsList() {
     nameEl.textContent = phase.label;
     textWrap.appendChild(phaseEl);
     textWrap.appendChild(nameEl);
+    const metaWrap = document.createElement('span');
+    metaWrap.className = 'steps-category__meta';
+    const countBadge = document.createElement('span');
+    countBadge.className = 'steps-category__count';
     const chevron = document.createElement('span');
     chevron.className = 'steps-category__chevron';
     chevron.setAttribute('aria-hidden', 'true');
     chevron.textContent = '⌄';
+    metaWrap.appendChild(countBadge);
+    metaWrap.appendChild(chevron);
     header.appendChild(textWrap);
-    header.appendChild(chevron);
+    header.appendChild(metaWrap);
     category.appendChild(header);
     const container = document.createElement('div');
     container.className = 'steps-category__items';
+    const containerId = `steps-phase-${phase.id}`;
+    container.id = containerId;
+    header.setAttribute('aria-controls', containerId);
     items.forEach(step => {
       const row = document.createElement('div');
       row.className = 'steps-item';
@@ -328,7 +541,20 @@ function renderStepsList() {
       container.appendChild(row);
     });
     category.appendChild(container);
-    if (items.every(step => step.checked)) {
+    const total = items.length;
+    const completed = items.filter(item => item.checked).length;
+    category.dataset.total = String(total);
+    category.dataset.completed = String(completed);
+    countBadge.textContent = `${completed}/${total}`;
+    const shouldCollapse = collapsedPhases.has(phase.id);
+    if (shouldCollapse) {
+      category.classList.add('is-collapsed');
+      container.hidden = true;
+      header.setAttribute('aria-expanded', 'false');
+    } else {
+      header.setAttribute('aria-expanded', 'true');
+    }
+    if (completed === total && total > 0) {
       category.classList.add('steps-category--complete');
     }
     stepsList.appendChild(category);
@@ -499,8 +725,17 @@ export function resetStepsState() {
     checked: false
   }));
   stepsDrawerOpen = false;
+  collapsedPhases.clear();
+  currentStepsFilter = 'all';
+  stepsSearchQueryRaw = '';
+  stepsSearchQuery = '';
+  if (stepsSearchInput) {
+    stepsSearchInput.value = '';
+  }
+  syncSearchClearVisibility();
   renderStepsList();
   updateStepsProgressUI();
+  setStepsFilter(currentStepsFilter);
   setStepsDrawer(false, { skipFocus: true, skipSave: true });
 }
 
@@ -520,10 +755,35 @@ export function initStepsFeature(options = {}) {
   stepsList = document.getElementById('stepsList');
   stepsCloseBtn = document.getElementById('stepsCloseBtn');
   stepsDrawerProgress = document.getElementById('stepsDrawerProgress');
+  stepsTools = document.getElementById('stepsTools');
+  stepsSearchInput = document.getElementById('stepsSearchInput');
+  stepsSearchClearBtn = document.getElementById('stepsSearchClearBtn');
+  stepsEmptyState = document.getElementById('stepsEmptyState');
+  stepsEmptyStateMessage = document.getElementById('stepsEmptyStateMessage');
+
+  stepsFilterButtons.clear();
+  const filterNodes = stepsTools
+    ? stepsTools.querySelectorAll('.steps-filter__btn[data-filter]')
+    : document.querySelectorAll('.steps-filter__btn[data-filter]');
+  filterNodes.forEach(button => {
+    if (!(button instanceof HTMLButtonElement)) return;
+    const filterId = typeof button.dataset.filter === 'string' ? button.dataset.filter.toLowerCase() : '';
+    if (!STEP_FILTERS.includes(filterId)) return;
+    stepsFilterButtons.set(filterId, button);
+    button.addEventListener('click', handleStepsFilterClick);
+  });
+  if (stepsSearchInput) {
+    stepsSearchInput.addEventListener('input', handleStepsSearchInput);
+  }
+  if (stepsSearchClearBtn) {
+    stepsSearchClearBtn.addEventListener('click', handleStepsSearchClear);
+  }
+  syncSearchClearVisibility();
 
   hydrateStepsFromLocalStorage();
   renderStepsList();
   updateStepsProgressUI();
+  setStepsFilter(currentStepsFilter);
   setStepsDrawer(stepsDrawerOpen, { skipFocus: true, skipSave: true });
 
   if (stepsBtn) {
