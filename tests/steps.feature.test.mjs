@@ -18,6 +18,7 @@ import {
 
 let dom = null;
 let previousGlobals = {};
+const STEP_FILTER_DISMISS_DELAY = 3000;
 
 beforeEach(() => {
   previousGlobals = {
@@ -119,6 +120,13 @@ function renderStepsFixture() {
           </div>
         </div>
         <button id="stepsCloseBtn" type="button">Close</button>
+        <div id="stepsTools">
+          <div class="steps-filter">
+            <button type="button" class="steps-filter__btn" data-filter="all">All</button>
+            <button type="button" class="steps-filter__btn" data-filter="active">Active</button>
+            <button type="button" class="steps-filter__btn" data-filter="complete">Complete</button>
+          </div>
+        </div>
         <div id="stepsList"></div>
         <div id="stepsEmptyState" hidden>
           <p id="stepsEmptyStateMessage"></p>
@@ -220,50 +228,104 @@ test('steps: drawer controls sync aria attributes and persisted state', async ()
   assert.equal(saveSpy.mock.calls.length, 3, 'escape close persists state');
 });
 
-test('steps: status filters toggle visibility based on checkbox state', async () => {
-  renderStepsFixture();
+test('steps: active filter delays hiding newly completed steps', async (t) => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  t.after(() => {
+    mock.timers.reset();
+  });
 
+  renderStepsFixture();
   initStepsFeature();
 
   const { document, window } = globalThis;
-  const allBtn = document.querySelector('.steps-filter__btn[data-filter="all"]');
   const activeBtn = document.querySelector('.steps-filter__btn[data-filter="active"]');
-  const completeBtn = document.querySelector('.steps-filter__btn[data-filter="complete"]');
-  assert.ok(allBtn && activeBtn && completeBtn, 'filter buttons render in the DOM');
-
-  const firstItem = document.querySelector('.steps-item');
-  assert.ok(firstItem, 'a checklist row is present');
-  const phaseSection = firstItem.closest('.steps-category');
-  assert.ok(phaseSection, 'row is grouped inside a phase section');
-  const checkbox = firstItem.querySelector('input[type="checkbox"]');
-  assert.ok(checkbox, 'row includes a checkbox');
-
+  assert.ok(activeBtn, 'active filter button renders');
   activeBtn.click();
-  assert.equal(firstItem.hidden, false, 'unchecked step is visible under the In Progress filter');
-  assert.equal(phaseSection.hidden, false, 'phase remains visible while it contains unchecked work');
+
+  const checkbox = document.querySelector('input[data-step-id="1"]');
+  assert.ok(checkbox instanceof window.HTMLInputElement, 'first step checkbox available');
+  const row = checkbox.closest('.steps-item');
+  assert.ok(row, 'step row is present');
 
   checkbox.checked = true;
   checkbox.dispatchEvent(new window.Event('change', { bubbles: true }));
-  assert.equal(firstItem.hidden, true, 'completed step is hidden once marked done in the In Progress view');
 
+  assert.ok(row.classList.contains('steps-item--dismissing'), 'row enters dismissing state under active filter');
+  assert.equal(row.hidden, false, 'row remains visible immediately after scheduling dismissal');
+
+  mock.timers.tick(STEP_FILTER_DISMISS_DELAY - 1);
+  assert.equal(row.hidden, false, 'row stays visible until the delay completes');
+  assert.ok(row.classList.contains('steps-item--dismissing'), 'dismissal class persists until timeout completes');
+
+  mock.timers.tick(1);
+  assert.equal(row.hidden, true, 'row hides after the dismissal delay');
+  assert.ok(!row.classList.contains('steps-item--dismissing'), 'dismissal class removed after timeout');
+});
+
+test('steps: complete filter delays hiding newly incomplete steps', async (t) => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  t.after(() => {
+    mock.timers.reset();
+  });
+
+  renderStepsFixture();
+  initStepsFeature();
+
+  const { document, window } = globalThis;
+  const checkbox = document.querySelector('input[data-step-id="1"]');
+  assert.ok(checkbox instanceof window.HTMLInputElement, 'first step checkbox available');
+  const row = checkbox.closest('.steps-item');
+  assert.ok(row, 'step row is present');
+
+  checkbox.checked = true;
+  checkbox.dispatchEvent(new window.Event('change', { bubbles: true }));
+
+  const completeBtn = document.querySelector('.steps-filter__btn[data-filter="complete"]');
+  assert.ok(completeBtn, 'complete filter button renders');
   completeBtn.click();
-  assert.equal(firstItem.hidden, false, 'completed step is shown in the Completed view');
-  assert.equal(phaseSection.hidden, false, 'phase is visible when it contains completed work');
-  const emptyState = document.getElementById('stepsEmptyState');
-  assert.ok(emptyState, 'empty state container renders');
-  assert.ok(emptyState.hidden, 'completed view hides the empty state when rows are visible');
+
+  assert.equal(row.hidden, false, 'completed row visible under the complete filter');
 
   checkbox.checked = false;
   checkbox.dispatchEvent(new window.Event('change', { bubbles: true }));
-  assert.equal(firstItem.hidden, true, 'unchecked step disappears from the Completed view');
-  assert.equal(phaseSection.hidden, true, 'phase hides when no rows match the current filter');
-  assert.equal(emptyState.hidden, false, 'empty state appears after all rows are filtered out');
 
+  assert.ok(row.classList.contains('steps-item--dismissing'), 'row enters dismissing state when unchecked in complete filter');
+  assert.equal(row.hidden, false, 'row remains visible while dismissal delay runs');
+
+  mock.timers.tick(STEP_FILTER_DISMISS_DELAY);
+  assert.equal(row.hidden, true, 'row hides after dismissal delay completes');
+  assert.ok(!row.classList.contains('steps-item--dismissing'), 'dismissal class removed after timeout');
+});
+
+test('steps: changing filters cancels pending dismissals', async (t) => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  t.after(() => {
+    mock.timers.reset();
+  });
+
+  renderStepsFixture();
+  initStepsFeature();
+
+  const { document, window } = globalThis;
+  const activeBtn = document.querySelector('.steps-filter__btn[data-filter="active"]');
+  const allBtn = document.querySelector('.steps-filter__btn[data-filter="all"]');
+  assert.ok(activeBtn && allBtn, 'filter buttons render');
   activeBtn.click();
-  assert.equal(firstItem.hidden, false, 'unchecked step returns when switching back to In Progress');
-  assert.equal(phaseSection.hidden, false, 'phase reappears with matching rows');
+
+  const checkbox = document.querySelector('input[data-step-id="1"]');
+  assert.ok(checkbox instanceof window.HTMLInputElement, 'first step checkbox available');
+  const row = checkbox.closest('.steps-item');
+  assert.ok(row, 'step row is present');
+
+  checkbox.checked = true;
+  checkbox.dispatchEvent(new window.Event('change', { bubbles: true }));
+
+  assert.ok(row.classList.contains('steps-item--dismissing'), 'row enters dismissing state');
 
   allBtn.click();
-  assert.equal(firstItem.hidden, false, 'step remains visible in the All view');
-  assert.equal(emptyState.hidden, true, 'empty state hides once rows are visible again');
+
+  assert.ok(!row.classList.contains('steps-item--dismissing'), 'changing filter clears dismissing state');
+
+  mock.timers.tick(STEP_FILTER_DISMISS_DELAY);
+  assert.equal(row.hidden, false, 'row remains visible after filter change cancels dismissal');
 });
