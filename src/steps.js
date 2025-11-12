@@ -314,28 +314,30 @@ function applyStepsFilters() {
   let anyVisible = false;
   categories.forEach(category => {
     const phaseId = category.dataset.phase || '';
-    const total = Number.parseInt(category.dataset.total || '0', 10) || 0;
-    const completed = Number.parseInt(category.dataset.completed || '0', 10) || 0;
     const items = category.querySelectorAll('.steps-item');
     let visibleSteps = 0;
     items.forEach(item => {
       const label = item.querySelector('label');
+      const checkbox = item.querySelector('input[type="checkbox"]');
       const text = label && typeof label.textContent === 'string'
         ? label.textContent.toLowerCase()
         : '';
       const matchesQuery = !stepsSearchQuery || text.includes(stepsSearchQuery);
-      item.hidden = !matchesQuery;
-      if (matchesQuery) {
+      const isChecked = checkbox ? !!checkbox.checked : false;
+      let matchesStatus = true;
+      if (currentStepsFilter === 'active') {
+        matchesStatus = !isChecked;
+      } else if (currentStepsFilter === 'complete') {
+        matchesStatus = isChecked;
+      }
+      const isVisible = matchesQuery && matchesStatus;
+      item.hidden = !isVisible;
+      if (isVisible) {
         visibleSteps += 1;
       }
     });
 
-    const matchesFilter = (
-      currentStepsFilter === 'all'
-      || (currentStepsFilter === 'active' && completed < total)
-      || (currentStepsFilter === 'complete' && total > 0 && completed === total)
-    );
-    const shouldShowCategory = matchesFilter && visibleSteps > 0;
+    const shouldShowCategory = visibleSteps > 0;
     category.hidden = !shouldShowCategory;
     category.setAttribute('aria-hidden', shouldShowCategory ? 'false' : 'true');
     const container = category.querySelector('.steps-category__items');
