@@ -11,7 +11,6 @@ import {
 } from './constants.js';
 
 const STEP_FILTERS = ['all', 'active', 'complete'];
-const STEP_DISMISS_DELAY_MS = 3000;
 
 export const STEPS_ITEMS_KEY = 'steps.items';
 export const STEPS_DRAWER_KEY = 'steps.drawerOpen';
@@ -47,70 +46,6 @@ let stepsSearchQuery = '';
 
 const stepsFilterButtons = new Map();
 const collapsedPhases = new Set();
-const stepFilterDismissals = new Map();
-
-/**
- * Cancel a scheduled dismissal timeout for the provided step identifier.
- * @param {string} stepId Identifier of the step row to restore.
- */
-function cancelStepFilterDismissal(stepId) {
-  const pending = stepFilterDismissals.get(stepId);
-  if (!pending) return;
-  clearTimeout(pending.timeoutId);
-  if (pending.row && pending.row.classList) {
-    pending.row.classList.remove('steps-item--dismissing');
-  }
-  stepFilterDismissals.delete(stepId);
-}
-
-/**
- * Cancel all active dismissal timeouts across the checklist.
- */
-function cancelAllStepFilterDismissals() {
-  stepFilterDismissals.forEach((_value, key) => {
-    cancelStepFilterDismissal(key);
-  });
-}
-
-/**
- * Schedule a delayed filter dismissal for the supplied step row.
- * @param {string} stepId Identifier of the step row to dismiss.
- * @param {Element|null} row Row element to animate before hiding.
- */
-function scheduleStepFilterDismissal(stepId, row) {
-  if (!row || !row.classList) return;
-  cancelStepFilterDismissal(stepId);
-  row.classList.add('steps-item--dismissing');
-  const timeoutId = setTimeout(() => {
-    stepFilterDismissals.delete(stepId);
-    row.classList.remove('steps-item--dismissing');
-    applyStepsFilters();
-  }, STEP_DISMISS_DELAY_MS);
-  stepFilterDismissals.set(stepId, { timeoutId, row });
-}
-
-/**
- * Update the pending dismissal state for a step when toggled.
- * @param {string} stepId Identifier of the toggled step.
- * @param {HTMLInputElement} checkbox Checkbox element that triggered the change event.
- * @param {boolean} isChecked Updated checked state for the step.
- */
-function syncStepFilterDismissal(stepId, checkbox, isChecked) {
-  if (!stepId || !checkbox || typeof checkbox.checked !== 'boolean') return;
-  const row = checkbox.closest('.steps-item');
-  const shouldDismiss = (
-    (currentStepsFilter === 'active' && isChecked)
-    || (currentStepsFilter === 'complete' && !isChecked)
-  );
-  if (shouldDismiss) {
-    scheduleStepFilterDismissal(stepId, row);
-    return;
-  }
-  cancelStepFilterDismissal(stepId);
-  if (row && row.classList) {
-    row.classList.remove('steps-item--dismissing');
-  }
-}
 
 /**
  * Safely parse JSON from persisted localStorage values.
@@ -219,11 +154,7 @@ function syncSearchClearVisibility() {
 function setStepsFilter(filterId) {
   const target = typeof filterId === 'string' ? filterId.toLowerCase() : '';
   if (!STEP_FILTERS.includes(target)) return;
-  const previousFilter = currentStepsFilter;
   currentStepsFilter = target;
-  if (previousFilter !== currentStepsFilter) {
-    cancelAllStepFilterDismissals();
-  }
   stepsFilterButtons.forEach((button, id) => {
     const isActive = id === currentStepsFilter;
     button.classList.toggle('is-active', isActive);
@@ -385,7 +316,6 @@ function applyStepsFilters() {
     const phaseId = category.dataset.phase || '';
     const items = category.querySelectorAll('.steps-item');
     let visibleSteps = 0;
-    let hasDismissingItem = false;
     items.forEach(item => {
       const label = item.querySelector('label');
       const checkbox = item.querySelector('input[type="checkbox"]');
@@ -393,31 +323,21 @@ function applyStepsFilters() {
         ? label.textContent.toLowerCase()
         : '';
       const matchesQuery = !stepsSearchQuery || text.includes(stepsSearchQuery);
-      const checkbox = item.querySelector('input[type="checkbox"]');
-      const isChecked = checkbox && typeof checkbox.checked === 'boolean' ? checkbox.checked : false;
-      const isDismissing = item.classList.contains('steps-item--dismissing');
-      if (isDismissing) {
-        hasDismissingItem = true;
-      }
-      let shouldHideForFilter = false;
+      const isChecked = checkbox ? !!checkbox.checked : false;
+      let matchesStatus = true;
       if (currentStepsFilter === 'active') {
-        shouldHideForFilter = isChecked;
+        matchesStatus = !isChecked;
       } else if (currentStepsFilter === 'complete') {
-        shouldHideForFilter = !isChecked;
+        matchesStatus = isChecked;
       }
-      const shouldHide = !matchesQuery || (shouldHideForFilter && !isDismissing);
-      item.hidden = shouldHide;
-      if (!item.hidden) {
+      const isVisible = matchesQuery && matchesStatus;
+      item.hidden = !isVisible;
+      if (isVisible) {
         visibleSteps += 1;
       }
     });
 
-    const matchesFilter = (
-      currentStepsFilter === 'all'
-      || (currentStepsFilter === 'active' && (completed < total || hasDismissingItem))
-      || (currentStepsFilter === 'complete' && (hasDismissingItem || (total > 0 && completed === total)))
-    );
-    const shouldShowCategory = matchesFilter && visibleSteps > 0;
+    const shouldShowCategory = visibleSteps > 0;
     category.hidden = !shouldShowCategory;
     category.setAttribute('aria-hidden', shouldShowCategory ? 'false' : 'true');
     const container = category.querySelector('.steps-category__items');
@@ -502,7 +422,6 @@ function handleStepToggle(event) {
   const step = stepsItems.find(item => item.id === stepId);
   if (!step) return;
   step.checked = !!checkbox.checked;
-  syncStepFilterDismissal(stepId, checkbox, step.checked);
   updateStepsProgressUI();
   updateStepsCategoryStates();
   saveStepsItemsToLocalStorage();
@@ -561,7 +480,6 @@ function handleStepsGlobalKeydown(event) {
  */
 function renderStepsList() {
   if (!stepsList) return;
-  cancelAllStepFilterDismissals();
   stepsList.innerHTML = '';
   const grouped = new Map();
   stepsItems.forEach(step => {
@@ -810,7 +728,6 @@ export function resetStepsState() {
   }));
   stepsDrawerOpen = false;
   collapsedPhases.clear();
-  cancelAllStepFilterDismissals();
   currentStepsFilter = 'all';
   stepsSearchQueryRaw = '';
   stepsSearchQuery = '';
@@ -851,7 +768,7 @@ export function initStepsFeature(options = {}) {
     ? stepsTools.querySelectorAll('.steps-filter__btn[data-filter]')
     : document.querySelectorAll('.steps-filter__btn[data-filter]');
   filterNodes.forEach(button => {
-    if (!button || typeof button !== 'object' || !('dataset' in button)) return;
+    if (!(button instanceof HTMLButtonElement)) return;
     const filterId = typeof button.dataset.filter === 'string' ? button.dataset.filter.toLowerCase() : '';
     if (!STEP_FILTERS.includes(filterId)) return;
     stepsFilterButtons.set(filterId, button);
