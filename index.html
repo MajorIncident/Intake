@@ -390,7 +390,24 @@ Anchors present:
           <div class="steps-drawer__progress" id="stepsDrawerProgress">0 of 28 completed</div>
         </div>
       </header>
-      <div class="steps-drawer__body" id="stepsList" role="group" aria-label="Incident steps checklist"></div>
+      <div class="steps-drawer__body">
+        <div class="steps-drawer__tools" id="stepsTools" role="toolbar" aria-label="Steps controls">
+          <div class="steps-search">
+            <label for="stepsSearchInput" class="visually-hidden">Search steps</label>
+            <input type="search" id="stepsSearchInput" placeholder="Search steps" autocomplete="off" />
+            <button type="button" class="steps-search__clear" id="stepsSearchClearBtn" aria-label="Clear search" hidden>✕</button>
+          </div>
+          <div class="steps-filter" role="radiogroup" aria-label="Filter steps">
+            <button type="button" class="steps-filter__btn is-active" data-filter="all" aria-pressed="true">All</button>
+            <button type="button" class="steps-filter__btn" data-filter="active" aria-pressed="false">In Progress</button>
+            <button type="button" class="steps-filter__btn" data-filter="complete" aria-pressed="false">Completed</button>
+          </div>
+        </div>
+        <div class="steps-drawer__list" id="stepsList" role="group" aria-label="Incident steps checklist"></div>
+        <div class="steps-drawer__empty" id="stepsEmptyState" role="status" hidden>
+          <p id="stepsEmptyStateMessage">All steps are complete! Adjust filters to review the checklist.</p>
+        </div>
+      </div>
       <footer class="steps-drawer__footer">
         <button type="button" class="steps-drawer__close-btn" id="stepsCloseBtn">Close</button>
       </footer>
