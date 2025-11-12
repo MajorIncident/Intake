@@ -383,13 +383,12 @@ function applyStepsFilters() {
   let anyVisible = false;
   categories.forEach(category => {
     const phaseId = category.dataset.phase || '';
-    const total = Number.parseInt(category.dataset.total || '0', 10) || 0;
-    const completed = Number.parseInt(category.dataset.completed || '0', 10) || 0;
     const items = category.querySelectorAll('.steps-item');
     let visibleSteps = 0;
     let hasDismissingItem = false;
     items.forEach(item => {
       const label = item.querySelector('label');
+      const checkbox = item.querySelector('input[type="checkbox"]');
       const text = label && typeof label.textContent === 'string'
         ? label.textContent.toLowerCase()
         : '';

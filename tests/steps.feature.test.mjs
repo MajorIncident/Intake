@@ -26,6 +26,7 @@ beforeEach(() => {
     document: globalThis.document,
     navigator: globalThis.navigator,
     HTMLElement: globalThis.HTMLElement,
+    HTMLButtonElement: globalThis.HTMLButtonElement,
     localStorage: globalThis.localStorage,
     requestAnimationFrame: globalThis.requestAnimationFrame,
     cancelAnimationFrame: globalThis.cancelAnimationFrame,
@@ -44,6 +45,7 @@ beforeEach(() => {
   globalThis.document = document;
   globalThis.navigator = window.navigator;
   globalThis.HTMLElement = window.HTMLElement;
+  globalThis.HTMLButtonElement = window.HTMLButtonElement;
 
   const storage = new Map();
   const localStorage = {
@@ -87,6 +89,7 @@ afterEach(() => {
   globalThis.document = previousGlobals.document;
   globalThis.navigator = previousGlobals.navigator;
   globalThis.HTMLElement = previousGlobals.HTMLElement;
+  globalThis.HTMLButtonElement = previousGlobals.HTMLButtonElement;
   globalThis.localStorage = previousGlobals.localStorage;
   globalThis.requestAnimationFrame = previousGlobals.requestAnimationFrame;
   globalThis.cancelAnimationFrame = previousGlobals.cancelAnimationFrame;
@@ -104,6 +107,18 @@ function renderStepsFixture() {
       <span id="stepsCompletedLabel"></span>
       <aside id="stepsDrawer" aria-hidden="true">
         <div id="stepsDrawerProgress"></div>
+        <div id="stepsTools">
+          <div class="steps-search">
+            <label for="stepsSearchInput" class="visually-hidden">Search steps</label>
+            <input type="search" id="stepsSearchInput" placeholder="Search steps" autocomplete="off" />
+            <button type="button" id="stepsSearchClearBtn" class="steps-search__clear" aria-label="Clear search" hidden>✕</button>
+          </div>
+          <div class="steps-filter" role="radiogroup" aria-label="Filter steps">
+            <button type="button" class="steps-filter__btn is-active" data-filter="all" aria-pressed="true">All</button>
+            <button type="button" class="steps-filter__btn" data-filter="active" aria-pressed="false">In Progress</button>
+            <button type="button" class="steps-filter__btn" data-filter="complete" aria-pressed="false">Completed</button>
+          </div>
+        </div>
         <button id="stepsCloseBtn" type="button">Close</button>
         <div id="stepsTools">
           <div class="steps-filter">
@@ -113,6 +128,9 @@ function renderStepsFixture() {
           </div>
         </div>
         <div id="stepsList"></div>
+        <div id="stepsEmptyState" hidden>
+          <p id="stepsEmptyStateMessage"></p>
+        </div>
       </aside>
       <div id="stepsBackdrop" aria-hidden="true"></div>
     </main>
