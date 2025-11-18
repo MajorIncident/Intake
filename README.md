@@ -51,6 +51,11 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 - Run `npm run build:templates` after editing or adding template JSON. The script validates each snapshot and regenerates `src/templates.manifest.js`.
 - `npm run dev` and `npm run build` automatically invoke the generator, so the manifest always stays in sync during local development.
 
+### Templates drawer & password rules
+- Launch the drawer from the Templates button in the header. The UI lists curated manifests and the available presentation modes (Full, Rapid, Customer, etc.).
+- Each mode is protected by the `${modeKey}${currentMinute}` bridge password (for example `full07` when the clock reads `:07`). The drawer validates the input inline and keeps the apply button disabled until a template and mode are selected.
+- Applying a template uses the same `collectAppState()`/`applyAppState()` path as the Save/Load workflow. The current intake is snapshotted, the manifest payload is applied, and the toast confirms success—treat template loading like importing a JSON file and click **Save to File** first if you need a backup.
+
 ## Documentation & anchor hygiene
 - Add or update module docblocks and JSDoc summaries whenever you touch a runtime file. The patterns in [`docs/commenting-guide.md`](docs/commenting-guide.md) are canonical.
 - Register every new anchor in the commenting guide and mirror the change in scoped `AGENTS.md` files so AI agents can locate feature boundaries quickly.

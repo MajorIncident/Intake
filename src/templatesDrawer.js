@@ -148,6 +148,15 @@ function clearPasswordError() {
   }
 }
 
+function handlePasswordInput() {
+  if (!templatesPasswordInput) {
+    return;
+  }
+  if (templatesPasswordInput.value.trim()) {
+    clearPasswordError();
+  }
+}
+
 function updateApplyButtonState() {
   if (!templatesApplyBtn) return;
   const disabled = !selectedTemplateId || !selectedModeId;
@@ -406,17 +415,57 @@ function wireDrawerInternalEvents() {
     templatesApplyBtn.addEventListener('click', applySelectedTemplate);
   }
   if (templatesPasswordInput) {
-    templatesPasswordInput.addEventListener('input', () => {
-      if (templatesPasswordInput.value.trim()) {
-        clearPasswordError();
-      }
-    });
+    templatesPasswordInput.addEventListener('input', handlePasswordInput);
     templatesPasswordInput.setAttribute('aria-invalid', 'false');
   }
   if (templatesDrawer) {
     templatesDrawer.addEventListener('keydown', handleDrawerKeydown);
   }
   document.addEventListener('keydown', handleGlobalKeydown);
+}
+
+/**
+ * Reset the templates drawer singleton so DOM tests can reinitialize it.
+ *
+ * @returns {void}
+ */
+export function __dangerousResetTemplatesDrawerForTests() {
+  if (templatesListEl) {
+    templatesListEl.removeEventListener('click', handleTemplateClick);
+  }
+  if (templatesModeGroup) {
+    templatesModeGroup.removeEventListener('click', handleModeClick);
+  }
+  if (templatesApplyBtn) {
+    templatesApplyBtn.removeEventListener('click', applySelectedTemplate);
+  }
+  if (templatesPasswordInput) {
+    templatesPasswordInput.removeEventListener('input', handlePasswordInput);
+  }
+  if (templatesDrawer) {
+    templatesDrawer.removeEventListener('keydown', handleDrawerKeydown);
+  }
+  document.removeEventListener('keydown', handleGlobalKeydown);
+
+  templatesBtn = null;
+  templatesDrawer = null;
+  templatesBackdrop = null;
+  templatesCloseBtn = null;
+  templatesListEl = null;
+  templatesModeGroup = null;
+  templatesPasswordInput = null;
+  templatesApplyBtn = null;
+  templatesAuthSection = null;
+  passwordErrorEl = null;
+  templatesDrawerOpen = false;
+  templatesDrawerReady = false;
+  templatesReturnFocus = null;
+  selectedTemplateId = templateRecords.length ? templateRecords[0].id : null;
+  selectedModeId = modeIndex.has(TEMPLATE_MODE_IDS.FULL)
+    ? TEMPLATE_MODE_IDS.FULL
+    : modeRecords.length
+      ? modeRecords[modeRecords.length - 1].id
+      : null;
 }
 
 /**
