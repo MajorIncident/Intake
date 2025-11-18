@@ -52,6 +52,11 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 - Run `npm run build:templates` after editing or adding template JSON. The script validates each snapshot and regenerates `src/templates.manifest.js`.
 - `npm run dev` and `npm run build` automatically invoke the generator, so the manifest always stays in sync during local development.
 
+### Vercel deployment
+- Production deploys on Vercel now execute `npm run build && npm test` (see `vercel.json`). The build step regenerates `src/templates.manifest.js` so templates remain in sync, and the test pass acts as a guardrail for regressions before traffic hits the static bundle.
+- When modifying the manifest workflow or required quality gates, update both the README and `vercel.json` so the documented steps mirror the actual build command.
+- Use `vercel build` (or run `npm run build && npm test`) locally to mirror the hosted environment whenever you change deployment requirements.
+
 ## Documentation & anchor hygiene
 - Add or update module docblocks and JSDoc summaries whenever you touch a runtime file. The patterns in [`docs/commenting-guide.md`](docs/commenting-guide.md) are canonical.
 - Register every new anchor in the commenting guide and mirror the change in scoped `AGENTS.md` files so AI agents can locate feature boundaries quickly.
