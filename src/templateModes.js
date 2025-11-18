@@ -36,7 +36,7 @@ export const TEMPLATE_MODES = Object.freeze([
   {
     id: TEMPLATE_MODE_IDS.DC,
     name: 'D&C',
-    description: 'Extends the KT table with causes and a partially completed steps list.'
+    description: 'Extends the KT table with distinctions/changes plus a partially completed steps list.'
   },
   {
     id: TEMPLATE_MODE_IDS.FULL,
@@ -72,7 +72,7 @@ export const MODE_RULES = Object.freeze({
   }),
   [TEMPLATE_MODE_IDS.DC]: Object.freeze({
     includeTable: true,
-    includeCauses: true,
+    includeCauses: false,
     includeSteps: true,
     includeActions: false,
     tableFields: Object.freeze({ is: true, no: true, di: true, ch: true })

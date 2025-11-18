@@ -198,6 +198,13 @@ test('mode projections follow visibility rules from the manifest', () => {
   assert.equal(fullPayload.likelyCauseId, TEMPLATE_BETA.state.likelyCauseId);
   assert.equal(fullPayload.actions.analysisId, TEMPLATE_BETA.state.actions.analysisId);
   assert.equal(fullPayload.steps.drawerOpen, TEMPLATE_BETA.state.steps.drawerOpen);
+
+  const dcPayload = getTemplatePayload(TEMPLATE_BETA.id, TEMPLATE_MODE_IDS.DC);
+  assert.ok(dcPayload);
+  assert.equal(dcPayload.causes.length, 0, 'd&c mode hides causes');
+  assert.equal(dcPayload.likelyCauseId, null, 'd&c mode removes likely cause selection');
+  assert.equal(dcPayload.actions.analysisId, '', 'd&c mode strips actions metadata');
+  assert.deepEqual(dcPayload.actions.items, [], 'd&c mode hides action items');
 });
 
 test('mode projections filter KT table columns per mode', () => {
