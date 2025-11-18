@@ -251,9 +251,14 @@ test('summary: generateSummary writes output to the summary card', async () => {
 
   const expected = buildSummaryText(state);
 
+  const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+
   globalThis.window = window;
   globalThis.document = document;
-  globalThis.navigator = window.navigator;
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    get: () => window.navigator
+  });
 
   try {
     const output = await generateSummary('summary', '', state);
@@ -276,6 +281,10 @@ test('summary: generateSummary writes output to the summary card', async () => {
     dom.window.close();
     delete globalThis.window;
     delete globalThis.document;
-    delete globalThis.navigator;
+    if (navigatorDescriptor) {
+      Object.defineProperty(globalThis, 'navigator', navigatorDescriptor);
+    } else {
+      delete globalThis.navigator;
+    }
   }
 });
