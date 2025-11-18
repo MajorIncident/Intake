@@ -47,11 +47,41 @@ export const TEMPLATE_MODES = Object.freeze([
 
 /**
  * Visibility rules for each template mode that drive how payloads are projected.
- * @type {Readonly<Record<keyof typeof TEMPLATE_MODE_IDS, { includeTable: boolean, includeCauses: boolean, includeSteps: boolean, includeActions: boolean }>>}
+ * @type {Readonly<Record<keyof typeof TEMPLATE_MODE_IDS, {
+ *   includeTable: boolean,
+ *   includeCauses: boolean,
+ *   includeSteps: boolean,
+ *   includeActions: boolean,
+ *   tableFields?: Readonly<{ is: boolean, no: boolean, di: boolean, ch: boolean }>
+ * }>>}
  */
 export const MODE_RULES = Object.freeze({
-  [TEMPLATE_MODE_IDS.INTAKE]: Object.freeze({ includeTable: false, includeCauses: false, includeSteps: false, includeActions: false }),
-  [TEMPLATE_MODE_IDS.IS_IS_NOT]: Object.freeze({ includeTable: true, includeCauses: false, includeSteps: false, includeActions: false }),
-  [TEMPLATE_MODE_IDS.DC]: Object.freeze({ includeTable: true, includeCauses: true, includeSteps: true, includeActions: false }),
-  [TEMPLATE_MODE_IDS.FULL]: Object.freeze({ includeTable: true, includeCauses: true, includeSteps: true, includeActions: true })
+  [TEMPLATE_MODE_IDS.INTAKE]: Object.freeze({
+    includeTable: false,
+    includeCauses: false,
+    includeSteps: false,
+    includeActions: false,
+    tableFields: Object.freeze({ is: false, no: false, di: false, ch: false })
+  }),
+  [TEMPLATE_MODE_IDS.IS_IS_NOT]: Object.freeze({
+    includeTable: true,
+    includeCauses: false,
+    includeSteps: false,
+    includeActions: false,
+    tableFields: Object.freeze({ is: true, no: true, di: false, ch: false })
+  }),
+  [TEMPLATE_MODE_IDS.DC]: Object.freeze({
+    includeTable: true,
+    includeCauses: true,
+    includeSteps: true,
+    includeActions: false,
+    tableFields: Object.freeze({ is: true, no: true, di: true, ch: true })
+  }),
+  [TEMPLATE_MODE_IDS.FULL]: Object.freeze({
+    includeTable: true,
+    includeCauses: true,
+    includeSteps: true,
+    includeActions: true,
+    tableFields: Object.freeze({ is: true, no: true, di: true, ch: true })
+  })
 });
