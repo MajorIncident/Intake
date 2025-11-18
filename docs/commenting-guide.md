@@ -45,6 +45,7 @@ Anchors keep HTML and documentation in sync. Preserve existing tokens and regist
 | `[section:impact]` | `index.html` | Holds impact, containment, and communications fields used in `src/preface.js` and `src/comms.js`. |
 | `[section:table]` | `index.html` | Contains the KT IS/IS NOT grid powered by `src/kt.js`. |
 | `[section:summary]` | `index.html` | Hosts the generated narrative controlled by `src/summary.js`. |
+| `[feature:templates-drawer]` | `index.html` | Wraps the Templates trigger plus drawer UI that will bind to `src/templates.js`. |
 | `[script:init]` | `index.html` | Marks where boot logic is wired; stays in sync with `main.js`. |
 | `[script:storage]` | `index.html` | Notes storage helpers loaded from `src/storage.js`. |
 
