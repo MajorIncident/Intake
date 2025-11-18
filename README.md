@@ -57,6 +57,8 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 - `kt-intake-full-v2`: Primary snapshot containing the intake form, table, steps, communications log, and possible causes.
 - `kt-actions-by-analysis-v1`: Dedicated action registry keyed by analysis ID that powers the action list card and owner audit trail.
 
+Need to know which module owns a given storage field? Jump to the [Storage-to-Module Responsibility Map](docs/storage-schema.appendix.md#storage-to-module-responsibility-map) for a field-by-field lookup tied to the DOM anchors and runtime files that persist each value.
+
 ## Development Guidelines
 - Change only the module that owns the UI slice you are updating; avoid cross-module DOM mutations.
 - Use `src/constants.js` for shared enums or immutable data instead of duplicating literals.
