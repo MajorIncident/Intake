@@ -102,26 +102,42 @@ Anchors present:
                     <h3>Quick start templates</h3>
                     <p>Select one to preview the fields it fills.</p>
                   </div>
-                  <ul class="templates-list" id="templatesList" role="listbox" aria-label="Template choices">
-                    <li>
-                      <button type="button" class="templates-list__item" role="option" aria-selected="true">
-                        <span class="templates-list__name">Critical Incident Warmup</span>
-                        <span class="templates-list__meta">Full prefill for major events</span>
-                      </button>
-                    </li>
-                    <li>
-                      <button type="button" class="templates-list__item" role="option" aria-selected="false">
-                        <span class="templates-list__name">Rapid Recovery</span>
-                        <span class="templates-list__meta">Minimal notes for swarming</span>
-                      </button>
-                    </li>
-                    <li>
-                      <button type="button" class="templates-list__item" role="option" aria-selected="false">
-                        <span class="templates-list__name">Executive Update</span>
-                        <span class="templates-list__meta">Summaries tuned for senior comms</span>
-                      </button>
-                    </li>
-                  </ul>
+                  <div class="templates-groups" id="templatesList" aria-label="Template choices">
+                    <section class="templates-group" role="group" aria-label="Templates">
+                      <header class="templates-group__header">
+                        <p class="templates-group__title">Templates</p>
+                        <p class="templates-group__subtitle">Standard prefills that apply instantly.</p>
+                      </header>
+                      <ul class="templates-list" role="listbox" aria-label="Templates">
+                        <li>
+                          <button type="button" class="templates-list__item" role="option" aria-selected="true">
+                            <span class="templates-list__name">Critical Incident Warmup</span>
+                            <span class="templates-list__meta">Full prefill for major events</span>
+                          </button>
+                        </li>
+                        <li>
+                          <button type="button" class="templates-list__item" role="option" aria-selected="false">
+                            <span class="templates-list__name">Rapid Recovery</span>
+                            <span class="templates-list__meta">Minimal notes for swarming</span>
+                          </button>
+                        </li>
+                      </ul>
+                    </section>
+                    <section class="templates-group" role="group" aria-label="Case Studies (Password Required)">
+                      <header class="templates-group__header">
+                        <p class="templates-group__title">Case Studies (Password Required)</p>
+                        <p class="templates-group__subtitle">Instructor-led walkthroughs that unlock with a password.</p>
+                      </header>
+                      <ul class="templates-list" role="listbox" aria-label="Case Studies (Password Required)">
+                        <li>
+                          <button type="button" class="templates-list__item" role="option" aria-selected="false">
+                            <span class="templates-list__name">Executive Update</span>
+                            <span class="templates-list__meta">Summaries tuned for senior comms</span>
+                          </button>
+                        </li>
+                      </ul>
+                    </section>
+                  </div>
                   <p class="templates-type-hint" id="templatesTypeHint" aria-live="polite"></p>
                 </section>
                 <section class="templates-section">
