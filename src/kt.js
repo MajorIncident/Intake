@@ -1408,21 +1408,18 @@ export function renderCauses(){
         {
           key: 'suspect',
           label: 'Suspect (Object — the thing we are blaming)',
-          placeholder: 'e.g., New employees, Wash tank settings, Supplier batch 42',
           helper: 'Name the component, material, process, team, or condition you think is causing the deviation. Be specific.',
           required: true
         },
         {
           key: 'accusation',
           label: 'Accusation (Deviation — what’s wrong with the suspect?)',
-          placeholder: 'e.g., Using unapproved hand cream; Temperature changed from 180°F to 160°F',
           helper: 'Describe the behavior, change, or condition that is different or defective. Use observable facts, not opinions.',
           required: true
         },
         {
           key: 'impact',
           label: 'Impact (How could this cause the problem?)',
-          placeholder: 'e.g., Leaves a film that prevents paint adhesion; Causes moisture entrapment leading to blistering',
           helper: 'Explain the mechanism: how this deviation could produce the customer or system impact.',
           required: false
         }
@@ -1445,7 +1442,9 @@ export function renderCauses(){
         const textarea = document.createElement('textarea');
         textarea.id = inputId;
         textarea.value = typeof cause[config.key] === 'string' ? cause[config.key] : '';
-        textarea.placeholder = config.placeholder;
+        if(config.placeholder){
+          textarea.placeholder = config.placeholder;
+        }
         textarea.setAttribute('data-min-height', '120');
 
         const helperText = document.createElement('small');
