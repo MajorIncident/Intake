@@ -34,6 +34,7 @@ This guide summarises the Milestone 2.3 modularisation so AI agents can confiden
 - **Document as you go:** Follow the patterns in [`docs/commenting-guide.md`](./commenting-guide.md) to add module docblocks, update the anchor catalogue, and refresh README/`AGENTS.md` anchors before merging.
 - **Reuse constants:** Extend `src/constants.js` if new enumerations or immutable lists are required. Deep-freeze ensures downstream modules receive read-only copies.
 - **Preserve storage compatibility:** When saving extra data, extend the shape emitted by `collectAppState()` and persisted by `saveToStorage()`. Always update `applyAppState()` so round-trip tests pass.
+  - Review [`docs/storage-schema.md`](./storage-schema.md) whenever you change persisted shapes, run `npm run update:storage-docs` afterward, and run `npm run check:storage-docs` (or rely on the CI workflow) before submitting. Update any tests under `tests/` that assert on persisted state so they reflect the new schema.
 
 ## Example Workflows
 ### Generate a Summary Variant
