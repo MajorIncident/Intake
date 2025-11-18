@@ -1,0 +1,304 @@
+{
+  "id": "checkout-latency",
+  "name": "Checkout Latency Spike",
+  "description": "EU checkout slowdown triggered by a CDN header rewrite.",
+  "supportedModes": [
+    "intake",
+    "is-is-not",
+    "dc",
+    "full"
+  ],
+  "state": {
+    "meta": {
+      "version": 1,
+      "savedAt": null
+    },
+    "pre": {
+      "oneLine": "EU checkout requests timing out after CDN rule change.",
+      "proof": "APM shows p95 latency at 18s with widespread gateway retries.",
+      "objectPrefill": "Checkout service / EU tenants",
+      "healthy": "Authorizations complete under 3s with <1% retry.",
+      "now": "Cards time out, fallback queue saturates, and conversions drop 35%."
+    },
+    "impact": {
+      "now": "Merchants losing €1.2M/hr, customers double-purchasing, and support volume spiking.",
+      "future": "Merchants will disable promos and regulators expect notification if >60m.",
+      "time": "Started 2024-03-08 07:38Z as CDN header rewrite pushed globally."
+    },
+    "ops": {
+      "bridgeOpenedUtc": "2024-03-08 07:42Z",
+      "icName": "Jonas Reed",
+      "bcName": "Eva Mendez",
+      "semOpsName": "Luis Martin",
+      "severity": "SEV-1",
+      "detectMonitoring": true,
+      "detectUserReport": false,
+      "detectAutomation": true,
+      "detectOther": false,
+      "evScreenshot": false,
+      "evLogs": true,
+      "evMetrics": true,
+      "evRepro": true,
+      "evOther": true,
+      "containStatus": "stabilized",
+      "containDesc": "Rolled back EU POPs to last-known-good CDN config and rate-limited loyalty header.",
+      "commCadence": "15",
+      "commLog": [
+        {
+          "type": "internal",
+          "ts": "2024-03-08T07:45:00Z",
+          "message": "War room formed, diffing CDN configs."
+        },
+        {
+          "type": "external",
+          "ts": "2024-03-08T08:00:00Z",
+          "message": "Status page updated with EU latency advisory."
+        },
+        {
+          "type": "internal",
+          "ts": "2024-03-08T08:10:00Z",
+          "message": "Containment applied via POP rollback; monitoring drop."
+        }
+      ],
+      "commNextDueIso": "2024-03-08T08:15:00Z",
+      "commNextUpdateTime": "08:15",
+      "tableFocusMode": "comprehensive"
+    },
+    "table": [
+      {
+        "band": "WHAT",
+        "note": "Define the problem precisely (Object & Deviation)."
+      },
+      {
+        "questionId": "what-object",
+        "q": "WHAT — Specific Object/Thing is having the {DEVIATION}",
+        "is": "Checkout API for EU tenants hitting FRA/AMS POPs.",
+        "no": "US checkout tenants plus non-card wallets remain normal.",
+        "di": "Only card payments routed through CDN header rewrite show latency.",
+        "ch": "Impacted traffic contains new loyalty header added this morning."
+      },
+      {
+        "questionId": "what-deviation",
+        "q": "WHAT — Specific Deviation does the {OBJECT} have?",
+        "is": "Auth calls take 15-20s and time out, forcing retries.",
+        "no": "Async webhook callbacks and idempotency layer stay nominal.",
+        "di": "Latency spikes only on POPs where header rewrite is enabled.",
+        "ch": "Deviation began minutes after config promotion."
+      },
+      {
+        "band": "WHERE",
+        "note": "Locate the problem (geography/topology and on the object)."
+      },
+      {
+        "questionId": "where-location",
+        "q": "WHERE — is the {OBJECT} geographically/topology when the {DEVIATION} occurs?",
+        "is": "FRA and AMS POPs fronting EU tenants.",
+        "no": "DUB and LHR POPs on legacy routing stay healthy.",
+        "di": "Only POPs that honor loyalty header override misbehave.",
+        "ch": "Same POPs received header rewrite at 07:38Z."
+      },
+      {
+        "questionId": "where-on-object",
+        "q": "WHERE — On the {OBJECT} is the {DEVIATION} observed?",
+        "is": "Ingress CDN tier before requests reach checkout pods.",
+        "no": "Checkout pods inside EU clusters show normal CPU/mem.",
+        "di": "Only TLS handshake plus origin selection step regresses.",
+        "ch": "Header rewrite manipulates origin cache key for loyalty path."
+      },
+      {
+        "band": "WHEN",
+        "note": "Timing and Description"
+      },
+      {
+        "questionId": "when-pattern",
+        "q": "WHEN — Since was the first time has {DEVIATION} been logged? What Pattern?",
+        "is": "Continuous since 07:38Z; no relief between retries.",
+        "no": "Earlier in the day latency followed normal diurnal pattern.",
+        "di": "Traffic during loyalty promo hours is hardest hit.",
+        "ch": "Pattern maps to config roll at 07:38Z then steady state."
+      },
+      {
+        "questionId": "when-description",
+        "q": "WHEN — Describe using words When the {DEVIATION} was first seen",
+        "is": "Appeared immediately during CDN deploy validation (before user escalation).",
+        "no": "No deviations overnight despite heavy load tests.",
+        "di": "Only requests including loyalty header see rewrite and delay.",
+        "ch": "New config rewrites Accept headers and bypasses warm cache."
+      },
+      {
+        "band": "EXTENT",
+        "note": "How big is it? Magnitude, count, scope, trend."
+      },
+      {
+        "questionId": "extent-population",
+        "q": "EXTENT — What is the population or size of {OBJECT} affected?",
+        "is": "All EU card traffic (~2.1k rps) routed through FRA/AMS POPs.",
+        "no": "Merchants pinned to DUB POP unaffected.",
+        "di": "Premium merchants on loyalty pilot are 2x more impacted.",
+        "ch": "Population exactly matches tenants moved to new header rule."
+      },
+      {
+        "questionId": "extent-size",
+        "q": "EXTENT — What is the size of a single {DEVIATION}?",
+        "is": "Single checkout attempts incur 18s additional latency and multiple retries.",
+        "no": "Baseline deviation remained <500ms before change.",
+        "di": "Latency delta grows with each loyalty header mutation.",
+        "ch": "Size stabilized once rollback applied."
+      }
+    ],
+    "causes": [
+      {
+        "id": "cause-cdn-rule",
+        "suspect": "CDN header rewrite broke cache keying for loyalty traffic.",
+        "accusation": "Rewrite adds Accept header fragment forcing origin revalidation on every request.",
+        "impact": "POP queues build, TLS renegotiates, and checkout pods receive bursts.",
+        "summaryText": "Misconfigured CDN rule for loyalty header invalidates cache and adds 15s delay.",
+        "confidence": "high",
+        "evidence": "Disabling rewrite on FRA instantly returns latency to baseline.",
+        "findings": {
+          "what-object": {
+            "mode": "yes",
+            "note": "Only checkout API traffic on loyalty header is impacted."
+          },
+          "where-location": {
+            "mode": "yes",
+            "note": "Matches FRA/AMS POPs that received rewrite."
+          },
+          "when-pattern": {
+            "mode": "yes",
+            "note": "Timeline aligns with header deployment."
+          }
+        },
+        "editing": false,
+        "testingOpen": false
+      },
+      {
+        "id": "cause-db-hot",
+        "suspect": "Multi-region DB hot partition.",
+        "accusation": "EU tenant data co-located causing partition hotspot and slow auth.",
+        "impact": "Would explain retries if DB were throttling connections.",
+        "summaryText": "Potential DB hot partition causing cascading latency.",
+        "confidence": "low",
+        "evidence": "DB metrics remain green; theory kept for completeness.",
+        "findings": {
+          "what-deviation": {
+            "mode": "fail",
+            "note": "DB tier shows no latency delta."
+          },
+          "extent-size": {
+            "mode": "fail",
+            "note": "Does not explain 18s TLS stall before origin."
+          }
+        },
+        "editing": false,
+        "testingOpen": false
+      }
+    ],
+    "likelyCauseId": "cause-cdn-rule",
+    "steps": {
+      "items": [
+        {
+          "id": "2",
+          "label": "Incident Commander assigned",
+          "checked": true
+        },
+        {
+          "id": "8",
+          "label": "Current actions documented (Who/What/When)",
+          "checked": true
+        },
+        {
+          "id": "13",
+          "label": "Testing actions documented (Who/What/When)",
+          "checked": true
+        },
+        {
+          "id": "20",
+          "label": "Restoration/rollback/workaround selected",
+          "checked": true
+        },
+        {
+          "id": "24",
+          "label": "Service validated internally and externally",
+          "checked": false
+        }
+      ],
+      "drawerOpen": false
+    },
+    "actions": {
+      "analysisId": "template-checkout",
+      "items": [
+        {
+          "id": "action-cdn-freeze",
+          "analysisId": "template-checkout",
+          "createdAt": "2024-03-08T07:50:00Z",
+          "createdBy": "TemplateBot",
+          "summary": "Freeze CDN config and audit loyalty rewrite.",
+          "detail": "Diff last-known-good config vs current, revert EU POPs, and prepare lock file.",
+          "owner": {
+            "name": "CDN Engineering",
+            "category": "TECHNOLOGY_PLATFORM",
+            "subOwner": "TECHNOLOGY_PLATFORM__CLOUD",
+            "notes": "On-call pair running diff script.",
+            "lastAssignedBy": "TemplateBot",
+            "lastAssignedAt": "2024-03-08T07:52:00Z",
+            "source": "Template"
+          },
+          "role": "Networking",
+          "status": "In-Progress",
+          "priority": "High",
+          "dueAt": "2024-03-08T08:20:00Z",
+          "startedAt": "2024-03-08T07:52:00Z",
+          "completedAt": "",
+          "dependencies": [],
+          "risk": "High",
+          "changeControl": {
+            "required": true,
+            "rollbackPlan": "CDN config checkpoint restore."
+          },
+          "verification": {
+            "required": true,
+            "result": ""
+          },
+          "links": {},
+          "notes": "Need approval from BC before global push.",
+          "auditTrail": []
+        },
+        {
+          "id": "action-merchant-brief",
+          "analysisId": "template-checkout",
+          "createdAt": "2024-03-08T08:05:00Z",
+          "createdBy": "TemplateBot",
+          "summary": "Brief top merchants and regulators.",
+          "detail": "Share impact summary, containment ETA, and request extension on EU SLA.",
+          "owner": {
+            "name": "Merchant Success",
+            "category": "BUSINESS_CUSTOMER",
+            "subOwner": "BUSINESS_CUSTOMER__BUSINESS_RELATIONSHIP",
+            "notes": "Coordinating with exec sponsor.",
+            "lastAssignedBy": "TemplateBot",
+            "lastAssignedAt": "2024-03-08T08:06:00Z",
+            "source": "Template"
+          },
+          "role": "BC Comms",
+          "status": "Planned",
+          "priority": "Med",
+          "dueAt": "2024-03-08T08:30:00Z",
+          "startedAt": "",
+          "completedAt": "",
+          "dependencies": [],
+          "risk": "Medium",
+          "changeControl": {
+            "required": false
+          },
+          "verification": {
+            "required": false
+          },
+          "links": {},
+          "notes": "Prep template for EU regulator alias.",
+          "auditTrail": []
+        }
+      ]
+    }
+  }
+}

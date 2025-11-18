@@ -46,6 +46,11 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 - Preserve anchor comments in `index.html` (e.g., `[styles]`, `[section:preface]`) so automation and documentation links remain stable.
 - Keep the UI accessible: reuse layout classes, maintain contrast, and follow the Apple-like spacing guidance in `AGENTS.md`.
 
+### Template manifest workflow
+- Curated starter templates now live as JSON snapshots under `templates/` (one file per template). Each file lists metadata (`id`, `name`, `description`, `supportedModes`) plus a `SerializedAppState` payload.
+- Run `npm run build:templates` after editing or adding template JSON. The script validates each snapshot and regenerates `src/templates.manifest.js`.
+- `npm run dev` and `npm run build` automatically invoke the generator, so the manifest always stays in sync during local development.
+
 ## Documentation & anchor hygiene
 - Add or update module docblocks and JSDoc summaries whenever you touch a runtime file. The patterns in [`docs/commenting-guide.md`](docs/commenting-guide.md) are canonical.
 - Register every new anchor in the commenting guide and mirror the change in scoped `AGENTS.md` files so AI agents can locate feature boundaries quickly.

@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npx live-server --port=4173 --open=index.html",
+    "build:templates": "node scripts/build-templates-manifest.mjs",
+    "build": "npm run build:templates",
+    "dev": "npm run build:templates && npx live-server --port=4173 --open=index.html",
     "test": "bash -lc 'shopt -s globstar nullglob; node --test --loader ./tests/test-loader.mjs \"$@\" tests/**/*.test.mjs' _",
     "update:storage-docs": "node scripts/update-storage-docs.js",
     "check:storage-docs": "node scripts/update-storage-docs.js && git diff --quiet -- docs/storage-schema.md",
