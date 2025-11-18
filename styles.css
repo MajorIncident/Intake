@@ -351,6 +351,11 @@ body.templates-drawer-open{overflow:hidden;}
 .templates-section__header{display:flex; flex-direction:column; gap:4px; margin:0 0 16px;}
 .templates-section__header h3{margin:0; font-size:15px; font-weight:700; letter-spacing:.02em; text-transform:none; color:#1d2845;}
 .templates-section__header p{margin:0; color:var(--muted); font-size:13px;}
+.templates-groups{display:flex; flex-direction:column; gap:16px;}
+.templates-group{border:1px solid #e7ecfa; border-radius:14px; padding:16px 18px; background:#f9fbff;}
+.templates-group__header{display:flex; flex-direction:column; gap:2px; margin:0 0 12px;}
+.templates-group__title{margin:0; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:#5c6c92; font-weight:700;}
+.templates-group__subtitle{margin:0; color:var(--muted); font-size:12px;}
 .templates-type-hint{margin:12px 0 0; color:var(--muted); font-size:12px;}
 .templates-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
 .templates-list__item{

@@ -243,41 +243,111 @@ function updateModeSelection() {
   });
 }
 
+/**
+ * Build a selectable list item for a template metadata record.
+ *
+ * @param {{ id: string, name: string, description: string, templateKind: keyof typeof TEMPLATE_KINDS }} template - Template data.
+ * @returns {HTMLLIElement} List item element containing the template trigger.
+ */
+function createTemplateListItem(template) {
+  const li = document.createElement('li');
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'templates-list__item';
+  button.dataset.templateId = template.id;
+  button.dataset.templateKind = template.templateKind;
+  button.setAttribute('role', 'option');
+  button.setAttribute('aria-selected', 'false');
+  const name = document.createElement('span');
+  name.className = 'templates-list__name';
+  name.textContent = template.name;
+  const meta = document.createElement('span');
+  meta.className = 'templates-list__meta';
+  meta.textContent = template.description;
+  button.appendChild(name);
+  button.appendChild(meta);
+  li.appendChild(button);
+  return li;
+}
+
+/**
+ * Create a titled group that clusters templates of a shared kind.
+ *
+ * @param {string} title - Visible title for the group.
+ * @param {string} subtitle - Helper copy describing the group.
+ * @param {Array<{ id: string, name: string, description: string, templateKind: keyof typeof TEMPLATE_KINDS }>} templates - Templates to list.
+ * @returns {HTMLElement|null} Section element when templates exist, otherwise null.
+ */
+function buildTemplatesGroup(title, subtitle, templates) {
+  if (!templates.length) {
+    return null;
+  }
+  const section = document.createElement('section');
+  section.className = 'templates-group';
+  section.setAttribute('role', 'group');
+  section.setAttribute('aria-label', title);
+  const header = document.createElement('header');
+  header.className = 'templates-group__header';
+  const heading = document.createElement('p');
+  heading.className = 'templates-group__title';
+  heading.textContent = title;
+  header.appendChild(heading);
+  if (subtitle) {
+    const sub = document.createElement('p');
+    sub.className = 'templates-group__subtitle';
+    sub.textContent = subtitle;
+    header.appendChild(sub);
+  }
+  section.appendChild(header);
+  const list = document.createElement('ul');
+  list.className = 'templates-list';
+  list.setAttribute('role', 'listbox');
+  list.setAttribute('aria-label', title);
+  templates.forEach(template => {
+    list.appendChild(createTemplateListItem(template));
+  });
+  section.appendChild(list);
+  return section;
+}
+
 function renderTemplatesList() {
   if (!templatesListEl) return;
   templatesListEl.innerHTML = '';
   if (!templateRecords.length) {
-    const li = document.createElement('li');
     const empty = document.createElement('p');
     empty.className = 'templates-list__empty';
     empty.textContent = 'No templates available yet.';
-    li.appendChild(empty);
-    templatesListEl.appendChild(li);
+    templatesListEl.appendChild(empty);
     selectedTemplateId = null;
     updateApplyButtonState();
     refreshTemplateDetails();
     return;
   }
+  const standardTemplates = templateRecords.filter(template => template.templateKind === TEMPLATE_KINDS.STANDARD);
+  const caseTemplates = templateRecords.filter(template => template.templateKind === TEMPLATE_KINDS.CASE_STUDY);
   const fragment = document.createDocumentFragment();
-  templateRecords.forEach(template => {
-    const li = document.createElement('li');
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'templates-list__item';
-    button.dataset.templateId = template.id;
-    button.dataset.templateKind = template.templateKind;
-    button.setAttribute('role', 'option');
-    const name = document.createElement('span');
-    name.className = 'templates-list__name';
-    name.textContent = template.name;
-    const meta = document.createElement('span');
-    meta.className = 'templates-list__meta';
-    meta.textContent = template.description;
-    button.appendChild(name);
-    button.appendChild(meta);
-    li.appendChild(button);
-    fragment.appendChild(li);
-  });
+  const standardGroup = buildTemplatesGroup(
+    'Templates',
+    'Standard prefills that apply instantly.',
+    standardTemplates
+  );
+  if (standardGroup) {
+    fragment.appendChild(standardGroup);
+  }
+  const caseGroup = buildTemplatesGroup(
+    'Case Studies (Password Required)',
+    'Instructor-led walkthroughs that unlock with a password.',
+    caseTemplates
+  );
+  if (caseGroup) {
+    fragment.appendChild(caseGroup);
+  }
+  if (!fragment.childNodes.length) {
+    const fallbackGroup = buildTemplatesGroup('Templates', '', templateRecords);
+    if (fallbackGroup) {
+      fragment.appendChild(fallbackGroup);
+    }
+  }
   templatesListEl.appendChild(fragment);
   updateTemplateSelection();
   refreshTemplateDetails();
