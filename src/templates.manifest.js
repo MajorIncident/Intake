@@ -337,7 +337,7 @@ const manifest = [
       "pre": {
         "oneLine": "Donuts are bad",
         "proof": "Quality control has reported bad donuts at their inspection station",
-        "objectPrefill": "Sugar Dounts",
+        "objectPrefill": "Sugar Donuts",
         "healthy": "All edges should be square. Center hole should be blown out fully, and the center hole is also square. Donuts should be cooked correctly, and golden in color. Thickness should be within specified parameters",
         "now": "Round Edges"
       },
@@ -375,14 +375,14 @@ const manifest = [
         },
         {
           "q": "WHAT — Specific Object/Thing is having the “Round Edges”",
-          "is": "Sugar Dounts",
+          "is": "Sugar Donuts",
           "no": "Crullers\nPlain, Frosted",
           "di": "Donuts are made on a separate line\n\nDonuts are larger in size\n\nSugar Donuts are sugar coated\n\nMade on Rows 1-4",
           "ch": "New Sugaring Equipment (1 Week Ago)",
           "questionId": "what-object"
         },
         {
-          "q": "WHAT — Specific Deviation does the “Sugar Dounts” have?",
+          "q": "WHAT — Specific Deviation does the “Sugar Donuts” have?",
           "is": "Round Edges",
           "no": "Too thick, too thin, overcooked, undercooked, center holes not blown out",
           "di": "",
@@ -393,7 +393,7 @@ const manifest = [
           "band": "WHERE — Locate the problem (geography/topology and on the object)."
         },
         {
-          "q": "WHERE — is the “Sugar Dounts” geographically/topology when the “Round Edges” occurs?",
+          "q": "WHERE — is the “Sugar Donuts” geographically/topology when the “Round Edges” occurs?",
           "is": "Fast Line, Mesh Belt, QC\nRow 1",
           "no": "Packaging, Customer\nRows 2,3,4 or combination",
           "di": "Row 1 is furthest from the air source\n\nRow 1 has no outside cutter blade\n\nRow 1 edges are formed by edgers",
@@ -401,7 +401,7 @@ const manifest = [
           "questionId": "where-location"
         },
         {
-          "q": "WHERE — On the “Sugar Dounts” is the “Round Edges” observed?",
+          "q": "WHERE — On the “Sugar Donuts” is the “Round Edges” observed?",
           "is": "Outside Edge",
           "no": "Inside, leading, trailing or combination of edges",
           "di": "No Blades on outside edge",
@@ -412,7 +412,7 @@ const manifest = [
           "band": "WHEN — Timing and Description"
         },
         {
-          "q": "WHEN — Was the “Round Edges” First observed for “Sugar Dounts”",
+          "q": "WHEN — Was the “Round Edges” First observed for “Sugar Donuts”",
           "is": "~1 Hr Ago",
           "no": "Before 1 Hour Ago",
           "di": "We installed a new chain around this time",
@@ -439,7 +439,7 @@ const manifest = [
           "band": "EXTENT — How big is it? Magnitude, count, scope, trend."
         },
         {
-          "q": "EXTENT — What is the population or size of “Sugar Dounts” affected?",
+          "q": "EXTENT — What is the population or size of “Sugar Donuts” affected?",
           "is": "25% Reject Rate\n1 of 4 Rows",
           "no": "More or Less than 25%\n2 or More Rows",
           "di": "",
@@ -455,7 +455,7 @@ const manifest = [
           "questionId": "extent-size"
         },
         {
-          "q": "EXTENT — How many “Round Edges” are occuring on each “Sugar Dounts”?",
+          "q": "EXTENT — How many “Round Edges” are occuring on each “Sugar Donuts”?",
           "is": "1 Per Donut",
           "no": "Between 2-4",
           "di": "",
