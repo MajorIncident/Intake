@@ -9,6 +9,20 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 - Use the header controls to **Save to File** (exports a JSON snapshot) or **Load from File** (imports a previously saved snapshot) when you need to move an intake between browsers or machines.
 - Open the **Templates** drawer and click **Save current notes as template** to download the in-progress intake as curated template JSON. The prompt lets you choose between a **Case Study** template (password protected, multi-mode) or a **Standard** template (no password, always loads Full mode).
 
+## Development Setup
+AI contributors should run the following commands (or manual preview) whenever the described workstream applies so linting, templates, and docs stay current.
+
+| Command | When to run it | Notes & references |
+| --- | --- | --- |
+| `npm ci` / `npm install` | Run once after cloning or whenever `package.json` changes. | Installs the pinned toolchain for scripts, tests, and template validation. See the onboarding details in [`docs/AI-ONBOARDING.md`](docs/AI-ONBOARDING.md). |
+| `npm run dev` | During day-to-day feature work that touches `src/`, `components/`, or `scripts/`. | Starts the watcher so template manifests regenerate automatically; pair it with the guidance in [`docs/commenting-guide.md`](docs/commenting-guide.md) when wiring new anchors. |
+| Open `index.html` directly | For quick manual QA or smoke tests that do not require the watcher. | The static file reflects the latest bundle after any build step, so you can double-check flows without Node running. |
+| `npm run build` | Before opening a pull request or testing deployment changes. | Rebuilds the static bundle and regenerates `src/templates.manifest.js`. Mirrors the Vercel command noted below. |
+| `npm run build:templates` | Immediately after editing JSON under `templates/` or `templates.manifest` logic. | Validates curated snapshots and should accompany any template-focused feature (see "Template manifest workflow" below). |
+| `npm run verify:tests` | Any time you change runtime code under `src/` or `components/`. | Enforces the coverage contract described in [`docs/testing-guidelines.md`](docs/testing-guidelines.md) and scaffolds missing suites. |
+| `npm test` | Before committing or when adding new suites. | Runs the full test matrix (DOM + unit) so CI sees the same state you validated locally. |
+| `npm run update:storage-docs` / `npm run check:storage-docs` | Run `update` whenever you alter persisted schema, then `check` before pushing. | Keeps [`docs/storage-schema.md`](docs/storage-schema.md) and [`docs/storage-schema.appendix.md`](docs/storage-schema.appendix.md) synced with new keys or shapes. |
+
 ## Entry Point & Boot Logic
 - `index.html` declares the full UI layout and loads the JavaScript bundle via `<script type="module" src="main.js"></script>`.
 - `main.js` waits for `DOMContentLoaded`, then calls `boot()`. This bootstraps every feature in order:
