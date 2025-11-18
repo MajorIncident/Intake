@@ -46,6 +46,7 @@ import {
 } from './src/appState.js';
 import { showToast } from './src/toast.js';
 import { exportAppStateToFile, importAppStateFromFile } from './src/fileTransfer.js';
+import { initVersionStamp } from './src/versionStamp.js';
 
 /**
  * Query the document for the first element that matches the provided CSS selector.
@@ -176,6 +177,7 @@ function boot() {
   wireBridgeNowButton();
   wireFileTransferControls();
   wireKeyboardShortcuts();
+  initVersionStamp();
 }
 
 /**
