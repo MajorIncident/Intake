@@ -32,8 +32,64 @@ Follow these practices when using the helpers:
 - Mirror the module names you are exercising so that `migrateAppState` continues to live in `tests/migrateAppState.test.mjs`, while a DOM test for the preface module might live in `tests/preface.dom.test.mjs`.
 - Use the provided template (`tests/template.feature.test.mjs`) as a starting point for new files so imports, teardown helpers, and naming stay consistent.
 
+## Custom Node test loader & module stubs
+
+Running `npm test` executes `node --test --loader ./tests/test-loader.mjs tests/**/*.test.mjs`. The `--loader` flag injects our custom loader before Node resolves any imports so tests see the same deterministic module surface regardless of the runtime state of `src/`.
+
+- **Auto-generated stubs:** `tests/test-loader.mjs` intercepts imports for frequently mocked modules (e.g., `src/actionsStore.js`, `src/appState.js`, `src/kt.js`, `src/toast.js`). Instead of loading the real file it returns on-the-fly module source that proxies every export to a `globalThis.__<module>Mocks` object. This keeps Node's test runner lean while letting suites declare just the behaviours they need.
+- **Conditional stubs:** Modules that are sometimes required (preface, comms, steps, file transfer, etc.) are only stubbed when explicitly requested. Set either `process.env.TEST_STUB_MODULES` or `globalThis.__testStubModules` to control this. Valid values include:
+  - `TEST_STUB_MODULES="*"` – stub every conditional module.
+  - `TEST_STUB_MODULES="preface,summary"` – stub only the listed kinds (case-sensitive, comma-separated).
+  - `globalThis.__testStubModules = new Set(['steps']);` – configure from inside a suite before the module is imported.
+- **Providing mocks:** Each stub expects a matching global. For example, stubbing `src/kt.js` requires `globalThis.__ktMocks` with functions like `configureKT` or `getPossibleCauses`. Minimal suites can provide only the functions they call; every other export falls back to harmless defaults (empty arrays/objects) unless the stub throws (actionsStore, kt, toast, etc.) to prevent silent omissions.
+- **Error surfacing:** Missing mocks throw early (e.g., “`kt mocks not initialised`”) so the test clearly states which module needs coverage. Failing fast avoids debugging undefined values later in the suite.
+
+The stubbed surfaces are intentionally thin, so avoid importing full runtime modules directly from tests. If a suite requires the real implementation, unset the relevant stub in `TEST_STUB_MODULES`/`__testStubModules` or import the module before changing those flags so Node caches the actual file.
+
+### Environment variables & globals reference
+
+- `TEST_STUB_MODULES`: CLI flag read by the loader before Node executes the entry file. Use it in `package.json` scripts or one-off commands (e.g., `TEST_STUB_MODULES=preface npm test`).
+- `globalThis.__testStubModules`: Runtime switch for integration suites that need to stub modules after creating their own fixtures. Assign `'*'`, a `Set`, array, or object map of module kinds.
+- Module-specific globals: each stub reads a `globalThis.__<name>Mocks` object (`__actionsStoreMocks`, `__appStateMocks`, `__ktMocks`, `__toastMocks`, `__prefaceMocks`, etc.). Populate these in your test `before` hook and reset them in `after`/`afterEach` so suites remain isolated.
+
+## Installing DOM globals with `jsdom`
+
+DOM integration tests often need browser globals that are missing from Node. Use `tests/helpers/jsdom-globals.js` to keep the setup consistent and reversible:
+
+```js
+import { JSDOM } from 'jsdom';
+import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
+
+let snapshot;
+
+beforeEach(() => {
+  const dom = new JSDOM('<!doctype html><html><body></body></html>');
+  snapshot = installJsdomGlobals(dom.window);
+});
+
+afterEach(() => {
+  restoreJsdomGlobals(snapshot);
+});
+```
+
+`installJsdomGlobals(window)` mirrors `window`, `document`, DOM event constructors, and a navigator getter onto `globalThis`. It returns a snapshot you must pass to `restoreJsdomGlobals(snapshot)` so subsequent tests regain the original Node globals. Always wrap DOM-heavy tests with this helper instead of mutating `globalThis` directly—Node 22+ enforces descriptors on `navigator`, and the helper preserves the correct shape.
+
 ## Review checklist for new tests
 - [ ] Confirm the test name and location follow the conventions above.
 - [ ] Assert at least one observable change per requirement covered by the feature PR.
 - [ ] Reset application state (via `applyAppState()` or equivalent) before the test exits.
 - [ ] Update `package.json` or the test runner configuration if new suites require additional commands.
+- [ ] Confirm required mocks (`globalThis.__ktMocks`, etc.) exist whenever the loader stubs a module.
+
+## Troubleshooting the loader & jsdom helpers
+
+- **“mocks not initialised” errors** – Provide the missing `globalThis.__<module>Mocks` object before importing the module. Example:
+  ```js
+  globalThis.__prefaceMocks = { initPreface: () => {} };
+  const preface = await import('../src/preface.js');
+  ```
+- **Real modules required** – Unset the stub by leaving the module name out of `TEST_STUB_MODULES`/`__testStubModules` or import the module before changing those flags.
+- **Navigator getter warnings** – Always pair `installJsdomGlobals` with `restoreJsdomGlobals`; forgetting to restore leaks jsdom’s navigator descriptor into other tests.
+- **Missing DOM constructors** – If jsdom globals are needed only temporarily, still use the helper so event constructors (`CustomEvent`, `KeyboardEvent`, etc.) are installed consistently.
+
+Need a refresher on the broader testing contract? Jump back to the [README “Testing & QA” section](../README.md#testing--qa) or review the architectural context in [`docs/architecture-overview.md`](docs/architecture-overview.md).
