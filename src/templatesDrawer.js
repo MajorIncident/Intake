@@ -287,7 +287,7 @@ function validatePassword() {
   }
   const raw = templatesPasswordInput.value.trim();
   if (!raw) {
-    setPasswordError('Enter the bridge password to continue.');
+    setPasswordError('Enter the template password to continue.');
     return false;
   }
   const expected = buildExpectedPassword();
@@ -296,7 +296,7 @@ function validatePassword() {
     return false;
   }
   if (raw !== expected) {
-    setPasswordError('Password must match the mode key plus the current minute (e.g., full07).');
+    setPasswordError('Password does not match mode key. Please contact your instructor.');
     return false;
   }
   clearPasswordError();
