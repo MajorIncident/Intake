@@ -18,6 +18,13 @@ const BASE_OPS = Object.freeze({
   tableFocusMode: 'rapid'
 });
 
+const DEFAULT_TABLE_FIELDS = Object.freeze({
+  is: true,
+  no: true,
+  di: true,
+  ch: true
+});
+
 const DEFAULT_STEPS_STATE = Object.freeze({
   items: [],
   drawerOpen: false
@@ -107,6 +114,49 @@ function normalizeActions(actions) {
  * @param {keyof typeof MODE_RULES} modeId - Mode identifier to project.
  * @returns {import('./storage.js').SerializedAppState|null} Mode-aware state payload.
  */
+function normalizeTableValue(value) {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number') {
+    return String(value);
+  }
+  return '';
+}
+
+/**
+ * Restricts KT table entries to the columns allowed by the current mode.
+ * @param {Array<Record<string, any>>} tableEntries - Raw table rows from the template.
+ * @param {Readonly<{ is: boolean, no: boolean, di: boolean, ch: boolean }>} [tableFields]
+ *   Column visibility map.
+ * @returns {Array<Record<string, any>>} Filtered table snapshot.
+ */
+function projectTable(tableEntries, tableFields = DEFAULT_TABLE_FIELDS) {
+  if (!Array.isArray(tableEntries)) {
+    return [];
+  }
+  const normalizedFields = {
+    ...DEFAULT_TABLE_FIELDS,
+    ...(tableFields || {})
+  };
+  return tableEntries
+    .map(entry => {
+      if (!entry || typeof entry !== 'object') {
+        return null;
+      }
+      const cloned = clone(entry);
+      if (cloned.band) {
+        return cloned;
+      }
+      cloned.is = normalizedFields.is ? normalizeTableValue(cloned.is) : '';
+      cloned.no = normalizedFields.no ? normalizeTableValue(cloned.no) : '';
+      cloned.di = normalizedFields.di ? normalizeTableValue(cloned.di) : '';
+      cloned.ch = normalizedFields.ch ? normalizeTableValue(cloned.ch) : '';
+      return cloned;
+    })
+    .filter(Boolean);
+}
+
 function projectState(fullState, modeId) {
   const rule = MODE_RULES[modeId];
   if (!rule) {
@@ -117,7 +167,7 @@ function projectState(fullState, modeId) {
     pre: clone(fullState.pre),
     impact: clone(fullState.impact),
     ops: clone(fullState.ops),
-    table: rule.includeTable ? clone(fullState.table) : [],
+    table: rule.includeTable ? projectTable(fullState.table, rule.tableFields) : [],
     causes: rule.includeCauses ? clone(fullState.causes) : [],
     likelyCauseId: rule.includeCauses ? fullState.likelyCauseId : null,
     steps: rule.includeSteps ? clone(fullState.steps) : clone(DEFAULT_STEPS_STATE),
