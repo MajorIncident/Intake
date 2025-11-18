@@ -8,6 +8,8 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, mock, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
+import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
+
 import {
   initStepsFeature,
   getStepsCounts,
@@ -18,13 +20,10 @@ import {
 
 let dom = null;
 let previousGlobals = {};
+let jsdomSnapshot = null;
 
 beforeEach(() => {
   previousGlobals = {
-    window: globalThis.window,
-    document: globalThis.document,
-    navigator: globalThis.navigator,
-    HTMLElement: globalThis.HTMLElement,
     HTMLButtonElement: globalThis.HTMLButtonElement,
     localStorage: globalThis.localStorage,
     requestAnimationFrame: globalThis.requestAnimationFrame,
@@ -40,10 +39,7 @@ beforeEach(() => {
   const { window } = dom;
   const { document } = window;
 
-  globalThis.window = window;
-  globalThis.document = document;
-  globalThis.navigator = window.navigator;
-  globalThis.HTMLElement = window.HTMLElement;
+  jsdomSnapshot = installJsdomGlobals(window);
   globalThis.HTMLButtonElement = window.HTMLButtonElement;
 
   const storage = new Map();
@@ -84,10 +80,6 @@ afterEach(() => {
     dom = null;
   }
 
-  globalThis.window = previousGlobals.window;
-  globalThis.document = previousGlobals.document;
-  globalThis.navigator = previousGlobals.navigator;
-  globalThis.HTMLElement = previousGlobals.HTMLElement;
   globalThis.HTMLButtonElement = previousGlobals.HTMLButtonElement;
   globalThis.localStorage = previousGlobals.localStorage;
   globalThis.requestAnimationFrame = previousGlobals.requestAnimationFrame;
@@ -95,6 +87,8 @@ afterEach(() => {
   globalThis.setTimeout = previousGlobals.setTimeout;
   globalThis.clearTimeout = previousGlobals.clearTimeout;
 
+  restoreJsdomGlobals(jsdomSnapshot);
+  jsdomSnapshot = null;
   previousGlobals = {};
 });
 
