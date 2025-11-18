@@ -16,6 +16,7 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 const docsDir = path.join(repoRoot, 'docs');
 const outputPath = path.join(docsDir, 'storage-schema.md');
+const appendixPath = path.join(docsDir, 'storage-schema.appendix.md');
 
 /**
  * Derives a human-readable type label for a given field value.
@@ -131,7 +132,20 @@ async function writeStorageDocs() {
   lines.push('');
 
   await fs.mkdir(docsDir, { recursive: true });
-  await fs.writeFile(outputPath, lines.join('\n'));
+
+  let appendix = '';
+  try {
+    appendix = await fs.readFile(appendixPath, 'utf8');
+  } catch (error) {
+    if (error && error.code !== 'ENOENT') {
+      throw error;
+    }
+  }
+
+  const trimmedAppendix = appendix.trim();
+  const payload = trimmedAppendix ? `${lines.join('\n')}\n\n${trimmedAppendix}\n` : `${lines.join('\n')}\n`;
+
+  await fs.writeFile(outputPath, payload);
 }
 
 writeStorageDocs().catch(error => {
