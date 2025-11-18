@@ -93,3 +93,15 @@ afterEach(() => {
 - **Missing DOM constructors** – If jsdom globals are needed only temporarily, still use the helper so event constructors (`CustomEvent`, `KeyboardEvent`, etc.) are installed consistently.
 
 Need a refresher on the broader testing contract? Jump back to the [README “Testing & QA” section](../README.md#testing--qa) or review the architectural context in [`docs/architecture-overview.md`](docs/architecture-overview.md).
+
+## `npm run verify:tests` guard workflow
+
+The repository ships a diff-aware coverage guard, [`scripts/ensure-tests-cover-changes.js`](../scripts/ensure-tests-cover-changes.js), that backs the `npm run verify:tests` command referenced throughout this guide. Run it any time you edit runtime modules under `src/` or `components/` so missing coverage is caught before CI does.
+
+- **Diff inspection logic:** The guard shells out to `git diff --name-only origin/$GITHUB_BASE_REF...HEAD` (falling back to `main` and, if necessary, `git status --porcelain`) to learn which files changed. When it sees runtime edits without a matching `tests/*.test.mjs` update it flags the gap.
+- **Template dependency:** Missing suites are scaffolded by copying [`tests/template.feature.test.mjs`](../tests/template.feature.test.mjs) into `tests/auto-generated/<runtime-path>.feature.test.mjs`. Each stub is prefixed with a banner describing which file triggered it so you know where to focus.
+- **CI enforcement:** The same command runs inside [`ci.yml`](../.github/workflows/ci.yml) before `npm test`. CI exits non-zero when runtime changes lack committed coverage, and the logs list the expected stub paths so you can recreate them locally.
+- **Resolving failures:** When the guard fails locally or on CI, open the generated stub(s) under `tests/auto-generated/`, move them to the correct directory/name for your suite, and replace the skipped placeholder with assertions that cover the behaviour you introduced. Stage the finished test files, delete the auto-generated stub(s), and rerun `npm run verify:tests` until it exits successfully.
+- **Cleanup expectation:** Auto-generated placeholders are temporary teaching aids. Once a real test exists in the appropriate folder, remove the corresponding file from `tests/auto-generated/` so future runs do not detect stale scaffolding.
+
+Following this workflow ensures contributors understand the testing requirement without needing to read the script source, and it keeps CI and local development aligned on the coverage contract.
