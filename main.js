@@ -8,6 +8,11 @@ import { saveToStorage, restoreFromStorage, clearAllIntakeStorage } from './src/
 import { initStepsFeature, resetStepsState } from './src/steps.js';
 import { initCommsDrawer, toggleCommsDrawer, closeCommsDrawer } from './src/commsDrawer.js';
 import {
+  initTemplatesDrawer,
+  toggleTemplatesDrawer,
+  closeTemplatesDrawer
+} from './src/templatesDrawer.js';
+import {
   configureKT,
   initTable,
   ensurePossibleCausesUI,
@@ -112,6 +117,7 @@ function startFresh() {
   resetStepsState();
   applyAppState({});
   closeCommsDrawer();
+  closeTemplatesDrawer();
   setBridgeOpenedNow();
   updatePrefaceTitles();
   try {
@@ -147,6 +153,7 @@ function boot() {
 
   initPreface({ onSave: saveAppState });
   initCommsDrawer();
+  initTemplatesDrawer();
   initializeCommunications({ onSave: saveAppState, showToast });
   initStepsFeature({ onSave: saveAppState, onLog: logCommunication });
 
@@ -164,6 +171,7 @@ function boot() {
 
   wireSummaryEvents();
   wireCommsEvents();
+  wireTemplatesEvents();
   wireStartFreshButton();
   wireBridgeNowButton();
   wireFileTransferControls();
@@ -225,6 +233,19 @@ function wireCommsEvents() {
       });
     });
   }
+}
+
+/**
+ * Wire the templates drawer launcher, close button, and backdrop controls.
+ * @returns {void}
+ */
+function wireTemplatesEvents() {
+  const templatesBtn = $('#templatesBtn');
+  const templatesCloseBtn = $('#templatesCloseBtn');
+  const templatesBackdrop = $('#templatesBackdrop');
+  on(templatesBtn, 'click', toggleTemplatesDrawer);
+  on(templatesCloseBtn, 'click', closeTemplatesDrawer);
+  on(templatesBackdrop, 'click', closeTemplatesDrawer);
 }
 
 /**
@@ -337,6 +358,13 @@ function wireKeyboardShortcuts() {
         }
         event.preventDefault();
         toggleCommsDrawer();
+        break;
+      case 't':
+        if (event.defaultPrevented) {
+          break;
+        }
+        event.preventDefault();
+        toggleTemplatesDrawer();
         break;
       case 'n':
         event.preventDefault();
