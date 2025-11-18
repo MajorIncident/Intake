@@ -319,9 +319,9 @@ const manifest = [
     }
   },
   {
-    "id": "donut-line",
-    "name": "Donut Line Slowdown",
-    "description": "Bakery pickup backlog template featuring the donut proofing example.",
+    "id": "mrs-walthers-sugar-donuts",
+    "name": "Mrs Walthers Sugar Donuts",
+    "description": "Quality control has reported bad donuts at their inspection station",
     "supportedModes": [
       "intake",
       "is-is-not",
@@ -332,283 +332,7 @@ const manifest = [
     "state": {
       "meta": {
         "version": 1,
-        "savedAt": null
-      },
-      "pre": {
-        "oneLine": "Pickup donut tickets stalled for east-coast bakeries.",
-        "proof": "Kitchen monitors show donut-builder queue >25m; partner support flooded with screenshots.",
-        "objectPrefill": "Bakery pickup service",
-        "healthy": "Orders print within 90 seconds and toppings mirror POS selections.",
-        "now": "Queue stalls and toppings are wrong, forcing manual rework and refunds."
-      },
-      "impact": {
-        "now": "42% of morning pickup customers abandon orders; bakeries comping dozens of boxes.",
-        "future": "Extended outage risks franchise SLA penalties and national social coverage.",
-        "time": "Detected 2024-02-14 11:05Z minutes after loyalty promo blast."
-      },
-      "ops": {
-        "bridgeOpenedUtc": "2024-02-14 11:12Z",
-        "icName": "Maya Patel",
-        "bcName": "Rob Flynn",
-        "semOpsName": "Nia Jordan",
-        "severity": "SEV-2",
-        "detectMonitoring": true,
-        "detectUserReport": true,
-        "detectAutomation": false,
-        "detectOther": false,
-        "evScreenshot": true,
-        "evLogs": true,
-        "evMetrics": true,
-        "evRepro": true,
-        "evOther": false,
-        "containStatus": "stoppingImpact",
-        "containDesc": "Throttled loyalty promo weights and routing backlog through legacy recipe path.",
-        "commCadence": "30",
-        "commLog": [
-          {
-            "type": "internal",
-            "ts": "2024-02-14T11:15:00Z",
-            "message": "Bridge opened, validating scope with bakery ops."
-          },
-          {
-            "type": "external",
-            "ts": "2024-02-14T11:25:00Z",
-            "message": "Posted advisory to bakery partners about delayed pickup tickets."
-          }
-        ],
-        "commNextDueIso": "2024-02-14T11:45:00Z",
-        "commNextUpdateTime": "11:45",
-        "tableFocusMode": "focused"
-      },
-      "table": [
-        {
-          "band": "WHAT",
-          "note": "Define the problem precisely (Object & Deviation)."
-        },
-        {
-          "questionId": "what-object",
-          "q": "WHAT — Specific Object/Thing is having the {DEVIATION}",
-          "is": "Bakery pickup ticket pipeline for Maple, Boston Creme, and seasonal donuts.",
-          "no": "Delivery-only donut SKUs and beverages print normally.",
-          "di": "Impacted SKUs include caramel drizzle or >3 toppings.",
-          "ch": "All failing orders route through donut-builder v3 in IAD."
-        },
-        {
-          "questionId": "what-deviation",
-          "q": "WHAT — Specific Deviation does the {OBJECT} have?",
-          "is": "Tickets print 20+ minutes late and toppings mis-apply.",
-          "no": "Savory pastries, muffins, and croissants stay accurate.",
-          "di": "Deviation tied to loyalty-heavy pickup orders only.",
-          "ch": "Began immediately after enabling proofing profile weights."
-        },
-        {
-          "band": "WHERE",
-          "note": "Locate the problem (geography/topology and on the object)."
-        },
-        {
-          "questionId": "where-location",
-          "q": "WHERE — is the {OBJECT} geographically/topology when the {DEVIATION} occurs?",
-          "is": "East coast partner bakeries (BOS, NYC, ATL) plus curbside lanes.",
-          "no": "West and central regions along with delivery-only kitchens are healthy.",
-          "di": "Only stores pinned to the loyalty CDN path misbehave.",
-          "ch": "IAD edge POP; ORD/SJC continue serving v2 config."
-        },
-        {
-          "band": "WHEN",
-          "note": "Timing and Description"
-        },
-        {
-          "questionId": "when-first-observed",
-          "q": "WHEN — Was the {DEVIATION} First observed for {OBJECT}",
-          "is": "First alert 2024-02-14 11:05Z during breakfast rush.",
-          "no": "Night shift and pre-11:00Z pickups were normal.",
-          "di": "Accelerates once loyalty blitz email landed at 11:00Z.",
-          "ch": "Coincides with rollout of new proofing weights feature flag."
-        },
-        {
-          "band": "EXTENT",
-          "note": "How big is it? Magnitude, count, scope, trend."
-        },
-        {
-          "questionId": "extent-population",
-          "q": "EXTENT — What is the population or size of {OBJECT} affected?",
-          "is": "Roughly 180 of 430 east region stores (~42%).",
-          "no": "West and central regions remain <2 minute SLA.",
-          "di": "Orders over $24 with >3 toppings almost always stall.",
-          "ch": "Spike tracks with new loyalty segmentation job that reweighted queues."
-        }
-      ],
-      "causes": [
-        {
-          "id": "cause-donut-proofing",
-          "suspect": "Proofing profile weights stuck for loyalty orders.",
-          "accusation": "New weights keep proofing microservice in \"priority\" state so bakery tickets never release.",
-          "impact": "Pickup queue blocks and toppings drift, forcing manual comping.",
-          "summaryText": "Proofing service pinned to loyalty profile causing donut-builder queue starvation.",
-          "confidence": "high",
-          "evidence": "Turning off loyalty flag immediately clears backlog on test bakery.",
-          "findings": {
-            "what-object": {
-              "mode": "yes",
-              "note": "Impacts bakery pickup tickets that use the loyalty personalization path."
-            },
-            "extent-population": {
-              "mode": "yes",
-              "note": "Matches east stores bound to loyalty CDN POP."
-            },
-            "when-first-observed": {
-              "mode": "yes",
-              "note": "Exact start aligns with proofing weights deployment."
-            }
-          },
-          "editing": false,
-          "testingOpen": false
-        },
-        {
-          "id": "cause-donut-cache",
-          "suspect": "Edge cache serving stale menu metadata.",
-          "accusation": "CDN cached stale toppings metadata so donut-builder miscalculates assembly steps.",
-          "impact": "Manual overrides spike and queue rebuild jobs restart continuously.",
-          "summaryText": "Menu metadata cache missed invalidation and causes stale toppings to persist.",
-          "confidence": "medium",
-          "evidence": "Single-store purge temporarily cleared issues but problem returned.",
-          "findings": {
-            "what-deviation": {
-              "mode": "assumption",
-              "note": "Would explain wrong toppings but not the 20m delay."
-            },
-            "where-location": {
-              "mode": "fail",
-              "note": "West region also shares CDN but remains healthy."
-            }
-          },
-          "editing": false,
-          "testingOpen": false
-        }
-      ],
-      "likelyCauseId": "cause-donut-proofing",
-      "steps": {
-        "items": [
-          {
-            "id": "1",
-            "label": "Pre-analysis completed",
-            "checked": true
-          },
-          {
-            "id": "6",
-            "label": "Bridges opened and responders invited",
-            "checked": true
-          },
-          {
-            "id": "12",
-            "label": "Possible causes developed",
-            "checked": true
-          },
-          {
-            "id": "15",
-            "label": "Containment options identified",
-            "checked": true
-          },
-          {
-            "id": "19",
-            "label": "Most probable cause identified",
-            "checked": false
-          }
-        ],
-        "drawerOpen": true
-      },
-      "actions": {
-        "analysisId": "template-donut",
-        "items": [
-          {
-            "id": "action-donut-rollback",
-            "analysisId": "template-donut",
-            "createdAt": "2024-02-14T11:20:00Z",
-            "createdBy": "TemplateBot",
-            "summary": "Pin donut-builder traffic to legacy proofing profile.",
-            "detail": "Use feature flag console to route pickup orders away from loyalty weights until a fix ships.",
-            "owner": {
-              "name": "Ops Automation",
-              "category": "TECHNOLOGY_PLATFORM",
-              "subOwner": "TECHNOLOGY_PLATFORM__DEPLOYMENT_AUTOMATION",
-              "notes": "Coordinating with bakery ops on customer impact.",
-              "lastAssignedBy": "TemplateBot",
-              "lastAssignedAt": "2024-02-14T11:25:00Z",
-              "source": "Template"
-            },
-            "role": "Deployment",
-            "status": "In-Progress",
-            "priority": "High",
-            "dueAt": "2024-02-14T11:45:00Z",
-            "startedAt": "2024-02-14T11:25:00Z",
-            "completedAt": "",
-            "dependencies": [],
-            "risk": "Medium",
-            "changeControl": {
-              "required": true,
-              "rollbackPlan": "Disable donut-builder v3 feature flag."
-            },
-            "verification": {
-              "required": true,
-              "result": ""
-            },
-            "links": {},
-            "notes": "Need SEM ops approval before rollout.",
-            "auditTrail": []
-          },
-          {
-            "id": "action-donut-comms",
-            "analysisId": "template-donut",
-            "createdAt": "2024-02-14T11:30:00Z",
-            "createdBy": "TemplateBot",
-            "summary": "Prep partner comms for bakery franchises.",
-            "detail": "Draft acknowledgement plus ETA so BC can brief franchise owners and customer care.",
-            "owner": {
-              "name": "Customer Care",
-              "category": "USER_COMMS",
-              "subOwner": "USER_COMMS__CUSTOMER_COMMUNICATION",
-              "notes": "Aligning with BC on cadence.",
-              "lastAssignedBy": "TemplateBot",
-              "lastAssignedAt": "2024-02-14T11:32:00Z",
-              "source": "Template"
-            },
-            "role": "Comms",
-            "status": "Planned",
-            "priority": "Med",
-            "dueAt": "2024-02-14T12:00:00Z",
-            "startedAt": "",
-            "completedAt": "",
-            "dependencies": [],
-            "risk": "Low",
-            "changeControl": {
-              "required": false
-            },
-            "verification": {
-              "required": false
-            },
-            "links": {},
-            "notes": "Mirror copy to consumer status page.",
-            "auditTrail": []
-          }
-        ]
-      }
-    }
-  },
-  {
-    "id": "sugar-donuts",
-    "name": "Sugar Donuts",
-    "description": "Mrs. Walthers Sugar Donut Factory Problem",
-    "supportedModes": [
-      "intake",
-      "is-is-not",
-      "dc",
-      "full"
-    ],
-    "templateKind": "case-study",
-    "state": {
-      "meta": {
-        "version": 1,
-        "savedAt": "2025-11-18T05:02:02.697Z"
+        "savedAt": "2025-11-18T07:33:01.521Z"
       },
       "pre": {
         "oneLine": "Donuts are bad",
@@ -651,14 +375,14 @@ const manifest = [
         },
         {
           "q": "WHAT — Specific Object/Thing is having the “Round Edges”",
-          "is": "Donuts\nSugar",
+          "is": "Sugar Dounts",
           "no": "Crullers\nPlain, Frosted",
           "di": "Donuts are made on a separate line\n\nDonuts are larger in size\n\nSugar Donuts are sugar coated\n\nMade on Rows 1-4",
           "ch": "New Sugaring Equipment (1 Week Ago)",
           "questionId": "what-object"
         },
         {
-          "q": "WHAT — Specific Deviation does the “Donuts” have?",
+          "q": "WHAT — Specific Deviation does the “Sugar Dounts” have?",
           "is": "Round Edges",
           "no": "Too thick, too thin, overcooked, undercooked, center holes not blown out",
           "di": "",
@@ -669,7 +393,7 @@ const manifest = [
           "band": "WHERE — Locate the problem (geography/topology and on the object)."
         },
         {
-          "q": "WHERE — is the “Donuts” geographically/topology when the “Round Edges” occurs?",
+          "q": "WHERE — is the “Sugar Dounts” geographically/topology when the “Round Edges” occurs?",
           "is": "Fast Line, Mesh Belt, QC\nRow 1",
           "no": "Packaging, Customer\nRows 2,3,4 or combination",
           "di": "Row 1 is furthest from the air source\n\nRow 1 has no outside cutter blade\n\nRow 1 edges are formed by edgers",
@@ -677,7 +401,7 @@ const manifest = [
           "questionId": "where-location"
         },
         {
-          "q": "WHERE — On the “Donuts” is the “Round Edges” observed?",
+          "q": "WHERE — On the “Sugar Dounts” is the “Round Edges” observed?",
           "is": "Outside Edge",
           "no": "Inside, leading, trailing or combination of edges",
           "di": "No Blades on outside edge",
@@ -688,7 +412,7 @@ const manifest = [
           "band": "WHEN — Timing and Description"
         },
         {
-          "q": "WHEN — Was the “Round Edges” First observed for “Donuts”",
+          "q": "WHEN — Was the “Round Edges” First observed for “Sugar Dounts”",
           "is": "~1 Hr Ago",
           "no": "Before 1 Hour Ago",
           "di": "We installed a new chain around this time",
@@ -715,7 +439,7 @@ const manifest = [
           "band": "EXTENT — How big is it? Magnitude, count, scope, trend."
         },
         {
-          "q": "EXTENT — What is the population or size of “Donuts” affected?",
+          "q": "EXTENT — What is the population or size of “Sugar Dounts” affected?",
           "is": "25% Reject Rate\n1 of 4 Rows",
           "no": "More or Less than 25%\n2 or More Rows",
           "di": "",
@@ -731,7 +455,7 @@ const manifest = [
           "questionId": "extent-size"
         },
         {
-          "q": "EXTENT — How many “Round Edges” are occuring on each “Donuts”?",
+          "q": "EXTENT — How many “Round Edges” are occuring on each “Sugar Dounts”?",
           "is": "1 Per Donut",
           "no": "Between 2-4",
           "di": "",
