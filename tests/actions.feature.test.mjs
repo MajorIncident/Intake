@@ -9,12 +9,15 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, mock, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
+import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
+
 const ANALYSIS_ID = 'analysis-test';
 const AUTO_SORT_DELAY = 3000;
 const REORDER_HIGHLIGHT_DURATION = 1100;
 
 let dom = null;
 let previousGlobals = {};
+let jsdomSnapshot = null;
 
 function makeAction(overrides = {}) {
   return {
@@ -60,14 +63,6 @@ function makeAction(overrides = {}) {
 
 beforeEach(() => {
   previousGlobals = {
-    window: globalThis.window,
-    document: globalThis.document,
-    navigator: globalThis.navigator,
-    CustomEvent: globalThis.CustomEvent,
-    Event: globalThis.Event,
-    KeyboardEvent: globalThis.KeyboardEvent,
-    MouseEvent: globalThis.MouseEvent,
-    HTMLElement: globalThis.HTMLElement,
     localStorage: globalThis.localStorage,
     requestAnimationFrame: globalThis.requestAnimationFrame,
     cancelAnimationFrame: globalThis.cancelAnimationFrame,
@@ -82,14 +77,7 @@ beforeEach(() => {
   const { window } = dom;
   const { document } = window;
 
-  globalThis.window = window;
-  globalThis.document = document;
-  globalThis.navigator = window.navigator;
-  globalThis.CustomEvent = window.CustomEvent;
-  globalThis.Event = window.Event;
-  globalThis.KeyboardEvent = window.KeyboardEvent;
-  globalThis.MouseEvent = window.MouseEvent;
-  globalThis.HTMLElement = window.HTMLElement;
+  jsdomSnapshot = installJsdomGlobals(window);
 
   const storage = new Map();
   const localStorage = {
@@ -139,14 +127,6 @@ afterEach(() => {
     dom = null;
   }
 
-  globalThis.window = previousGlobals.window;
-  globalThis.document = previousGlobals.document;
-  globalThis.navigator = previousGlobals.navigator;
-  globalThis.CustomEvent = previousGlobals.CustomEvent;
-  globalThis.Event = previousGlobals.Event;
-  globalThis.KeyboardEvent = previousGlobals.KeyboardEvent;
-  globalThis.MouseEvent = previousGlobals.MouseEvent;
-  globalThis.HTMLElement = previousGlobals.HTMLElement;
   globalThis.localStorage = previousGlobals.localStorage;
   if (!previousGlobals.hadCrypto) {
     try {
@@ -159,6 +139,8 @@ afterEach(() => {
   globalThis.cancelAnimationFrame = previousGlobals.cancelAnimationFrame;
   globalThis.confirm = previousGlobals.confirm;
 
+  restoreJsdomGlobals(jsdomSnapshot);
+  jsdomSnapshot = null;
   previousGlobals = {};
 });
 

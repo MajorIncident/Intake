@@ -8,6 +8,8 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, mock, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
+import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
+
 import {
   applyCommunicationsState,
   disposeCommunications,
@@ -21,6 +23,7 @@ import {
 
 let dom = null;
 let previousGlobals = {};
+let jsdomSnapshot = null;
 const NativeDate = globalThis.Date;
 let currentNow = null;
 let setIntervalStub = null;
@@ -86,10 +89,6 @@ function flushCadenceTick() {
 
 beforeEach(() => {
   previousGlobals = {
-    window: globalThis.window,
-    document: globalThis.document,
-    navigator: globalThis.navigator,
-    HTMLElement: globalThis.HTMLElement,
     setInterval: globalThis.setInterval,
     clearInterval: globalThis.clearInterval,
     Date: globalThis.Date
@@ -104,10 +103,7 @@ beforeEach(() => {
   const { window } = dom;
   const { document } = window;
 
-  globalThis.window = window;
-  globalThis.document = document;
-  globalThis.navigator = window.navigator;
-  globalThis.HTMLElement = window.HTMLElement;
+  jsdomSnapshot = installJsdomGlobals(window);
 
   ensureCommsMarkup(document);
 
@@ -185,14 +181,12 @@ afterEach(() => {
     window.Date = NativeDate;
   }
 
-  globalThis.window = previousGlobals.window;
-  globalThis.document = previousGlobals.document;
-  globalThis.navigator = previousGlobals.navigator;
-  globalThis.HTMLElement = previousGlobals.HTMLElement;
   globalThis.setInterval = previousGlobals.setInterval;
   globalThis.clearInterval = previousGlobals.clearInterval;
   globalThis.Date = previousGlobals.Date ?? NativeDate;
 
+  restoreJsdomGlobals(jsdomSnapshot);
+  jsdomSnapshot = null;
   previousGlobals = {};
   intervalCallbacks.clear();
   lastTimerId = null;

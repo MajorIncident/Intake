@@ -5,23 +5,21 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, mock, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
+import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
+
 let dom = null;
 let previousGlobals = {};
+let jsdomSnapshot = null;
 
 beforeEach(() => {
   previousGlobals = {
-    window: globalThis.window,
-    document: globalThis.document,
-    navigator: globalThis.navigator,
-    HTMLElement: globalThis.HTMLElement,
     getComputedStyle: globalThis.getComputedStyle,
     requestAnimationFrame: globalThis.requestAnimationFrame,
     cancelAnimationFrame: globalThis.cancelAnimationFrame,
     setInterval: globalThis.setInterval,
     clearInterval: globalThis.clearInterval,
     localStorage: globalThis.localStorage,
-    sessionStorage: globalThis.sessionStorage,
-    CustomEvent: globalThis.CustomEvent
+    sessionStorage: globalThis.sessionStorage
   };
 
   dom = new JSDOM('<!doctype html><html><head></head><body></body></html>', {
@@ -31,10 +29,7 @@ beforeEach(() => {
   const { window } = dom;
   const { document } = window;
 
-  globalThis.window = window;
-  globalThis.document = document;
-  globalThis.navigator = window.navigator;
-  globalThis.HTMLElement = window.HTMLElement;
+  jsdomSnapshot = installJsdomGlobals(window);
   globalThis.getComputedStyle = window.getComputedStyle.bind(window);
 
   const raf = typeof window.requestAnimationFrame === 'function'
@@ -57,7 +52,6 @@ beforeEach(() => {
   globalThis.clearInterval = window.clearInterval.bind(window);
   globalThis.localStorage = window.localStorage;
   globalThis.sessionStorage = window.sessionStorage;
-  globalThis.CustomEvent = window.CustomEvent;
 
   if (!window.HTMLElement.prototype.focus) {
     window.HTMLElement.prototype.focus = () => {};
@@ -83,10 +77,6 @@ afterEach(() => {
   delete globalThis.__commsMocks;
   delete process.env.TEST_STUB_MODULES;
 
-  globalThis.window = previousGlobals.window;
-  globalThis.document = previousGlobals.document;
-  globalThis.navigator = previousGlobals.navigator;
-  globalThis.HTMLElement = previousGlobals.HTMLElement;
   globalThis.getComputedStyle = previousGlobals.getComputedStyle;
   globalThis.requestAnimationFrame = previousGlobals.requestAnimationFrame;
   globalThis.cancelAnimationFrame = previousGlobals.cancelAnimationFrame;
@@ -102,12 +92,8 @@ afterEach(() => {
   } else {
     delete globalThis.sessionStorage;
   }
-  if (previousGlobals.CustomEvent) {
-    globalThis.CustomEvent = previousGlobals.CustomEvent;
-  } else {
-    delete globalThis.CustomEvent;
-  }
-
+  restoreJsdomGlobals(jsdomSnapshot);
+  jsdomSnapshot = null;
   previousGlobals = {};
 });
 

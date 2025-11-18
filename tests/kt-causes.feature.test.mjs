@@ -9,6 +9,8 @@ import assert from 'node:assert/strict';
 import { after, afterEach, before, beforeEach, mock, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
+import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
+
 const BASE_HTML = `
 <!doctype html>
 <html>
@@ -29,18 +31,11 @@ const BASE_HTML = `
 
 let dom = null;
 let previousGlobals = {};
+let jsdomSnapshot = null;
 let importCounter = 0;
 
 before(async () => {
   previousGlobals = {
-    window: globalThis.window,
-    document: globalThis.document,
-    navigator: globalThis.navigator,
-    HTMLElement: globalThis.HTMLElement,
-    CustomEvent: globalThis.CustomEvent,
-    Event: globalThis.Event,
-    KeyboardEvent: globalThis.KeyboardEvent,
-    MouseEvent: globalThis.MouseEvent,
     confirm: globalThis.confirm,
     requestAnimationFrame: globalThis.requestAnimationFrame,
     cancelAnimationFrame: globalThis.cancelAnimationFrame,
@@ -53,14 +48,7 @@ before(async () => {
   const { window } = dom;
   const { document } = window;
 
-  globalThis.window = window;
-  globalThis.document = document;
-  globalThis.navigator = window.navigator;
-  globalThis.HTMLElement = window.HTMLElement;
-  globalThis.CustomEvent = window.CustomEvent;
-  globalThis.Event = window.Event;
-  globalThis.KeyboardEvent = window.KeyboardEvent;
-  globalThis.MouseEvent = window.MouseEvent;
+  jsdomSnapshot = installJsdomGlobals(window);
 
   const storage = new Map();
   const localStorage = {
@@ -139,14 +127,6 @@ after(() => {
     dom = null;
   }
 
-  globalThis.window = previousGlobals.window;
-  globalThis.document = previousGlobals.document;
-  globalThis.navigator = previousGlobals.navigator;
-  globalThis.HTMLElement = previousGlobals.HTMLElement;
-  globalThis.CustomEvent = previousGlobals.CustomEvent;
-  globalThis.Event = previousGlobals.Event;
-  globalThis.KeyboardEvent = previousGlobals.KeyboardEvent;
-  globalThis.MouseEvent = previousGlobals.MouseEvent;
   globalThis.confirm = previousGlobals.confirm;
   globalThis.requestAnimationFrame = previousGlobals.requestAnimationFrame;
   globalThis.cancelAnimationFrame = previousGlobals.cancelAnimationFrame;
@@ -161,6 +141,8 @@ after(() => {
   } else {
     delete globalThis.__appStateMocks;
   }
+  restoreJsdomGlobals(jsdomSnapshot);
+  jsdomSnapshot = null;
   previousGlobals = {};
 });
 
