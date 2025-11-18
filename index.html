@@ -59,6 +59,7 @@ Anchors present:
       <div class="toolbar-cluster" aria-label="File lifecycle controls">
         <button type="button" class="btn" id="startFreshBtn" aria-label="Start a new intake">Start Fresh</button>
         <button type="button" class="btn-secondary" id="saveToFileBtn">Save to File</button>
+        <button type="button" class="btn-secondary" id="saveTemplateBtn">Save Template</button>
         <input type="file" id="importFileInput" class="visually-hidden" accept="application/json,.json" />
         <button type="button" class="btn-secondary" id="loadFromFileBtn">Load from File</button>
       </div>
@@ -122,6 +123,7 @@ Anchors present:
                       </button>
                     </li>
                   </ul>
+                  <p class="templates-type-hint" id="templatesTypeHint" aria-live="polite"></p>
                 </section>
                 <section class="templates-section">
                   <div class="templates-section__header">

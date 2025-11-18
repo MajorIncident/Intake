@@ -2,6 +2,7 @@
   "id": "checkout-latency",
   "name": "Checkout Latency Spike",
   "description": "EU checkout slowdown triggered by a CDN header rewrite.",
+  "templateKind": "case-study",
   "supportedModes": [
     "intake",
     "is-is-not",

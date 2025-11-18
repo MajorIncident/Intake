@@ -10,6 +10,7 @@
 
 import { TEMPLATE_MANIFEST } from './templates.manifest.js';
 import { MODE_RULES, TEMPLATE_MODE_IDS, TEMPLATE_MODES } from './templateModes.js';
+import { TEMPLATE_KINDS, normalizeTemplateKind } from './templateKinds.js';
 
 const MODE_INDEX = new Map(TEMPLATE_MODES.map(mode => [mode.id, mode]));
 
@@ -134,7 +135,7 @@ function projectState(fullState, modeId) {
   return projected;
 }
 
-/** @type {Array<{ id: string, name: string, description: string, supportedModes: string[], state: import('./storage.js').SerializedAppState }>} */
+/** @type {Array<{ id: string, name: string, description: string, templateKind: keyof typeof TEMPLATE_KINDS, supportedModes: string[], state: import('./storage.js').SerializedAppState }>} */
 let templates = [];
 let templateIndex = new Map();
 
@@ -143,6 +144,7 @@ function hydrateManifest(entries) {
     id: entry.id,
     name: entry.name,
     description: entry.description,
+    templateKind: normalizeTemplateKind(entry.templateKind),
     supportedModes: sanitizeSupportedModes(entry.supportedModes),
     state: normalizeManifestState(entry.state)
   }));
@@ -178,7 +180,7 @@ hydrateManifest(TEMPLATE_MANIFEST);
 
 /**
  * Allows tests to inject a stub manifest for isolation.
- * @param {Array<{ id: string, name: string, description: string, supportedModes: string[], state: import('./storage.js').SerializedAppState }>} entries - Test manifest entries.
+ * @param {Array<{ id: string, name: string, description: string, templateKind: keyof typeof TEMPLATE_KINDS, supportedModes: string[], state: import('./storage.js').SerializedAppState }>} entries - Test manifest entries.
  */
 export function __dangerousSetTemplateManifestForTests(entries) {
   hydrateManifest(entries);
@@ -186,20 +188,21 @@ export function __dangerousSetTemplateManifestForTests(entries) {
 
 /**
  * List available template definitions for the drawer UI.
- * @returns {Array<{ id: string, name: string, description: string }>} Human-friendly template metadata.
+ * @returns {Array<{ id: string, name: string, description: string, templateKind: keyof typeof TEMPLATE_KINDS }>} Human-friendly template metadata.
  */
 export function listTemplates() {
   return templates.map(template => ({
     id: template.id,
     name: template.name,
-    description: template.description
+    description: template.description,
+    templateKind: template.templateKind
   }));
 }
 
 /**
  * Retrieve metadata for a specific template identifier.
  * @param {string} templateId - Unique template identifier.
- * @returns {{ id: string, name: string, description: string }|null} Metadata snapshot or null when missing.
+ * @returns {{ id: string, name: string, description: string, templateKind: keyof typeof TEMPLATE_KINDS }|null} Metadata snapshot or null when missing.
  */
 export function getTemplateMetadata(templateId) {
   if (typeof templateId !== 'string') {
@@ -212,7 +215,8 @@ export function getTemplateMetadata(templateId) {
   return {
     id: template.id,
     name: template.name,
-    description: template.description
+    description: template.description,
+    templateKind: template.templateKind
   };
 }
 
@@ -245,4 +249,4 @@ export function getTemplatePayload(templateId, modeId) {
   return projectState(template.state, /** @type {keyof typeof MODE_RULES} */ (normalizedMode));
 }
 
-export { TEMPLATE_MODE_IDS };
+export { TEMPLATE_MODE_IDS, TEMPLATE_KINDS };

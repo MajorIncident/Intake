@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
 
 import { TEMPLATE_MODE_IDS } from '../src/templateModes.js';
+import { TEMPLATE_KINDS } from '../src/templateKinds.js';
 import {
   __dangerousSetTemplateManifestForTests as setTemplateManifest,
   getTemplateMetadata,
@@ -114,6 +115,7 @@ const TEMPLATE_ALPHA = {
   id: 'alpha-template',
   name: 'Alpha Template',
   description: 'Minimal state used for tests.',
+  templateKind: TEMPLATE_KINDS.CASE_STUDY,
   supportedModes: [TEMPLATE_MODE_IDS.INTAKE, TEMPLATE_MODE_IDS.FULL],
   state: buildState({ actions: { analysisId: 'alpha-actions', items: [{ id: 'act-a' }] } })
 };
@@ -122,6 +124,7 @@ const TEMPLATE_BETA = {
   id: 'beta-template',
   name: 'Beta Template',
   description: 'Supports every mode for projection tests.',
+  templateKind: TEMPLATE_KINDS.STANDARD,
   supportedModes: Object.values(TEMPLATE_MODE_IDS),
   state: buildState({ steps: { items: [{ id: '2', label: 'Step 2', checked: false }], drawerOpen: true } })
 };
@@ -131,6 +134,7 @@ beforeEach(() => {
     id: entry.id,
     name: entry.name,
     description: entry.description,
+    templateKind: entry.templateKind,
     supportedModes: [...entry.supportedModes],
     state: JSON.parse(JSON.stringify(entry.state))
   }));
@@ -140,13 +144,24 @@ beforeEach(() => {
 test('listTemplates exposes manifest metadata for the drawer', () => {
   const templates = listTemplates();
   assert.deepEqual(templates, [
-    { id: TEMPLATE_ALPHA.id, name: TEMPLATE_ALPHA.name, description: TEMPLATE_ALPHA.description },
-    { id: TEMPLATE_BETA.id, name: TEMPLATE_BETA.name, description: TEMPLATE_BETA.description }
+    {
+      id: TEMPLATE_ALPHA.id,
+      name: TEMPLATE_ALPHA.name,
+      description: TEMPLATE_ALPHA.description,
+      templateKind: TEMPLATE_ALPHA.templateKind
+    },
+    {
+      id: TEMPLATE_BETA.id,
+      name: TEMPLATE_BETA.name,
+      description: TEMPLATE_BETA.description,
+      templateKind: TEMPLATE_BETA.templateKind
+    }
   ]);
   assert.deepEqual(getTemplateMetadata(TEMPLATE_ALPHA.id), {
     id: TEMPLATE_ALPHA.id,
     name: TEMPLATE_ALPHA.name,
-    description: TEMPLATE_ALPHA.description
+    description: TEMPLATE_ALPHA.description,
+    templateKind: TEMPLATE_ALPHA.templateKind
   });
   assert.strictEqual(getTemplateMetadata('missing'), null);
 });

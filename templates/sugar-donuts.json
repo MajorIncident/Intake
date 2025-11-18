@@ -2,6 +2,7 @@
   "id": "sugar-donuts",
   "name": "Sugar Donuts",
   "description": "Mrs. Walthers Sugar Donut Factory Problem",
+  "templateKind": "case-study",
   "supportedModes": [
     "intake",
     "is-is-not",
@@ -605,4 +606,4 @@
       }
     ]
   }
-}
+}}

@@ -47,6 +47,8 @@ import {
 import { showToast } from './src/toast.js';
 import { exportAppStateToFile, importAppStateFromFile } from './src/fileTransfer.js';
 import { initVersionStamp } from './src/versionStamp.js';
+import { exportCurrentStateAsTemplate } from './src/templateExport.js';
+import { TEMPLATE_KINDS } from './src/templateKinds.js';
 
 /**
  * Query the document for the first element that matches the provided CSS selector.
@@ -276,6 +278,7 @@ function wireBridgeNowButton() {
  */
 function wireFileTransferControls() {
   const saveBtn = $('#saveToFileBtn');
+  const saveTemplateBtn = $('#saveTemplateBtn');
   const loadBtn = $('#loadFromFileBtn');
   const fileInput = $('#importFileInput');
 
@@ -290,6 +293,8 @@ function wireFileTransferControls() {
       }
     }
   });
+
+  on(saveTemplateBtn, 'click', handleTemplateExportClick);
 
   if (loadBtn && fileInput) {
     on(loadBtn, 'click', () => {
@@ -325,6 +330,40 @@ function wireFileTransferControls() {
         }
       }
     });
+  }
+}
+
+function handleTemplateExportClick() {
+  const promptAvailable = typeof window !== 'undefined' && typeof window.prompt === 'function';
+  if (!promptAvailable) {
+    showToast('Template export prompts are not available in this environment.');
+    return;
+  }
+  const { pre } = getPrefaceState();
+  const defaultName = (pre?.oneLine || '').trim() || 'New Template';
+  const name = window.prompt('Name this template', defaultName);
+  if (!name) {
+    showToast('Template export cancelled.');
+    return;
+  }
+  const defaultDescription = (pre?.proof || '').trim()
+    || `Captured from intake on ${new Date().toLocaleString()}`;
+  const description = window.prompt('Short description for the Templates drawer', defaultDescription);
+  if (!description) {
+    showToast('Template export cancelled.');
+    return;
+  }
+  const confirmAvailable = typeof window !== 'undefined' && typeof window.confirm === 'function';
+  const isCaseStudy = confirmAvailable
+    ? window.confirm('Save as a Case Study template? Select Cancel for a Standard template (no password, Full mode).')
+    : true;
+  const templateKind = isCaseStudy ? TEMPLATE_KINDS.CASE_STUDY : TEMPLATE_KINDS.STANDARD;
+  const result = exportCurrentStateAsTemplate({ name, description, templateKind });
+  if (!result.success && result.error) {
+    console.error('Template export failed:', result.error);
+  }
+  if (result.message) {
+    showToast(result.message);
   }
 }
 

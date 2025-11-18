@@ -7,6 +7,7 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 - Open `index.html` in any modern browser. No build step or server is required.
 - The page will load previous work from `localStorage` (keys: `kt-intake-full-v2` for the intake form and `kt-actions-by-analysis-v1` for action plans) and is immediately ready for edits, summary generation, or AI prompt creation.
 - Use the header controls to **Save to File** (exports a JSON snapshot) or **Load from File** (imports a previously saved snapshot) when you need to move an intake between browsers or machines.
+- Click **Save Template** to download the current intake as a curated template JSON. The prompt lets you choose between a **Case Study** template (password protected, multi-mode) or a **Standard** template (no password, always loads Full mode).
 
 ## Entry Point & Boot Logic
 - `index.html` declares the full UI layout and loads the JavaScript bundle via `<script type="module" src="main.js"></script>`.
@@ -47,7 +48,7 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 - Keep the UI accessible: reuse layout classes, maintain contrast, and follow the Apple-like spacing guidance in `AGENTS.md`.
 
 ### Template manifest workflow
-- Curated starter templates now live as JSON snapshots under `templates/` (one file per template). Each file lists metadata (`id`, `name`, `description`, `supportedModes`) plus a `SerializedAppState` payload.
+- Curated starter templates now live as JSON snapshots under `templates/` (one file per template). Each file lists metadata (`id`, `name`, `description`, `templateKind`, `supportedModes`) plus a `SerializedAppState` payload.
 - Run `npm run build:templates` after editing or adding template JSON. The script validates each snapshot and regenerates `src/templates.manifest.js`.
 - `npm run dev` and `npm run build` automatically invoke the generator, so the manifest always stays in sync during local development.
 
