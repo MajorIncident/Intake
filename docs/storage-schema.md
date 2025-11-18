@@ -76,7 +76,7 @@ The storage schema documentation doubles as the contract for curated template pa
 ### Drawer workflow
 
 - `src/templates.js` normalises template payloads, guaranteeing arrays are cloned and booleans such as `steps.drawerOpen` default to `false`.
-- Mode projections enforce the `MODE_RULES` contract—fields hidden in a mode are reset to safe defaults before the drawer sends state to the app.
+- Mode projections enforce the `MODE_RULES` contract—fields hidden in a mode are reset to safe defaults before the drawer sends state to the app. The KT table respects per-column `tableFields` so IS / IS NOT templates only hydrate the first two columns, D&C unlocks distinctions and changes, and Full restores every column.
 - Actions and steps collections are scrubbed before exposure so tests and runtime code can assume they conform to the schema defined above.
 
 Keeping these guardrails in the appendix allows future guidance for template authors to live beside the generated schema without being overwritten each time the docs regenerate.

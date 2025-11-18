@@ -199,3 +199,21 @@ test('mode projections follow visibility rules from the manifest', () => {
   assert.equal(fullPayload.actions.analysisId, TEMPLATE_BETA.state.actions.analysisId);
   assert.equal(fullPayload.steps.drawerOpen, TEMPLATE_BETA.state.steps.drawerOpen);
 });
+
+test('mode projections filter KT table columns per mode', () => {
+  const isPayload = getTemplatePayload(TEMPLATE_BETA.id, TEMPLATE_MODE_IDS.IS_IS_NOT);
+  assert.ok(isPayload, 'is/is-not payload should resolve');
+  const isQuestion = isPayload.table.find(row => row && row.questionId === 'what-object');
+  assert.ok(isQuestion, 'question row should be present in is/is-not mode');
+  assert.equal(isQuestion.is, 'Object is failing');
+  assert.equal(isQuestion.no, 'Objects not failing');
+  assert.equal(isQuestion.di, '', 'distinctions should be blank in is/is-not mode');
+  assert.equal(isQuestion.ch, '', 'changes should be blank in is/is-not mode');
+
+  const dcPayload = getTemplatePayload(TEMPLATE_BETA.id, TEMPLATE_MODE_IDS.DC);
+  assert.ok(dcPayload, 'd&c payload should resolve');
+  const dcQuestion = dcPayload.table.find(row => row && row.questionId === 'what-object');
+  assert.ok(dcQuestion, 'question row should be present in d&c mode');
+  assert.equal(dcQuestion.di, 'Differentiator', 'd&c mode surfaces distinctions');
+  assert.equal(dcQuestion.ch, 'Changes', 'd&c mode surfaces changes');
+});
