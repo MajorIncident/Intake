@@ -86,6 +86,7 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 
 - **Automated coverage is mandatory:** Every feature pull request must add or update tests that assert the behaviours introduced or modified.
 - **Security scanning is automatic:** GitHub CodeQL runs on every push to `main`, pull request, and a weekly schedule to flag JavaScript/TypeScript issues without manual setup.
+- **Dependency review gate:** A GitHub dependency review workflow now blocks merges when a pull request introduces new high or critical advisories, so expect PRs to fail even if unit tests succeed until vulnerable dependencies are replaced or patched.
 - **Run the coverage guard:** Execute `npm run verify:tests` after staging runtime changes. The guard ensures any updates under `src/` or `components/` are paired with refreshed suites in `tests/**/*.test.mjs`.
 - **Choose the right suite:** Follow [`docs/testing-guidelines.md`](docs/testing-guidelines.md) to decide between unit and DOM integration tests, apply the naming/location conventions under `tests/`, and leverage the reusable template in `tests/template.feature.test.mjs` when starting new files.
 - **Auto-generated stubs live in `tests/auto-generated/`:** When the guard detects missing coverage it copies `tests/template.feature.test.mjs` into a feature-specific stub so you can immediately replace the skipped test with meaningful assertions. Commit the file once it contains real coverage or delete it if you move the tests elsewhere.
