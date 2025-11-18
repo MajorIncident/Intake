@@ -2,6 +2,7 @@
   "id": "donut-line",
   "name": "Donut Line Slowdown",
   "description": "Bakery pickup backlog template featuring the donut proofing example.",
+  "templateKind": "case-study",
   "supportedModes": [
     "intake",
     "is-is-not",

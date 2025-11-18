@@ -351,6 +351,7 @@ body.templates-drawer-open{overflow:hidden;}
 .templates-section__header{display:flex; flex-direction:column; gap:4px; margin:0 0 16px;}
 .templates-section__header h3{margin:0; font-size:15px; font-weight:700; letter-spacing:.02em; text-transform:none; color:#1d2845;}
 .templates-section__header p{margin:0; color:var(--muted); font-size:13px;}
+.templates-type-hint{margin:12px 0 0; color:var(--muted); font-size:12px;}
 .templates-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
 .templates-list__item{
   width:100%; text-align:left; border:1px solid #dfe3f2; border-radius:14px;
@@ -376,6 +377,7 @@ body.templates-drawer-open{overflow:hidden;}
   background:#f4f6fb; color:#2d3856;
   transition:border-color var(--speed), background var(--speed), color var(--speed), box-shadow var(--speed);
 }
+.templates-modes.is-locked .templates-mode{cursor:not-allowed; opacity:.55;}
 .templates-mode.is-active,
 .templates-mode:focus{
   outline:none;

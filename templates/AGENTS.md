@@ -10,11 +10,14 @@ Applies to all files inside `templates/`.
     "id": "unique-slug",
     "name": "Template Drawer Label",
     "description": "Short description",
+    "templateKind": "case-study" | "standard",
     "supportedModes": ["intake", "is-is-not", "dc", "full"],
     "state": { /* SerializedAppState payload */ }
   }
   ```
 - `supportedModes` may omit entries that do not make sense for a given template, but it must never be empty.
+- `templateKind` controls authentication: `case-study` templates keep the rotating password flow while `standard` templates skip
+  password prompts and always load in `full` mode.
 - `state` must satisfy the `SerializedAppState` contract documented in `src/storage.js`.
 
 ## Editing Workflow

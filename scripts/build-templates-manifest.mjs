@@ -7,11 +7,13 @@ import { promises as fs } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { TEMPLATE_MODE_IDS } from '../src/templateModes.js';
+import { TEMPLATE_KINDS } from '../src/templateKinds.js';
 
 const templatesDir = new URL('../templates/', import.meta.url);
 const manifestPath = new URL('../src/templates.manifest.js', import.meta.url);
 
 const MODE_VALUES = Object.freeze(Object.values(TEMPLATE_MODE_IDS));
+const KIND_VALUES = Object.freeze(Object.values(TEMPLATE_KINDS));
 
 function isRecord(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -153,7 +155,7 @@ async function readTemplateFile(fileName) {
   if (!isRecord(data)) {
     throw new Error(`${fileName} must contain a JSON object`);
   }
-  const { id, name, description, supportedModes, state } = data;
+  const { id, name, description, supportedModes, templateKind, state } = data;
   if (typeof id !== 'string' || !id.trim()) {
     errors.push('id must be a non-empty string');
   }
@@ -162,6 +164,9 @@ async function readTemplateFile(fileName) {
   }
   if (typeof description !== 'string' || !description.trim()) {
     errors.push('description must be a non-empty string');
+  }
+  if (!KIND_VALUES.includes(templateKind)) {
+    errors.push(`templateKind must be one of: ${KIND_VALUES.join(', ')}`);
   }
   if (!Array.isArray(supportedModes) || supportedModes.length === 0) {
     errors.push('supportedModes must be a non-empty array');
@@ -181,6 +186,7 @@ async function readTemplateFile(fileName) {
     name: name.trim(),
     description: description.trim(),
     supportedModes: supportedModes.map(mode => mode.trim()),
+    templateKind,
     state
   };
 }

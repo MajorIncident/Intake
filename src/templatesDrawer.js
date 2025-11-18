@@ -16,7 +16,8 @@ import {
   listTemplates,
   listTemplateModes,
   getTemplatePayload,
-  TEMPLATE_MODE_IDS
+  TEMPLATE_MODE_IDS,
+  TEMPLATE_KINDS
 } from './templates.js';
 import { applyAppState, collectAppState } from './appState.js';
 import { showToast } from './toast.js';
@@ -36,6 +37,7 @@ let templatesModeGroup = null;
 let templatesPasswordInput = null;
 let templatesApplyBtn = null;
 let templatesAuthSection = null;
+let templatesTypeHint = null;
 let passwordErrorEl = null;
 
 let templatesDrawerOpen = false;
@@ -48,6 +50,17 @@ let selectedModeId = modeIndex.has(TEMPLATE_MODE_IDS.FULL)
   : modeRecords.length
     ? modeRecords[modeRecords.length - 1].id
     : null;
+
+function getSelectedTemplateMeta() {
+  if (!selectedTemplateId) {
+    return null;
+  }
+  return templateIndex.get(selectedTemplateId) || null;
+}
+
+function isStandardTemplate(templateMeta = getSelectedTemplateMeta()) {
+  return Boolean(templateMeta && templateMeta.templateKind === TEMPLATE_KINDS.STANDARD);
+}
 
 function getDrawerFocusables() {
   if (!templatesDrawer) return [];
@@ -154,6 +167,60 @@ function updateApplyButtonState() {
   templatesApplyBtn.disabled = disabled;
 }
 
+function updateTemplateTypeHint() {
+  if (!templatesTypeHint) return;
+  const template = getSelectedTemplateMeta();
+  if (!template) {
+    templatesTypeHint.textContent = '';
+    templatesTypeHint.hidden = true;
+    return;
+  }
+  templatesTypeHint.hidden = false;
+  templatesTypeHint.textContent = isStandardTemplate(template)
+    ? 'Standard template · Applies immediately in Full mode without a password.'
+    : 'Case study template · Enter the rotating password to unlock each mode.';
+}
+
+function updatePasswordRequirement() {
+  const needsPassword = !isStandardTemplate();
+  if (templatesAuthSection) {
+    templatesAuthSection.hidden = !needsPassword;
+  }
+  if (!needsPassword) {
+    clearPasswordError();
+    if (templatesPasswordInput) {
+      templatesPasswordInput.value = '';
+    }
+  }
+}
+
+function updateModeLockState() {
+  const lockModes = isStandardTemplate();
+  if (lockModes) {
+    selectedModeId = TEMPLATE_MODE_IDS.FULL;
+  }
+  if (templatesModeGroup) {
+    templatesModeGroup.classList.toggle('is-locked', lockModes);
+    const buttons = templatesModeGroup.querySelectorAll('.templates-mode');
+    buttons.forEach(button => {
+      button.disabled = lockModes;
+      if (lockModes) {
+        button.setAttribute('aria-disabled', 'true');
+      } else {
+        button.removeAttribute('aria-disabled');
+      }
+    });
+  }
+  updateModeSelection();
+  updateApplyButtonState();
+}
+
+function refreshTemplateDetails() {
+  updateTemplateTypeHint();
+  updatePasswordRequirement();
+  updateModeLockState();
+}
+
 function updateTemplateSelection() {
   if (!templatesListEl) return;
   const buttons = templatesListEl.querySelectorAll('.templates-list__item');
@@ -188,6 +255,7 @@ function renderTemplatesList() {
     templatesListEl.appendChild(li);
     selectedTemplateId = null;
     updateApplyButtonState();
+    refreshTemplateDetails();
     return;
   }
   const fragment = document.createDocumentFragment();
@@ -197,6 +265,7 @@ function renderTemplatesList() {
     button.type = 'button';
     button.className = 'templates-list__item';
     button.dataset.templateId = template.id;
+    button.dataset.templateKind = template.templateKind;
     button.setAttribute('role', 'option');
     const name = document.createElement('span');
     name.className = 'templates-list__name';
@@ -211,6 +280,7 @@ function renderTemplatesList() {
   });
   templatesListEl.appendChild(fragment);
   updateTemplateSelection();
+  refreshTemplateDetails();
   updateApplyButtonState();
 }
 
@@ -254,6 +324,7 @@ function handleTemplateClick(event) {
   }
   selectedTemplateId = id;
   updateTemplateSelection();
+  refreshTemplateDetails();
   updateApplyButtonState();
 }
 
@@ -265,6 +336,9 @@ function handleModeClick(event) {
     return;
   }
   event.preventDefault();
+  if (isStandardTemplate()) {
+    return;
+  }
   const id = target.dataset.mode;
   if (!id || id === selectedModeId || !modeIndex.has(id)) {
     return;
@@ -282,6 +356,9 @@ function buildExpectedPassword() {
 }
 
 function validatePassword() {
+  if (isStandardTemplate()) {
+    return true;
+  }
   if (!templatesPasswordInput) {
     return true;
   }
@@ -304,13 +381,19 @@ function validatePassword() {
 }
 
 function applySelectedTemplate() {
-  if (!templatesDrawerReady || !selectedTemplateId || !selectedModeId) {
+  if (!templatesDrawerReady || !selectedTemplateId) {
     return;
   }
-  if (!validatePassword()) {
+  const templateMeta = getSelectedTemplateMeta();
+  const requiresPassword = !isStandardTemplate(templateMeta);
+  const modeToApply = requiresPassword ? selectedModeId : TEMPLATE_MODE_IDS.FULL;
+  if (!modeToApply) {
     return;
   }
-  const payload = getTemplatePayload(selectedTemplateId, selectedModeId);
+  if (requiresPassword && !validatePassword()) {
+    return;
+  }
+  const payload = getTemplatePayload(selectedTemplateId, modeToApply);
   if (!payload) {
     setPasswordError('That mode is not available for the selected template.');
     return;
@@ -330,13 +413,14 @@ function applySelectedTemplate() {
     setPasswordError('Unable to apply the template. Please try again.');
     return;
   }
-  templatesPasswordInput.value = '';
+  if (templatesPasswordInput) {
+    templatesPasswordInput.value = '';
+  }
   clearPasswordError();
   closeTemplatesDrawer();
-  const templateMeta = templateIndex.get(selectedTemplateId);
-  const modeMeta = modeIndex.get(selectedModeId);
+  const modeMeta = modeIndex.get(modeToApply);
   const templateName = templateMeta ? templateMeta.name : 'Template';
-  const modeName = modeMeta ? modeMeta.name : selectedModeId;
+  const modeName = modeMeta ? modeMeta.name : modeToApply;
   showToast(`Applied “${templateName}” in ${modeName} mode ✨`);
 }
 
@@ -436,6 +520,7 @@ export function initTemplatesDrawer() {
   templatesPasswordInput = document.getElementById('templatesPassword');
   templatesApplyBtn = document.getElementById('templatesApplyBtn');
   templatesAuthSection = document.querySelector('.templates-auth');
+  templatesTypeHint = document.getElementById('templatesTypeHint');
 
   templatesDrawerReady = Boolean(
     templatesDrawer

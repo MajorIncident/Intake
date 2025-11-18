@@ -4,7 +4,7 @@ The storage schema documentation doubles as the contract for curated template pa
 
 ### Authoring checklist
 
-1. Start from an existing template JSON file so required keys (`id`, `name`, `description`, `supportedModes`, and `state`) stay in place.
+1. Start from an existing template JSON file so required keys (`id`, `name`, `description`, `templateKind`, `supportedModes`, and `state`) stay in place.
 2. Ensure `state` mirrors the fields listed above, including nested objects for `pre`, `impact`, `ops`, `steps`, and `actions`.
 3. Keep drawer labels short—the template list truncates anything overly long.
 4. Run `npm run build:templates` after editing JSON so `src/templates.manifest.js` refreshes.
