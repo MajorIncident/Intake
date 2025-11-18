@@ -247,9 +247,11 @@ function wireTemplatesEvents() {
   const templatesBtn = $('#templatesBtn');
   const templatesCloseBtn = $('#templatesCloseBtn');
   const templatesBackdrop = $('#templatesBackdrop');
+  const templatesSaveBtn = $('#templatesSaveBtn');
   on(templatesBtn, 'click', toggleTemplatesDrawer);
   on(templatesCloseBtn, 'click', closeTemplatesDrawer);
   on(templatesBackdrop, 'click', closeTemplatesDrawer);
+  on(templatesSaveBtn, 'click', handleTemplateExportClick);
 }
 
 /**
@@ -278,7 +280,6 @@ function wireBridgeNowButton() {
  */
 function wireFileTransferControls() {
   const saveBtn = $('#saveToFileBtn');
-  const saveTemplateBtn = $('#saveTemplateBtn');
   const loadBtn = $('#loadFromFileBtn');
   const fileInput = $('#importFileInput');
 
@@ -293,8 +294,6 @@ function wireFileTransferControls() {
       }
     }
   });
-
-  on(saveTemplateBtn, 'click', handleTemplateExportClick);
 
   if (loadBtn && fileInput) {
     on(loadBtn, 'click', () => {
