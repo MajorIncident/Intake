@@ -14,6 +14,448 @@ function deepFreeze(value) {
 
 const manifest = [
   {
+    "id": "microcomputer-cabinets",
+    "name": "Microcomputer Cabinets",
+    "description": "Final Inspection Reports that cabinets are being rejected periodically",
+    "supportedModes": [
+      "intake",
+      "is-is-not",
+      "dc",
+      "full"
+    ],
+    "templateKind": "case-study",
+    "state": {
+      "meta": {
+        "version": 1,
+        "savedAt": "2025-11-18T18:57:08.496Z"
+      },
+      "pre": {
+        "oneLine": "Cabinets are being rejected",
+        "proof": "Final Inspection Reports that cabinets are being rejected periodically",
+        "objectPrefill": "1025 Microcomputer Cabinets",
+        "healthy": "Flat, even coat of paint on the outside surface",
+        "now": "Paint Gaps"
+      },
+      "impact": {
+        "now": "Total reject rate is hovering at 6% \n\nwe are manually re-working cabinets with paint gaps",
+        "future": "production delays and out-of-stock notices may have to go out due to shortage of 1025 Cabinets",
+        "time": "Next Week sales are expected to be increasing along with production rate"
+      },
+      "ops": {
+        "bridgeOpenedUtc": "2025-11-18T09:04:02.398Z",
+        "icName": "",
+        "bcName": "",
+        "semOpsName": "",
+        "severity": "",
+        "detectMonitoring": false,
+        "detectUserReport": true,
+        "detectAutomation": false,
+        "detectOther": false,
+        "evScreenshot": false,
+        "evLogs": false,
+        "evMetrics": false,
+        "evRepro": false,
+        "evOther": false,
+        "containStatus": "stabilized",
+        "containDesc": "Manually reworking current cabinets",
+        "commCadence": "",
+        "commLog": [],
+        "commNextDueIso": "",
+        "commNextUpdateTime": "",
+        "tableFocusMode": "comprehensive"
+      },
+      "table": [
+        {
+          "band": "WHAT — Define the problem precisely (Object & Deviation)."
+        },
+        {
+          "q": "WHAT — Specific Object/Thing is having the “Visual Defects”",
+          "is": "1025 Microcomputer Cabinets",
+          "no": "1035, 1045 Cabinets",
+          "di": "1025s are cleaned in Line 1 Wash Tanks\n\n1025s are assembled in Line 1 Final Assembly\n\n1025s have a higher production rate than the 1035 and 1045 combined",
+          "ch": "More Cleaned on Line 1 (Weekly over last 3 weeks)\n\nWash tanks Flushed Every 30 Minutes\n\nMore assembled on Line 1 (Weekly over last 3 weeks) \n\nNew Employees (5 Weeks Ago)",
+          "questionId": "what-object"
+        },
+        {
+          "q": "WHAT — Specific Deviation does the “1025 Microcomputer Cabinets” have?",
+          "is": "Visual Defects\n\nPaint Gaps",
+          "no": "Functional, Electronic Defects\n\nPaint Peeling, Discolouring, Running, Fading",
+          "di": "",
+          "ch": "",
+          "questionId": "what-deviation"
+        },
+        {
+          "band": "WHERE — Locate the problem (geography/topology and on the object)."
+        },
+        {
+          "q": "WHERE — is the “1025 Microcomputer Cabinets” geographically/topology when the “Visual Defects” occurs?",
+          "is": "Reported at Final Inspection",
+          "no": "Reported at Final Assembly",
+          "di": "",
+          "ch": "",
+          "questionId": "where-location"
+        },
+        {
+          "q": "WHERE — On the “1025 Microcomputer Cabinets” is the “Visual Defects” observed?",
+          "is": "All Panels\nOutside Panels\nRandomly",
+          "no": "Some Panels\n(NMD - Inside?)\nIn Specific Spots or Pattern",
+          "di": "",
+          "ch": "",
+          "questionId": "where-on-object"
+        },
+        {
+          "band": "WHEN — Timing and Description"
+        },
+        {
+          "q": "WHEN — Was the “Visual Defects” First observed for “1025 Microcomputer Cabinets”",
+          "is": "2 Weeks Ago",
+          "no": "Before 2 Weeks Ago",
+          "di": "Production Rate",
+          "ch": "Production Increased (Weekly over last 3 weeks)",
+          "questionId": "when-first-observed"
+        },
+        {
+          "q": "WHEN — Since was the first time has “Visual Defects” been logged? What Pattern?",
+          "is": "NMD - Time\n\"Periodic\"\n",
+          "no": "NMD - Time\nSporadic, Continuous",
+          "di": "",
+          "ch": "",
+          "questionId": "when-pattern"
+        },
+        {
+          "q": "WHEN — Describe using words When the “Visual Defects” was first seen",
+          "is": "During Visual Inspection",
+          "no": "During Final Assembly, Electronic, or Operational Inspection",
+          "di": "",
+          "ch": "",
+          "questionId": "when-description"
+        },
+        {
+          "band": "EXTENT — How big is it? Magnitude, count, scope, trend."
+        },
+        {
+          "q": "EXTENT — What is the population or size of “1025 Microcomputer Cabinets” affected?",
+          "is": "Currently Over 5.85%\n\nIncreasing",
+          "no": "0.16% - 5.84% and\n5.86% - 100%",
+          "di": "",
+          "ch": "",
+          "questionId": "extent-population"
+        },
+        {
+          "q": "EXTENT — What is the size of a single “Visual Defects”?",
+          "is": "",
+          "no": "",
+          "di": "",
+          "ch": "",
+          "questionId": "extent-size"
+        },
+        {
+          "q": "EXTENT — How many “Visual Defects” are occuring on each “1025 Microcomputer Cabinets”?",
+          "is": "Up to 11 Gaps per cabinet\n\nIncreasing",
+          "no": "Any other range or single value",
+          "di": "",
+          "ch": "",
+          "questionId": "extent-count"
+        }
+      ],
+      "causes": [
+        {
+          "id": "cause-2h25uu-mi4xnini",
+          "suspect": "Employees",
+          "accusation": "Wearing Unapproved Hand Cream",
+          "impact": "Leaving a Film on the Cabinet that prevents paint from adhering",
+          "summaryText": "We suspect Employees because Wearing Unapproved Hand Cream. This could lead to Leaving a Film on the Cabinet that prevents paint from adhering.",
+          "confidence": "",
+          "evidence": "",
+          "findings": {},
+          "editing": false,
+          "testingOpen": false
+        },
+        {
+          "id": "cause-2u9pmq-mi4xo7ef",
+          "suspect": "Wash Tanks",
+          "accusation": "Contaminated",
+          "impact": "Leaving Dirt on Cabinets",
+          "summaryText": "We suspect Wash Tanks because Contaminated. This could lead to Leaving Dirt on Cabinets.",
+          "confidence": "",
+          "evidence": "",
+          "findings": {},
+          "editing": false,
+          "testingOpen": false
+        },
+        {
+          "id": "cause-wjmudz-mi4xohef",
+          "suspect": "Grounding Hooks",
+          "accusation": "Not Properly Grounded",
+          "impact": "Preventing Paint Adhesion",
+          "summaryText": "We suspect Grounding Hooks because Not Properly Grounded. This could lead to Preventing Paint Adhesion.",
+          "confidence": "",
+          "evidence": "",
+          "findings": {},
+          "editing": false,
+          "testingOpen": false
+        }
+      ],
+      "likelyCauseId": "cause-2h25uu-mi4xnini",
+      "steps": {
+        "items": [
+          {
+            "id": "1",
+            "label": "Pre-analysis completed",
+            "checked": false
+          },
+          {
+            "id": "2",
+            "label": "Incident Commander assigned",
+            "checked": false
+          },
+          {
+            "id": "3",
+            "label": "Step 1 reviewed by BC",
+            "checked": false
+          },
+          {
+            "id": "4",
+            "label": "Problem statement created",
+            "checked": false
+          },
+          {
+            "id": "5",
+            "label": "Bridge options considered",
+            "checked": false
+          },
+          {
+            "id": "6",
+            "label": "Bridges opened and responders invited",
+            "checked": false
+          },
+          {
+            "id": "7",
+            "label": "Bridge etiquette, roles, and guidelines outlined",
+            "checked": false
+          },
+          {
+            "id": "8",
+            "label": "Current actions documented (Who/What/When)",
+            "checked": false
+          },
+          {
+            "id": "9",
+            "label": "Quick spec answers captured",
+            "checked": false
+          },
+          {
+            "id": "10",
+            "label": "Last changes, monitoring, and dependencies investigated",
+            "checked": false
+          },
+          {
+            "id": "11",
+            "label": "Attendees optimized",
+            "checked": false
+          },
+          {
+            "id": "12",
+            "label": "Possible causes developed",
+            "checked": false
+          },
+          {
+            "id": "13",
+            "label": "Testing actions documented (Who/What/When)",
+            "checked": false
+          },
+          {
+            "id": "14",
+            "label": "Micro-experiments/tests conducted",
+            "checked": false
+          },
+          {
+            "id": "15",
+            "label": "Containment options identified",
+            "checked": false
+          },
+          {
+            "id": "16",
+            "label": "Comms written, reviewed, and sent",
+            "checked": false
+          },
+          {
+            "id": "17",
+            "label": "Attendees optimized for next action",
+            "checked": false
+          },
+          {
+            "id": "18",
+            "label": "Possible causes evaluated and distinctions identified",
+            "checked": false
+          },
+          {
+            "id": "19",
+            "label": "Most probable cause identified",
+            "checked": false
+          },
+          {
+            "id": "20",
+            "label": "Restoration/rollback/workaround selected",
+            "checked": false
+          },
+          {
+            "id": "21",
+            "label": "Attendees optimized for decision",
+            "checked": false
+          },
+          {
+            "id": "22",
+            "label": "Verification and risk plan created",
+            "checked": false
+          },
+          {
+            "id": "23",
+            "label": "Restoration actions documented (Who/What/When)",
+            "checked": false
+          },
+          {
+            "id": "24",
+            "label": "Service validated internally and externally",
+            "checked": false
+          },
+          {
+            "id": "25",
+            "label": "Restoration comms sent",
+            "checked": false
+          },
+          {
+            "id": "26",
+            "label": "Handover template prepared (PIR/problem)",
+            "checked": false
+          },
+          {
+            "id": "27",
+            "label": "Downstream issues from fix assessed",
+            "checked": false
+          },
+          {
+            "id": "28",
+            "label": "Participants released and bridge closed",
+            "checked": false
+          }
+        ],
+        "drawerOpen": false
+      },
+      "actions": {
+        "analysisId": "analysis-ea2a2d69-11c9-4bf7-8c6f-301d64b430cf",
+        "items": [
+          {
+            "id": "51870a36-3501-4af0-aa28-c5e0eca4b9b6",
+            "analysisId": "analysis-ea2a2d69-11c9-4bf7-8c6f-301d64b430cf",
+            "createdAt": "2025-11-18T18:55:55.571Z",
+            "createdBy": "local",
+            "summary": "Start Data logging to understand the period of the issue",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "High",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": "None",
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {},
+            "notes": "",
+            "auditTrail": []
+          },
+          {
+            "id": "3ab35131-55ca-4661-b847-45a034649c18",
+            "analysisId": "analysis-ea2a2d69-11c9-4bf7-8c6f-301d64b430cf",
+            "createdAt": "2025-11-18T18:56:18.157Z",
+            "createdBy": "local",
+            "summary": "Purchase Gloves and Begin Mandate for All Employees to be Gloved",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "Med",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": "None",
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {
+              "hypothesisId": "cause-2h25uu-mi4xnini"
+            },
+            "notes": "",
+            "auditTrail": []
+          },
+          {
+            "id": "669ca6a2-4b0a-421c-84fa-e54e16097e56",
+            "analysisId": "analysis-ea2a2d69-11c9-4bf7-8c6f-301d64b430cf",
+            "createdAt": "2025-11-18T18:56:03.381Z",
+            "createdBy": "local",
+            "summary": "Examine Wash Tanks for Contaminents",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "Med",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": "None",
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {
+              "hypothesisId": "cause-2u9pmq-mi4xo7ef"
+            },
+            "notes": "",
+            "auditTrail": []
+          }
+        ]
+      }
+    }
+  },
+  {
     "id": "checkout-latency",
     "name": "Checkout Latency Spike",
     "description": "EU checkout slowdown triggered by a CDN header rewrite.",
