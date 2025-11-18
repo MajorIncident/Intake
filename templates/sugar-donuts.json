@@ -1,0 +1,608 @@
+{
+  "id": "sugar-donuts",
+  "name": "Sugar Donuts",
+  "description": "Mrs. Walthers Sugar Donut Factory Problem",
+  "supportedModes": [
+    "intake",
+    "is-is-not",
+    "dc",
+    "full"
+  ],
+  "state": {
+  "meta": {
+    "version": 1,
+    "savedAt": "2025-11-18T05:02:02.697Z"
+  },
+  "pre": {
+    "oneLine": "Donuts are bad",
+    "proof": "Quality control has reported bad donuts at their inspection station",
+    "objectPrefill": "Sugar Dounts",
+    "healthy": "All edges should be square. Center hole should be blown out fully, and the center hole is also square. Donuts should be cooked correctly, and golden in color. Thickness should be within specified parameters",
+    "now": "Round Edges"
+  },
+  "impact": {
+    "now": "25% Reject rate for Sugar Donuts (1 out of 4 rows).\nProduction demands are not being met",
+    "future": "Unable to meet production demand",
+    "time": "End of the Day"
+  },
+  "ops": {
+    "bridgeOpenedUtc": "2025-11-18T04:41:35.797Z",
+    "icName": "",
+    "bcName": "",
+    "semOpsName": "",
+    "severity": "",
+    "detectMonitoring": true,
+    "detectUserReport": false,
+    "detectAutomation": false,
+    "detectOther": false,
+    "evScreenshot": true,
+    "evLogs": false,
+    "evMetrics": false,
+    "evRepro": false,
+    "evOther": false,
+    "containStatus": "assessing",
+    "containDesc": "",
+    "commCadence": "",
+    "commLog": [],
+    "commNextDueIso": "",
+    "commNextUpdateTime": "",
+    "tableFocusMode": "comprehensive"
+  },
+  "table": [
+    {
+      "band": "WHAT — Define the problem precisely (Object & Deviation)."
+    },
+    {
+      "q": "WHAT — Specific Object/Thing is having the “Round Edges”",
+      "is": "Donuts\nSugar",
+      "no": "Crullers\nPlain, Frosted",
+      "di": "Donuts are made on a separate line\n\nDonuts are larger in size\n\nSugar Donuts are sugar coated\n\nMade on Rows 1-4",
+      "ch": "New Sugaring Equipment (1 Week Ago)",
+      "questionId": "what-object"
+    },
+    {
+      "q": "WHAT — Specific Deviation does the “Donuts” have?",
+      "is": "Round Edges",
+      "no": "Too thick, too thin, overcooked, undercooked, center holes not blown out",
+      "di": "",
+      "ch": "",
+      "questionId": "what-deviation"
+    },
+    {
+      "band": "WHERE — Locate the problem (geography/topology and on the object)."
+    },
+    {
+      "q": "WHERE — is the “Donuts” geographically/topology when the “Round Edges” occurs?",
+      "is": "Fast Line, Mesh Belt, QC\nRow 1",
+      "no": "Packaging, Customer\nRows 2,3,4 or combination",
+      "di": "Row 1 is furthest from the air source\n\nRow 1 has no outside cutter blade\n\nRow 1 edges are formed by edgers",
+      "ch": "Air System Modified (1 Week Ago)\n\nStripped Edger Screw (1 Week Ago)\n\nReplaced Edger Screw (1 Week Ago)",
+      "questionId": "where-location"
+    },
+    {
+      "q": "WHERE — On the “Donuts” is the “Round Edges” observed?",
+      "is": "Outside Edge",
+      "no": "Inside, leading, trailing or combination of edges",
+      "di": "No Blades on outside edge",
+      "ch": "",
+      "questionId": "where-on-object"
+    },
+    {
+      "band": "WHEN — Timing and Description"
+    },
+    {
+      "q": "WHEN — Was the “Round Edges” First observed for “Donuts”",
+      "is": "~1 Hr Ago",
+      "no": "Before 1 Hour Ago",
+      "di": "We installed a new chain around this time",
+      "ch": "Chain Broke (55 Mins Ago)\n\nChain Installed (1 Hr Ago)",
+      "questionId": "when-first-observed"
+    },
+    {
+      "q": "WHEN — Since was the first time has “Round Edges” been logged? What Pattern?",
+      "is": "Every Minute Since\nContinuous",
+      "no": "Any Other Times\nPeriodic, Sporadic, One-Time Event",
+      "di": "",
+      "ch": "",
+      "questionId": "when-pattern"
+    },
+    {
+      "q": "WHEN — Describe using words When the “Round Edges” was first seen",
+      "is": "After Cutting the donuts",
+      "no": "After cooking, being transported on mesh belt, during cooling, after topping, or at quality control",
+      "di": "",
+      "ch": "",
+      "questionId": "when-description"
+    },
+    {
+      "band": "EXTENT — How big is it? Magnitude, count, scope, trend."
+    },
+    {
+      "q": "EXTENT — What is the population or size of “Donuts” affected?",
+      "is": "25% Reject Rate\n1 of 4 Rows",
+      "no": "More or Less than 25%\n2 or More Rows",
+      "di": "",
+      "ch": "",
+      "questionId": "extent-population"
+    },
+    {
+      "q": "EXTENT — What is the size of a single “Round Edges”?",
+      "is": "Entire Edge",
+      "no": "Partial Edge",
+      "di": "",
+      "ch": "",
+      "questionId": "extent-size"
+    },
+    {
+      "q": "EXTENT — How many “Round Edges” are occuring on each “Donuts”?",
+      "is": "1 Per Donut",
+      "no": "Between 2-4",
+      "di": "",
+      "ch": "",
+      "questionId": "extent-count"
+    }
+  ],
+  "causes": [
+    {
+      "id": "cause-4giuxz-mi43kb9e",
+      "suspect": "Blades",
+      "accusation": "Overheating",
+      "impact": "and causing dough to not properly release from blades",
+      "summaryText": "We suspect Blades because Overheating. This could lead to and causing dough to not properly release from blades.",
+      "confidence": "",
+      "evidence": "",
+      "findings": {
+        "WHAT — Specific Object/Thing is having the {DEVIATION}": {
+          "mode": "assumption",
+          "note": "Only if the sugar donuts blades (1-4) are overheating"
+        },
+        "WHAT — Specific Deviation does the {OBJECT} have?": {
+          "mode": "assumption",
+          "note": "The center hold blades are releasing just fine"
+        },
+        "WHERE — is the {OBJECT} geographically/topology when the {DEVIATION} occurs?": {
+          "mode": "assumption",
+          "note": "Row 1-4 blades are overheating"
+        },
+        "WHERE — On the {OBJECT} is the {DEVIATION} observed?": {
+          "mode": "fail",
+          "note": "We do not have blades on the outside edge of row 1"
+        }
+      },
+      "editing": false,
+      "testingOpen": false
+    },
+    {
+      "id": "cause-auefoi-mi43le61",
+      "suspect": "Hot Oil Bath",
+      "accusation": "at Incorrect Temperature",
+      "impact": "Cooking one side of the donuts improperly",
+      "summaryText": "We suspect Hot Oil Bath because at Incorrect Temperature. This could lead to Cooking one side of the donuts improperly.",
+      "confidence": "",
+      "evidence": "",
+      "findings": {
+        "WHAT — Specific Object/Thing is having the {DEVIATION}": {
+          "mode": "fail",
+          "note": "This does not explain why other donuts would be affected"
+        }
+      },
+      "editing": false,
+      "testingOpen": false
+    },
+    {
+      "id": "cause-dtnho5-mi43m5a9",
+      "suspect": "Edgers",
+      "accusation": "is loose",
+      "impact": "and not holding outside edge at correct specifications",
+      "summaryText": "We suspect Edgers because is loose. This could lead to and not holding outside edge at correct specifications.",
+      "confidence": "",
+      "evidence": "",
+      "findings": {},
+      "editing": false,
+      "testingOpen": false
+    }
+  ],
+  "likelyCauseId": "cause-dtnho5-mi43m5a9",
+  "steps": {
+    "items": [
+      {
+        "id": "1",
+        "label": "Pre-analysis completed",
+        "checked": false
+      },
+      {
+        "id": "2",
+        "label": "Incident Commander assigned",
+        "checked": false
+      },
+      {
+        "id": "3",
+        "label": "Step 1 reviewed by BC",
+        "checked": false
+      },
+      {
+        "id": "4",
+        "label": "Problem statement created",
+        "checked": false
+      },
+      {
+        "id": "5",
+        "label": "Bridge options considered",
+        "checked": false
+      },
+      {
+        "id": "6",
+        "label": "Bridges opened and responders invited",
+        "checked": false
+      },
+      {
+        "id": "7",
+        "label": "Bridge etiquette, roles, and guidelines outlined",
+        "checked": false
+      },
+      {
+        "id": "8",
+        "label": "Current actions documented (Who/What/When)",
+        "checked": false
+      },
+      {
+        "id": "9",
+        "label": "Quick spec answers captured",
+        "checked": false
+      },
+      {
+        "id": "10",
+        "label": "Last changes, monitoring, and dependencies investigated",
+        "checked": false
+      },
+      {
+        "id": "11",
+        "label": "Attendees optimized",
+        "checked": false
+      },
+      {
+        "id": "12",
+        "label": "Possible causes developed",
+        "checked": false
+      },
+      {
+        "id": "13",
+        "label": "Testing actions documented (Who/What/When)",
+        "checked": false
+      },
+      {
+        "id": "14",
+        "label": "Micro-experiments/tests conducted",
+        "checked": false
+      },
+      {
+        "id": "15",
+        "label": "Containment options identified",
+        "checked": false
+      },
+      {
+        "id": "16",
+        "label": "Comms written, reviewed, and sent",
+        "checked": false
+      },
+      {
+        "id": "17",
+        "label": "Attendees optimized for next action",
+        "checked": false
+      },
+      {
+        "id": "18",
+        "label": "Possible causes evaluated and distinctions identified",
+        "checked": false
+      },
+      {
+        "id": "19",
+        "label": "Most probable cause identified",
+        "checked": false
+      },
+      {
+        "id": "20",
+        "label": "Restoration/rollback/workaround selected",
+        "checked": false
+      },
+      {
+        "id": "21",
+        "label": "Attendees optimized for decision",
+        "checked": false
+      },
+      {
+        "id": "22",
+        "label": "Verification and risk plan created",
+        "checked": false
+      },
+      {
+        "id": "23",
+        "label": "Restoration actions documented (Who/What/When)",
+        "checked": false
+      },
+      {
+        "id": "24",
+        "label": "Service validated internally and externally",
+        "checked": false
+      },
+      {
+        "id": "25",
+        "label": "Restoration comms sent",
+        "checked": false
+      },
+      {
+        "id": "26",
+        "label": "Handover template prepared (PIR/problem)",
+        "checked": false
+      },
+      {
+        "id": "27",
+        "label": "Downstream issues from fix assessed",
+        "checked": false
+      },
+      {
+        "id": "28",
+        "label": "Participants released and bridge closed",
+        "checked": false
+      }
+    ],
+    "drawerOpen": false
+  },
+  "actions": {
+    "analysisId": "analysis-c1befdf8-c060-4e88-b944-10d8f2293eac",
+    "items": [
+      {
+        "id": "cb0076ab-2a5f-4508-8672-73f1ef9ff49f",
+        "analysisId": "analysis-c1befdf8-c060-4e88-b944-10d8f2293eac",
+        "createdAt": "2025-11-18T04:57:40.397Z",
+        "createdBy": "local",
+        "summary": "Understand vibration issues leading to Edger Failure/Release",
+        "detail": "",
+        "owner": {
+          "name": "",
+          "category": "",
+          "subOwner": "",
+          "notes": "",
+          "lastAssignedBy": "",
+          "lastAssignedAt": "",
+          "source": "Manual"
+        },
+        "role": "",
+        "status": "Planned",
+        "priority": "High",
+        "dueAt": "",
+        "startedAt": "2025-11-18T04:57:42.073Z",
+        "completedAt": "2025-11-18T04:57:42.621Z",
+        "dependencies": [],
+        "risk": "None",
+        "changeControl": {
+          "required": false
+        },
+        "verification": {
+          "required": false
+        },
+        "links": {
+          "hypothesisId": "cause-dtnho5-mi43m5a9"
+        },
+        "notes": "",
+        "auditTrail": []
+      },
+      {
+        "id": "7a883644-57d3-4204-99ad-c42b7312b27b",
+        "analysisId": "analysis-c1befdf8-c060-4e88-b944-10d8f2293eac",
+        "createdAt": "2025-11-18T04:57:53.067Z",
+        "createdBy": "local",
+        "summary": "Provide Options for a perm fix",
+        "detail": "",
+        "owner": {
+          "name": "",
+          "category": "",
+          "subOwner": "",
+          "notes": "",
+          "lastAssignedBy": "",
+          "lastAssignedAt": "",
+          "source": "Manual"
+        },
+        "role": "",
+        "status": "Planned",
+        "priority": "Med",
+        "dueAt": "",
+        "startedAt": "",
+        "completedAt": "",
+        "dependencies": [],
+        "risk": "None",
+        "changeControl": {
+          "required": false
+        },
+        "verification": {
+          "required": false
+        },
+        "links": {
+          "hypothesisId": "cause-dtnho5-mi43m5a9"
+        },
+        "notes": "",
+        "auditTrail": []
+      },
+      {
+        "id": "c933507a-d82e-4d17-b70e-de6b16148761",
+        "analysisId": "analysis-c1befdf8-c060-4e88-b944-10d8f2293eac",
+        "createdAt": "2025-11-18T04:57:13.778Z",
+        "createdBy": "local",
+        "summary": "Inspect the Proofing Tunnel",
+        "detail": "",
+        "owner": {
+          "name": "Engineering Assistant",
+          "category": "",
+          "subOwner": "",
+          "notes": "",
+          "lastAssignedBy": "local-user",
+          "lastAssignedAt": "2025-11-18T04:57:21.808Z",
+          "source": "Manual"
+        },
+        "role": "",
+        "status": "Done",
+        "priority": "Med",
+        "dueAt": "",
+        "startedAt": "2025-11-18T04:57:26.030Z",
+        "completedAt": "2025-11-18T04:57:26.704Z",
+        "dependencies": [],
+        "risk": "None",
+        "changeControl": {
+          "required": false
+        },
+        "verification": {
+          "required": false
+        },
+        "links": {
+          "hypothesisId": "cause-dtnho5-mi43m5a9"
+        },
+        "notes": "",
+        "auditTrail": [
+          {
+            "type": "ownerChanged",
+            "at": "2025-11-18T04:57:21.808Z",
+            "by": "local-user",
+            "before": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "after": {
+              "name": "Engineering Assistant",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "local-user",
+              "lastAssignedAt": "2025-11-18T04:57:21.808Z",
+              "source": "Manual"
+            }
+          }
+        ]
+      },
+      {
+        "id": "8086ff81-2004-4951-b875-2dd4328055b9",
+        "analysisId": "analysis-c1befdf8-c060-4e88-b944-10d8f2293eac",
+        "createdAt": "2025-11-18T04:56:57.888Z",
+        "createdBy": "local",
+        "summary": "Replace the screws on Row 1",
+        "detail": "",
+        "owner": {
+          "name": "Engineering Assistant",
+          "category": "",
+          "subOwner": "",
+          "notes": "",
+          "lastAssignedBy": "local-user",
+          "lastAssignedAt": "2025-11-18T04:57:04.726Z",
+          "source": "Manual"
+        },
+        "role": "",
+        "status": "Done",
+        "priority": "Med",
+        "dueAt": "",
+        "startedAt": "2025-11-18T04:57:05.833Z",
+        "completedAt": "2025-11-18T04:57:06.404Z",
+        "dependencies": [],
+        "risk": "None",
+        "changeControl": {
+          "required": false
+        },
+        "verification": {
+          "required": false
+        },
+        "links": {
+          "hypothesisId": "cause-dtnho5-mi43m5a9"
+        },
+        "notes": "",
+        "auditTrail": [
+          {
+            "type": "ownerChanged",
+            "at": "2025-11-18T04:57:04.726Z",
+            "by": "local-user",
+            "before": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "after": {
+              "name": "Engineering Assistant",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "local-user",
+              "lastAssignedAt": "2025-11-18T04:57:04.726Z",
+              "source": "Manual"
+            }
+          }
+        ]
+      },
+      {
+        "id": "27d65310-b2c4-4a59-b49a-bcbf52c30a1f",
+        "analysisId": "analysis-c1befdf8-c060-4e88-b944-10d8f2293eac",
+        "createdAt": "2025-11-18T04:56:16.699Z",
+        "createdBy": "local",
+        "summary": "Attempt to tighten the edgers on row 1",
+        "detail": "",
+        "owner": {
+          "name": "Engineering Assistant",
+          "category": "",
+          "subOwner": "",
+          "notes": "",
+          "lastAssignedBy": "local-user",
+          "lastAssignedAt": "2025-11-18T04:56:42.269Z",
+          "source": "Manual"
+        },
+        "role": "",
+        "status": "Done",
+        "priority": "Med",
+        "dueAt": "",
+        "startedAt": "2025-11-18T04:56:18.930Z",
+        "completedAt": "2025-11-18T04:56:19.456Z",
+        "dependencies": [],
+        "risk": "None",
+        "changeControl": {
+          "required": false
+        },
+        "verification": {
+          "required": false
+        },
+        "links": {
+          "hypothesisId": "cause-dtnho5-mi43m5a9"
+        },
+        "notes": "",
+        "auditTrail": [
+          {
+            "type": "ownerChanged",
+            "at": "2025-11-18T04:56:42.269Z",
+            "by": "local-user",
+            "before": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "after": {
+              "name": "Engineering Assistant",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "local-user",
+              "lastAssignedAt": "2025-11-18T04:56:42.269Z",
+              "source": "Manual"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
