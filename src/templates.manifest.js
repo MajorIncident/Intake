@@ -465,7 +465,7 @@ const manifest = [
       "dc",
       "full"
     ],
-    "templateKind": "case-study",
+    "templateKind": "standard",
     "state": {
       "meta": {
         "version": 1,
