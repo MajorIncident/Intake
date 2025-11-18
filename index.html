@@ -36,7 +36,7 @@ Anchors present:
 <!-- [styles] extracted to styles.css -->
 <!-- [styles] end -->
 </head>
-<body>
+<body data-app-version="dev" data-build-label="">
   <!-- Header: global controls for steps drawer and summary generation. -->
   <!-- [header] start -->
   <header>
@@ -508,7 +508,10 @@ Anchors present:
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <footer class="site-footer" role="contentinfo">© 2024 Kepner-Tregoe. All rights reserved. Crafted by <a href="https://linkedin.com/in/shanechagpar" target="_blank" rel="noopener">Shane Chagpar</a>.</footer>
+  <footer class="site-footer" role="contentinfo">
+    <div class="site-footer__copy">© 2025 Kepner-Tregoe. All rights reserved. Crafted by <a href="https://linkedin.com/in/shanechagpar" target="_blank" rel="noopener">Shane Chagpar</a>.</div>
+    <div class="site-footer__meta" id="footerVersionMeta" aria-live="polite">Version dev • Loading build info…</div>
+  </footer>
 
 <!-- Script: data models, event wiring, summary export, and persistence helpers. -->
 <!-- [script] start -->
