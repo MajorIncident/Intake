@@ -57,6 +57,91 @@ Anchors present:
       <button type="button" class="btn-secondary" id="saveToFileBtn">Save to File</button>
       <input type="file" id="importFileInput" class="visually-hidden" accept="application/json,.json" />
       <button type="button" class="btn-secondary" id="loadFromFileBtn">Load from File</button>
+      <!-- [feature:templates-drawer] start -->
+      <div class="templates-launcher">
+        <button
+          type="button"
+          class="steps-button templates-button"
+          id="templatesBtn"
+          aria-haspopup="dialog"
+          aria-controls="templatesDrawer"
+          aria-expanded="false"
+        >
+          <span>Templates</span>
+          <span class="shortcut">Alt+T</span>
+        </button>
+        <div class="drawer-backdrop templates-backdrop" id="templatesBackdrop" aria-hidden="true"></div>
+        <aside
+          class="drawer templates-drawer"
+          id="templatesDrawer"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="templatesDrawerTitle"
+          aria-hidden="true"
+          tabindex="-1"
+        >
+          <div class="templates-drawer__panel">
+            <header class="templates-drawer__header">
+              <div>
+                <h2 class="templates-drawer__title" id="templatesDrawerTitle">Templates Library</h2>
+                <p class="templates-drawer__subtitle">
+                  Start from curated playbooks, then tailor the capture to match the sharing mode you need.
+                </p>
+              </div>
+              <button type="button" class="templates-drawer__close-btn" id="templatesCloseBtn">Close</button>
+            </header>
+            <div class="templates-drawer__body">
+              <section class="templates-section">
+                <div class="templates-section__header">
+                  <h3>Quick start templates</h3>
+                  <p>Select one to preview the fields it fills.</p>
+                </div>
+                <ul class="templates-list" id="templatesList" role="listbox" aria-label="Template choices">
+                  <li>
+                    <button type="button" class="templates-list__item" role="option" aria-selected="true">
+                      <span class="templates-list__name">Critical Incident Warmup</span>
+                      <span class="templates-list__meta">Full prefill for major events</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" class="templates-list__item" role="option" aria-selected="false">
+                      <span class="templates-list__name">Rapid Recovery</span>
+                      <span class="templates-list__meta">Minimal notes for swarming</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" class="templates-list__item" role="option" aria-selected="false">
+                      <span class="templates-list__name">Executive Update</span>
+                      <span class="templates-list__meta">Summaries tuned for senior comms</span>
+                    </button>
+                  </li>
+                </ul>
+              </section>
+              <section class="templates-section">
+                <div class="templates-section__header">
+                  <h3>Mode</h3>
+                  <p>Decide how much detail to apply from the chosen template.</p>
+                </div>
+                <div class="templates-modes" id="templatesModeGroup" role="group" aria-label="Template modes">
+                  <button type="button" class="templates-mode is-active" data-mode="full" aria-pressed="true">Full</button>
+                  <button type="button" class="templates-mode" data-mode="rapid" aria-pressed="false">Rapid</button>
+                  <button type="button" class="templates-mode" data-mode="customer" aria-pressed="false">Customer</button>
+                  <button type="button" class="templates-mode" data-mode="executive" aria-pressed="false">Executive</button>
+                </div>
+              </section>
+              <section class="templates-section templates-auth">
+                <label for="templatesPassword">Confirm with bridge password</label>
+                <input type="password" id="templatesPassword" placeholder="Enter bridge password" autocomplete="off" />
+                <small>Required before overwriting in-progress notes.</small>
+              </section>
+            </div>
+            <footer class="templates-drawer__footer">
+              <button type="button" class="btn templates-apply-btn" id="templatesApplyBtn">Apply template</button>
+            </footer>
+          </div>
+        </aside>
+      </div>
+      <!-- [feature:templates-drawer] end -->
       <button class="btn" id="genSummaryBtn" onclick="onGenerateSummary()">Generate Summary (Alt+G)</button>
     </div>
   </header>
@@ -283,8 +368,8 @@ Anchors present:
 
   </div>
 
-  <div class="comms-backdrop" id="commsBackdrop" aria-hidden="true"></div>
-  <aside class="comms-drawer" id="commsDrawer" role="dialog" aria-modal="true" aria-labelledby="commsDrawerTitle" aria-hidden="true" tabindex="-1">
+  <div class="drawer-backdrop comms-backdrop" id="commsBackdrop" aria-hidden="true"></div>
+  <aside class="drawer comms-drawer" id="commsDrawer" role="dialog" aria-modal="true" aria-labelledby="commsDrawerTitle" aria-hidden="true" tabindex="-1">
     <div class="comms-drawer__panel">
       <header class="comms-drawer__header">
         <div class="comms-drawer__title-group">
@@ -381,8 +466,8 @@ Anchors present:
     </div>
   </aside>
 
-  <div class="steps-backdrop" id="stepsBackdrop" aria-hidden="true"></div>
-  <aside class="steps-drawer" id="stepsDrawer" role="dialog" aria-modal="true" aria-labelledby="stepsDrawerTitle" aria-hidden="true" tabindex="-1">
+  <div class="drawer-backdrop steps-backdrop" id="stepsBackdrop" aria-hidden="true"></div>
+  <aside class="drawer steps-drawer" id="stepsDrawer" role="dialog" aria-modal="true" aria-labelledby="stepsDrawerTitle" aria-hidden="true" tabindex="-1">
     <div class="steps-drawer__panel">
       <header class="steps-drawer__header">
         <div class="steps-drawer__title-row">
