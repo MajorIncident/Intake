@@ -352,7 +352,8 @@ function handleModeClick(event) {
 function buildExpectedPassword() {
   if (!selectedModeId) return '';
   const minutes = String(new Date().getMinutes()).padStart(2, '0');
-  return `${selectedModeId}${minutes}`;
+  const normalizedModeKey = selectedModeId.replace(/-/g, '');
+  return `${normalizedModeKey}${minutes}`;
 }
 
 function validatePassword() {
