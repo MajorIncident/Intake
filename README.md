@@ -33,6 +33,9 @@ AI contributors should run the following commands (or manual preview) whenever t
   5. Expose temporary global fallbacks (`window.onGenerateSummary`, etc.) so legacy bookmarks continue to work while modules take over.
 
 ## Module Architecture
+
+See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boot sequence narrative, module ownership map, and detailed cross-module data-flow reference. The quick table below summarizes the primary runtime files.
+
 | File | Purpose |
 | ---- | ------- |
 | `src/constants.js` | Deep-frozen config: KT table rows, phase metadata, finding modes, and step definitions. |
