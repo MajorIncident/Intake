@@ -7,7 +7,7 @@ KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for 
 - Open `index.html` in any modern browser. No build step or server is required.
 - The page will load previous work from `localStorage` (keys: `kt-intake-full-v2` for the intake form and `kt-actions-by-analysis-v1` for action plans) and is immediately ready for edits, summary generation, or AI prompt creation.
 - Use the header controls to **Save to File** (exports a JSON snapshot) or **Load from File** (imports a previously saved snapshot) when you need to move an intake between browsers or machines.
-- Click **Save Template** to download the current intake as a curated template JSON. The prompt lets you choose between a **Case Study** template (password protected, multi-mode) or a **Standard** template (no password, always loads Full mode).
+- Open the **Templates** drawer and click **Save current notes as template** to download the in-progress intake as curated template JSON. The prompt lets you choose between a **Case Study** template (password protected, multi-mode) or a **Standard** template (no password, always loads Full mode).
 
 ## Entry Point & Boot Logic
 - `index.html` declares the full UI layout and loads the JavaScript bundle via `<script type="module" src="main.js"></script>`.

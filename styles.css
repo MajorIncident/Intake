@@ -404,7 +404,7 @@ body.templates-drawer-open{overflow:hidden;}
 .templates-drawer__footer{
   padding:20px 24px; border-top:1px solid #edf0f8;
   background:linear-gradient(180deg,#ffffff 0%,#f6f8fc 100%);
-  display:flex; justify-content:flex-end;
+  display:flex; justify-content:flex-end; flex-wrap:wrap; gap:12px;
 }
 .templates-apply-btn{padding-inline:24px;}
 @media (max-width:720px){
