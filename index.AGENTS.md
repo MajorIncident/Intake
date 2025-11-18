@@ -8,6 +8,8 @@ This file applies to `index.html`. Follow these instructions when editing any po
 
 - `[styles]` / `[vars]` – Anchor references for global CSS. The actual styles live in `styles.css` but the comments must remain.
 - `[header]` & `[section:*]` – Visual cards for each workflow stage (bridge activation, problem summary, evidence, baseline/current, impact, communications, KT table, possible causes, steps, summary export).
+- `[subtitle]` – Single `h2` below the preface stack used by `src/preface.js` / `src/summary.js` to mirror the narrative subtitle stored with `kt-intake-full-v2`.
+- `[feature:templates-drawer]` – Templates launcher/backdrop/drawer cluster owned by `src/templatesDrawer.js`; keep button IDs aligned with the state helpers so prefills can be applied safely.
 - `[section:summary]` – Container for the latest generated summary text. Keep IDs intact for persistence and testing hooks.
 - `[script]` – Reference block for the external ES module entry point.
   - `[rows]`, `[script:table-build]`, `[script:preface-refs]`, `[script:tokens]`, `[script:init]`, `[script:export]`, `[script:storage]`, `[script:toast]` – Historical anchors preserved for traceability. They now correspond to modules imported by `main.js`; do not remove them even though the code resides in `src/`.
