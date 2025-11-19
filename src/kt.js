@@ -960,6 +960,15 @@ function hasVerbCandidate(text){
   return patterns.some(pattern => pattern.test(lowered));
 }
 
+const isMeaningfulImpact = (text) => {
+  const normalized = normalizeHypothesisValue(text);
+  if(!normalized){
+    return false;
+  }
+  const discouraged = new Set(['n/a', 'na', 'none', 'unknown', 'tbd', 'tba', '?', '-']);
+  return normalized.length >= HYPOTHESIS_HARD_MIN && !discouraged.has(normalized.toLowerCase());
+};
+
 /**
  * Determines whether a hypothesis field satisfies the hard minimum length
  * requirement after normalization.
@@ -1049,16 +1058,66 @@ export function buildHypothesisSentence(cause){
   const accusationClean = trimValue(cause.accusation);
   const impactClean = trimValue(cause.impact);
 
-  if(!suspectClean && !accusationClean && !impactClean){
+  const hasSuspect = Boolean(suspectClean);
+  const hasAccusation = Boolean(accusationClean);
+  const hasImpact = isMeaningfulImpact(impactClean);
+
+  if(!hasSuspect && !hasAccusation && !hasImpact){
     return 'Add suspect, accusation, and impact to craft a strong hypothesis.';
   }
 
-  const suspectText = suspectClean || '…';
-  const accusationText = normalizeAccusation(accusationClean);
-  const impactText = normalizeImpact(impactClean);
-  const firstSentence = `We suspect ${suspectText} because ${accusationText}.`;
-  const secondSentence = `This results in ${impactText}.`;
-  return `${firstSentence} ${secondSentence}`.trim();
+  if(!hasSuspect || !hasAccusation){
+    const missingFields = [];
+    if(!hasSuspect){
+      missingFields.push('suspect');
+    }
+    if(!hasAccusation){
+      missingFields.push('accusation');
+    }
+    const missingText = missingFields.join(' and ');
+    return `Add ${missingText} to complete this hypothesis.`;
+  }
+
+  const suspectText = suspectClean || 'the suspected cause';
+  const accusationStartsGerund = isGerundFirstWord(accusationClean);
+  const accusationStartsVerbPhrase = startsWithVerbPhrase(accusationClean);
+  const accusationHasVerb = hasVerbCandidate(accusationClean);
+
+  let accusationConnector = accusationHasVerb ? ' because ' : ' that ';
+  let accusationText = 'we need an accusation to describe the behavior';
+  if(accusationStartsGerund){
+    accusationConnector = ' because ';
+    accusationText = `they are ${lowercaseFirst(accusationClean)}`;
+  }else if(accusationStartsVerbPhrase){
+    accusationConnector = ' that ';
+    accusationText = lowercaseFirst(accusationClean);
+  }else if(accusationHasVerb){
+    accusationConnector = ' because ';
+    accusationText = `it ${lowercaseFirst(accusationClean)}`;
+  }else if(accusationClean){
+    accusationConnector = ' that ';
+    accusationText = `is experiencing ${lowercaseFirst(accusationClean)}`;
+  }
+
+  const sentences = [`We suspect ${suspectText}${accusationConnector}${accusationText}.`];
+  if(hasImpact){
+    const impactStartsGerund = isGerundFirstWord(impactClean);
+    const impactStartsVerbPhrase = startsWithVerbPhrase(impactClean);
+    const impactHasVerb = hasVerbCandidate(impactClean);
+
+    if(impactStartsGerund){
+      sentences.push(`This results in ${lowercaseFirst(impactClean)}.`);
+    }else if(impactStartsVerbPhrase){
+      sentences.push(`This could lead them to ${lowercaseFirst(impactClean)}.`);
+    }else if(impactHasVerb){
+      sentences.push(`This could lead to ${lowercaseFirst(impactClean)}.`);
+    }else{
+      sentences.push(`This could lead to ${lowercaseFirst(impactClean)}.`);
+    }
+  }else{
+    sentences.push('Describe the impact to explain the customer effect.');
+  }
+  return sentences.join(' ').trim();
 }
 
 /**
