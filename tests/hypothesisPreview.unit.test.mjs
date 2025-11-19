@@ -45,6 +45,16 @@ test('uses verb connectors for accusation and impact preview clauses', async () 
   assert.equal(result, 'We suspect QA deploy because they are failing to restart nodes. This could lead them to breaching SLAs.');
 });
 
+test('adds an explicit subject to copula-led accusations', async () => {
+  const summaryComposer = await loadKtModule();
+  const result = summaryComposer({
+    suspect: 'Cooling fan',
+    accusation: 'is overheating',
+    impact: ''
+  }, { preview: true });
+  assert.equal(result, 'We suspect Cooling fan because it is overheating.');
+});
+
 test('uses noun connectors for accusation and impact preview clauses', async () => {
   const summaryComposer = await loadKtModule();
   const result = summaryComposer({
