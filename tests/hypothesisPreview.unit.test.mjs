@@ -32,7 +32,7 @@ test('omits impact preview sentence when no impact is provided', async () => {
     accusation: 'timeouts under load',
     impact: ''
   }, { preview: true });
-  assert.equal(result, 'We suspect Payment service because of a deviation involving timeouts under load.');
+  assert.equal(result, 'We suspect Payment service because it is timeouts under load.');
 });
 
 test('uses verb connectors for accusation and impact preview clauses', async () => {
@@ -72,5 +72,5 @@ test('uses noun connectors for accusation and impact preview clauses', async () 
     accusation: 'overdue firmware upgrades',
     impact: 'downtime for EU shoppers'
   }, { preview: true });
-  assert.equal(result, 'We suspect Cache layer because of a deviation involving overdue firmware upgrades. This could lead to downtime for EU shoppers.');
+  assert.equal(result, 'We suspect Cache layer because it is overdue firmware upgrades. This could lead to downtime for EU shoppers.');
 });

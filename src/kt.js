@@ -923,7 +923,7 @@ const normalizeAccusation = (text) => {
   if(startsWithVerbPhrase(trimmed)){
     return lowercaseFirst(trimmed);
   }
-  return `a deviation involving ${lowercaseFirst(trimmed)}`;
+  return `it is ${lowercaseFirst(trimmed)}`;
 };
 const normalizeImpact = (text) => {
   const trimmed = trimValue(text);
@@ -1018,9 +1018,11 @@ export function composeHypothesisSummary(cause, { preview = false } = {}){
   const suspectText = preview ? truncateForPreview(suspectClean) : suspectClean;
   const accusationNormalized = normalizeAccusation(accusationClean);
   const accusationText = preview ? truncateForPreview(accusationNormalized) : accusationNormalized;
-  const becauseConnector = (isGerundFirstWord(accusationClean) || startsWithVerbPhrase(accusationClean))
-    ? 'because '
-    : 'because of ';
+
+  const accusationUsesDirectConnector = isGerundFirstWord(accusationClean)
+    || startsWithVerbPhrase(accusationClean)
+    || /^(?:it|they)\s+(?:is|are|was|were)\b/iu.test(trimValue(accusationNormalized));
+  const becauseConnector = accusationUsesDirectConnector ? 'because ' : 'because of ';
 
   const sentences = [`We suspect ${suspectText} ${becauseConnector}${accusationText}.`];
   if(hasImpact){
