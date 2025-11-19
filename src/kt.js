@@ -889,6 +889,43 @@ function normalizeHypothesisValue(value){
   return collapsed.replace(TRAILING_PUNCTUATION_PATTERN, '').trim();
 }
 
+const trimValue = (value) => typeof value === 'string' ? value.trim() : '';
+const lowercaseFirst = (text) => text ? text[0].toLowerCase() + text.slice(1) : text;
+const isGerundFirstWord = (text) => {
+  const firstWord = trimValue(text).split(/\s+/u)[0] || '';
+  return /ing$/iu.test(firstWord);
+};
+const startsWithVerbPhrase = (text) => {
+  const trimmed = trimValue(text).toLowerCase();
+  if(!trimmed) return false;
+  const firstWord = trimmed.split(/\s+/u)[0];
+  const verbStarters = new Set(['is', 'are', 'was', 'were', 'has', 'have']);
+  return verbStarters.has(firstWord) || trimmed.startsWith('to ');
+};
+const normalizeAccusation = (text) => {
+  const trimmed = trimValue(text);
+  if(!trimmed){
+    return '…';
+  }
+  if(isGerundFirstWord(trimmed)){
+    return `they are ${lowercaseFirst(trimmed)}`;
+  }
+  if(startsWithVerbPhrase(trimmed)){
+    return lowercaseFirst(trimmed);
+  }
+  return `a deviation involving ${lowercaseFirst(trimmed)}`;
+};
+const normalizeImpact = (text) => {
+  const trimmed = trimValue(text);
+  if(!trimmed){
+    return '…';
+  }
+  if(isGerundFirstWord(trimmed)){
+    return lowercaseFirst(trimmed);
+  }
+  return lowercaseFirst(trimmed);
+};
+
 /**
  * Collapses lengthy preview text to the configured character limit while
  * preserving whole-word readability where practical.
@@ -940,7 +977,7 @@ function meetsHardMinimum(value){
  * @param {{ preview?: boolean }} [options] - Rendering options for the summary.
  * @returns {string} Summary sentence(s) adhering to Section 6 requirements.
  */
-function composeHypothesisSummary(cause, { preview = false } = {}){
+export function composeHypothesisSummary(cause, { preview = false } = {}){
   if(!cause) return '';
   const suspectClean = normalizeHypothesisValue(cause.suspect || '');
   const accusationClean = normalizeHypothesisValue(cause.accusation || '');
@@ -959,12 +996,20 @@ function composeHypothesisSummary(cause, { preview = false } = {}){
   }
 
   const suspectText = preview ? truncateForPreview(suspectClean) : suspectClean;
-  const accusationText = preview ? truncateForPreview(accusationClean) : accusationClean;
-  const impactText = preview ? truncateForPreview(impactClean) : impactClean;
+  const accusationNormalized = normalizeAccusation(accusationClean);
+  const accusationText = preview ? truncateForPreview(accusationNormalized) : accusationNormalized;
+  const becauseConnector = (isGerundFirstWord(accusationClean) || startsWithVerbPhrase(accusationClean))
+    ? 'because '
+    : 'because of ';
 
-  const sentences = [`We suspect ${suspectText} because ${accusationText}.`];
+  const sentences = [`We suspect ${suspectText} ${becauseConnector}${accusationText}.`];
   if(hasImpact){
-    sentences.push(`This could lead to ${impactText}.`);
+    const impactNormalized = normalizeImpact(impactClean);
+    const impactText = preview ? truncateForPreview(impactNormalized) : impactNormalized;
+    const impactConnector = (isGerundFirstWord(impactClean) || startsWithVerbPhrase(impactClean))
+      ? 'This could lead them to '
+      : 'This could lead to ';
+    sentences.push(`${impactConnector}${impactText}.`);
   }
   return sentences.join(' ');
 }
@@ -999,43 +1044,6 @@ export function buildHypothesisSentence(cause){
   if(legacySummary){
     return legacySummary;
   }
-
-  const trimValue = (value) => typeof value === 'string' ? value.trim() : '';
-  const lowercaseFirst = (text) => text ? text[0].toLowerCase() + text.slice(1) : text;
-  const isGerundFirstWord = (text) => {
-    const firstWord = trimValue(text).split(/\s+/u)[0] || '';
-    return /ing$/iu.test(firstWord);
-  };
-  const startsWithVerbPhrase = (text) => {
-    const trimmed = trimValue(text).toLowerCase();
-    if(!trimmed) return false;
-    const firstWord = trimmed.split(/\s+/u)[0];
-    const verbStarters = new Set(['is', 'are', 'was', 'were', 'has', 'have']);
-    return verbStarters.has(firstWord) || trimmed.startsWith('to ');
-  };
-  const normalizeAccusation = (text) => {
-    const trimmed = trimValue(text);
-    if(!trimmed){
-      return '…';
-    }
-    if(isGerundFirstWord(trimmed)){
-      return `they are ${lowercaseFirst(trimmed)}`;
-    }
-    if(startsWithVerbPhrase(trimmed)){
-      return lowercaseFirst(trimmed);
-    }
-    return `a deviation involving ${lowercaseFirst(trimmed)}`;
-  };
-  const normalizeImpact = (text) => {
-    const trimmed = trimValue(text);
-    if(!trimmed){
-      return '…';
-    }
-    if(isGerundFirstWord(trimmed)){
-      return lowercaseFirst(trimmed);
-    }
-    return lowercaseFirst(trimmed);
-  };
 
   const suspectClean = trimValue(cause.suspect);
   const accusationClean = trimValue(cause.accusation);
