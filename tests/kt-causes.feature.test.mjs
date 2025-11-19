@@ -192,7 +192,7 @@ test('kt causes: updates evidence previews and emits toast/save callbacks', asyn
   const toastSpy = mock.fn();
   ktModule.configureKT({ autoResize: () => {}, onSave: saveSpy, showToast: toastSpy });
 
-  const cause = { id: 'cause-a', suspect: 'Alpha subsystem', findings: {} };
+  const cause = { id: 'cause-a', suspect: 'Alpha subsystem', accusation: 'is failing health checks', findings: {} };
   ktModule.setPossibleCauses([cause]);
 
   const isTextarea = document.createElement('textarea');
@@ -234,11 +234,15 @@ test('kt causes: updates evidence previews and emits toast/save callbacks', asyn
   inputsWrap.append(noteField);
 
   rowEl.append(questionEl, evidenceWrap, inputsWrap);
-  causeList.append(rowEl);
+  const card = document.createElement('div');
+  card.className = 'cause-card';
+  card.dataset.causeId = cause.id;
+  card.append(rowEl);
+  causeList.append(card);
 
   ktModule.updateCauseEvidencePreviews();
 
-  assert.equal(questionEl.textContent, 'Where is it failing?');
+  assert.equal(questionEl.textContent, 'If Alpha subsystem is failing health checks, how does it explain Where is it failing?');
   assert.equal(isValue.textContent, '• Alpha detail');
   assert.equal(notValue.textContent, '• Beta detail');
   assert.equal(noteLabel.textContent, 'Explain Alpha detail vs Beta detail');
@@ -257,6 +261,34 @@ test('kt causes: updates evidence previews and emits toast/save callbacks', asyn
   assert.equal(saveSpy.mock.calls.length, 1, 'setLikelyCauseId triggers the save callback');
   assert.equal(toastSpy.mock.calls.length, 1, 'setLikelyCauseId emits a toast message');
   assert.equal(toastSpy.mock.calls[0].arguments[0], 'Likely Cause set to: Alpha subsystem.');
+});
+
+test('kt causes: renders standardized testing prompts for plural suspects', async () => {
+  const ktModule = await loadKtModule();
+  const rows = ktModule.getRowsBuilt();
+  rows.length = 0;
+
+  const isTextarea = document.createElement('textarea');
+  const notTextarea = document.createElement('textarea');
+  isTextarea.value = 'Cache nodes at AZ-1';
+  notTextarea.value = 'Cache nodes at AZ-2';
+  rows.push({
+    tr: { hidden: false },
+    th: { textContent: 'When does it occur?' },
+    def: { q: 'When does the {OBJECT} show the {DEVIATION}?' },
+    isTA: isTextarea,
+    notTA: notTextarea
+  });
+
+  ktModule.setPossibleCauses([
+    { id: 'cause-b', suspect: 'API nodes', accusation: 'were throttled overnight', findings: {}, testingOpen: true }
+  ]);
+
+  ktModule.renderCauses();
+
+  const questionEl = document.querySelector('.cause-eval-row [data-role="question"]');
+  assert.ok(questionEl, 'question prompt renders');
+  assert.equal(questionEl.textContent, 'If API nodes were throttled overnight, how does it explain When does it occur?');
 });
 
 test('kt causes: hypothesis editor normalizes inputs and stores summary metadata', async () => {
