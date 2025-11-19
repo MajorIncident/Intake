@@ -55,6 +55,31 @@ function defaultGetDeviationFull(){
   return '';
 }
 
+/**
+ * Builds a standardized cause-testing question tying the hypothesis to a KT row.
+ * @param {PossibleCause} [cause] - Cause supplying suspect and accusation context.
+ * @param {KTRowBinding} [row] - KT row binding containing the question prompt.
+ * @returns {string} Prompt framed to explain how the hypothesis addresses the row.
+ */
+function buildCauseTestQuestionPrompt(cause, row){
+  const suspectClean = normalizeHypothesisValue(cause?.suspect || '');
+  const suspectText = suspectClean || 'this cause';
+  const accusationClean = normalizeHypothesisValue(cause?.accusation || '');
+  const hasAccusation = Boolean(accusationClean);
+  const accusationNormalized = normalizeAccusation(accusationClean);
+  const suspectIsPlural = /\b(?:and|&)\b/iu.test(suspectText)
+    || /s$/iu.test((suspectText.split(/\s+/u).pop() || '').replace(/[^a-z]/giu, ''));
+  const accusationClauseRaw = hasAccusation
+    ? buildDirectAccusationClause(accusationNormalized, suspectIsPlural)
+    : (suspectIsPlural ? 'are causing the deviation' : 'is causing the deviation');
+  const accusationClause = trimValue(accusationClauseRaw) && accusationClauseRaw !== '…'
+    ? accusationClauseRaw.trim()
+    : (suspectIsPlural ? 'are causing the deviation' : 'is causing the deviation');
+  const rowQuestion = row?.th?.textContent?.trim() || fillTokens(row?.def?.q || '') || 'this KT row';
+  const questionClean = rowQuestion.replace(/[?]+$/u, '').trim() || 'this KT row';
+  return `If ${suspectText} ${accusationClause}, how does it explain ${questionClean}?`;
+}
+
 let autoResize = defaultAutoResize;
 let saveHandler = defaultSaveHandler;
 let showToastHandler = defaultShowToast;
@@ -1862,7 +1887,7 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
     const qText = document.createElement('div');
     qText.className = 'cause-eval-question-text';
     qText.dataset.role = 'question';
-    qText.textContent = row?.th?.textContent?.trim() || fillTokens(row?.def?.q || '');
+    qText.textContent = buildCauseTestQuestionPrompt(cause, row);
     rowEl.appendChild(qText);
     const evidenceWrap = document.createElement('div');
     evidenceWrap.className = 'cause-evidence-wrap';
@@ -2030,9 +2055,11 @@ export function updateCauseEvidencePreviews(){
     const index = parseInt(rowEl.dataset.rowIndex, 10);
     if(Number.isNaN(index) || !rowsBuilt[index]) return;
     const row = rowsBuilt[index];
+    const causeId = rowEl.closest('.cause-card')?.dataset?.causeId;
+    const cause = possibleCauses.find(item => item.id === causeId);
     rowEl.hidden = Boolean(row?.tr?.hidden);
     const questionEl = rowEl.querySelector('[data-role="question"]');
-    if(questionEl){ questionEl.textContent = row?.th?.textContent?.trim() || fillTokens(row?.def?.q || ''); }
+    if(questionEl){ questionEl.textContent = buildCauseTestQuestionPrompt(cause, row); }
     const isValue = rowEl.querySelector('[data-role="is-value"]');
     const rawIs = row?.isTA?.value || '';
     const rawNot = row?.notTA?.value || '';
