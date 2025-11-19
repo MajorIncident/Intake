@@ -48,7 +48,7 @@ test('wraps noun-based accusations and impacts in neutral phrasing', async () =>
     accusation: 'timeouts under load',
     impact: 'declined transactions for EU customers'
   });
-  assert.equal(result, 'We suspect Payment service because a deviation involving timeouts under load. This results in declined transactions for EU customers.');
+  assert.equal(result, 'We suspect Payment service that is experiencing timeouts under load. This could lead to declined transactions for EU customers.');
 });
 
 test('falls back to placeholders when suspect or impact are missing', async () => {
@@ -58,5 +58,35 @@ test('falls back to placeholders when suspect or impact are missing', async () =
     accusation: 'configuration drift on the gateway',
     impact: ''
   });
-  assert.equal(result, 'We suspect … because a deviation involving configuration drift on the gateway. This results in ….');
+  assert.equal(result, 'Add suspect to complete this hypothesis.');
+});
+
+test('uses relative clauses when accusations start with verbs', async () => {
+  const sentenceBuilder = await loadKtModule();
+  const result = sentenceBuilder({
+    suspect: 'Auth service',
+    accusation: 'is rebooting repeatedly',
+    impact: ''
+  });
+  assert.equal(result, 'We suspect Auth service that is rebooting repeatedly. Describe the impact to explain the customer effect.');
+});
+
+test('adds pronouns when accusations rely on standalone verbs', async () => {
+  const sentenceBuilder = await loadKtModule();
+  const result = sentenceBuilder({
+    suspect: 'API gateway',
+    accusation: 'fails to retry requests',
+    impact: 'users unable to check out'
+  });
+  assert.equal(result, 'We suspect API gateway because it fails to retry requests. This could lead to users unable to check out.');
+});
+
+test('drops impact sentence when only filler impact text is provided', async () => {
+  const sentenceBuilder = await loadKtModule();
+  const result = sentenceBuilder({
+    suspect: 'Batch processor',
+    accusation: 'is skipping jobs unexpectedly',
+    impact: 'n/a'
+  });
+  assert.equal(result, 'We suspect Batch processor that is skipping jobs unexpectedly. Describe the impact to explain the customer effect.');
 });
