@@ -181,7 +181,7 @@ function updateTemplateTypeHint() {
     return;
   }
   templatesTypeHint.hidden = false;
-  templatesTypeHint.textContent = 'Case study template · Enter the rotating password to unlock each mode.';
+  templatesTypeHint.textContent = '';
 }
 
 function updatePasswordRequirement() {
