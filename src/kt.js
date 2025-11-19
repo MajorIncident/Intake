@@ -999,7 +999,58 @@ export function buildHypothesisSentence(cause){
   if(legacySummary){
     return legacySummary;
   }
-  return composeHypothesisSummary(cause, { preview: false });
+
+  const trimValue = (value) => typeof value === 'string' ? value.trim() : '';
+  const lowercaseFirst = (text) => text ? text[0].toLowerCase() + text.slice(1) : text;
+  const isGerundFirstWord = (text) => {
+    const firstWord = trimValue(text).split(/\s+/u)[0] || '';
+    return /ing$/iu.test(firstWord);
+  };
+  const startsWithVerbPhrase = (text) => {
+    const trimmed = trimValue(text).toLowerCase();
+    if(!trimmed) return false;
+    const firstWord = trimmed.split(/\s+/u)[0];
+    const verbStarters = new Set(['is', 'are', 'was', 'were', 'has', 'have']);
+    return verbStarters.has(firstWord) || trimmed.startsWith('to ');
+  };
+  const normalizeAccusation = (text) => {
+    const trimmed = trimValue(text);
+    if(!trimmed){
+      return '…';
+    }
+    if(isGerundFirstWord(trimmed)){
+      return `they are ${lowercaseFirst(trimmed)}`;
+    }
+    if(startsWithVerbPhrase(trimmed)){
+      return lowercaseFirst(trimmed);
+    }
+    return `a deviation involving ${lowercaseFirst(trimmed)}`;
+  };
+  const normalizeImpact = (text) => {
+    const trimmed = trimValue(text);
+    if(!trimmed){
+      return '…';
+    }
+    if(isGerundFirstWord(trimmed)){
+      return lowercaseFirst(trimmed);
+    }
+    return lowercaseFirst(trimmed);
+  };
+
+  const suspectClean = trimValue(cause.suspect);
+  const accusationClean = trimValue(cause.accusation);
+  const impactClean = trimValue(cause.impact);
+
+  if(!suspectClean && !accusationClean && !impactClean){
+    return 'Add suspect, accusation, and impact to craft a strong hypothesis.';
+  }
+
+  const suspectText = suspectClean || '…';
+  const accusationText = normalizeAccusation(accusationClean);
+  const impactText = normalizeImpact(impactClean);
+  const firstSentence = `We suspect ${suspectText} because ${accusationText}.`;
+  const secondSentence = `This results in ${impactText}.`;
+  return `${firstSentence} ${secondSentence}`.trim();
 }
 
 /**

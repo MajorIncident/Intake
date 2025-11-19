@@ -47,6 +47,37 @@ function shouldUseConditionalStub(kind) {
   return false;
 }
 
+function shouldBypassStub(kind) {
+  const envValue = typeof process !== 'undefined' ? process.env?.TEST_BYPASS_STUBS : '';
+  if (typeof envValue === 'string' && envValue.trim()) {
+    const trimmed = envValue.trim();
+    if (trimmed === '*') {
+      return true;
+    }
+    const envParts = trimmed.split(',').map(part => part.trim()).filter(Boolean);
+    if (envParts.includes(kind)) {
+      return true;
+    }
+  }
+  const bypass = globalThis.__testBypassStubs;
+  if (!bypass) {
+    return false;
+  }
+  if (bypass === '*') {
+    return true;
+  }
+  if (bypass instanceof Set) {
+    return bypass.has(kind);
+  }
+  if (Array.isArray(bypass)) {
+    return bypass.includes(kind);
+  }
+  if (typeof bypass === 'object') {
+    return Boolean(bypass[kind]);
+  }
+  return false;
+}
+
 function createSource(kind) {
   if (kind === 'actionsStore') {
     return `
@@ -268,9 +299,14 @@ function createSource(kind) {
 
 export async function resolve(specifier, context, defaultResolve) {
   const resolution = await defaultResolve(specifier, context, defaultResolve);
+  if (specifier.includes('?actual')) {
+    return resolution;
+  }
   if (stubMap.has(resolution.url)) {
     const kind = stubMap.get(resolution.url);
-    return { url: `stub:${kind}` };
+    if (!shouldBypassStub(kind)) {
+      return { url: `stub:${kind}` };
+    }
   }
   if (conditionalStubMap.has(resolution.url)) {
     const kind = conditionalStubMap.get(resolution.url);
