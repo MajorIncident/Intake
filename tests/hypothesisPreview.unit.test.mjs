@@ -32,7 +32,7 @@ test('omits impact preview sentence when no impact is provided', async () => {
     accusation: 'timeouts under load',
     impact: ''
   }, { preview: true });
-  assert.equal(result, 'We suspect Payment service because it is timeouts under load.');
+  assert.equal(result, 'We suspect Payment service because of timeouts under load.');
 });
 
 test('uses verb connectors for accusation and impact preview clauses', async () => {
@@ -42,7 +42,7 @@ test('uses verb connectors for accusation and impact preview clauses', async () 
     accusation: 'failing to restart nodes',
     impact: 'breaching SLAs'
   }, { preview: true });
-  assert.equal(result, 'We suspect QA deploy because they are failing to restart nodes. This could result in breaching SLAs.');
+  assert.equal(result, 'We suspect QA deploy is failing to restart nodes. This could result in breaching SLAs.');
 });
 
 test('drops leading conjunctions from impact preview sentences', async () => {
@@ -52,7 +52,7 @@ test('drops leading conjunctions from impact preview sentences', async () => {
     accusation: 'failing to restart nodes',
     impact: 'and breaching SLAs'
   }, { preview: true });
-  assert.equal(result, 'We suspect QA deploy because they are failing to restart nodes. This could result in breaching SLAs.');
+  assert.equal(result, 'We suspect QA deploy is failing to restart nodes. This could result in breaching SLAs.');
 });
 
 test('adds an explicit subject to copula-led accusations', async () => {
@@ -62,7 +62,7 @@ test('adds an explicit subject to copula-led accusations', async () => {
     accusation: 'is overheating',
     impact: ''
   }, { preview: true });
-  assert.equal(result, 'We suspect Cooling fan because it is overheating.');
+  assert.equal(result, 'We suspect Cooling fan is overheating.');
 });
 
 test('uses noun connectors for accusation and impact preview clauses', async () => {
@@ -72,5 +72,25 @@ test('uses noun connectors for accusation and impact preview clauses', async () 
     accusation: 'overdue firmware upgrades',
     impact: 'downtime for EU shoppers'
   }, { preview: true });
-  assert.equal(result, 'We suspect Cache layer because it is overdue firmware upgrades. This could lead to downtime for EU shoppers.');
+  assert.equal(result, 'We suspect Cache layer because of overdue firmware upgrades. This could lead to downtime for EU shoppers.');
+});
+
+test('retains existing copula when accusation already starts with it', async () => {
+  const summaryComposer = await loadKtModule();
+  const result = summaryComposer({
+    suspect: 'Edge nodes',
+    accusation: 'are failing health checks',
+    impact: 'dropping traffic'
+  }, { preview: true });
+  assert.equal(result, 'We suspect Edge nodes are failing health checks. This could result in dropping traffic.');
+});
+
+test('matches copula plurality to the suspect when normalized with placeholder subjects', async () => {
+  const summaryComposer = await loadKtModule();
+  const result = summaryComposer({
+    suspect: 'Build agents',
+    accusation: 'misreporting node status',
+    impact: ''
+  }, { preview: true });
+  assert.equal(result, 'We suspect Build agents are misreporting node status.');
 });
