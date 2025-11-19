@@ -175,10 +175,13 @@ function updateTemplateTypeHint() {
     templatesTypeHint.hidden = true;
     return;
   }
+  if (isStandardTemplate(template)) {
+    templatesTypeHint.textContent = '';
+    templatesTypeHint.hidden = true;
+    return;
+  }
   templatesTypeHint.hidden = false;
-  templatesTypeHint.textContent = isStandardTemplate(template)
-    ? 'Standard template · Applies immediately in Full mode without a password.'
-    : 'Case study template · Enter the rotating password to unlock each mode.';
+  templatesTypeHint.textContent = 'Case study template · Enter the rotating password to unlock each mode.';
 }
 
 function updatePasswordRequirement() {
@@ -335,7 +338,7 @@ function renderTemplatesList() {
     fragment.appendChild(standardGroup);
   }
   const caseGroup = buildTemplatesGroup(
-    'Case Studies (Password Required)',
+    'Case Studies',
     'Instructor-led walkthroughs that unlock with a password.',
     caseTemplates
   );
