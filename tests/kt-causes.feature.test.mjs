@@ -229,7 +229,6 @@ test('kt causes: updates evidence previews and emits toast/save callbacks', asyn
   noteLabel.dataset.template = 'Explain <is> vs <is not>';
   const noteInput = document.createElement('textarea');
   noteInput.dataset.role = 'finding-note';
-  noteInput.dataset.placeholderTemplate = 'Notes about <is>';
   noteField.append(noteLabel, noteInput);
   inputsWrap.append(noteField);
 
@@ -246,7 +245,7 @@ test('kt causes: updates evidence previews and emits toast/save callbacks', asyn
   assert.equal(isValue.textContent, '• Alpha detail');
   assert.equal(notValue.textContent, '• Beta detail');
   assert.equal(noteLabel.textContent, 'Explain Alpha detail vs Beta detail');
-  assert.equal(noteInput.placeholder, 'Notes about Alpha detail');
+  assert.equal(noteInput.placeholder, '');
 
   isTextarea.value = 'Alpha detail\nDelta factor';
   notTextarea.value = '';
@@ -255,7 +254,7 @@ test('kt causes: updates evidence previews and emits toast/save callbacks', asyn
   assert.equal(isValue.textContent, '• Alpha detail\n• Delta factor');
   assert.equal(notValue.textContent, '—');
   assert.equal(noteLabel.textContent, 'Explain Alpha detail\nDelta factor vs IS NOT column');
-  assert.equal(noteInput.placeholder, 'Notes about Alpha detail\nDelta factor');
+  assert.equal(noteInput.placeholder, '');
 
   ktModule.setLikelyCauseId('cause-a', { skipRender: true });
   assert.equal(saveSpy.mock.calls.length, 1, 'setLikelyCauseId triggers the save callback');

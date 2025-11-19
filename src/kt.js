@@ -1950,20 +1950,17 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
       {
         mode: CAUSE_FINDING_MODES.ASSUMPTION,
         buttonLabel: 'Explains Only if…',
-        noteLabel: 'What assumptions are necessary to explain why we see it on the <is> and not the <is not>?',
-        placeholder: 'List the assumptions required so we observe <is> while avoiding <is not>.'
+        noteLabel: 'What assumptions are necessary to explain why we see it on the <is> and not the <is not>?'
       },
       {
         mode: CAUSE_FINDING_MODES.YES,
         buttonLabel: 'Yes, because…',
-        noteLabel: 'How does this naturally explain that we see <is> and that we don\'t see <is not>?',
-        placeholder: 'Describe how this cause naturally creates <is> and avoids <is not>.'
+        noteLabel: 'How does this naturally explain that we see <is> and that we don\'t see <is not>?'
       },
       {
         mode: CAUSE_FINDING_MODES.FAIL,
         buttonLabel: 'Does not explain…',
-        noteLabel: 'Why can\'t we explain the <is> being present, but not the <is not>?',
-        placeholder: 'Explain why this cause cannot produce <is> without contradicting <is not>.'
+        noteLabel: 'Why can\'t we explain the <is> being present, but not the <is not>?'
       }
     ];
     const buttons = [];
@@ -1986,11 +1983,10 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
       if(active){
         const config = optionDefs.find(def => def.mode === active);
         const labelTemplate = config?.noteLabel || '';
-        const placeholderTemplate = config?.placeholder || '';
         noteLabel.textContent = substituteEvidenceTokens(labelTemplate, rawIs, rawNot);
         noteLabel.dataset.template = labelTemplate;
-        noteInput.placeholder = substituteEvidenceTokens(placeholderTemplate, rawIs, rawNot);
-        noteInput.dataset.placeholderTemplate = placeholderTemplate;
+        noteInput.placeholder = '';
+        delete noteInput.dataset.placeholderTemplate;
         noteInput.disabled = false;
         noteField.hidden = false;
       }else{
@@ -2069,10 +2065,6 @@ export function updateCauseEvidencePreviews(){
     const noteLabel = rowEl.querySelector('[data-role="note-label"]');
     if(noteLabel && noteLabel.dataset.template){
       noteLabel.textContent = substituteEvidenceTokens(noteLabel.dataset.template, rawIs, rawNot);
-    }
-    const noteInput = rowEl.querySelector('textarea[data-role="finding-note"]');
-    if(noteInput && noteInput.dataset.placeholderTemplate){
-      noteInput.placeholder = substituteEvidenceTokens(noteInput.dataset.placeholderTemplate, rawIs, rawNot);
     }
   });
   causeList.querySelectorAll('.cause-card').forEach(card => {
