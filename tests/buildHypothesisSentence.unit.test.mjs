@@ -41,6 +41,16 @@ test('smoothly handles gerunds for accusation and impact', async () => {
   assert.equal(result, 'We suspect Employees because they are using incorrect hand cream. This results in leaving gaps on paint.');
 });
 
+test('strips leading conjunctions before building impact clauses', async () => {
+  const sentenceBuilder = await loadKtModule();
+  const result = sentenceBuilder({
+    suspect: 'Employees',
+    accusation: 'Using incorrect hand cream',
+    impact: 'and leaving gaps on paint'
+  });
+  assert.equal(result, 'We suspect Employees because they are using incorrect hand cream. This results in leaving gaps on paint.');
+});
+
 test('wraps noun-based accusations and impacts in neutral phrasing', async () => {
   const sentenceBuilder = await loadKtModule();
   const result = sentenceBuilder({

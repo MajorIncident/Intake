@@ -42,7 +42,17 @@ test('uses verb connectors for accusation and impact preview clauses', async () 
     accusation: 'failing to restart nodes',
     impact: 'breaching SLAs'
   }, { preview: true });
-  assert.equal(result, 'We suspect QA deploy because they are failing to restart nodes. This could lead them to breaching SLAs.');
+  assert.equal(result, 'We suspect QA deploy because they are failing to restart nodes. This could result in breaching SLAs.');
+});
+
+test('drops leading conjunctions from impact preview sentences', async () => {
+  const summaryComposer = await loadKtModule();
+  const result = summaryComposer({
+    suspect: 'QA deploy',
+    accusation: 'failing to restart nodes',
+    impact: 'and breaching SLAs'
+  }, { preview: true });
+  assert.equal(result, 'We suspect QA deploy because they are failing to restart nodes. This could result in breaching SLAs.');
 });
 
 test('adds an explicit subject to copula-led accusations', async () => {
