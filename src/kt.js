@@ -895,6 +895,7 @@ const isGerundFirstWord = (text) => {
   const firstWord = trimValue(text).split(/\s+/u)[0] || '';
   return /ing$/iu.test(firstWord);
 };
+const startsWithCopula = (text) => /^(?:is|are|was|were)\b/iu.test(trimValue(text));
 const startsWithVerbPhrase = (text) => {
   const trimmed = trimValue(text).toLowerCase();
   if(!trimmed) return false;
@@ -906,6 +907,11 @@ const normalizeAccusation = (text) => {
   const trimmed = trimValue(text);
   if(!trimmed){
     return '…';
+  }
+  if(startsWithCopula(trimmed)){
+    const firstWord = trimmed.split(/\s+/u)[0].toLowerCase();
+    const subject = firstWord === 'are' || firstWord === 'were' ? 'they' : 'it';
+    return `${subject} ${lowercaseFirst(trimmed)}`;
   }
   if(isGerundFirstWord(trimmed)){
     return `they are ${lowercaseFirst(trimmed)}`;
