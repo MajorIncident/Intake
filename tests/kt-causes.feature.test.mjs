@@ -311,7 +311,7 @@ test('kt causes: hypothesis editor normalizes inputs and stores summary metadata
 
   assert.equal(
     previewBody.textContent,
-    'We suspect Primer lot 7C because it is changed to 160°F. This could lead to uneven coverage and fisheyes.'
+    'We suspect Primer lot 7C is changed to 160°F. This could lead to uneven coverage and fisheyes.'
   );
 
   const inspirationDetails = document.querySelector('.field-examples');
@@ -332,7 +332,7 @@ test('kt causes: hypothesis editor normalizes inputs and stores summary metadata
   assert.equal(saveSpy.mock.calls.length, beforeSaveCalls + 1, 'saving the hypothesis persists state');
   assert.equal(
     cause.summaryText,
-    'We suspect Primer lot 7C because it is changed to 160°F. This could lead to uneven coverage and fisheyes.'
+    'We suspect Primer lot 7C is changed to 160°F. This could lead to uneven coverage and fisheyes.'
   );
   assert.equal(cause.suspect, 'Primer lot 7C');
   assert.equal(cause.accusation, 'Changed to 160°F');

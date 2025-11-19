@@ -937,6 +937,36 @@ const normalizeImpact = (text) => {
   return lowercaseFirst(withoutConjunction);
 };
 
+const selectCopulaForSubject = (copula, isPlural) => {
+  const copulaLower = (copula || '').toLowerCase();
+  const isPastTense = copulaLower === 'was' || copulaLower === 'were';
+  return isPlural
+    ? (isPastTense ? 'were' : 'are')
+    : (isPastTense ? 'was' : 'is');
+};
+
+const buildDirectAccusationClause = (accusationNormalized, suspectIsPlural) => {
+  const trimmed = trimValue(accusationNormalized);
+  const copulaPattern = /^(?:(?:it|they)\s+)?(is|are|was|were)\b\s*(.*)$/iu;
+  const copulaMatch = trimmed.match(copulaPattern);
+  if(copulaMatch){
+    const [, copula, remainder] = copulaMatch;
+    const adjustedCopula = selectCopulaForSubject(copula, suspectIsPlural);
+    const remainderText = remainder ? remainder.trim() : '';
+    return remainderText ? `${adjustedCopula} ${remainderText}` : adjustedCopula;
+  }
+  return trimmed;
+};
+
+const stripPlaceholderSubject = (text) => {
+  const trimmed = trimValue(text);
+  const match = trimmed.match(/^(?:it|they)\s+(?:is|are|was|were)\b\s*(.*)$/iu);
+  if(match && match[1]){
+    return match[1].trim();
+  }
+  return trimmed;
+};
+
 /**
  * Collapses lengthy preview text to the configured character limit while
  * preserving whole-word readability where practical.
@@ -1017,14 +1047,26 @@ export function composeHypothesisSummary(cause, { preview = false } = {}){
 
   const suspectText = preview ? truncateForPreview(suspectClean) : suspectClean;
   const accusationNormalized = normalizeAccusation(accusationClean);
-  const accusationText = preview ? truncateForPreview(accusationNormalized) : accusationNormalized;
+  const accusationTrimmed = trimValue(accusationNormalized);
+  const accusationNounLike = !hasVerbCandidate(accusationClean)
+    && !startsWithCopula(accusationClean)
+    && !startsWithVerbPhrase(accusationClean);
+  const normalizedStartsCopula = /^(?:(?:it|they)\s+)?(?:is|are|was|were)\b/iu.test(accusationTrimmed);
+  const normalizedStartsVerbPhrase = normalizedStartsCopula || startsWithVerbPhrase(accusationTrimmed);
+  const shouldJoinDirectly = normalizedStartsVerbPhrase && !accusationNounLike;
 
-  const accusationUsesDirectConnector = isGerundFirstWord(accusationClean)
-    || startsWithVerbPhrase(accusationClean)
-    || /^(?:it|they)\s+(?:is|are|was|were)\b/iu.test(trimValue(accusationNormalized));
-  const becauseConnector = accusationUsesDirectConnector ? 'because ' : 'because of ';
+  const suspectIsPlural = /\b(?:and|&)\b/iu.test(suspectClean)
+    || /s$/iu.test((suspectClean.split(/\s+/u).pop() || '').replace(/[^a-z]/giu, ''));
+  const accusationClause = shouldJoinDirectly
+    ? buildDirectAccusationClause(accusationNormalized, suspectIsPlural)
+    : stripPlaceholderSubject(accusationNormalized);
+  const accusationText = preview ? truncateForPreview(accusationClause) : accusationClause;
 
-  const sentences = [`We suspect ${suspectText} ${becauseConnector}${accusationText}.`];
+  const sentences = [
+    shouldJoinDirectly
+      ? `We suspect ${suspectText} ${accusationText}.`
+      : `We suspect ${suspectText} because of ${accusationText}.`
+  ];
   if(hasImpact){
     const impactNormalized = normalizeImpact(impactClean);
     const impactStartsGerund = isGerundFirstWord(impactNormalized);
