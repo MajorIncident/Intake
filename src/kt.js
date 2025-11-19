@@ -895,6 +895,10 @@ const isGerundFirstWord = (text) => {
   const firstWord = trimValue(text).split(/\s+/u)[0] || '';
   return /ing$/iu.test(firstWord);
 };
+const stripLeadingConjunction = (text) => {
+  if(!text) return '';
+  return text.replace(/^(?:and|&)\b\s*/iu, '');
+};
 const startsWithCopula = (text) => /^(?:is|are|was|were)\b/iu.test(trimValue(text));
 const startsWithVerbPhrase = (text) => {
   const trimmed = trimValue(text).toLowerCase();
@@ -926,10 +930,11 @@ const normalizeImpact = (text) => {
   if(!trimmed){
     return '…';
   }
-  if(isGerundFirstWord(trimmed)){
-    return lowercaseFirst(trimmed);
+  const withoutConjunction = stripLeadingConjunction(trimmed).trim();
+  if(!withoutConjunction){
+    return '…';
   }
-  return lowercaseFirst(trimmed);
+  return lowercaseFirst(withoutConjunction);
 };
 
 /**
@@ -1020,10 +1025,14 @@ export function composeHypothesisSummary(cause, { preview = false } = {}){
   const sentences = [`We suspect ${suspectText} ${becauseConnector}${accusationText}.`];
   if(hasImpact){
     const impactNormalized = normalizeImpact(impactClean);
+    const impactStartsGerund = isGerundFirstWord(impactNormalized);
+    const impactStartsVerbPhrase = startsWithVerbPhrase(impactNormalized);
     const impactText = preview ? truncateForPreview(impactNormalized) : impactNormalized;
-    const impactConnector = (isGerundFirstWord(impactClean) || startsWithVerbPhrase(impactClean))
-      ? 'This could lead them to '
-      : 'This could lead to ';
+    const impactConnector = impactStartsGerund
+      ? 'This could result in '
+      : impactStartsVerbPhrase
+        ? 'This could lead them to '
+        : 'This could lead to ';
     sentences.push(`${impactConnector}${impactText}.`);
   }
   return sentences.join(' ');
@@ -1107,18 +1116,19 @@ export function buildHypothesisSentence(cause){
 
   const sentences = [`We suspect ${suspectText}${accusationConnector}${accusationText}.`];
   if(hasImpact){
-    const impactStartsGerund = isGerundFirstWord(impactClean);
-    const impactStartsVerbPhrase = startsWithVerbPhrase(impactClean);
-    const impactHasVerb = hasVerbCandidate(impactClean);
+    const impactNormalized = normalizeImpact(impactClean);
+    const impactStartsGerund = isGerundFirstWord(impactNormalized);
+    const impactStartsVerbPhrase = startsWithVerbPhrase(impactNormalized);
+    const impactHasVerb = hasVerbCandidate(impactNormalized);
 
     if(impactStartsGerund){
-      sentences.push(`This results in ${lowercaseFirst(impactClean)}.`);
+      sentences.push(`This results in ${impactNormalized}.`);
     }else if(impactStartsVerbPhrase){
-      sentences.push(`This could lead them to ${lowercaseFirst(impactClean)}.`);
+      sentences.push(`This could lead them to ${impactNormalized}.`);
     }else if(impactHasVerb){
-      sentences.push(`This could lead to ${lowercaseFirst(impactClean)}.`);
+      sentences.push(`This could lead to ${impactNormalized}.`);
     }else{
-      sentences.push(`This could lead to ${lowercaseFirst(impactClean)}.`);
+      sentences.push(`This could lead to ${impactNormalized}.`);
     }
   }else{
     sentences.push('Describe the impact to explain the customer effect.');
