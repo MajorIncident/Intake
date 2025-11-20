@@ -184,14 +184,14 @@ Anchors present:
         <h3>Problem Summary</h3>
         <div class="grid">
           <div class="field">
-            <label for="oneLine">In one sentence, what is broken for you right now?</label>
+            <label for="oneLine">In one sentence, what service or capability is not working right now?</label>
             <textarea id="oneLine" placeholder="" rows="2"></textarea>
           </div>
         </div>
       </div>
 
       <div class="card" id="evidence-objects">
-        <h3>Evidence &amp; Object</h3>
+        <h3>Evidence &amp; Affected Object</h3>
         <div class="inline">
           <span class="chip-label">Detection Source</span>
           <div class="chipset" role="group" aria-label="Detection Source">
@@ -240,12 +240,12 @@ Anchors present:
         </div>
         <div class="grid cols-2">
           <div class="field">
-            <label for="proof">What proves a deviation exists?</label>
+            <label for="proof">What concrete evidence proves a deviation from normal behavior?</label>
             <small>Examples: alerts, error messages, metric spikes/drops, log lines, screenshots, reproducible steps.</small>
             <textarea id="proof" placeholder=""></textarea>
           </div>
           <div class="field">
-            <label for="objectPrefill">What is the specific object being affected?</label>
+            <label for="objectPrefill">Which specific service or component (object) is affected?</label>
             <small>Hardware name and model, Function/Module/Method, Container/Service/API, datastore/volume/bucket/table, network element, identity/policy/role, pipeline/job.</small>
             <textarea id="objectPrefill" placeholder=""></textarea>
           </div>
@@ -253,16 +253,16 @@ Anchors present:
       </div>
 
       <div class="card" id="baseline-current">
-        <h3>Baseline vs Current</h3>
+        <h3>Baseline vs Current Behavior</h3>
         <div class="grid cols-2">
           <div class="field">
-            <label id="labelHealthy" for="healthy">What does healthy look like here?</label>
+            <label id="labelHealthy" for="healthy">For this object, what does ‘healthy/normal’ behavior look like?</label>
             <small>What was the expected behavior?</small>
             <textarea id="healthy" placeholder=""></textarea>
           </div>
           <div class="field">
-            <label id="labelNow" for="now">What is happening now?</label>
-            <small>What has been verified and measured vs same baseline (same metrics as above)? What symptom is being presented?</small>
+            <label id="labelNow" for="now">What is the current (actual) behavior of this object?</label>
+            <small>What have you measured or verified against the baseline (using the same metrics as above), and what symptoms are you observing now?</small>
             <textarea id="now" placeholder=""></textarea>
           </div>
         </div>
@@ -282,13 +282,13 @@ Anchors present:
         <div class="field">
           <h3>Current Impact</h3>
           <label for="impactNow">Current Impact</label>
-          <small>Who/what is affected now? Quantify: users/tenants/regions, transactions failing, SLI/SLO deltas (avail %, p95/p99, error %), data at risk (loss/corruption/exposure), workarounds.</small>
+          <small>Who or what is currently affected? Quantify: users/tenants/regions, transactions failing, SLI/SLO deltas (avail %, p95/p99, error %), data at risk (loss/corruption/exposure), workarounds.</small>
           <textarea id="impactNow" placeholder=""></textarea>
         </div>
         <div class="field">
           <h3>Future Impact</h3>
           <label for="impactFuture">Future Impact</label>
-          <small>If unresolved what happens? Blast radius growth, SLO/SLA breach, revenue/penalties, compliance, backlog/consumer lag, churn, on-call fatigue.</small>
+          <small>If unresolved, what is the likely future impact? Blast radius growth, SLO/SLA breach, revenue/penalties, compliance, backlog/consumer lag, churn, on-call fatigue.</small>
           <textarea id="impactFuture" placeholder=""></textarea>
         </div>
         <div class="field">
@@ -300,31 +300,31 @@ Anchors present:
       </div>
       <div class="grid cols-3 gap-24 containment-grid">
         <fieldset class="field contain-status">
-          <legend>Service Recovery Stage</legend>
-          <div class="containment-radios" role="radiogroup" aria-label="Service Recovery Stage">
+          <legend>Current Service Recovery Stage</legend>
+          <div class="containment-radios" role="radiogroup" aria-label="Current Service Recovery Stage">
             <div class="radio-option">
               <input type="radio" id="containAssessing" name="containStatus" value="assessing" />
-              <label for="containAssessing">Assessing</label>
+              <label for="containAssessing">Assessing / triage</label>
             </div>
             <div class="radio-option">
               <input type="radio" id="containStoppingImpact" name="containStatus" value="stoppingImpact" />
-              <label for="containStoppingImpact">Stopping the impact</label>
+              <label for="containStoppingImpact">Mitigating / stopping impact</label>
             </div>
             <div class="radio-option">
               <input type="radio" id="containStabilized" name="containStatus" value="stabilized" />
-              <label for="containStabilized">Stabilized/Workaround Active</label>
+              <label for="containStabilized">Stabilized / workaround active</label>
             </div>
             <div class="radio-option">
               <input type="radio" id="containFixInProgress" name="containStatus" value="fixInProgress" />
-              <label for="containFixInProgress">Fix in progress</label>
+              <label for="containFixInProgress">Permanent fix in progress</label>
             </div>
             <div class="radio-option">
               <input type="radio" id="containRestoring" name="containStatus" value="restoring" />
-              <label for="containRestoring">Restoring service</label>
+              <label for="containRestoring">Restoring full service</label>
             </div>
             <div class="radio-option">
               <input type="radio" id="containMonitoring" name="containStatus" value="monitoring" />
-              <label for="containMonitoring">Monitoring stability</label>
+              <label for="containMonitoring">Monitoring / validating stability</label>
             </div>
             <div class="radio-option">
               <input type="radio" id="containClosed" name="containStatus" value="closed" />
@@ -333,7 +333,7 @@ Anchors present:
           </div>
         </fieldset>
         <div class="field containment-description">
-          <label for="containDesc">Containment Description</label>
+          <label for="containDesc">Containment / Mitigation Description</label>
           <input type="text" id="containDesc" placeholder="What immediate step reduces risk?" />
         </div>
       </div>
