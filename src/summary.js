@@ -708,7 +708,7 @@ export function formatKTTableSummary(stateInput){
     {
       band: 'WHEN',
       label: 'Pattern / Recurrence',
-      match: text => text.startsWith('WHEN — Since was the first time')
+      match: text => text.startsWith('WHEN — Since the first occurrence')
     },
     {
       band: 'WHEN',

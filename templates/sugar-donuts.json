@@ -100,7 +100,7 @@
         "questionId": "when-first-observed"
       },
       {
-        "q": "WHEN — Since was the first time has “Round Edges” been logged? What Pattern?",
+        "q": "WHEN — Since the first occurrence has “Round Edges” been logged? What Pattern?",
         "is": "Every Minute Since\nContinuous",
         "no": "Any Other Times\nPeriodic, Sporadic, One-Time Event",
         "di": "",

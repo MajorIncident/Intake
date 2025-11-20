@@ -100,7 +100,7 @@
         "questionId": "when-first-observed"
       },
       {
-        "q": "WHEN — Since was the first time has “Fogged” been logged? What Pattern?",
+        "q": "WHEN — Since the first occurrence has “Fogged” been logged? What Pattern?",
         "is": "Daily / Continuous",
         "no": "\nRandom, One-Time Event, Periodic",
         "di": "",

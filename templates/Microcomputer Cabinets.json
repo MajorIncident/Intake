@@ -100,7 +100,7 @@
         "questionId": "when-first-observed"
       },
       {
-        "q": "WHEN — Since was the first time has “Visual Defects” been logged? What Pattern?",
+        "q": "WHEN — Since the first occurrence has “Visual Defects” been logged? What Pattern?",
         "is": "NMD - Time\n\"Periodic\"\n",
         "no": "NMD - Time\nSporadic, Continuous",
         "di": "",
