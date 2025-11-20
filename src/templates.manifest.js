@@ -115,7 +115,7 @@ const manifest = [
           "questionId": "when-first-observed"
         },
         {
-          "q": "WHEN — Since was the first time has “Visual Defects” been logged? What Pattern?",
+          "q": "WHEN — Since the first occurrence has “Visual Defects” been logged? What Pattern?",
           "is": "NMD - Time\n\"Periodic\"\n",
           "no": "NMD - Time\nSporadic, Continuous",
           "di": "",
@@ -569,7 +569,7 @@ const manifest = [
         },
         {
           "questionId": "when-pattern",
-          "q": "WHEN — Since was the first time has {DEVIATION} been logged? What Pattern?",
+          "q": "WHEN — Since the first occurrence has {DEVIATION} been logged? What Pattern?",
           "is": "Continuous since 07:38Z; no relief between retries.",
           "no": "Earlier in the day latency followed normal diurnal pattern.",
           "di": "Traffic during loyalty promo hours is hardest hit.",
@@ -862,7 +862,7 @@ const manifest = [
           "questionId": "when-first-observed"
         },
         {
-          "q": "WHEN — Since was the first time has “Round Edges” been logged? What Pattern?",
+          "q": "WHEN — Since the first occurrence has “Round Edges” been logged? What Pattern?",
           "is": "Every Minute Since\nContinuous",
           "no": "Any Other Times\nPeriodic, Sporadic, One-Time Event",
           "di": "",
@@ -1365,6 +1365,582 @@ const manifest = [
                 }
               }
             ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "tamworth-petrochemical",
+    "name": "Tamworth Petrochemical",
+    "description": "Customers are reporting an even faint fog across our sheet film products. \n\nWe have reproduced this with X-Ray successfully",
+    "supportedModes": [
+      "intake",
+      "is-is-not",
+      "dc",
+      "full"
+    ],
+    "templateKind": "case-study",
+    "state": {
+      "meta": {
+        "version": 1,
+        "savedAt": "2025-11-19T00:43:10.430Z"
+      },
+      "pre": {
+        "oneLine": "Tamworth Film is foggy",
+        "proof": "Customers are reporting an even faint fog across our sheet film products. \n\nWe have reproduced this with X-Ray successfully",
+        "objectPrefill": "Sheet Film",
+        "healthy": "The photograph as taken to be clear of any additional elements that were not captured at the time of photograph",
+        "now": "Fogged"
+      },
+      "impact": {
+        "now": "682 out of 7000 Dealers are complaining\n\nSales Down\n\nReputation Lost\n\n2-for-1 Exchange Program in Effect",
+        "future": "We may risk being permanently branded as a poor-quality supplier\n\nDistributors may stop carrying our products",
+        "time": ""
+      },
+      "ops": {
+        "bridgeOpenedUtc": "2025-11-19T00:27:46.306Z",
+        "icName": "",
+        "bcName": "",
+        "semOpsName": "",
+        "severity": "",
+        "detectMonitoring": false,
+        "detectUserReport": false,
+        "detectAutomation": false,
+        "detectOther": false,
+        "evScreenshot": true,
+        "evLogs": false,
+        "evMetrics": false,
+        "evRepro": true,
+        "evOther": false,
+        "containStatus": "stoppingImpact",
+        "containDesc": "",
+        "commCadence": "",
+        "commLog": [],
+        "commNextDueIso": "",
+        "commNextUpdateTime": "",
+        "tableFocusMode": "comprehensive"
+      },
+      "table": [
+        {
+          "band": "WHAT — Define the problem precisely (Object & Deviation)."
+        },
+        {
+          "q": "WHAT — Specific Object/Thing is having the “Fogged”",
+          "is": "Hi-Grade 202\n\nSheet Film",
+          "no": "NMD - Competitors?\n\nRoll or Pack",
+          "di": "Must be handled in total darkness\n\nUses different packaging\n\nUses Interleaf paper",
+          "ch": "NKC\n\nNew Zip Top Package (5 Weeks ago)\n\nNew Interleaf Supplier (6 Months Ago)",
+          "questionId": "what-object"
+        },
+        {
+          "q": "WHAT — Specific Deviation does the “Hi-Grade 202” have?",
+          "is": "Fogged",
+          "no": "Overexposed, underexposed, spots, streaks",
+          "di": "",
+          "ch": "",
+          "questionId": "what-deviation"
+        },
+        {
+          "band": "WHERE — Locate the problem (geography/topology and on the object)."
+        },
+        {
+          "q": "WHERE — is the “Hi-Grade 202” geographically/topology when the “Fogged” occurs?",
+          "is": "USA\n\nAll Sales Districts\n\nSmall Dealers\n\nDevelopment Rooms",
+          "no": "N/A\n\nSome Sales Districts\n\nLarge Dealers\n\nN/A",
+          "di": "Small dealers have slower inventory turnover",
+          "ch": "NKC",
+          "questionId": "where-location"
+        },
+        {
+          "q": "WHERE — On the “Hi-Grade 202” is the “Fogged” observed?",
+          "is": "Even across the entire surface of the negative",
+          "no": "On edges, spots, or partial parts of the negative",
+          "di": "",
+          "ch": "",
+          "questionId": "where-on-object"
+        },
+        {
+          "band": "WHEN — Timing and Description"
+        },
+        {
+          "q": "WHEN — Was the “Fogged” First observed for “Hi-Grade 202”",
+          "is": "10+ Days Ago\n\nNMD - Reporting Delay",
+          "no": "Before 10+ Days Ago",
+          "di": "",
+          "ch": "",
+          "questionId": "when-first-observed"
+        },
+        {
+          "q": "WHEN — Since the first occurrence has “Fogged” been logged? What Pattern?",
+          "is": "Daily / Continuous",
+          "no": "\nRandom, One-Time Event, Periodic",
+          "di": "",
+          "ch": "",
+          "questionId": "when-pattern"
+        },
+        {
+          "q": "WHEN — Describe using words When the “Fogged” was first seen",
+          "is": "Immediately when developed",
+          "no": "Some time after the initial development",
+          "di": "",
+          "ch": "",
+          "questionId": "when-description"
+        },
+        {
+          "band": "EXTENT — How big is it? Magnitude, count, scope, trend."
+        },
+        {
+          "q": "EXTENT — What is the population or size of “Hi-Grade 202” affected?",
+          "is": "682 Dealers\n\nAll negatives in a box\n\nIncreasing",
+          "no": "> or < 682 Dealers\n\nSome of the Negatives in a box",
+          "di": "",
+          "ch": "",
+          "questionId": "extent-population"
+        },
+        {
+          "q": "EXTENT — What is the size of a single “Fogged”?",
+          "is": "100% of the Negative is visibly fogged\n\nStable",
+          "no": "Less than 100%",
+          "di": "",
+          "ch": "",
+          "questionId": "extent-size"
+        },
+        {
+          "q": "EXTENT — How many “Fogged” are occuring on each “Hi-Grade 202”?",
+          "is": "NMD - Seems like 1 Instance of Fogging per Sheet",
+          "no": "",
+          "di": "",
+          "ch": "",
+          "questionId": "extent-count"
+        }
+      ],
+      "causes": [
+        {
+          "id": "cause-u2f2c1-mi59wwx8",
+          "suspect": "Doctors and Dentists",
+          "accusation": "Leaving their X-Ray Equipment On",
+          "impact": "causing X-Ray Radiation to contaminate our nearby products",
+          "summaryText": "We suspect Doctors and Dentists because Leaving their X-Ray Equipment On. This could lead to causing X-Ray Radiation to contaminate our nearby products.",
+          "confidence": "",
+          "evidence": "",
+          "findings": {},
+          "editing": false,
+          "testingOpen": false
+        },
+        {
+          "id": "cause-ix4hu6-mi59xkch",
+          "suspect": "Nuclear",
+          "accusation": "Fallout",
+          "impact": "causing radiation exposure to our sensitive products (Hi-Grade 202)",
+          "summaryText": "We suspect Nuclear because Fallout. This could lead to causing radiation exposure to our sensitive products (Hi-Grade 202).",
+          "confidence": "",
+          "evidence": "",
+          "findings": {},
+          "editing": false,
+          "testingOpen": false
+        },
+        {
+          "id": "cause-xlxgqi-mi59y76z",
+          "suspect": "Shipping Company",
+          "accusation": "Route Change",
+          "impact": "Leading to exposure to radiation prone areas of the US",
+          "summaryText": "We suspect Shipping Company because Route Change. This could lead to Leading to exposure to radiation prone areas of the US.",
+          "confidence": "",
+          "evidence": "",
+          "findings": {},
+          "editing": false,
+          "testingOpen": false
+        },
+        {
+          "id": "cause-dv4oln-mi59ymxw",
+          "suspect": "Interleaf Paper",
+          "accusation": "Contaminated",
+          "impact": "Exposing the film prematurely",
+          "summaryText": "We suspect Interleaf Paper because Contaminated. This could lead to Exposing the film prematurely.",
+          "confidence": "",
+          "evidence": "",
+          "findings": {},
+          "editing": false,
+          "testingOpen": false
+        },
+        {
+          "id": "cause-fgg1y5-mi59z56k",
+          "suspect": "Amateurs",
+          "accusation": "Unable to handle the film correctly",
+          "impact": "Exposing it incorrectly when putting it in camera",
+          "summaryText": "We suspect Amateurs because Unable to handle the film correctly. This could lead to Exposing it incorrectly when putting it in camera.",
+          "confidence": "",
+          "evidence": "",
+          "findings": {},
+          "editing": false,
+          "testingOpen": false
+        }
+      ],
+      "likelyCauseId": "cause-dv4oln-mi59ymxw",
+      "steps": {
+        "items": [
+          {
+            "id": "1",
+            "label": "Pre-analysis completed",
+            "checked": false
+          },
+          {
+            "id": "2",
+            "label": "Incident Commander assigned",
+            "checked": false
+          },
+          {
+            "id": "3",
+            "label": "Step 1 reviewed by BC",
+            "checked": false
+          },
+          {
+            "id": "4",
+            "label": "Problem statement created",
+            "checked": false
+          },
+          {
+            "id": "5",
+            "label": "Bridge options considered",
+            "checked": false
+          },
+          {
+            "id": "6",
+            "label": "Bridges opened and responders invited",
+            "checked": false
+          },
+          {
+            "id": "7",
+            "label": "Bridge etiquette, roles, and guidelines outlined",
+            "checked": false
+          },
+          {
+            "id": "8",
+            "label": "Current actions documented (Who/What/When)",
+            "checked": false
+          },
+          {
+            "id": "9",
+            "label": "Quick spec answers captured",
+            "checked": false
+          },
+          {
+            "id": "10",
+            "label": "Last changes, monitoring, and dependencies investigated",
+            "checked": false
+          },
+          {
+            "id": "11",
+            "label": "Attendees optimized",
+            "checked": false
+          },
+          {
+            "id": "12",
+            "label": "Possible causes developed",
+            "checked": false
+          },
+          {
+            "id": "13",
+            "label": "Testing actions documented (Who/What/When)",
+            "checked": false
+          },
+          {
+            "id": "14",
+            "label": "Micro-experiments/tests conducted",
+            "checked": false
+          },
+          {
+            "id": "15",
+            "label": "Containment options identified",
+            "checked": false
+          },
+          {
+            "id": "16",
+            "label": "Comms written, reviewed, and sent",
+            "checked": false
+          },
+          {
+            "id": "17",
+            "label": "Attendees optimized for next action",
+            "checked": false
+          },
+          {
+            "id": "18",
+            "label": "Possible causes evaluated and distinctions identified",
+            "checked": false
+          },
+          {
+            "id": "19",
+            "label": "Most probable cause identified",
+            "checked": false
+          },
+          {
+            "id": "20",
+            "label": "Restoration/rollback/workaround selected",
+            "checked": false
+          },
+          {
+            "id": "21",
+            "label": "Attendees optimized for decision",
+            "checked": false
+          },
+          {
+            "id": "22",
+            "label": "Verification and risk plan created",
+            "checked": false
+          },
+          {
+            "id": "23",
+            "label": "Restoration actions documented (Who/What/When)",
+            "checked": false
+          },
+          {
+            "id": "24",
+            "label": "Service validated internally and externally",
+            "checked": false
+          },
+          {
+            "id": "25",
+            "label": "Restoration comms sent",
+            "checked": false
+          },
+          {
+            "id": "26",
+            "label": "Handover template prepared (PIR/problem)",
+            "checked": false
+          },
+          {
+            "id": "27",
+            "label": "Downstream issues from fix assessed",
+            "checked": false
+          },
+          {
+            "id": "28",
+            "label": "Participants released and bridge closed",
+            "checked": false
+          }
+        ],
+        "drawerOpen": false
+      },
+      "actions": {
+        "analysisId": "analysis-0ae04de1-747a-414b-805f-82f3e79220f1",
+        "items": [
+          {
+            "id": "8158d4af-a8ac-4f3a-a5a5-a9dc1264a6ee",
+            "analysisId": "analysis-0ae04de1-747a-414b-805f-82f3e79220f1",
+            "createdAt": "2025-11-19T00:42:34.771Z",
+            "createdBy": "local",
+            "summary": "Double the Marketing Budget",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "Med",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": "None",
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {
+              "hypothesisId": ""
+            },
+            "notes": "",
+            "auditTrail": []
+          },
+          {
+            "id": "6db1d3f4-71a6-4826-8fdb-072f18ab77a9",
+            "analysisId": "analysis-0ae04de1-747a-414b-805f-82f3e79220f1",
+            "createdAt": "2025-11-19T00:42:01.031Z",
+            "createdBy": "local",
+            "summary": "Perform Chemical Analysis on Interleaf Paper to see if it is contaminated with something",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "Med",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": "None",
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {
+              "hypothesisId": "cause-dv4oln-mi59ymxw"
+            },
+            "notes": "",
+            "auditTrail": []
+          },
+          {
+            "id": "b6f59196-26fe-4e24-b448-95051efc7eba",
+            "analysisId": "analysis-0ae04de1-747a-414b-805f-82f3e79220f1",
+            "createdAt": "2025-11-19T00:41:31.726Z",
+            "createdBy": "local",
+            "summary": "Ask shipping company about any security screenings they are now doing",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "Med",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": "None",
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {
+              "hypothesisId": "cause-xlxgqi-mi59y76z"
+            },
+            "notes": "",
+            "auditTrail": []
+          },
+          {
+            "id": "955ebc23-c7ed-4f07-82d2-e2cae57c9c52",
+            "analysisId": "analysis-0ae04de1-747a-414b-805f-82f3e79220f1",
+            "createdAt": "2025-11-19T00:41:12.174Z",
+            "createdBy": "local",
+            "summary": "Map out precipitation across the USA and determine if it matches the dealer pattern of complaints",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "Med",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": "None",
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {
+              "hypothesisId": "cause-ix4hu6-mi59xkch"
+            },
+            "notes": "",
+            "auditTrail": []
+          },
+          {
+            "id": "4561a608-36c7-42fe-aae1-461baa33c060",
+            "analysisId": "analysis-0ae04de1-747a-414b-805f-82f3e79220f1",
+            "createdAt": "2025-11-19T00:40:35.413Z",
+            "createdBy": "local",
+            "summary": "Visit Local Doctors and Dentist offices to verify that their equipment is not malfunctioning",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "Med",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": "None",
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {
+              "hypothesisId": "cause-u2f2c1-mi59wwx8"
+            },
+            "notes": "",
+            "auditTrail": []
+          },
+          {
+            "id": "2b9023c5-2758-4652-88cf-f1091de72637",
+            "analysisId": "analysis-0ae04de1-747a-414b-805f-82f3e79220f1",
+            "createdAt": "2025-11-19T00:40:10.792Z",
+            "createdBy": "local",
+            "summary": "Watch someone try to use our film and see if they are doing it incorrectly",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "Med",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": "None",
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {
+              "hypothesisId": "cause-fgg1y5-mi59z56k"
+            },
+            "notes": "",
+            "auditTrail": []
           }
         ]
       }

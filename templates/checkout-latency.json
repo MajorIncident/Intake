@@ -112,7 +112,7 @@
       },
       {
         "questionId": "when-pattern",
-        "q": "WHEN — Since was the first time has {DEVIATION} been logged? What Pattern?",
+        "q": "WHEN — Since the first occurrence has {DEVIATION} been logged? What Pattern?",
         "is": "Continuous since 07:38Z; no relief between retries.",
         "no": "Earlier in the day latency followed normal diurnal pattern.",
         "di": "Traffic during loyalty promo hours is hardest hit.",

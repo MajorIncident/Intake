@@ -124,7 +124,7 @@ const ROWS_UNFROZEN = [
   },
   {
     id: 'when-pattern',
-    q: "WHEN — Since was the first time has {DEVIATION} been logged? What Pattern?",
+    q: "WHEN — Since the first occurrence has {DEVIATION} been logged? What Pattern?",
     isPH:
       "Since first occurrence, when does {DEVIATION} re-occur?\n• What Pattern (continuous/periodic/sporadic/one time)",
     notPH:
