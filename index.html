@@ -280,22 +280,22 @@ Anchors present:
       <h3>Impact</h3>
       <div class="grid cols-3 gap-24">
         <div class="field">
-          <h3>Current Impact</h3>
-          <label for="impactNow">Current Impact</label>
+          <h3 id="impactNowHeading">Current Impact</h3>
+          <label class="visually-hidden" for="impactNow">Current Impact</label>
           <small>Who or what is currently affected? Quantify: users/tenants/regions, transactions failing, SLI/SLO deltas (avail %, p95/p99, error %), data at risk (loss/corruption/exposure), workarounds.</small>
-          <textarea id="impactNow" placeholder=""></textarea>
+          <textarea id="impactNow" aria-labelledby="impactNowHeading" placeholder=""></textarea>
         </div>
         <div class="field">
-          <h3>Future Impact</h3>
-          <label for="impactFuture">Future Impact</label>
+          <h3 id="impactFutureHeading">Future Impact</h3>
+          <label class="visually-hidden" for="impactFuture">Future Impact</label>
           <small>If unresolved, what is the likely future impact? Blast radius growth, SLO/SLA breach, revenue/penalties, compliance, backlog/consumer lag, churn, on-call fatigue.</small>
-          <textarea id="impactFuture" placeholder=""></textarea>
+          <textarea id="impactFuture" aria-labelledby="impactFutureHeading" placeholder=""></textarea>
         </div>
         <div class="field">
-          <h3>Timeframe</h3>
-          <label for="impactTime">Timeframe</label>
+          <h3 id="impactTimeHeading">Timeframe</h3>
+          <label class="visually-hidden" for="impactTime">Timeframe</label>
           <small>When will the Future Impact become Current Impact? (Best Estimate). What deadlines/SLAs do we need to be aware of?</small>
-          <textarea id="impactTime" placeholder=""></textarea>
+          <textarea id="impactTime" aria-labelledby="impactTimeHeading" placeholder=""></textarea>
         </div>
       </div>
       <div class="grid cols-3 gap-24 containment-grid">
