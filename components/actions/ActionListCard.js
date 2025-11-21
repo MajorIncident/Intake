@@ -165,6 +165,7 @@ export function mountActionListCard(hostEl) {
   let disposeOwnerDialog = null;
   let disposeCausePicker = null;
   let autoSortTimer = null;
+  let openRiskEditorId = '';
 
   let causeLookup = { list: [], map: new Map() };
 
@@ -221,10 +222,59 @@ export function mountActionListCard(hostEl) {
       .filter(entry => entry.cause && !causeHasFailure(entry.cause));
   }
 
+  function setRiskExpanded(strip, expanded) {
+    if (!strip) return;
+    strip.dataset.expanded = expanded ? '1' : '0';
+    const toggle = strip.querySelector('.risk-strip__toggle');
+    const editor = strip.querySelector('.risk-editor');
+    if (toggle) {
+      toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    }
+    if (editor) {
+      editor.setAttribute('aria-hidden', expanded ? 'false' : 'true');
+    }
+  }
+
+  function closeRiskEditor(targetId = openRiskEditorId) {
+    if (!targetId) return;
+    const row = listEl.querySelector(`.action-row[data-id="${targetId}"]`);
+    const strip = row ? row.querySelector('.risk-strip') : null;
+    setRiskExpanded(strip, false);
+    if (targetId === openRiskEditorId) {
+      openRiskEditorId = '';
+    }
+  }
+
+  function normalizeRiskForUi(raw) {
+    const base = {
+      level: 'None',
+      impactIfFails: '',
+      prevent: '',
+      ifHappens: ''
+    };
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      return {
+        level: RISK_LEVEL_OPTIONS.includes(raw.level) ? raw.level : 'None',
+        impactIfFails: typeof raw.impactIfFails === 'string' ? raw.impactIfFails : '',
+        prevent: typeof raw.prevent === 'string' ? raw.prevent : '',
+        ifHappens: typeof raw.ifHappens === 'string' ? raw.ifHappens : ''
+      };
+    }
+    if (typeof raw === 'string') {
+      const trimmed = raw.trim();
+      return {
+        ...base,
+        level: RISK_LEVEL_OPTIONS.includes(trimmed) ? trimmed : 'None'
+      };
+    }
+    return base;
+  }
+
   function render() {
     closeMoreMenu();
     closeBlockerDialog();
     closeCausePicker();
+    closeRiskEditor();
     refreshCauseLookup();
     const analysisId = getCurrentAnalysisId();
     if (analysisId !== lastRenderedAnalysisId) {
@@ -278,6 +328,7 @@ export function mountActionListCard(hostEl) {
       row.querySelector('.eta').addEventListener('click', () => setEta(id));
       row.querySelector('.verify-button').addEventListener('click', () => verifyAction(id));
       row.querySelector('.more').addEventListener('click', (event) => moreMenu(id, event.currentTarget));
+      bindRiskStrip(row, action);
       row.querySelector('.summary__title').addEventListener('dblclick', () => editSummary(id));
       const changeCauseBtn = row.querySelector('[data-action="change-cause"]');
       if (changeCauseBtn && action) {
@@ -979,6 +1030,189 @@ export function mountActionListCard(hostEl) {
     return htmlEscape(value).replace(/\n/g, '&#10;');
   }
 
+  function truncateText(value, maxLength = 90) {
+    if (typeof value !== 'string') return '';
+    if (value.length <= maxLength) return value;
+    return `${value.slice(0, Math.max(0, maxLength - 1))}…`;
+  }
+
+  function riskHasDetails(risk) {
+    if (!risk) return false;
+    return risk.level !== 'None'
+      || Boolean(risk.impactIfFails)
+      || Boolean(risk.prevent)
+      || Boolean(risk.ifHappens);
+  }
+
+  function renderRiskStrip(action) {
+    const risk = normalizeRiskForUi(action.risk);
+    const hasDetail = riskHasDetails(risk);
+    const impactSummary = risk.impactIfFails || '';
+    const pillLabel = `${risk.level} risk`;
+    const previewSummary = impactSummary ? truncateText(impactSummary, 96) : '';
+    const previewTitle = impactSummary ? ` title="${escapeAttribute(impactSummary)}"` : '';
+    const pillHtml = hasDetail
+      ? `<span class="risk-pill" data-level="${escapeAttribute(risk.level)}">${htmlEscape(pillLabel)}</span>`
+      : '';
+    const summaryHtml = impactSummary
+      ? `<span class="risk-strip__summary"${previewTitle}>${htmlEscape(previewSummary)}</span>`
+      : '';
+    const previewHtml = hasDetail
+      ? `${pillHtml}${summaryHtml}`
+      : '<span class="risk-strip__add">Add risk info</span>';
+
+    const levelOptions = RISK_LEVEL_OPTIONS
+      .map(level => `<option value="${htmlEscape(level)}" ${risk.level === level ? 'selected' : ''}>${htmlEscape(level)}</option>`)
+      .join('');
+
+    return `
+      <div class="risk-strip" data-risk-level="${escapeAttribute(risk.level)}" data-expanded="0">
+        <button type="button" class="risk-strip__toggle" aria-expanded="false">
+          ${previewHtml}
+        </button>
+        <div class="risk-editor" aria-hidden="true">
+          <div class="risk-editor__inputs">
+            <label class="risk-editor__field">
+              <span>Level</span>
+              <select name="risk-level" data-risk-input>${levelOptions}</select>
+            </label>
+            <label class="risk-editor__field risk-editor__field--grow">
+              <span>Impact if it fails</span>
+              <input name="risk-impact" data-risk-input type="text" value="${escapeAttribute(risk.impactIfFails)}" placeholder="e.g., customer downtime or SLA breach" />
+            </label>
+          </div>
+          <div class="risk-editor__inputs risk-editor__inputs--secondary">
+            <label class="risk-editor__field risk-editor__field--grow">
+              <span>Safeguards</span>
+              <input name="risk-prevent" data-risk-input type="text" value="${escapeAttribute(risk.prevent)}" placeholder="Prevention or rollback plan" />
+            </label>
+            <label class="risk-editor__field risk-editor__field--grow">
+              <span>If it happens</span>
+              <input name="risk-if-happens" data-risk-input type="text" value="${escapeAttribute(risk.ifHappens)}" placeholder="Contingency path" />
+            </label>
+          </div>
+          <div class="risk-editor__actions">
+            <button type="button" class="risk-editor__link" data-risk-action="clear">Clear</button>
+            <span class="risk-editor__spacer"></span>
+            <button type="button" class="risk-editor__link" data-risk-action="cancel">Cancel</button>
+            <button type="button" class="risk-editor__primary" data-risk-action="save">Save</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function syncRiskInputs(strip, risk) {
+    if (!strip) return;
+    const normalized = normalizeRiskForUi(risk);
+    const levelSelect = strip.querySelector('select[name="risk-level"]');
+    const impactInput = strip.querySelector('input[name="risk-impact"]');
+    const preventInput = strip.querySelector('input[name="risk-prevent"]');
+    const ifHappensInput = strip.querySelector('input[name="risk-if-happens"]');
+    if (levelSelect) {
+      levelSelect.value = RISK_LEVEL_OPTIONS.includes(normalized.level) ? normalized.level : 'None';
+    }
+    if (impactInput) impactInput.value = normalized.impactIfFails;
+    if (preventInput) preventInput.value = normalized.prevent;
+    if (ifHappensInput) ifHappensInput.value = normalized.ifHappens;
+  }
+
+  function collectRiskInputs(strip) {
+    const levelSelect = strip?.querySelector('select[name="risk-level"]');
+    const impactInput = strip?.querySelector('input[name="risk-impact"]');
+    const preventInput = strip?.querySelector('input[name="risk-prevent"]');
+    const ifHappensInput = strip?.querySelector('input[name="risk-if-happens"]');
+    const levelValue = levelSelect && RISK_LEVEL_OPTIONS.includes(levelSelect.value)
+      ? levelSelect.value
+      : 'None';
+    return {
+      level: levelValue,
+      impactIfFails: (impactInput?.value || '').trim(),
+      prevent: (preventInput?.value || '').trim(),
+      ifHappens: (ifHappensInput?.value || '').trim()
+    };
+  }
+
+  function bindRiskStrip(row, action) {
+    const strip = row.querySelector('.risk-strip');
+    if (!strip || !action) return;
+    const toggle = strip.querySelector('.risk-strip__toggle');
+    const saveBtn = strip.querySelector('[data-risk-action="save"]');
+    const cancelBtn = strip.querySelector('[data-risk-action="cancel"]');
+    const clearBtn = strip.querySelector('[data-risk-action="clear"]');
+    const inputs = Array.from(strip.querySelectorAll('[data-risk-input]'));
+
+    const close = () => {
+      syncRiskInputs(strip, action.risk);
+      setRiskExpanded(strip, false);
+      if (openRiskEditorId === action.id) {
+        openRiskEditorId = '';
+      }
+    };
+
+    const open = () => {
+      closeRiskEditor();
+      syncRiskInputs(strip, action.risk);
+      setRiskExpanded(strip, true);
+      openRiskEditorId = action.id;
+      const focusTarget = strip.querySelector('select[name="risk-level"]');
+      if (focusTarget && typeof focusTarget.focus === 'function') {
+        focusTarget.focus();
+      }
+    };
+
+    const save = () => {
+      const payload = collectRiskInputs(strip);
+      applyPatch(action.id, { risk: payload }, () => {
+        close();
+      });
+    };
+
+    const handleKeydown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        close();
+      }
+      if (event.key === 'Enter' && event.target?.tagName !== 'TEXTAREA') {
+        event.preventDefault();
+        save();
+      }
+    };
+
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        const isExpanded = strip.dataset.expanded === '1';
+        if (isExpanded) {
+          close();
+        } else {
+          open();
+        }
+      });
+    }
+
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        syncRiskInputs(strip, { level: 'None', impactIfFails: '', prevent: '', ifHappens: '' });
+        const focusTarget = strip.querySelector('select[name="risk-level"]');
+        if (focusTarget && typeof focusTarget.focus === 'function') {
+          focusTarget.focus();
+        }
+      });
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => close());
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => save());
+    }
+
+    inputs.forEach(input => {
+      input.addEventListener('keydown', handleKeydown);
+    });
+  }
+
   function renderCauseSubtitle(action) {
     const causeId = getActionCauseId(action);
     if (!causeId) return '';
@@ -1016,6 +1250,8 @@ export function mountActionListCard(hostEl) {
   const OWNER_CATEGORY_OPTIONS_HTML = OWNER_CATEGORIES
     .map(category => `<option value="${htmlEscape(category.id)}">${htmlEscape(category.label)}</option>`)
     .join('');
+
+  const RISK_LEVEL_OPTIONS = ['None', 'Low', 'Medium', 'High'];
 
   OWNER_CATEGORIES.forEach(category => {
     OWNER_CATEGORY_INDEX.set(category.id, category);
@@ -1254,6 +1490,7 @@ export function mountActionListCard(hostEl) {
     const verifyState = state;
     const blockerDetail = renderBlockerDetail(it);
     const causeSubtitle = renderCauseSubtitle(it);
+    const riskStrip = renderRiskStrip(it);
     return `
       <li class="action-row" data-id="${it.id}" data-status="${it.status}" data-priority="${it.priority}">
         <button class="chip chip--status status" data-status="${it.status}" title="Advance status (Space)">${htmlEscape(it.status)}</button>
@@ -1263,6 +1500,7 @@ export function mountActionListCard(hostEl) {
           ${causeSubtitle}
           ${blockerDetail}
           ${detail}
+          ${riskStrip}
         </div>
         <button class="chip chip--pill owner" data-owner-empty="${ownerDisplay.isEmpty ? '1' : '0'}" title="${ownerTitleAttr}" aria-label="${ownerTitleAttr}">${ownerHtml}</button>
         <button class="chip chip--pill eta" title="Set ETA (E)">${htmlEscape(fmtETA(it.dueAt))}</button>
@@ -1535,6 +1773,7 @@ export function mountActionListCard(hostEl) {
     closeBlockerDialog();
     closeMoreMenu();
     closeCausePicker();
+    closeRiskEditor();
     openOwnerDialog(it);
   }
   function setEta(id) {
@@ -1544,6 +1783,7 @@ export function mountActionListCard(hostEl) {
     if (!it) return;
     closeOwnerDialog();
     closeCausePicker();
+    closeRiskEditor();
     openEtaPicker(it);
   }
   function formatCheckedAtInput(iso) {
@@ -1567,6 +1807,7 @@ export function mountActionListCard(hostEl) {
     if (!it) return;
     closeOwnerDialog();
     closeCausePicker();
+    closeRiskEditor();
     openVerificationDialog(it);
   }
 
