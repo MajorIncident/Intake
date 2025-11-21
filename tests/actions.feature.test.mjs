@@ -44,7 +44,16 @@ function makeAction(overrides = {}) {
     startedAt: overrides.startedAt || '',
     completedAt: overrides.completedAt || '',
     dependencies: overrides.dependencies || [],
-    risk: overrides.risk || 'None',
+    risk: (() => {
+      const baseRisk = { level: 'None', impactIfFails: '', prevent: '', ifHappens: '' };
+      if (typeof overrides.risk === 'string') {
+        return { ...baseRisk, level: overrides.risk };
+      }
+      if (overrides.risk && typeof overrides.risk === 'object') {
+        return { ...baseRisk, ...overrides.risk };
+      }
+      return baseRisk;
+    })(),
     changeControl: { required: false, ...(overrides.changeControl || {}) },
     verification: {
       required: false,
@@ -430,7 +439,7 @@ test('appState: applyAppState adopts imported action snapshots and updates the c
       startedAt: '',
       completedAt: '',
       dependencies: [],
-      risk: 'None',
+      risk: { level: 'None', impactIfFails: '', prevent: '', ifHappens: '' },
       changeControl: { required: false },
       verification: { required: false },
       links: { hypothesisId: '' },
@@ -448,7 +457,8 @@ test('appState: applyAppState adopts imported action snapshots and updates the c
         owner: { ...(item.owner || {}) },
         links: { ...(item.links || {}) },
         changeControl: { ...(item.changeControl || {}) },
-        verification: { ...(item.verification || {}) }
+        verification: { ...(item.verification || {}) },
+        risk: { level: 'None', impactIfFails: '', prevent: '', ifHappens: '', ...(item.risk || {}) }
       }));
     }),
     createAction: mock.fn(() => null),
@@ -456,7 +466,10 @@ test('appState: applyAppState adopts imported action snapshots and updates the c
     removeAction: mock.fn(() => true),
     sortActions: mock.fn((analysisId) => {
       const stored = storeState.get(analysisId) ?? [];
-      const cloned = stored.map(item => ({ ...item }));
+      const cloned = stored.map(item => ({
+        ...item,
+        risk: { level: 'None', impactIfFails: '', prevent: '', ifHappens: '', ...(item.risk || {}) }
+      }));
       storeState.set(analysisId, cloned);
       return cloned;
     }),
@@ -468,7 +481,8 @@ test('appState: applyAppState adopts imported action snapshots and updates the c
           owner: { ...(item.owner || {}) },
           links: { ...(item.links || {}) },
           changeControl: { ...(item.changeControl || {}) },
-          verification: { ...(item.verification || {}) }
+          verification: { ...(item.verification || {}) },
+          risk: { level: 'None', impactIfFails: '', prevent: '', ifHappens: '', ...(item.risk || {}) }
         }))
         : [];
       storeState.set(analysisId, cloned);

@@ -49,6 +49,7 @@ const PRIORITY_ORDER = {
 };
 
 const OWNER_SOURCES = new Set(['Manual', 'DirectoryLookup', 'API']);
+const RISK_LEVELS = new Set(['None', 'Low', 'Medium', 'High']);
 
 /**
  * @typedef {'Manual' | 'DirectoryLookup' | 'API'} ActionOwnerSource
@@ -75,6 +76,14 @@ const OWNER_SOURCES = new Set(['Manual', 'DirectoryLookup', 'API']);
  */
 
 /**
+ * @typedef {object} ActionRisk
+ * @property {'None' | 'Low' | 'Medium' | 'High'} level - Impact level if the action fails.
+ * @property {string} impactIfFails - Outcome if the action does not land.
+ * @property {string} prevent - Steps that prevent the risk from materializing.
+ * @property {string} ifHappens - Contingency steps if the risk occurs.
+ */
+
+/**
  * @typedef {object} ActionRecord
  * @property {string} id - Unique identifier for the action.
  * @property {string} analysisId - Identifier of the associated analysis.
@@ -90,7 +99,7 @@ const OWNER_SOURCES = new Set(['Manual', 'DirectoryLookup', 'API']);
  * @property {string} startedAt - ISO timestamp when work began.
  * @property {string} completedAt - ISO timestamp when work completed.
  * @property {string[]} dependencies - Related action identifiers.
- * @property {string} risk - Risk rating tied to the action.
+ * @property {ActionRisk} risk - Risk details tied to the action.
  * @property {{ required: boolean, rollbackPlan?: string }} changeControl - Change control metadata.
  * @property {{ required: boolean, result?: string }} verification - Verification metadata.
  * @property {Record<string, string>} links - External references keyed by label.
@@ -121,6 +130,13 @@ const OWNER_TEMPLATE = Object.freeze({
   source: 'Manual'
 });
 
+const RISK_TEMPLATE = Object.freeze({
+  level: 'None',
+  impactIfFails: '',
+  prevent: '',
+  ifHappens: ''
+});
+
 const ACTION_TEMPLATE = Object.freeze({
   id: '',
   analysisId: '',
@@ -136,7 +152,7 @@ const ACTION_TEMPLATE = Object.freeze({
   startedAt: '',
   completedAt: '',
   dependencies: [],
-  risk: 'None',
+  risk: RISK_TEMPLATE,
   changeControl: { required: false },
   verification: { required: false },
   links: {},
@@ -233,6 +249,51 @@ function ownerEquals(a, b) {
     && left.source === right.source;
 }
 
+function normalizeRiskLevel(level) {
+  if (typeof level !== 'string') {
+    return 'None';
+  }
+  const normalized = level.trim();
+  if (!normalized) return 'None';
+  const upper = normalized.toLowerCase();
+  if (upper === 'med') return 'Medium';
+  const supported = ['none', 'low', 'medium', 'high'];
+  if (!supported.includes(upper)) {
+    return 'None';
+  }
+  const canonical = supported.find(label => label === upper) || 'none';
+  const pretty = canonical.charAt(0).toUpperCase() + canonical.slice(1);
+  return RISK_LEVELS.has(pretty) ? pretty : 'None';
+}
+
+/**
+ * Normalizes arbitrary risk data into the canonical ActionRisk shape.
+ * @param {unknown} raw - Raw risk payload captured from the UI or persisted state.
+ * @returns {ActionRisk} Canonical risk object with safe defaults.
+ */
+function normalizeRisk(raw) {
+  const base = { ...RISK_TEMPLATE };
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    if (typeof raw.level === 'string') {
+      base.level = normalizeRiskLevel(raw.level);
+    }
+    if (typeof raw.impactIfFails === 'string') {
+      base.impactIfFails = raw.impactIfFails.trim();
+    }
+    if (typeof raw.prevent === 'string') {
+      base.prevent = raw.prevent.trim();
+    }
+    if (typeof raw.ifHappens === 'string') {
+      base.ifHappens = raw.ifHappens.trim();
+    }
+    return base;
+  }
+  if (typeof raw === 'string') {
+    return { ...base, level: normalizeRiskLevel(raw) };
+  }
+  return base;
+}
+
 /**
  * Coerces unknown action data into a normalized action record.
  * @param {unknown} action - Persisted or incoming action payload.
@@ -249,6 +310,7 @@ function normalizeActionRecord(action) {
   base.links = (source.links && typeof source.links === 'object' && !Array.isArray(source.links))
     ? { ...source.links }
     : {};
+  base.risk = normalizeRisk(source.risk);
   const changeControlSource = (source.changeControl && typeof source.changeControl === 'object' && !Array.isArray(source.changeControl))
     ? source.changeControl
     : {};
@@ -411,7 +473,7 @@ export function createAction(analysisId, patch = {}) {
     startedAt: '',
     completedAt: '',
     dependencies: [],
-    risk: patch.risk || 'None',
+    risk: normalizeRisk(patch.risk),
     changeControl: { required: false, ...(patch.changeControl || {}) },
     verification: { required: false, ...(patch.verification || {}) },
     links: patch.links || {},
@@ -441,14 +503,17 @@ export function patchAction(analysisId, actionId, delta) {
   const sanitizedDelta = { ...(delta || {}) };
   delete sanitizedDelta.owner;
   delete sanitizedDelta.auditTrail;
+  delete sanitizedDelta.risk;
 
   const baseOwner = normalizeOwner(curr.owner);
   const baseAuditTrail = Array.isArray(curr.auditTrail) ? [...curr.auditTrail] : [];
+  const baseRisk = normalizeRisk(curr.risk);
 
   const next = { ...curr, ...sanitizedDelta };
   next.priority = normalizePriorityLabel(next.priority);
   next.owner = baseOwner;
   next.auditTrail = baseAuditTrail;
+  next.risk = baseRisk;
 
   if (Object.prototype.hasOwnProperty.call(delta || {}, 'owner')) {
     const deltaOwnerRaw = delta.owner;
@@ -470,9 +535,17 @@ export function patchAction(analysisId, actionId, delta) {
     }
   }
 
+  if (Object.prototype.hasOwnProperty.call(delta || {}, 'risk')) {
+    const riskSource = delta.risk;
+    const mergedRisk = (riskSource && typeof riskSource === 'object' && !Array.isArray(riskSource))
+      ? { ...baseRisk, ...riskSource }
+      : riskSource;
+    next.risk = normalizeRisk(mergedRisk);
+  }
+
   // Guardrails mirroring your M3 rules
   if (delta.status === 'In-Progress') {
-    const needRollback = next.risk === 'High' || next.changeControl?.required;
+    const needRollback = next.risk?.level === 'High' || next.changeControl?.required;
     if (needRollback && !next.changeControl?.rollbackPlan) {
       return { __error: 'Rollback plan required before starting.' };
     }

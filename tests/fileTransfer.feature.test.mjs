@@ -422,7 +422,7 @@ test('main: Load from File migrates and applies the imported snapshot', async ()
       startedAt: '',
       completedAt: '',
       dependencies: [],
-      risk: 'None',
+      risk: { level: 'None', impactIfFails: '', prevent: '', ifHappens: '' },
       changeControl: { required: false },
       verification: { required: true, method: 'Ping check', evidence: '', result: '', checkedBy: '', checkedAt: '' },
       links: { hypothesisId: 'cause-network-latency' },
