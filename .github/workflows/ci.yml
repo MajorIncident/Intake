@@ -23,6 +23,9 @@ jobs:
       - name: Ensure tests cover runtime changes
         run: npm run verify:tests
 
+      - name: Ensure new controls feed the summary
+        run: npm run verify:summary
+
       - name: Run ESLint
         run: npm run lint
 

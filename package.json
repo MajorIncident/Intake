@@ -10,7 +10,8 @@
     "update:storage-docs": "node scripts/update-storage-docs.js",
     "check:storage-docs": "node scripts/update-storage-docs.js && git diff --quiet -- docs/storage-schema.md",
     "lint": "eslint",
-    "verify:tests": "node scripts/ensure-tests-cover-changes.js"
+    "verify:tests": "node scripts/ensure-tests-cover-changes.js",
+    "verify:summary": "node scripts/ensure-summary-integrations.js"
   },
   "devDependencies": {
     "eslint": "^8.57.1",
