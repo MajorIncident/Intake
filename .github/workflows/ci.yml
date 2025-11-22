@@ -26,6 +26,9 @@ jobs:
       - name: Ensure new controls feed the summary
         run: npm run verify:summary
 
+      - name: Ensure new controls persist state
+        run: npm run verify:persistence
+
       - name: Run ESLint
         run: npm run lint
 
