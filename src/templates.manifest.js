@@ -210,11 +210,6 @@ const manifest = [
             "checked": false
           },
           {
-            "id": "3",
-            "label": "Step 1 reviewed by BC",
-            "checked": false
-          },
-          {
             "id": "4",
             "label": "Problem statement created",
             "checked": false
@@ -979,11 +974,6 @@ const manifest = [
             "checked": false
           },
           {
-            "id": "3",
-            "label": "Step 1 reviewed by BC",
-            "checked": false
-          },
-          {
             "id": "4",
             "label": "Problem statement created",
             "checked": false
@@ -1588,11 +1578,6 @@ const manifest = [
           {
             "id": "2",
             "label": "Incident Commander assigned",
-            "checked": false
-          },
-          {
-            "id": "3",
-            "label": "Step 1 reviewed by BC",
             "checked": false
           },
           {

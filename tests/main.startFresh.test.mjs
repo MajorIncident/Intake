@@ -212,7 +212,7 @@ test('main: start fresh clears persisted storage', async () => {
   assert.equal(toastArgs[0], 'Intake reset. Ready for a new incident ✨', 'toast message announces the reset');
 });
 
-test('main: start fresh restores the steps badge to 0 of 28', async () => {
+test('main: start fresh restores the steps badge to 0 of 27', async () => {
   const { document, localStorage } = globalThis;
   document.body.innerHTML = `
     <button id="genSummaryBtn"></button>
@@ -222,7 +222,7 @@ test('main: start fresh restores the steps badge to 0 of 28', async () => {
     <button id="commsCloseBtn"></button>
     <div id="commsBackdrop"></div>
     <button id="stepsBtn"></button>
-    <span id="stepsCompletedLabel">0 of 28</span>
+    <span id="stepsCompletedLabel">0 of 27</span>
     <aside id="stepsDrawer" class="steps-drawer" aria-hidden="true"></aside>
     <div id="stepsBackdrop" aria-hidden="true"></div>
     <div id="stepsList"></div>
@@ -312,11 +312,11 @@ test('main: start fresh restores the steps badge to 0 of 28', async () => {
 
   const stepsBadge = document.getElementById('stepsCompletedLabel');
   assert.ok(stepsBadge, 'steps badge exists');
-  assert.equal(stepsBadge.textContent, '1 of 28', 'badge reflects stored completion before reset');
+  assert.equal(stepsBadge.textContent, '1 of 27', 'badge reflects stored completion before reset');
 
   document.getElementById('startFreshBtn').click();
 
-  assert.equal(stepsBadge.textContent, '0 of 28', 'badge resets to zero after start fresh');
+  assert.equal(stepsBadge.textContent, '0 of 27', 'badge resets to zero after start fresh');
   assert.equal(document.body.classList.contains('steps-drawer-open'), false, 'steps drawer is closed');
   assert.equal(localStorage.getItem('steps.items'), null, 'steps persistence cleared');
   assert.equal(localStorage.getItem('steps.drawerOpen'), null, 'drawer persistence cleared');

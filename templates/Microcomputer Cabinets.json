@@ -195,11 +195,6 @@
           "checked": false
         },
         {
-          "id": "3",
-          "label": "Step 1 reviewed by BC",
-          "checked": false
-        },
-        {
           "id": "4",
           "label": "Problem statement created",
           "checked": false
