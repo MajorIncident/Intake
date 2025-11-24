@@ -372,7 +372,6 @@ export const STEPS_PHASES = deepFreeze(STEPS_PHASES_UNFROZEN);
 const STEP_DEFINITIONS_UNFROZEN = [
   { id:'1', phase:'A', label:'Pre-analysis completed' },
   { id:'2', phase:'A', label:'Incident Commander assigned' },
-  { id:'3', phase:'A', label:'Step 1 reviewed by BC' },
   { id:'4', phase:'A', label:'Problem statement created' },
   { id:'5', phase:'A', label:'Bridge options considered' },
   { id:'6', phase:'A', label:'Bridges opened and responders invited' },

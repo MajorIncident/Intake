@@ -133,7 +133,7 @@ test('steps: toggling checklist items updates counts, storage, and logs', async 
 
   const { document, window } = globalThis;
   const stepsLabel = document.getElementById('stepsCompletedLabel');
-  assert.equal(stepsLabel.textContent, '0 of 28', 'initial badge reflects zero completed steps');
+  assert.equal(stepsLabel.textContent, '0 of 27', 'initial badge reflects zero completed steps');
 
   const firstCheckbox = document.querySelector('input[data-step-id="1"]');
   assert.ok(firstCheckbox, 'first checklist item renders into the DOM');
@@ -141,8 +141,8 @@ test('steps: toggling checklist items updates counts, storage, and logs', async 
   firstCheckbox.checked = true;
   firstCheckbox.dispatchEvent(new window.Event('change', { bubbles: true }));
 
-  assert.deepEqual(getStepsCounts(), { total: 28, completed: 1 });
-  assert.equal(stepsLabel.textContent, '1 of 28');
+  assert.deepEqual(getStepsCounts(), { total: 27, completed: 1 });
+  assert.equal(stepsLabel.textContent, '1 of 27');
 
   const storedItems = JSON.parse(globalThis.localStorage.getItem(STEPS_ITEMS_KEY));
   assert.equal(storedItems[0].id, '1');
@@ -156,8 +156,8 @@ test('steps: toggling checklist items updates counts, storage, and logs', async 
   firstCheckbox.checked = false;
   firstCheckbox.dispatchEvent(new window.Event('change', { bubbles: true }));
 
-  assert.deepEqual(getStepsCounts(), { total: 28, completed: 0 });
-  assert.equal(stepsLabel.textContent, '0 of 28');
+  assert.deepEqual(getStepsCounts(), { total: 27, completed: 0 });
+  assert.equal(stepsLabel.textContent, '0 of 27');
 
   const updatedItems = JSON.parse(globalThis.localStorage.getItem(STEPS_ITEMS_KEY));
   assert.equal(updatedItems[0].checked, false);
