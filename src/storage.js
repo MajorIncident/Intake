@@ -16,6 +16,7 @@ import { APP_STATE_VERSION } from './appStateVersion.js';
 import { normalizeActionSnapshot, ACTIONS_STORAGE_KEY } from './actionsStore.js';
 import { STEPS_ITEMS_KEY, STEPS_DRAWER_KEY } from './steps.js';
 import { COMMS_DRAWER_STORAGE_KEY } from './commsDrawer.js';
+import { normalizeTheme } from './theme.js';
 /* eslint-enable jsdoc/require-jsdoc */
 
 /**
@@ -41,6 +42,7 @@ import { COMMS_DRAWER_STORAGE_KEY } from './commsDrawer.js';
 /**
  * @typedef {object} SerializedAppState
  * @property {{version: number, savedAt: (string|null)}} meta - Persistence metadata.
+ * @property {{theme: string}|undefined} [appearance] - Optional appearance preference.
  * @property {{oneLine: string, proof: string, objectPrefill: string, healthy: string, now: string}} pre
  *   - Preface inputs describing the incident summary.
  * @property {{now: string, future: string, time: string}} impact - Impact statements.
@@ -512,6 +514,10 @@ function normalizeAppStateStructure(raw) {
 
   const steps = normalizeStepsState(incoming.steps ?? incoming.stepsState);
 
+  const appearanceTheme = typeof incoming?.appearance?.theme === 'string'
+    ? normalizeTheme(incoming.appearance.theme)
+    : 'light';
+
   const savedAt = typeof incoming?.meta?.savedAt === 'string'
     ? incoming.meta.savedAt
     : (typeof incoming.savedAt === 'string' ? incoming.savedAt : null);
@@ -527,7 +533,8 @@ function normalizeAppStateStructure(raw) {
     table,
     causes,
     likelyCauseId,
-    steps
+    steps,
+    appearance: { theme: appearanceTheme }
   };
 
   const actions = normalizeActionsState(incoming.actions, hasActionsField);

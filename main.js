@@ -49,6 +49,7 @@ import { exportAppStateToFile, importAppStateFromFile } from './src/fileTransfer
 import { initVersionStamp } from './src/versionStamp.js';
 import { exportCurrentStateAsTemplate } from './src/templateExport.js';
 import { TEMPLATE_KINDS } from './src/templateKinds.js';
+import { applyThemePreference, getThemePreference, initThemeFromStorage, normalizeTheme } from './src/theme.js';
 
 /**
  * Query the document for the first element that matches the provided CSS selector.
@@ -141,6 +142,8 @@ function startFresh() {
 function boot() {
   window.showToast = showToast;
 
+  initThemeFromStorage();
+
   configureKT({
     autoResize,
     onSave: saveAppState,
@@ -172,6 +175,7 @@ function boot() {
   updatePrefaceTitles();
   startMirrorSync();
 
+  wireThemeToggle();
   wireSummaryEvents();
   wireCommsEvents();
   wireTemplatesEvents();
@@ -252,6 +256,50 @@ function wireTemplatesEvents() {
   on(templatesCloseBtn, 'click', closeTemplatesDrawer);
   on(templatesBackdrop, 'click', closeTemplatesDrawer);
   on(templatesSaveBtn, 'click', handleTemplateExportClick);
+}
+
+/**
+ * Synchronize the header theme toggle UI with the active preference.
+ * @param {string} theme - Theme token to reflect in the toggle state.
+ * @returns {void}
+ */
+function syncThemeToggle(theme) {
+  const toggle = $('#themeToggle');
+  const label = $('#themeToggleLabel');
+  if (!toggle || !label) {
+    return;
+  }
+  const normalized = normalizeTheme(theme);
+  const isDark = normalized === 'dark';
+  toggle.setAttribute('aria-pressed', String(isDark));
+  label.textContent = isDark ? 'Dark mode' : 'Light mode';
+}
+
+/**
+ * Wire the theme toggle button to persist and announce preference changes.
+ * @returns {void}
+ */
+function wireThemeToggle() {
+  const toggle = $('#themeToggle');
+  if (!toggle) {
+    return;
+  }
+
+  syncThemeToggle(getThemePreference());
+
+  window.addEventListener('intake:theme-changed', event => {
+    const updatedTheme = event && event.detail ? event.detail.theme : null;
+    if (updatedTheme) {
+      syncThemeToggle(updatedTheme);
+    }
+  });
+
+  on(toggle, 'click', () => {
+    const nextTheme = getThemePreference() === 'dark' ? 'light' : 'dark';
+    const appliedTheme = applyThemePreference(nextTheme);
+    syncThemeToggle(appliedTheme);
+    saveAppState();
+  });
 }
 
 /**
