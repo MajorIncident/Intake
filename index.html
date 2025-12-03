@@ -62,6 +62,14 @@ Anchors present:
         <input type="file" id="importFileInput" class="visually-hidden" accept="application/json,.json" />
         <button type="button" class="btn-secondary" id="loadFromFileBtn">Load from File</button>
       </div>
+      <div class="toolbar-cluster" aria-label="Appearance controls">
+        <button type="button" class="theme-toggle" id="themeToggle" aria-pressed="false">
+          <span class="theme-toggle__track" aria-hidden="true">
+            <span class="theme-toggle__thumb"></span>
+          </span>
+          <span class="theme-toggle__label" id="themeToggleLabel">Light</span>
+        </button>
+      </div>
       <div class="toolbar-cluster" aria-label="Primary actions">
         <!-- [feature:templates-drawer] start -->
         <div class="templates-launcher">

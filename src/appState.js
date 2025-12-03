@@ -66,6 +66,7 @@ import {
 import { APP_STATE_VERSION } from './appStateVersion.js';
 import { showToast } from './toast.js';
 import { refreshActionList } from '../components/actions/ActionListCard.js';
+import { applyThemePreference, getThemePreference, normalizeTheme } from './theme.js';
 
 const ANALYSIS_ID_KEY = 'kt-analysis-id';
 let cachedAnalysisId = '';
@@ -125,6 +126,9 @@ export function collectAppState() {
       version: APP_STATE_VERSION,
       savedAt: new Date().toISOString()
     },
+    appearance: {
+      theme: getThemePreference()
+    },
     pre,
     impact,
     ops: { ...ops, ...commState, tableFocusMode },
@@ -158,7 +162,8 @@ export function applyAppState(data = {}) {
     causes = [],
     steps = null,
     likelyCauseId: savedLikelyCauseId = null,
-    actions: savedActionsState = null
+    actions: savedActionsState = null,
+    appearance: appearanceState = null
   } = data;
   const currentAnalysisId = getAnalysisId();
   const hasActionsSnapshot = Object.prototype.hasOwnProperty.call(data, 'actions');
@@ -181,6 +186,11 @@ export function applyAppState(data = {}) {
     tableFocusMode: savedFocusMode = '',
     ...opsWithoutComms
   } = ops || {};
+
+  const appliedTheme = appearanceState && typeof appearanceState.theme === 'string'
+    ? normalizeTheme(appearanceState.theme)
+    : getThemePreference();
+  applyThemePreference(appliedTheme);
 
   applyPrefaceState({ pre, impact, ops: opsWithoutComms });
   applyCommunicationsState({ commCadence, commLog, commNextDueIso, commNextUpdateTime });
