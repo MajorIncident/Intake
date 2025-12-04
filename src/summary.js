@@ -1004,79 +1004,176 @@ export async function generateSummary(kind = 'summary', aiType = '', stateInput)
   let output = baseText;
   const normalizedType = typeof aiType === 'string' ? aiType.trim().toLowerCase() : '';
   if(normalizedType === 'ai summary'){
-    const expertPrefix = `You are an expert in:
-
-Incident Management (ITIL 4, ISO 20000-1, ISO 27001)
-
-Major Incident communication (NIST SP 800-61 emergency comms best practices)
-
-Kepner-Tregoe Situation Appraisal and IS / IS NOT problem analysis
-
-Executive communication (clear, concise, jargon-free)
-
-Your task is to take the information I paste after this prompt and produce two separate communication messages:
-
-✅ Output #1 — INTERNAL COMMUNICATION UPDATE (for leadership & technical teams)
-
-Audience: internal — executives, stakeholders, engineering teams
-Goal: alignment and clarity on what is known / unknown / next steps
-
-Format using these headings:
-
-Incident Name / Reference ID:
-Current Status: (e.g., Major Incident Active – Priority 1)
-Situation Appraisal (KT format):
-
-Concerns / issues identified
-
-Priorities (what should be worked on first and why)
-
-IS / IS NOT Analysis (KT format):
-
-IS: (confirmed facts)
-
-IS NOT: (ruled out variables)
-
-What we know / What we don’t know yet:
-Immediate actions taken:
-Next steps / owners / ETAs:
-Decision / ask for leadership: (if relevant)
-Planned internal update cadence: (e.g., every 30 mins)
-
-Keep the tone concise, factual, non-emotional. Avoid speculation and blame.
-
-✅ Output #2 — EXTERNAL COMMUNICATION UPDATE (for customers / business users)
-
-Audience: external — end users, customers, executives
-Goal: confidence, clarity, and reduced anxiety — without technical noise
-
-Format using these headings:
-
-Status: (plain language, no acronyms)
-Impact: (what users experience, scope of impact)
-What we are doing: (reassurance + action)
-What you need to do: (if anything)
-Next update: (time commitment)
-
-Follow these rules:
-
-Do not include internal details or root cause speculation.
-
-Be plain language. Example: instead of "database replication latency," say "our systems are not syncing data correctly."
-
-Keep the update short, calm, and confident.
-
-Tone guideline:
-
-“Clear, factual, and reassuring.”
-
-When generating both updates:
-
-✔ Apply KT thinking (no assumptions — separate Known vs. Unknown)
-✔ Apply ITIL/ISO/NIST best practices (clarity, ownership, cadence, impact)
-✔ Prioritize accuracy > completeness
-
-I will paste all the known information next. Analyze it and reply with the two formatted communications. Do not ask clarifying questions; make reasonable assumptions and proceed.`;
+    const expertPrefix = [
+      'Here’s how I’d tune your prompt to better reflect Module 6 “Comms that Calm” — especially the **messaging map (What / So What / Now What)** and **timing & cadence** focus.',
+      '',
+      '### What’s improved',
+      '',
+      '* **Explicit messaging map** baked into both updates (What / So What / Now What) to keep structure predictable for readers.',
+      '* **Clear subject lines** for both internal and external audiences so they’re email/Slack-ready.',
+      '* **Cadence + timestamp discipline** so updates feel consistent and reliable, not ad-hoc.',
+      '* **Role-sensitive internal comms** (execs vs technical teams) without creating extra outputs.',
+      '* Stronger **constraints on tone and speculation** to reinforce “calm, factual, audience-appropriate” comms.',
+      '',
+      '---',
+      '',
+      '### Improved AI Prompt (v2)',
+      '',
+      'You are an expert in:',
+      '',
+      '* Incident Management (ITIL 4, ISO 20000-1, ISO 27001)',
+      '* Major Incident communication (NIST SP 800-61 emergency comms best practices)',
+      '* Kepner-Tregoe Situation Appraisal and IS / IS NOT problem analysis',
+      '* Executive communication (clear, concise, jargon-free)',
+      '',
+      'Your task is to take the information I paste after this prompt and produce **two separate communication messages** about the same incident:',
+      '',
+      '---',
+      '',
+      '#### ✅ Output #1 — INTERNAL COMMUNICATION UPDATE (for leadership & technical teams)',
+      '',
+      '**Audience:** internal — executives, stakeholders, engineering / operations teams',
+      '**Goal:** alignment and clarity on what is known, what is unknown, and what happens next.',
+      '',
+      '1. Start with an **email/Slack-ready subject line**, e.g.:',
+      '   `[MI] P1 – <short description> – Update #<n>`',
+      '',
+      '2. Then provide the body using these headings **and bullet points where helpful**:',
+      '',
+      '* **Incident Name / Reference ID:**',
+      '',
+      '* **Last Updated (timestamp & timezone):**',
+      '',
+      '* **Current Status:**',
+      '',
+      '  > e.g., “Major Incident Active – Priority 1 (Customer Impacting)”',
+      '',
+      '* **Messaging Map (What / So What / Now What):**',
+      '',
+      '  * **What (factual snapshot):** concise description of the situation *right now* (object + deviation).',
+      '  * **So What (impact & risk):** who/what is affected (customers, internal systems, regions, SLAs).',
+      '  * **Now What (immediate plan):** what we’re doing in the next 30–60 minutes.',
+      '',
+      '* **Situation Appraisal (KT format):**',
+      '',
+      '  * **Concerns / issues identified:**',
+      '  * **Priorities:** (what should be worked on first and why; tie to risk and impact)',
+      '',
+      '* **IS / IS NOT Analysis (KT format):**',
+      '',
+      '  * **IS (confirmed facts):**',
+      '  * **IS NOT (ruled out):**',
+      '',
+      '* **What we know / What we don’t know yet:**',
+      '',
+      '  * **Known:**',
+      '  * **Unknown (still being investigated):**',
+      '',
+      '* **Immediate actions taken:**',
+      '',
+      '  * (Containment, workarounds, monitoring in place, external comms sent, etc.)',
+      '',
+      '* **Next steps / owners / ETAs:**',
+      '',
+      '  * Use a simple list: **[Owner] – [Action] – [ETA]**',
+      '',
+      '* **Decision / ask for leadership (if relevant):**',
+      '',
+      '  * Escalation decisions, risk tradeoffs, approvals needed, or confirmation of chosen path.',
+      '',
+      '* **Planned internal update cadence:**',
+      '',
+      '  * e.g., “Next internal update in 30 minutes (or sooner if status changes).”',
+      '',
+      '**Tone & style rules (internal):**',
+      '',
+      '* Concise, factual, non-emotional.',
+      '* No blame, no speculation. If something is uncertain, label it clearly as **“Not yet confirmed”**.',
+      '* Use short paragraphs and bullets to support scanning by executives.',
+      '* Maintain consistency with earlier updates (if referenced) — don’t contradict prior confirmed facts.',
+      '',
+      '---',
+      '',
+      '#### ✅ Output #2 — EXTERNAL COMMUNICATION UPDATE (for customers / business users)',
+      '',
+      '**Audience:** external — end users, customers, business executives',
+      '**Goal:** confidence, clarity, and reduced anxiety — without technical noise.',
+      '',
+      '1. Start with a short, clear **subject line / header**, e.g.:',
+      '   `Service Update: Some customers are experiencing checkout delays`',
+      '',
+      '2. Then provide the body using these headings:',
+      '',
+      '* **Status:**',
+      '',
+      '  * Plain language, no acronyms. Example:',
+      '',
+      '    > “We’re currently experiencing an issue affecting some customers trying to complete online purchases.”',
+      '',
+      '* **Impact:**',
+      '',
+      '  * What users are experiencing and approximate scope (who, where, how often).',
+      '  * Example:',
+      '',
+      '    > “A portion of customers in [region/group] may see slow page loads or timeouts when checking out.”',
+      '',
+      '* **What we are doing:**',
+      '',
+      '  * Reassurance + action.',
+      '  * Focus on clear, confident language (no internal tool names or architecture detail).',
+      '  * Example:',
+      '',
+      '    > “Our teams are working to stabilize performance and restore normal checkout speeds.”',
+      '',
+      '* **What you need to do:**',
+      '',
+      '  * If nothing, explicitly say so.',
+      '  * Example:',
+      '',
+      '    > “You don’t need to take any action at this time.”',
+      '',
+      '* **Next update:**',
+      '',
+      '  * Concrete time commitment.',
+      '  * Example:',
+      '',
+      '    > “We’ll share another update by [time + timezone], or sooner if the situation changes.”',
+      '',
+      '* **Optional closing line (one sentence):**',
+      '',
+      '  * Calm, appreciative, and brief.',
+      '  * Example:',
+      '',
+      '    > “Thank you for your patience while we work to resolve this.”',
+      '',
+      '**Tone & style rules (external):**',
+      '',
+      '* Do **not** include internal details, debugging steps, or root cause speculation.',
+      '* No technical jargon. Example: instead of “database replication latency,” say',
+      '',
+      '  > “some of our systems are not syncing data correctly.”',
+      '* Keep the update short, calm, and confident.',
+      '* Be honest about impact and uncertainty while emphasizing active work and ownership.',
+      '',
+      '---',
+      '',
+      '#### Shared rules for both updates',
+      '',
+      '* **Apply KT thinking:** Separate **Known vs. Unknown** and keep IS / IS NOT boundaries clear.',
+      '* **Apply ITIL/ISO/NIST best practices:**',
+      '',
+      '  * Clarity on **impact**, **ownership**, and **cadence**.',
+      '  * Make it easy for leadership and customers to understand what’s happening and what to expect next.',
+      '* **Prioritize accuracy over completeness.**',
+      '',
+      '  * If something is not confirmed, don’t state it as fact. Mark it as “unconfirmed” or leave it out.',
+      '* **Assumptions:**',
+      '',
+      '  * Do not ask clarifying questions.',
+      '  * Make reasonable, conservative assumptions where necessary and proceed, clearly labeling them if they materially affect impact or risk.',
+      '',
+      'I will paste all the known information next. Analyze it and reply **only** with the two formatted communications (Output #1 and Output #2).'
+    ].join('\n');
     output = `${expertPrefix}\n\n${baseText}`;
   }else if(normalizedType === 'prompt preamble'){
     output = `${PROMPT_PREAMBLE}\n\n${baseText}`;
