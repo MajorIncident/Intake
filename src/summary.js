@@ -1005,18 +1005,6 @@ export async function generateSummary(kind = 'summary', aiType = '', stateInput)
   const normalizedType = typeof aiType === 'string' ? aiType.trim().toLowerCase() : '';
   if(normalizedType === 'ai summary'){
     const expertPrefix = [
-      'Here’s how I’d tune your prompt to better reflect Module 6 “Comms that Calm” — especially the **messaging map (What / So What / Now What)** and **timing & cadence** focus.',
-      '',
-      '### What’s improved',
-      '',
-      '* **Explicit messaging map** baked into both updates (What / So What / Now What) to keep structure predictable for readers.',
-      '* **Clear subject lines** for both internal and external audiences so they’re email/Slack-ready.',
-      '* **Cadence + timestamp discipline** so updates feel consistent and reliable, not ad-hoc.',
-      '* **Role-sensitive internal comms** (execs vs technical teams) without creating extra outputs.',
-      '* Stronger **constraints on tone and speculation** to reinforce “calm, factual, audience-appropriate” comms.',
-      '',
-      '---',
-      '',
       '### Improved AI Prompt (v2)',
       '',
       'You are an expert in:',
