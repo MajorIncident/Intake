@@ -74,6 +74,7 @@ import { normalizeTheme } from './theme.js';
  * @property {(string|null)} likelyCauseId - Identifier for the selected likely cause.
  * @property {{items: Array<{id: string, label: string, checked: boolean}>, drawerOpen: boolean}} steps - Steps drawer state.
  * @property {{analysisId: string, items: import('./actionsStore.js').ActionRecord[]}|undefined} actions - Optional actions snapshot.
+ * @property {Record<string, string>|undefined} handover - Optional handover notes keyed by section identifier.
  */
 
 /**
@@ -84,6 +85,13 @@ import { normalizeTheme } from './theme.js';
 export const STORAGE_KEY = 'kt-intake-full-v2';
 
 const ANALYSIS_ID_STORAGE_KEY = 'kt-analysis-id';
+const HANDOVER_SECTION_IDS = [
+  'current-state',
+  'what-changed',
+  'remaining-risks',
+  'must-watch-metrics',
+  'whats-next'
+];
 
 /**
  * Safely parses JSON content while tolerating invalid inputs.
@@ -536,6 +544,22 @@ function normalizeAppStateStructure(raw) {
     steps,
     appearance: { theme: appearanceTheme }
   };
+
+  const handoverSource = incoming && typeof incoming.handover === 'object' && !Array.isArray(incoming.handover)
+    ? incoming.handover
+    : {};
+  const handoverBase = HANDOVER_SECTION_IDS.reduce((acc, sectionId) => {
+    acc[sectionId] = '';
+    return acc;
+  }, {});
+  const handover = Object.entries(handoverSource).reduce((acc, [key, value]) => {
+    if (typeof key !== 'string') {
+      return acc;
+    }
+    acc[key] = typeof value === 'string' ? value : '';
+    return acc;
+  }, handoverBase);
+  normalized.handover = handover;
 
   const actions = normalizeActionsState(incoming.actions, hasActionsField);
   if (actions) {

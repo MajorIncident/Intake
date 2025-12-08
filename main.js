@@ -50,7 +50,7 @@ import { initVersionStamp } from './src/versionStamp.js';
 import { exportCurrentStateAsTemplate } from './src/templateExport.js';
 import { TEMPLATE_KINDS } from './src/templateKinds.js';
 import { applyThemePreference, getThemePreference, initThemeFromStorage, normalizeTheme } from './src/theme.js';
-import { mountHandoverCard } from './components/handover/HandoverCard.js';
+import { initHandover } from './src/handover.js';
 
 /**
  * Query the document for the first element that matches the provided CSS selector.
@@ -163,6 +163,8 @@ function boot() {
   initTemplatesDrawer();
   initializeCommunications({ onSave: saveAppState, showToast });
   initStepsFeature({ onSave: saveAppState, onLog: logCommunication });
+
+  mountAfterPossibleCauses();
 
   setSummaryStateProvider(getSummaryState);
 
@@ -480,7 +482,7 @@ function mountAfterPossibleCauses() {
 
   const handoverHost = document.createElement('div');
   host.insertAdjacentElement('afterend', handoverHost);
-  mountHandoverCard(handoverHost);
+  initHandover(handoverHost, { onChange: saveAppState });
 }
 
 /**
@@ -496,7 +498,6 @@ function exposeGlobals() {
 document.addEventListener('DOMContentLoaded', () => {
   try {
     boot();
-    mountAfterPossibleCauses();
     exposeGlobals();
   } catch (error) {
     console.error('Initialization failed:', error);

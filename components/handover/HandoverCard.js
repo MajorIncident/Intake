@@ -9,7 +9,7 @@
  *   element and wires input listeners.
  */
 
-const HANDOVER_SECTIONS = [
+export const HANDOVER_SECTIONS = [
   {
     id: 'current-state',
     title: 'Current State',
@@ -75,9 +75,10 @@ function syncBullets(textarea, listLookup) {
  * listeners so each section displays bullets for every entered line item.
  *
  * @param {HTMLElement} hostEl - Container node where the handover card will render.
+ * @param {{onChange?: () => void}} [options] - Optional hooks for reacting to edits.
  * @returns {void}
  */
-export function mountHandoverCard(hostEl) {
+export function mountHandoverCard(hostEl, { onChange } = {}) {
   if (!hostEl) {
     throw new Error('mountHandoverCard requires a host element');
   }
@@ -123,6 +124,11 @@ export function mountHandoverCard(hostEl) {
   );
 
   textareas.forEach(textarea => {
-    textarea.addEventListener('input', () => syncBullets(textarea, listLookup));
+    textarea.addEventListener('input', () => {
+      syncBullets(textarea, listLookup);
+      if (typeof onChange === 'function') {
+        onChange();
+      }
+    });
   });
 }

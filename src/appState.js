@@ -67,6 +67,7 @@ import { APP_STATE_VERSION } from './appStateVersion.js';
 import { showToast } from './toast.js';
 import { refreshActionList } from '../components/actions/ActionListCard.js';
 import { applyThemePreference, getThemePreference, normalizeTheme } from './theme.js';
+import { collectHandoverState, applyHandoverState } from './handover.js';
 
 const ANALYSIS_ID_KEY = 'kt-analysis-id';
 let cachedAnalysisId = '';
@@ -121,6 +122,7 @@ export function collectAppState() {
   const serializedActions = actionsSnapshot.length
     ? actionsSnapshot
     : (actionsList.length ? actionsList.map(action => ({ ...action })) : []);
+  const handover = collectHandoverState();
   return {
     meta: {
       version: APP_STATE_VERSION,
@@ -139,7 +141,8 @@ export function collectAppState() {
     actions: {
       analysisId,
       items: serializedActions
-    }
+    },
+    handover
   };
 }
 
@@ -163,7 +166,8 @@ export function applyAppState(data = {}) {
     steps = null,
     likelyCauseId: savedLikelyCauseId = null,
     actions: savedActionsState = null,
-    appearance: appearanceState = null
+    appearance: appearanceState = null,
+    handover: savedHandoverState = null
   } = data;
   const currentAnalysisId = getAnalysisId();
   const hasActionsSnapshot = Object.prototype.hasOwnProperty.call(data, 'actions');
@@ -217,6 +221,8 @@ export function applyAppState(data = {}) {
   if (steps) {
     importStepsState(steps);
   }
+
+  applyHandoverState(savedHandoverState || {});
 
   if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
     try {
