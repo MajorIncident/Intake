@@ -988,6 +988,55 @@ textarea.tableta.tableta--muted:focus{
   font-size:13px;
 }
 
+#handover-card{
+  padding:22px 24px 26px;
+}
+
+.handover-grid{
+  display:grid;
+  gap:18px;
+  grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.handover-section{
+  background:var(--panel-muted);
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:14px 16px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.handover-section__title h4{
+  margin:0;
+  font-size:16px;
+  letter-spacing:-0.01em;
+  color:var(--ink-strong);
+}
+
+.handover-section__title .muted{
+  margin:6px 0 0;
+}
+
+.handover-input__label{
+  font-weight:700;
+  color:var(--ink-strong);
+}
+
+.handover-input{
+  min-height:110px;
+}
+
+.handover-list{
+  margin:0;
+  padding-left:20px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  color:var(--ink);
+}
+
 .action-card{
   padding:22px 24px 26px;
 }
