@@ -62,9 +62,9 @@ test('handover state roundtrips through collect/apply helpers and clears bullets
   textarea.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
 
   const snapshot = collectHandoverState(document);
-  assert.deepEqual(snapshot['what-changed'], 'First delta\nSecond delta');
+  assert.deepEqual(snapshot['what-changed'], ['First delta', 'Second delta']);
 
-  applyHandoverState({ 'what-changed': 'New note' }, document);
+  applyHandoverState({ 'what-changed': ['New note'] }, document);
   const bullets = host.querySelectorAll('[data-section-list="what-changed"] li');
   assert.equal(bullets.length, 1);
   assert.equal(bullets[0].textContent, 'New note');
@@ -78,6 +78,6 @@ test('migrateAppState seeds empty handover sections when absent', () => {
   const migrated = migrateAppState({ meta: { version: 1 } });
 
   assert.ok(migrated.handover, 'handover bucket exists');
-  assert.equal(migrated.handover['current-state'], '');
-  assert.equal(migrated.handover['whats-next'], '');
+  assert.deepEqual(migrated.handover['current-state'], []);
+  assert.deepEqual(migrated.handover['whats-next'], []);
 });
