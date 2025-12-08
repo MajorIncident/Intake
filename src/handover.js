@@ -10,6 +10,27 @@
 import { HANDOVER_SECTIONS, mountHandoverCard } from '../components/handover/HandoverCard.js';
 
 /**
+ * Normalize a persisted handover entry into a list of trimmed bullet strings.
+ *
+ * @param {unknown} value - Persisted representation for a handover section.
+ * @returns {string[]} Clean bullet items with whitespace removed.
+ */
+function normalizeHandoverItems(value) {
+  if (Array.isArray(value)) {
+    return value.filter(item => typeof item === 'string').map(item => item.trim()).filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+/**
  * Locate the Handover textareas keyed by section identifier.
  *
  * @param {ParentNode} [root=document] - Root node to search for Handover inputs.
@@ -28,13 +49,14 @@ function getSectionInputs(root = document) {
  * Capture the current Handover notes keyed by section identifier.
  *
  * @param {ParentNode} [root=document] - Root node containing the Handover card.
- * @returns {Record<string, string>} Serialized handover notes keyed by section id.
+ * @returns {Record<string, string[]>} Serialized handover notes keyed by section id.
  */
 export function collectHandoverState(root = document) {
   const inputs = getSectionInputs(root);
   const snapshot = {};
   inputs.forEach((textarea, id) => {
-    snapshot[id] = textarea && typeof textarea.value === 'string' ? textarea.value : '';
+    const value = textarea && typeof textarea.value === 'string' ? textarea.value : '';
+    snapshot[id] = normalizeHandoverItems(value);
   });
   return snapshot;
 }
@@ -42,7 +64,7 @@ export function collectHandoverState(root = document) {
 /**
  * Apply persisted Handover notes into the UI, clearing sections that lack values.
  *
- * @param {Record<string, string>} [state={}] - Persisted notes keyed by section id.
+ * @param {Record<string, string[]|string>} [state={}] - Persisted notes keyed by section id.
  * @param {ParentNode} [root=document] - Root node containing the Handover card.
  * @returns {void}
  */
@@ -56,8 +78,8 @@ export function applyHandoverState(state = {}, root = document) {
   inputs.forEach((textarea, id) => {
     if (!textarea) return;
 
-    const nextValue = typeof state[id] === 'string' ? state[id] : '';
-    textarea.value = nextValue;
+    const items = normalizeHandoverItems(state[id]);
+    textarea.value = items.join('\n');
     textarea.dispatchEvent(new Event('input', { bubbles: true }));
   });
 }

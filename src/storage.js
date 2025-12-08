@@ -40,6 +40,15 @@ import { normalizeTheme } from './theme.js';
 */
 
 /**
+ * @typedef {object} SerializedHandoverState
+ * @property {string[]} ['current-state'] - Snapshot of the incident right now.
+ * @property {string[]} ['what-changed'] - New observations since the last update.
+ * @property {string[]} ['remaining-risks'] - Outstanding risks and blast radius concerns.
+ * @property {string[]} ['must-watch-metrics'] - Metrics that indicate stability or regression.
+ * @property {string[]} ['whats-next'] - Immediate next steps for the incoming lead.
+ */
+
+/**
  * @typedef {object} SerializedAppState
  * @property {{version: number, savedAt: (string|null)}} meta - Persistence metadata.
  * @property {{theme: string}|undefined} [appearance] - Optional appearance preference.
@@ -74,7 +83,7 @@ import { normalizeTheme } from './theme.js';
  * @property {(string|null)} likelyCauseId - Identifier for the selected likely cause.
  * @property {{items: Array<{id: string, label: string, checked: boolean}>, drawerOpen: boolean}} steps - Steps drawer state.
  * @property {{analysisId: string, items: import('./actionsStore.js').ActionRecord[]}|undefined} actions - Optional actions snapshot.
- * @property {Record<string, string>|undefined} handover - Optional handover notes keyed by section identifier.
+ * @property {SerializedHandoverState|undefined} handover - Optional handover notes keyed by section identifier.
  */
 
 /**
@@ -180,6 +189,57 @@ function findingMode(entry) {
 function findingNote(entry) {
   if (!entry || typeof entry !== 'object') return '';
   return typeof entry.note === 'string' ? entry.note : '';
+}
+
+/**
+ * Normalizes persisted handover entries to trimmed bullet lists.
+ * @param {unknown} value - Candidate handover entry to normalize.
+ * @returns {string[]} Array of cleaned bullet strings.
+ */
+function normalizeHandoverItems(value) {
+  if (Array.isArray(value)) {
+    return value.filter(item => typeof item === 'string').map(item => item.trim()).filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(/\r?\n/)
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+/**
+ * Builds a normalized handover state structure including all known sections.
+ * @param {unknown} source - Persisted handover bucket to coerce.
+ * @returns {SerializedHandoverState} Normalized handover payload keyed by section id.
+ */
+function normalizeHandoverState(source) {
+  const sections = source
+    && typeof source === 'object'
+    && !Array.isArray(source)
+    ? (source.sections && typeof source.sections === 'object' && !Array.isArray(source.sections)
+      ? source.sections
+      : source)
+    : null;
+  const handoverBase = HANDOVER_SECTION_IDS.reduce((acc, sectionId) => {
+    acc[sectionId] = [];
+    return acc;
+  }, {});
+
+  if (!sections) {
+    return handoverBase;
+  }
+
+  return Object.entries(sections).reduce((acc, [key, value]) => {
+    if (typeof key !== 'string') {
+      return acc;
+    }
+    acc[key] = normalizeHandoverItems(value);
+    return acc;
+  }, handoverBase);
 }
 
 /**
@@ -545,21 +605,7 @@ function normalizeAppStateStructure(raw) {
     appearance: { theme: appearanceTheme }
   };
 
-  const handoverSource = incoming && typeof incoming.handover === 'object' && !Array.isArray(incoming.handover)
-    ? incoming.handover
-    : {};
-  const handoverBase = HANDOVER_SECTION_IDS.reduce((acc, sectionId) => {
-    acc[sectionId] = '';
-    return acc;
-  }, {});
-  const handover = Object.entries(handoverSource).reduce((acc, [key, value]) => {
-    if (typeof key !== 'string') {
-      return acc;
-    }
-    acc[key] = typeof value === 'string' ? value : '';
-    return acc;
-  }, handoverBase);
-  normalized.handover = handover;
+  normalized.handover = normalizeHandoverState(incoming.handover);
 
   const actions = normalizeActionsState(incoming.actions, hasActionsField);
   if (actions) {

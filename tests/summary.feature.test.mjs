@@ -51,6 +51,13 @@ test('summary: renders populated sections and normalises communication timestamp
     bcName: { value: 'Blake Chen' },
     semOpsName: { value: 'Casey Drew' },
     severity: { value: 'SEV-1' },
+    handover: {
+      'current-state': ['Rollback holding stable'],
+      'what-changed': ['Traffic shifted to primary cluster'],
+      'remaining-risks': [],
+      'must-watch-metrics': ['Error rate on checkout'],
+      'whats-next': ['Hand over to EU lead at 18:00Z']
+    },
     stepsItems: [
       { id: 'step-activate', phase: 'A', checked: true },
       { id: 'step-hypothesize', phase: 'B', checked: false }
@@ -98,10 +105,13 @@ test('summary: renders populated sections and normalises communication timestamp
   assert.ok(text.includes('— Preface —'));
   assert.ok(text.includes('— Containment —'));
   assert.ok(text.includes('— Communications —'));
+  assert.ok(text.includes('— Major Incident Handover —'));
   assert.ok(text.includes('— Steps Checklist —'));
   assert.ok(text.includes('— ⭐ Likely Cause —'));
   assert.ok(text.includes('— Possible Causes —'));
   assert.ok(text.includes('— Action Items —'));
+  assert.ok(text.includes('Current State:'));
+  assert.ok(text.includes('• Rollback holding stable'));
 
   assert.match(
     text,
@@ -168,7 +178,14 @@ test('summary: omits optional sections when inputs are empty', () => {
     causeHasFailure: () => false,
     causeStatusLabel: () => '',
     tbody: { querySelectorAll: () => [] },
-    actions: []
+    actions: [],
+    handover: {
+      'current-state': [],
+      'what-changed': [],
+      'remaining-risks': [],
+      'must-watch-metrics': [],
+      'whats-next': []
+    }
   };
 
   const text = buildSummaryText(state);
@@ -176,6 +193,7 @@ test('summary: omits optional sections when inputs are empty', () => {
   assert.ok(!text.includes('— Preface —'));
   assert.ok(!text.includes('— Containment —'));
   assert.ok(!text.includes('— Communications —'));
+  assert.ok(!text.includes('— Major Incident Handover —'));
   assert.ok(!text.includes('— Steps Checklist —'));
   assert.ok(!text.includes('— ⭐ Likely Cause —'));
   assert.ok(text.includes('— Possible Causes —'));

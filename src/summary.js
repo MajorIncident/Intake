@@ -7,6 +7,7 @@
  * shared with AI assistants.
  */
 import { CAUSE_FINDING_MODES, STEPS_PHASES } from './constants.js';
+import { HANDOVER_SECTIONS } from '../components/handover/HandoverCard.js';
 
 let stateProvider = () => ({ });
 
@@ -128,6 +129,53 @@ function summaryBulletRaw(label, value){
   const text = (value || '').trim();
   if(!text) return '';
   return `• ${label}: ${text}`;
+}
+
+/**
+ * Coerces handover entries into trimmed bullet strings.
+ * @param {unknown} value - Candidate handover entry to normalize.
+ * @returns {string[]} List of cleaned bullet strings.
+ */
+function normalizeHandoverItems(value){
+  if(Array.isArray(value)){
+    return value.filter(item => typeof item === 'string').map(item => item.trim()).filter(Boolean);
+  }
+
+  if(typeof value === 'string'){
+    return splitLines(value);
+  }
+
+  return [];
+}
+
+/**
+ * Formats a handover section with a heading followed by bullet items.
+ * @param {string} title - Section heading.
+ * @param {unknown} items - Bullet entries to display.
+ * @returns {string} Formatted section text or an empty string when empty.
+ */
+function formatHandoverSection(title, items){
+  const normalized = normalizeHandoverItems(items);
+  if(!normalized.length) return '';
+  return joinSummaryLines([
+    `${title}:`,
+    ...normalized.map(item => `• ${item}`)
+  ]);
+}
+
+/**
+ * Renders the full handover summary block by iterating known sections.
+ * @param {object} state - Summary state containing handover entries.
+ * @returns {string} Formatted handover text or an empty string when absent.
+ */
+function formatHandoverSummary(state){
+  const handover = state?.handover && typeof state.handover === 'object' ? state.handover : {};
+  const sections = HANDOVER_SECTIONS.map(section => {
+    const entries = handover[section.id] ?? handover?.sections?.[section.id];
+    return formatHandoverSection(section.title, entries);
+  }).filter(Boolean);
+
+  return sections.join('\n\n');
 }
 
 /**
@@ -894,6 +942,8 @@ export function buildSummaryText(stateInput, options = {}){
     nextUpdateSummaryLine({ ...state, commNextUpdateTime: commNextUpdateTime ?? state.commNextUpdateTime })
   ]);
 
+  const handover = formatHandoverSummary(state);
+
   const bridgeLines = [
     summaryLineRaw('Bridge Opened (UTC)', bridgeOpenedUtc?.value ?? document.getElementById('bridgeOpenedUtc')?.value),
     summaryLineRaw('Incident Commander', icName?.value ?? document.getElementById('icName')?.value),
@@ -926,6 +976,7 @@ export function buildSummaryText(stateInput, options = {}){
   pushSection('— Containment —', containment);
   pushSection('— Impact —', imp);
   pushSection('— Communications —', communications);
+  pushSection('— Major Incident Handover —', handover);
 
   const stepsSummary = formatStepsSummary(state);
   if(stepsSummary.trim().length){

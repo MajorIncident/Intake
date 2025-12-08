@@ -286,7 +286,8 @@ export function getSummaryState() {
     getObjectFull,
     getDeviationFull,
     showToast,
-    actions: Array.isArray(actions) ? actions : []
+    actions: Array.isArray(actions) ? actions : [],
+    handover: collectHandoverState()
   };
 }
 
