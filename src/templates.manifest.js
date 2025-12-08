@@ -451,6 +451,814 @@ const manifest = [
     }
   },
   {
+    "id": "paytrix",
+    "name": "Paytrix",
+    "description": "Chaos at Paytrix",
+    "supportedModes": [
+      "intake",
+      "is-is-not",
+      "dc",
+      "full"
+    ],
+    "templateKind": "case-study",
+    "state": {
+      "meta": {
+        "version": 1,
+        "savedAt": "2025-12-04T21:37:48.348Z"
+      },
+      "appearance": {
+        "theme": "light"
+      },
+      "pre": {
+        "oneLine": "AuthorizationService (NA-East) is experiencing sustained elevated p95 latency above baseline.",
+        "proof": "Detection Sources:\nMonitoring (Datadog)\nUser Report (Amazon, Delta Airlines)\nAutomation (xMatters Sev-1 rule)\n\nEvidence Collected:\nMetrics screenshots from Datadog\nxMatters high-priority alert\nMerchant emails (Amazon, Delta)\nInternal Teams chatter confirming latency and 504s\nServiceNow auto-Sev1 ticket\n",
+        "objectPrefill": "AuthService — NA-East regional shard (Authorization path only).",
+        "healthy": "Authorization p95 latency ~95–150ms\n\nTimeout rate < 0.3%\n\nNo sustained regional deviation\n\nMajor merchants reporting normal operation\n\nHealth checks passing within expected thresholds",
+        "now": "p95 authorization latency is elevated to 500–700ms and sustained beyond normal behavior."
+      },
+      "impact": {
+        "now": "Merchants in NA-East reporting payment delays/timeouts\n\nAmazon retry rate 5–7%\n\nDelta kiosks unable to process payments\n\nMerchantGateway experiencing elevated 504 responses\n\nIncreased abandonment in retail checkouts",
+        "future": "Retry storms may propagate load and degrade other regions (NA-West, SA)\n\nSLO/SLA breach likely within minutes\n\nPotential throttling by downstream issuers\n\nEscalation to global merchant base (churn & reputational risk)\n\nOn-call fatigue and SME overload if the incident expands",
+        "time": "Impact is active now\n\nExpected to worsen within 5–10 minutes if no containment initiated\n\nMerchant dissatisfaction already emerging"
+      },
+      "ops": {
+        "bridgeOpenedUtc": "2025-12-03T16:40:01.816Z",
+        "icName": "Jordan Reyes",
+        "bcName": "Shane C",
+        "semOpsName": "",
+        "severity": "S1",
+        "detectMonitoring": true,
+        "detectUserReport": true,
+        "detectAutomation": true,
+        "detectOther": false,
+        "evScreenshot": false,
+        "evLogs": false,
+        "evMetrics": false,
+        "evRepro": false,
+        "evOther": false,
+        "containStatus": "assessing",
+        "containDesc": "Pause non-critical MerchantGateway transactions impacting Auth until traffic stabilizes. Validate with SME before execution.",
+        "commCadence": "",
+        "commLog": [],
+        "commNextDueIso": "",
+        "commNextUpdateTime": "",
+        "tableFocusMode": "comprehensive"
+      },
+      "table": [
+        {
+          "band": "WHAT — Define the problem precisely (Object & Deviation)."
+        },
+        {
+          "q": "WHAT — Specific Object/Thing is having the “p95 authorization latency is elevated to 500–700ms and sustained beyond normal behavior.”",
+          "is": "AuthService — NA-East regional shard (Authorization path only).",
+          "no": "AuthService — NA-West\nAuthService — EU shard\nFraudEdge precheck service\nMerchantGateway service\nRedis cluster\nNetwork transport layer",
+          "di": "NA-East Authorization uses a different logic branch due to region-specific config.",
+          "ch": "Region-specific override for adaptive risk scoring was enabled yesterday afternoon, but only for NA-East.",
+          "questionId": "what-object"
+        },
+        {
+          "q": "WHAT — Specific Deviation does the “AuthService — NA-East regional shard (Authorization path only).” have?",
+          "is": "p95 authorization latency is elevated to 500–700ms and sustained beyond normal behavior.",
+          "no": "Authorization service is down\nAuthorization service is returning zero responses\nAuthorization errors are increasing across regions\nFraudEdge latency is elevated\nMerchantGateway latency is elevated",
+          "di": "",
+          "ch": "",
+          "questionId": "what-deviation"
+        },
+        {
+          "band": "WHERE — Locate the problem (geography/topology and on the object)."
+        },
+        {
+          "q": "WHERE — is the “AuthService — NA-East regional shard (Authorization path only).” geographically/topology when the “p95 authorization latency is elevated to 500–700ms and sustained beyond normal behavior.” occurs?",
+          "is": "NA-East region (all AZs).",
+          "no": "NA-West\nEU region\nSouth America region\nSandbox / non-production",
+          "di": "NA-East is uniquely under promo-concentrated load, making it the only region able to trigger the new logic branch.",
+          "ch": "Traffic steering policy shifted heavier Amazon promo traffic to NA-East earlier this week.",
+          "questionId": "where-location"
+        },
+        {
+          "q": "WHERE — On the “AuthService — NA-East regional shard (Authorization path only).” is the “p95 authorization latency is elevated to 500–700ms and sustained beyond normal behavior.” observed?",
+          "is": "Authorization path within AuthService.\nPoints where MerchantGateway calls AuthService (responses originating from AuthService in NA-East).",
+          "no": "TokenService path\nFraudEdge decision path\nRedis lookup path\nKafka publish/subscribe layers",
+          "di": "",
+          "ch": "",
+          "questionId": "where-on-object"
+        },
+        {
+          "band": "WHEN — Timing and Description"
+        },
+        {
+          "q": "WHEN — Was the “p95 authorization latency is elevated to 500–700ms and sustained beyond normal behavior.” First observed for “AuthService — NA-East regional shard (Authorization path only).”",
+          "is": "Around 10:03 AM ET.",
+          "no": "10:01 AM Dev Datadog annotation\nEarlier EU event referenced in Slack\n9:55 AM MerchantGateway config push",
+          "di": "",
+          "ch": "",
+          "questionId": "when-first-observed"
+        },
+        {
+          "q": "WHEN — Since the first occurrence has “p95 authorization latency is elevated to 500–700ms and sustained beyond normal behavior.” been logged? What Pattern?",
+          "is": "Sustained elevation for several minutes (3–4+).\nNot intermittent.",
+          "no": "Periodic pattern\nImproving trend\nLimited to a single AZ\nAlternating across regions",
+          "di": "",
+          "ch": "",
+          "questionId": "when-pattern"
+        },
+        {
+          "q": "WHEN — Describe using words When the “p95 authorization latency is elevated to 500–700ms and sustained beyond normal behavior.” was first seen",
+          "is": "During active authorization traffic.\nDuring morning merchant peak (Amazon promo surge).",
+          "no": "During a deploy window\nDuring planned maintenance\nDuring a failover event",
+          "di": "The deviation starts when the traffic threshold is crossed, not when the deploy or config change happened.",
+          "ch": "Threshold parameters updated at 9:58; threshold crossed at 10:03.",
+          "questionId": "when-description"
+        },
+        {
+          "band": "EXTENT — How big is it? Magnitude, count, scope, trend."
+        },
+        {
+          "q": "EXTENT — What is the population or size of “AuthService — NA-East regional shard (Authorization path only).” affected?",
+          "is": "All AuthService nodes in NA-East.\nAll AZs in NA-East.",
+          "no": "Nodes in NA-West\nNodes in EU\nNodes in staging/sandbox",
+          "di": "",
+          "ch": "",
+          "questionId": "extent-population"
+        },
+        {
+          "q": "EXTENT — What is the size of a single “p95 authorization latency is elevated to 500–700ms and sustained beyond normal behavior.”?",
+          "is": "p95 latency elevated to 500–700ms.",
+          "no": "Multi-second total stalls (e.g., 3–5 seconds unresponsive)\nTotal outage (zero responses)\nCPU/memory exhaustion",
+          "di": "",
+          "ch": "",
+          "questionId": "extent-size"
+        },
+        {
+          "q": "EXTENT — How many “p95 authorization latency is elevated to 500–700ms and sustained beyond normal behavior.” are occuring on each “AuthService — NA-East regional shard (Authorization path only).”?",
+          "is": "Continuous elevated latency across all NA-East nodes.\nPresent across multiple merchant flows (Amazon, Delta).",
+          "no": "Single-node issue\nSingle-merchant issue\nShort-lived blip",
+          "di": "",
+          "ch": "",
+          "questionId": "extent-count"
+        }
+      ],
+      "causes": [
+        {
+          "id": "cause-upi5es-mirvp5em",
+          "suspect": "Adaptive risk scoring logic in NA-East Authorization path",
+          "accusation": "adds overhead under threshold-triggered conditions",
+          "impact": "load causing latency to spike",
+          "summaryText": "We suspect Adaptive risk scoring logic in NA-East Authorization path is adds overhead under threshold-triggered conditions. This could lead to load causing latency to spike.",
+          "confidence": "",
+          "evidence": "",
+          "findings": {
+            "WHAT — Specific Object/Thing is having the {DEVIATION}": {
+              "mode": "yes",
+              "note": "The region-specific config override exists only in NA-East Authorization path (matches IS). No other region or service uses that branch (matches IS NOT)."
+            },
+            "WHAT — Specific Deviation does the {OBJECT} have?": {
+              "mode": "yes",
+              "note": "Extra processing overhead from the logic branch explains latency elevation without causing outages or multi-region failures."
+            },
+            "WHERE — is the {OBJECT} geographically/topology when the {DEVIATION} occurs?": {
+              "mode": "yes",
+              "note": "Region-specific override applies to NA-East only (matches IS). Other regions do not use override or hit threshold (matches IS NOT)."
+            },
+            "WHERE — On the {OBJECT} is the {DEVIATION} observed?": {
+              "mode": "yes",
+              "note": "Only the Authorization handler uses the adaptive scoring logic; other handlers do not. Exact alignment."
+            },
+            "WHEN — Was the {DEVIATION} First observed for {OBJECT}": {
+              "mode": "yes",
+              "note": "Threshold for adaptive scoring activated only once traffic crossed at 10:03. Prior times show no effect (aligned to IS NOT)."
+            },
+            "WHEN — Since the first occurrence has {DEVIATION} been logged? What Pattern?": {
+              "mode": "yes",
+              "note": "Flag logic would increase compute consistently under load; region-wide config makes pattern uniform across AZs."
+            },
+            "WHEN — Describe using words When the {DEVIATION} was first seen": {
+              "mode": "yes",
+              "note": "Threshold-based scoring triggers under high traffic (IS). It is not tied to deploy/maintenance/failover (IS NOT)."
+            },
+            "EXTENT — What is the population or size of {OBJECT} affected?": {
+              "mode": "yes",
+              "note": "Region-wide override applied to every node in NA-East. Other regions not affected."
+            },
+            "EXTENT — What is the size of a single {DEVIATION}?": {
+              "mode": "yes",
+              "note": "Feature overhead produces sub-second increases, not multisecond stalls or outages."
+            },
+            "EXTENT — How many {DEVIATION} are occuring on each {OBJECT}?": {
+              "mode": "yes",
+              "note": "Region-wide threshold logic affects all AZs and all merchants routed through NA-East. No contradictions."
+            }
+          },
+          "editing": false,
+          "testingOpen": false
+        },
+        {
+          "id": "cause-vakmx1-mirvrepn",
+          "suspect": "MerchantGateway retry configuration",
+          "accusation": "too aggressive",
+          "impact": "amplifies latency during authorization degradation",
+          "summaryText": "We suspect MerchantGateway retry configuration because of too aggressive. This could lead to amplifies latency during authorization degradation.",
+          "confidence": "",
+          "evidence": "",
+          "findings": {
+            "WHAT — Specific Object/Thing is having the {DEVIATION}": {
+              "mode": "assumption",
+              "note": "Retries could amplify latency on the auth path only if AuthService is already slow (assumption required). Cannot explain NA-East-specific config difference."
+            },
+            "WHAT — Specific Deviation does the {OBJECT} have?": {
+              "mode": "assumption",
+              "note": "Retries can push latency to 500–700ms only if upstream (AuthService) slowdown begins first."
+            },
+            "WHERE — is the {OBJECT} geographically/topology when the {DEVIATION} occurs?": {
+              "mode": "assumption",
+              "note": "MGW retry behavior is global; only NA-East sees impact if NA-East responds slower than other regions. Assumption needed."
+            },
+            "WHERE — On the {OBJECT} is the {DEVIATION} observed?": {
+              "mode": "assumption",
+              "note": "MGW retries affect only paths calling AuthService; but cannot independently explain why only Authorization handler is slow. Requires assumption."
+            },
+            "WHEN — Was the {DEVIATION} First observed for {OBJECT}": {
+              "mode": "assumption",
+              "note": "Retries spike at exactly 10:03 because AuthService slowed. This fits only if another cause degraded AuthService first."
+            },
+            "WHEN — Since the first occurrence has {DEVIATION} been logged? What Pattern?": {
+              "mode": "yes",
+              "note": "Retry storms can produce sustained latency (fits IS)."
+            },
+            "WHEN — Describe using words When the {DEVIATION} was first seen": {
+              "mode": "assumption",
+              "note": "Retries align to promo surge only if AuthService degraded at the same time."
+            },
+            "EXTENT — What is the population or size of {OBJECT} affected?": {
+              "mode": "assumption",
+              "note": "Would affect all NA-East nodes if MGW retries hit all endpoints uniformly; requires assumption."
+            },
+            "EXTENT — What is the size of a single {DEVIATION}?": {
+              "mode": "assumption",
+              "note": "Retry amplification can produce 500–700ms range, but requires AuthService to be marginally slow first."
+            },
+            "EXTENT — How many {DEVIATION} are occuring on each {OBJECT}?": {
+              "mode": "assumption",
+              "note": "Continuous retries align with continuous upstream latency if AuthService remains slow."
+            }
+          },
+          "editing": false,
+          "testingOpen": false
+        },
+        {
+          "id": "cause-gcz67n-mirvtxi6",
+          "suspect": "Redis routing",
+          "accusation": "intermittently resolves to a cross-region shard under load",
+          "impact": "the round-trip time delay to request and get a response from the remote shard increases latency",
+          "summaryText": "We suspect Redis routing is intermittently resolves to a cross-region shard under load. This could lead to the round-trip time delay to request and get a response from the remote shard increases latency.",
+          "confidence": "",
+          "evidence": "",
+          "findings": {
+            "WHAT — Specific Object/Thing is having the {DEVIATION}": {
+              "mode": "fail",
+              "note": "Redis misrouting would affect TokenService, FraudEdge, and other paths — but IS says they’re normal. Contradiction."
+            },
+            "WHAT — Specific Deviation does the {OBJECT} have?": {
+              "mode": "fail",
+              "note": "Cross-region Redis calls cause multi-second stalls or intermittent spikes — NOT uniform 500–700ms elevation."
+            },
+            "WHERE — is the {OBJECT} geographically/topology when the {DEVIATION} occurs?": {
+              "mode": "fail",
+              "note": "Redis routing bugs rarely hit an entire region uniformly; would show uneven AZ impacts, contradicting IS."
+            },
+            "WHERE — On the {OBJECT} is the {DEVIATION} observed?": {
+              "mode": "fail",
+              "note": "Redis routing would affect multiple paths beyond Authorization (contradicting IS NOT entries)."
+            },
+            "WHEN — Was the {DEVIATION} First observed for {OBJECT}": {
+              "mode": "fail",
+              "note": "Redis issues do not align precisely with a 10:03 AM threshold event; mismatch with IS."
+            },
+            "WHEN — Since the first occurrence has {DEVIATION} been logged? What Pattern?": {
+              "mode": "fail",
+              "note": "Redis problems are intermittent or jittery — contradicts sustained pattern."
+            },
+            "WHEN — Describe using words When the {DEVIATION} was first seen": {
+              "mode": "fail",
+              "note": "Redis issues do not correlate to promo surges (IS), nor to deploy/maintenance windows (IS NOT). No alignment."
+            },
+            "EXTENT — What is the population or size of {OBJECT} affected?": {
+              "mode": "fail",
+              "note": "Cross-region Redis calls would not hit all NA-East nodes uniformly — contradicts IS."
+            },
+            "EXTENT — What is the size of a single {DEVIATION}?": {
+              "mode": "fail",
+              "note": "Remote shard resolution would exceed 1–3 seconds or time out entirely — contradicts IS 500–700ms envelope."
+            },
+            "EXTENT — How many {DEVIATION} are occuring on each {OBJECT}?": {
+              "mode": "fail",
+              "note": "Redis issues would be uneven, merchant-specific, or node-specific — contradicts continuous all-node pattern."
+            }
+          },
+          "editing": false,
+          "testingOpen": false
+        }
+      ],
+      "likelyCauseId": "cause-upi5es-mirvp5em",
+      "steps": {
+        "items": [
+          {
+            "id": "1",
+            "label": "Pre-analysis completed",
+            "checked": false
+          },
+          {
+            "id": "2",
+            "label": "Incident Commander assigned",
+            "checked": false
+          },
+          {
+            "id": "4",
+            "label": "Problem statement created",
+            "checked": false
+          },
+          {
+            "id": "5",
+            "label": "Bridge options considered",
+            "checked": false
+          },
+          {
+            "id": "6",
+            "label": "Bridges opened and responders invited",
+            "checked": false
+          },
+          {
+            "id": "7",
+            "label": "Bridge etiquette, roles, and guidelines outlined",
+            "checked": false
+          },
+          {
+            "id": "8",
+            "label": "Current actions documented (Who/What/When)",
+            "checked": false
+          },
+          {
+            "id": "9",
+            "label": "Quick spec answers captured",
+            "checked": false
+          },
+          {
+            "id": "10",
+            "label": "Last changes, monitoring, and dependencies investigated",
+            "checked": false
+          },
+          {
+            "id": "11",
+            "label": "Attendees optimized",
+            "checked": false
+          },
+          {
+            "id": "12",
+            "label": "Possible causes developed",
+            "checked": false
+          },
+          {
+            "id": "13",
+            "label": "Testing actions documented (Who/What/When)",
+            "checked": false
+          },
+          {
+            "id": "14",
+            "label": "Micro-experiments/tests conducted",
+            "checked": false
+          },
+          {
+            "id": "15",
+            "label": "Containment options identified",
+            "checked": false
+          },
+          {
+            "id": "16",
+            "label": "Comms written, reviewed, and sent",
+            "checked": false
+          },
+          {
+            "id": "17",
+            "label": "Attendees optimized for next action",
+            "checked": false
+          },
+          {
+            "id": "18",
+            "label": "Possible causes evaluated and distinctions identified",
+            "checked": false
+          },
+          {
+            "id": "19",
+            "label": "Most probable cause identified",
+            "checked": false
+          },
+          {
+            "id": "20",
+            "label": "Restoration/rollback/workaround selected",
+            "checked": false
+          },
+          {
+            "id": "21",
+            "label": "Attendees optimized for decision",
+            "checked": false
+          },
+          {
+            "id": "22",
+            "label": "Verification and risk plan created",
+            "checked": false
+          },
+          {
+            "id": "23",
+            "label": "Restoration actions documented (Who/What/When)",
+            "checked": false
+          },
+          {
+            "id": "24",
+            "label": "Service validated internally and externally",
+            "checked": false
+          },
+          {
+            "id": "25",
+            "label": "Restoration comms sent",
+            "checked": false
+          },
+          {
+            "id": "26",
+            "label": "Handover template prepared (PIR/problem)",
+            "checked": false
+          },
+          {
+            "id": "27",
+            "label": "Downstream issues from fix assessed",
+            "checked": false
+          },
+          {
+            "id": "28",
+            "label": "Participants released and bridge closed",
+            "checked": false
+          }
+        ],
+        "drawerOpen": false
+      },
+      "actions": {
+        "analysisId": "analysis-6bef92d9-3d60-48ed-9e67-e641620d9513",
+        "items": [
+          {
+            "id": "729fc1ee-6d38-4a38-b6ad-513aea372c69",
+            "analysisId": "analysis-6bef92d9-3d60-48ed-9e67-e641620d9513",
+            "createdAt": "2025-12-03T17:08:52.403Z",
+            "createdBy": "local",
+            "summary": "Verify latency across all AZs in NA-East (are all AZs affected or only one?)",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "High",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": {
+              "level": "None",
+              "impactIfFails": "",
+              "prevent": "",
+              "ifHappens": ""
+            },
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {},
+            "notes": "",
+            "auditTrail": []
+          },
+          {
+            "id": "7d1a2e39-f578-497e-9c76-9f403ceb7048",
+            "analysisId": "analysis-6bef92d9-3d60-48ed-9e67-e641620d9513",
+            "createdAt": "2025-12-03T17:08:58.929Z",
+            "createdBy": "local",
+            "summary": "Check regional parity (NA-West, EU-Central): confirm this is isolated.",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "High",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": {
+              "level": "None",
+              "impactIfFails": "",
+              "prevent": "",
+              "ifHappens": ""
+            },
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {},
+            "notes": "",
+            "auditTrail": []
+          },
+          {
+            "id": "b6d6fe21-e590-4784-abc6-6cb24a16d0f8",
+            "analysisId": "analysis-6bef92d9-3d60-48ed-9e67-e641620d9513",
+            "createdAt": "2025-12-03T17:09:41.392Z",
+            "createdBy": "local",
+            "summary": "Retrieve last-known-good window for AuthService from Datadog.",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "High",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": {
+              "level": "None",
+              "impactIfFails": "",
+              "prevent": "",
+              "ifHappens": ""
+            },
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {},
+            "notes": "",
+            "auditTrail": []
+          },
+          {
+            "id": "bea8d3c3-d520-4a2f-ac21-abe4c15b5ed6",
+            "analysisId": "analysis-6bef92d9-3d60-48ed-9e67-e641620d9513",
+            "createdAt": "2025-12-03T17:10:00.723Z",
+            "createdBy": "local",
+            "summary": "Gather the exact merchant impact metrics (retry %, timeouts, abandonment).",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "High",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": {
+              "level": "None",
+              "impactIfFails": "",
+              "prevent": "",
+              "ifHappens": ""
+            },
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {},
+            "notes": "",
+            "auditTrail": []
+          },
+          {
+            "id": "24e20fac-524a-49c8-b4ce-16fd3fde4db9",
+            "analysisId": "analysis-6bef92d9-3d60-48ed-9e67-e641620d9513",
+            "createdAt": "2025-12-03T17:09:37.024Z",
+            "createdBy": "local",
+            "summary": "Check FraudEdge queues to confirm not contributing.",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "Med",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": {
+              "level": "None",
+              "impactIfFails": "",
+              "prevent": "",
+              "ifHappens": ""
+            },
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {},
+            "notes": "",
+            "auditTrail": []
+          },
+          {
+            "id": "683f6c33-67b6-4fc1-8f3a-4e597fd2e7c8",
+            "analysisId": "analysis-6bef92d9-3d60-48ed-9e67-e641620d9513",
+            "createdAt": "2025-12-03T17:09:13.163Z",
+            "createdBy": "local",
+            "summary": "Validate Redis routing update status in case SMEs attempt to blame it.",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "Med",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": {
+              "level": "None",
+              "impactIfFails": "",
+              "prevent": "",
+              "ifHappens": ""
+            },
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {},
+            "notes": "",
+            "auditTrail": []
+          },
+          {
+            "id": "388fda77-c081-4ae9-93fc-206275dce281",
+            "analysisId": "analysis-6bef92d9-3d60-48ed-9e67-e641620d9513",
+            "createdAt": "2025-12-03T17:09:04.059Z",
+            "createdBy": "local",
+            "summary": "Confirm recent MerchantGateway config change timing vs spike onset.",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "Med",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": {
+              "level": "None",
+              "impactIfFails": "",
+              "prevent": "",
+              "ifHappens": ""
+            },
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {},
+            "notes": "",
+            "auditTrail": []
+          },
+          {
+            "id": "ff855c1c-ca68-4ed0-b99d-a96737f02ff2",
+            "analysisId": "analysis-6bef92d9-3d60-48ed-9e67-e641620d9513",
+            "createdAt": "2025-12-03T17:09:53.441Z",
+            "createdBy": "local",
+            "summary": "Coordinate with MCNO to determine whether a Broadscope is now required.",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "Low",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": {
+              "level": "None",
+              "impactIfFails": "",
+              "prevent": "",
+              "ifHappens": ""
+            },
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {},
+            "notes": "",
+            "auditTrail": []
+          },
+          {
+            "id": "afbc20c5-18d8-44aa-ad7b-5b414486e829",
+            "analysisId": "analysis-6bef92d9-3d60-48ed-9e67-e641620d9513",
+            "createdAt": "2025-12-03T17:09:47.392Z",
+            "createdBy": "local",
+            "summary": "Confirm actual timeout error codes (504 vs 408 vs 429).",
+            "detail": "",
+            "owner": {
+              "name": "",
+              "category": "",
+              "subOwner": "",
+              "notes": "",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "",
+            "status": "Planned",
+            "priority": "Low",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": {
+              "level": "None",
+              "impactIfFails": "",
+              "prevent": "",
+              "ifHappens": ""
+            },
+            "changeControl": {
+              "required": false
+            },
+            "verification": {
+              "required": false
+            },
+            "links": {},
+            "notes": "",
+            "auditTrail": []
+          }
+        ]
+      }
+    }
+  },
+  {
     "id": "checkout-latency",
     "name": "Checkout Latency Spike",
     "description": "EU checkout slowdown triggered by a CDN header rewrite.",
