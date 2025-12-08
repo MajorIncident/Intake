@@ -50,6 +50,7 @@ import { initVersionStamp } from './src/versionStamp.js';
 import { exportCurrentStateAsTemplate } from './src/templateExport.js';
 import { TEMPLATE_KINDS } from './src/templateKinds.js';
 import { applyThemePreference, getThemePreference, initThemeFromStorage, normalizeTheme } from './src/theme.js';
+import { mountHandoverCard } from './components/handover/HandoverCard.js';
 
 /**
  * Query the document for the first element that matches the provided CSS selector.
@@ -476,6 +477,10 @@ function mountAfterPossibleCauses() {
   const host = document.createElement('div');
   anchor.insertAdjacentElement('afterend', host);
   mountActionListCard(host);
+
+  const handoverHost = document.createElement('div');
+  host.insertAdjacentElement('afterend', handoverHost);
+  mountHandoverCard(handoverHost);
 }
 
 /**
