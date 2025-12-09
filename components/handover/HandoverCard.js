@@ -1,8 +1,8 @@
 /**
  * Renders the handover card that summarizes current status, shifts, and next
  * steps for incident responders. The card presents five labeled sections—
- * current state, changes, risks, metrics, and next actions—and mirrors user
- * input into bullet lists for quick scanning.
+ * current state, changes, risks, metrics, and next actions—and captures
+ * free-form notes for each.
  *
  * Key exports:
  * - {@link mountHandoverCard}: Mounts the card markup inside the provided host
@@ -43,36 +43,8 @@ export const HANDOVER_SECTIONS = [
 ];
 
 /**
- * Convert newline-delimited input into list items and render them beneath the
- * matching section.
- *
- * @param {HTMLTextAreaElement} textarea - Textarea whose value should be split into bullets.
- * @param {Map<string, HTMLUListElement>} listLookup - Map connecting section IDs to list elements.
- * @returns {void}
- */
-function syncBullets(textarea, listLookup) {
-  const sectionId = textarea?.dataset?.section;
-  if (!sectionId) return;
-
-  const listEl = listLookup.get(sectionId);
-  if (!listEl) return;
-
-  const items = textarea.value
-    .split('\n')
-    .map(line => line.trim())
-    .filter(Boolean);
-
-  listEl.replaceChildren();
-  items.forEach(item => {
-    const li = document.createElement('li');
-    li.textContent = item;
-    listEl.appendChild(li);
-  });
-}
-
-/**
  * Mount the Handover card into the provided host element and bind textarea
- * listeners so each section displays bullets for every entered line item.
+ * listeners so each section captures free-form notes.
  *
  * @param {HTMLElement} hostEl - Container node where the handover card will render.
  * @param {{onChange?: () => void}} [options] - Optional hooks for reacting to edits.
@@ -99,7 +71,7 @@ export function mountHandoverCard(hostEl, { onChange } = {}) {
               <p class="muted">${section.helper}</p>
             </div>
             <label class="handover-input__label" for="handover-${section.id}">
-              Bullet items (one per line)
+              Notes (free-form)
             </label>
             <textarea
               id="handover-${section.id}"
@@ -108,7 +80,6 @@ export function mountHandoverCard(hostEl, { onChange } = {}) {
               data-section="${section.id}"
               placeholder="${section.placeholder}"
             ></textarea>
-            <ul class="handover-list" data-section-list="${section.id}" aria-live="polite"></ul>
           </article>
         `).join('')}
       </div>
@@ -116,16 +87,9 @@ export function mountHandoverCard(hostEl, { onChange } = {}) {
   `;
 
   const textareas = Array.from(hostEl.querySelectorAll('.handover-input'));
-  const listLookup = new Map(
-    HANDOVER_SECTIONS.map(section => [
-      section.id,
-      hostEl.querySelector(`[data-section-list="${section.id}"]`)
-    ])
-  );
 
   textareas.forEach(textarea => {
     textarea.addEventListener('input', () => {
-      syncBullets(textarea, listLookup);
       if (typeof onChange === 'function') {
         onChange();
       }

@@ -155,7 +155,7 @@ test('handover: app state roundtrips through file and template transfers', async
   const templateExportModule = await import('../src/templateExport.js?actual');
 
   const collected = appStateModule.collectAppState();
-  assert.deepEqual(collected.handover, handoverSnapshot, 'collectAppState captures all handover bullets');
+  assert.deepEqual(collected.handover, handoverSnapshot, 'collectAppState captures all handover notes');
 
   const blobs = [];
   class FakeBlob {
@@ -208,7 +208,7 @@ test('handover: app state roundtrips through file and template transfers', async
   });
   assert.equal(templateExport.success, true);
   const templatePayload = JSON.parse(templateBlobs[0].chunks.join(''));
-  assert.deepEqual(templatePayload.state.handover, handoverSnapshot, 'template payload stores handover bullets');
+  assert.deepEqual(templatePayload.state.handover, handoverSnapshot, 'template payload stores handover notes');
 
   const freshDom = new JSDOM('<!doctype html><html><body><div id="handover-host"></div></body></html>');
   const freshHost = freshDom.window.document.getElementById('handover-host');
@@ -216,8 +216,10 @@ test('handover: app state roundtrips through file and template transfers', async
   const previousGlobals = installGlobals(freshDom.window);
   appStateModule.applyAppState({ ...appliedState, handover: handoverSnapshot });
   restoreGlobals(previousGlobals);
-  const bullets = freshHost.querySelectorAll('[data-section-list] li');
-  assert.equal(bullets.length, HANDOVER_SECTIONS.length * 2, 'applied state rebuilds all bullets');
+  HANDOVER_SECTIONS.forEach(section => {
+    const textarea = freshHost.querySelector(`[data-section="${section.id}"]`);
+    assert.equal(textarea?.value, handoverSnapshot[section.id].join('\n'), `applied state repopulates ${section.id}`);
+  });
 });
 
 test('handover: summaries include formatted handover section', async () => {
