@@ -47,10 +47,13 @@ export const HANDOVER_SECTIONS = [
  * listeners so each section captures free-form notes.
  *
  * @param {HTMLElement} hostEl - Container node where the handover card will render.
- * @param {{onChange?: () => void}} [options] - Optional hooks for reacting to edits.
+ * @param {{
+ *   onChange?: () => void,
+ *   autoResize?: (el: HTMLTextAreaElement) => void
+ * }} [options] - Optional hooks for reacting to edits.
  * @returns {void}
  */
-export function mountHandoverCard(hostEl, { onChange } = {}) {
+export function mountHandoverCard(hostEl, { onChange, autoResize } = {}) {
   if (!hostEl) {
     throw new Error('mountHandoverCard requires a host element');
   }
@@ -89,7 +92,14 @@ export function mountHandoverCard(hostEl, { onChange } = {}) {
   const textareas = Array.from(hostEl.querySelectorAll('.handover-input'));
 
   textareas.forEach(textarea => {
+    if (typeof autoResize === 'function') {
+      autoResize(textarea);
+    }
+
     textarea.addEventListener('input', () => {
+      if (typeof autoResize === 'function') {
+        autoResize(textarea);
+      }
       if (typeof onChange === 'function') {
         onChange();
       }
