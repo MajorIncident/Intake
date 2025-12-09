@@ -51,6 +51,7 @@ import { exportCurrentStateAsTemplate } from './src/templateExport.js';
 import { TEMPLATE_KINDS } from './src/templateKinds.js';
 import { applyThemePreference, getThemePreference, initThemeFromStorage, normalizeTheme } from './src/theme.js';
 import { initHandover } from './src/handover.js';
+import { initMenuBar } from './src/menuBar.js';
 
 /**
  * Query the document for the first element that matches the provided CSS selector.
@@ -178,6 +179,7 @@ function boot() {
   updatePrefaceTitles();
   startMirrorSync();
 
+  initMenuBar();
   wireThemeToggle();
   wireSummaryEvents();
   wireCommsEvents();
