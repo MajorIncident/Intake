@@ -37,11 +37,18 @@ test('handover card renders all sections and collects free-form notes', () => {
   const sections = host.querySelectorAll('.handover-section');
   assert.equal(sections.length, 5, 'renders five labeled sections');
   assert.equal(host.querySelector('#handover-card h3')?.textContent, 'Handover');
-  assert.equal(host.querySelector('.handover-input__label')?.textContent?.trim(), 'Notes (free-form)');
 
-  sections.forEach(section => {
+  const lingeringLabel = host.querySelector('.handover-input__label');
+  assert.equal(lingeringLabel, null, 'does not render the old Notes (free-form) prompt');
+
+  sections.forEach((section, index) => {
     const textarea = section.querySelector('.handover-input');
     assert.ok(textarea, `textarea exists for ${section.dataset.sectionBlock}`);
+    assert.equal(
+      textarea.getAttribute('aria-label'),
+      `${HANDOVER_SECTIONS[index].title} notes`,
+      'inputs remain labeled for accessibility without the prompt'
+    );
   });
 
   const textarea = host.querySelector('[data-section="current-state"]');

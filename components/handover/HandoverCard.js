@@ -73,14 +73,12 @@ export function mountHandoverCard(hostEl, { onChange, autoResize } = {}) {
               <h4>${section.title}</h4>
               <p class="muted">${section.helper}</p>
             </div>
-            <label class="handover-input__label" for="handover-${section.id}">
-              Notes (free-form)
-            </label>
             <textarea
               id="handover-${section.id}"
               class="tableta handover-input"
               rows="3"
               data-section="${section.id}"
+              aria-label="${section.title} notes"
               placeholder="${section.placeholder}"
             ></textarea>
           </article>
