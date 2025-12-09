@@ -1,8 +1,8 @@
 /**
  * Handover card integration tests.
  *
- * Validates that the card renders all required sections and converts newline-
- * delimited input into bullet lists for rapid scanning.
+ * Validates that the card renders all required sections and captures free-form
+ * notes without mirroring them into bullet lists.
  */
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, mock, test } from 'node:test';
@@ -28,7 +28,7 @@ afterEach(() => {
   dom = null;
 });
 
-test('handover card renders all sections and bulletizes entries', () => {
+test('handover card renders all sections and collects free-form notes', () => {
   const { document } = dom.window;
   const host = document.querySelector('#host');
 
@@ -37,21 +37,18 @@ test('handover card renders all sections and bulletizes entries', () => {
   const sections = host.querySelectorAll('.handover-section');
   assert.equal(sections.length, 5, 'renders five labeled sections');
   assert.equal(host.querySelector('#handover-card h3')?.textContent, 'Handover');
+  assert.equal(host.querySelector('.handover-input__label')?.textContent?.trim(), 'Notes (free-form)');
 
   const textarea = host.querySelector('[data-section="current-state"]');
   assert.ok(textarea, 'current state input exists');
   textarea.value = 'First line\nSecond line\n\nThird line';
   textarea.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
 
-  const bulletItems = host.querySelectorAll('[data-section-list="current-state"] li');
-  assert.equal(bulletItems.length, 3, 'empty lines are ignored when rendering bullets');
-  assert.deepEqual(
-    Array.from(bulletItems).map(item => item.textContent),
-    ['First line', 'Second line', 'Third line']
-  );
+  assert.equal(textarea.value, 'First line\nSecond line\n\nThird line');
+  assert.equal(host.querySelectorAll('.handover-list').length, 0, 'no bullet lists are rendered');
 });
 
-test('handover state roundtrips through collect/apply helpers and clears bullets', () => {
+test('handover state roundtrips through collect/apply helpers', () => {
   const { document } = dom.window;
   const host = document.querySelector('#host');
 
@@ -65,13 +62,10 @@ test('handover state roundtrips through collect/apply helpers and clears bullets
   assert.deepEqual(snapshot['what-changed'], ['First delta', 'Second delta']);
 
   applyHandoverState({ 'what-changed': ['New note'] }, document);
-  const bullets = host.querySelectorAll('[data-section-list="what-changed"] li');
-  assert.equal(bullets.length, 1);
-  assert.equal(bullets[0].textContent, 'New note');
+  assert.equal(textarea.value, 'New note');
 
   applyHandoverState({}, document);
-  const clearedBullets = host.querySelectorAll('[data-section-list="what-changed"] li');
-  assert.equal(clearedBullets.length, 0);
+  assert.equal(textarea.value, '');
 });
 
 test('migrateAppState seeds empty handover sections when absent', () => {

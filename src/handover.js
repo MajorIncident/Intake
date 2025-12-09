@@ -10,10 +10,10 @@
 import { HANDOVER_SECTIONS, mountHandoverCard } from '../components/handover/HandoverCard.js';
 
 /**
- * Normalize a persisted handover entry into a list of trimmed bullet strings.
+ * Normalize a persisted handover entry into a list of trimmed note lines.
  *
  * @param {unknown} value - Persisted representation for a handover section.
- * @returns {string[]} Clean bullet items with whitespace removed.
+ * @returns {string[]} Clean note items with whitespace removed.
  */
 function normalizeHandoverItems(value) {
   if (Array.isArray(value)) {
@@ -80,7 +80,6 @@ export function applyHandoverState(state = {}, root = document) {
 
     const items = normalizeHandoverItems(state[id]);
     textarea.value = items.join('\n');
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
   });
 }
 
