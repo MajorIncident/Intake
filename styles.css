@@ -1002,10 +1002,10 @@ textarea.tableta.tableta--muted:focus{
   background:var(--panel-muted);
   border:1px solid var(--line);
   border-radius:18px;
-  padding:14px 16px 16px;
+  padding:16px 18px 18px;
   display:flex;
   flex-direction:column;
-  gap:10px;
+  gap:12px;
 }
 
 .handover-section__title h4{
@@ -1026,15 +1026,6 @@ textarea.tableta.tableta--muted:focus{
 
 .handover-input{
   min-height:110px;
-}
-
-.handover-list{
-  margin:0;
-  padding-left:20px;
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-  color:var(--ink);
 }
 
 .action-card{
