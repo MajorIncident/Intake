@@ -482,7 +482,7 @@ function mountAfterPossibleCauses() {
 
   const handoverHost = document.createElement('div');
   host.insertAdjacentElement('afterend', handoverHost);
-  initHandover(handoverHost, { onChange: saveAppState });
+  initHandover(handoverHost, { onChange: saveAppState, autoResize });
 }
 
 /**

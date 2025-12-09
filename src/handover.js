@@ -9,6 +9,33 @@
 
 import { HANDOVER_SECTIONS, mountHandoverCard } from '../components/handover/HandoverCard.js';
 
+let registeredAutoResize = null;
+
+/**
+ * Persist a provided autoResize helper so hydration can reuse it later.
+ *
+ * @param {(el: HTMLTextAreaElement) => void} [callback] - Resize function passed from the host module.
+ * @returns {void}
+ */
+function setAutoResize(callback) {
+  if (typeof callback === 'function') {
+    registeredAutoResize = callback;
+  }
+}
+
+/**
+ * Resolve the active autoResize helper from the provided override or stored reference.
+ *
+ * @param {(el: HTMLTextAreaElement) => void} [callback] - Optional override supplied by the caller.
+ * @returns {((el: HTMLTextAreaElement) => void)|null} Active resize callback or null when unavailable.
+ */
+function getAutoResize(callback) {
+  if (typeof callback === 'function') {
+    return callback;
+  }
+  return registeredAutoResize;
+}
+
 /**
  * Normalize a persisted handover entry into a list of trimmed note lines.
  *
@@ -66,20 +93,26 @@ export function collectHandoverState(root = document) {
  *
  * @param {Record<string, string[]|string>} [state={}] - Persisted notes keyed by section id.
  * @param {ParentNode} [root=document] - Root node containing the Handover card.
+ * @param {{ autoResize?: (el: HTMLTextAreaElement) => void }} [options] - Optional resize callback for textarea hydration.
  * @returns {void}
  */
-export function applyHandoverState(state = {}, root = document) {
+export function applyHandoverState(state = {}, root = document, { autoResize } = {}) {
   if (!state || typeof state !== 'object') {
     return;
   }
 
   const inputs = getSectionInputs(root);
+  const resize = getAutoResize(autoResize);
 
   inputs.forEach((textarea, id) => {
     if (!textarea) return;
 
     const items = normalizeHandoverItems(state[id]);
     textarea.value = items.join('\n');
+
+    if (typeof resize === 'function') {
+      resize(textarea);
+    }
   });
 }
 
@@ -87,11 +120,12 @@ export function applyHandoverState(state = {}, root = document) {
  * Mount the Handover card and wire optional persistence hooks.
  *
  * @param {HTMLElement} hostEl - Host element that will receive the rendered card.
- * @param {{onChange?: () => void}} [options] - Optional callbacks for edit events.
+ * @param {{ onChange?: () => void, autoResize?: (el: HTMLTextAreaElement) => void }} [options] - Optional callbacks for edit events.
  * @returns {void}
  */
-export function initHandover(hostEl, { onChange } = {}) {
-  mountHandoverCard(hostEl, { onChange });
+export function initHandover(hostEl, { onChange, autoResize } = {}) {
+  setAutoResize(autoResize);
+  mountHandoverCard(hostEl, { onChange, autoResize: getAutoResize(autoResize) });
 }
 
 export { HANDOVER_SECTIONS };

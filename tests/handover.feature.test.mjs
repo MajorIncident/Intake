@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, mock, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
-import { mountHandoverCard } from '../components/handover/HandoverCard.js';
+import { HANDOVER_SECTIONS, mountHandoverCard } from '../components/handover/HandoverCard.js';
 import { collectHandoverState, applyHandoverState } from '../src/handover.js';
 import { migrateAppState } from '../src/storage.js';
 import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
@@ -52,6 +52,25 @@ test('handover card renders all sections and collects free-form notes', () => {
   assert.equal(textarea.value, 'First line\nSecond line\n\nThird line');
 });
 
+test('handover textareas auto-resize on mount and input before notifying change listeners', () => {
+  const { document, Event } = dom.window;
+  const host = document.querySelector('#host');
+  const eventOrder = [];
+  const autoResize = mock.fn(el => eventOrder.push(`resize-${el.dataset.section}`));
+  const onChange = mock.fn(() => eventOrder.push('change'));
+
+  mountHandoverCard(host, { autoResize, onChange });
+
+  assert.equal(autoResize.mock.calls.length, HANDOVER_SECTIONS.length, 'autoResize runs once per textarea on mount');
+
+  eventOrder.length = 0;
+  const textarea = host.querySelector('[data-section="what-changed"]');
+  textarea.value = 'updated note';
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+  assert.deepEqual(eventOrder, ['resize-what-changed', 'change'], 'autoResize fires before onChange when typing');
+});
+
 test('handover state roundtrips through collect/apply helpers', () => {
   const { document } = dom.window;
   const host = document.querySelector('#host');
@@ -70,6 +89,20 @@ test('handover state roundtrips through collect/apply helpers', () => {
 
   applyHandoverState({}, document);
   assert.equal(textarea.value, '');
+});
+
+test('applyHandoverState triggers resizing when restoring saved values', () => {
+  const { document } = dom.window;
+  const host = document.querySelector('#host');
+  const resizeCalls = [];
+  const autoResize = mock.fn(el => resizeCalls.push(el.dataset.section));
+
+  mountHandoverCard(host, { autoResize });
+
+  resizeCalls.length = 0;
+  applyHandoverState({ 'current-state': ['Restored state'] }, document, { autoResize });
+
+  assert.deepEqual(resizeCalls, HANDOVER_SECTIONS.map(section => section.id), 'autoResize runs for each textarea during hydration');
 });
 
 test('migrateAppState seeds empty handover sections when absent', () => {
