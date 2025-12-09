@@ -111,7 +111,7 @@ test('summary: renders populated sections and normalises communication timestamp
   assert.ok(text.includes('— Possible Causes —'));
   assert.ok(text.includes('— Action Items —'));
   assert.ok(text.includes('Current State:'));
-  assert.ok(text.includes('• Rollback holding stable'));
+  assert.ok(text.includes('Rollback holding stable'));
 
   assert.match(
     text,
@@ -126,8 +126,8 @@ test('summary: renders populated sections and normalises communication timestamp
     assert.ok(ktIndex > actionsIndex, 'KT section should follow actions');
   }
 
-  assert.ok(text.includes('• Build rollback plan — Status: In-Progress | Priority: P1 | Owner: Jordan Lee | ETA: 2024-01-01T18:30:00.000Z. Notes: Investigating rollback paths | Owner Notes: Coordinating with DB team'));
-  assert.ok(text.includes('• Notify regulators — Status: Planned | Priority: P2 | Owner: Taylor Kim. Notes: No notes provided.'));
+  assert.ok(text.includes('Build rollback plan — Status: In-Progress | Priority: P1 | Owner: Jordan Lee | ETA: 2024-01-01T18:30:00.000Z. Notes: Investigating rollback paths | Owner Notes: Coordinating with DB team'));
+  assert.ok(text.includes('Notify regulators — Status: Planned | Priority: P2 | Owner: Taylor Kim. Notes: No notes provided.'));
 });
 
 

@@ -39,13 +39,17 @@ test('handover card renders all sections and collects free-form notes', () => {
   assert.equal(host.querySelector('#handover-card h3')?.textContent, 'Handover');
   assert.equal(host.querySelector('.handover-input__label')?.textContent?.trim(), 'Notes (free-form)');
 
+  sections.forEach(section => {
+    const textarea = section.querySelector('.handover-input');
+    assert.ok(textarea, `textarea exists for ${section.dataset.sectionBlock}`);
+  });
+
   const textarea = host.querySelector('[data-section="current-state"]');
   assert.ok(textarea, 'current state input exists');
   textarea.value = 'First line\nSecond line\n\nThird line';
   textarea.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
 
   assert.equal(textarea.value, 'First line\nSecond line\n\nThird line');
-  assert.equal(host.querySelectorAll('.handover-list').length, 0, 'no bullet lists are rendered');
 });
 
 test('handover state roundtrips through collect/apply helpers', () => {

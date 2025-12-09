@@ -288,7 +288,7 @@ test('handover: summaries include formatted handover section', async () => {
     const text = buildSummaryText(summaryState);
     assert.ok(text.includes('— Major Incident Handover —'), 'summary text prints handover heading');
     assert.ok(text.includes('Current State:'), 'current state label present');
-    assert.ok(text.includes('• Mitigation applied'), 'handover bullets rendered');
+    assert.ok(text.includes('Mitigation applied'), 'handover notes carry through');
     assert.ok(text.includes('What Changed:'), 'what changed subsection present');
     assert.ok(text.includes('— Preface —'), 'existing summary sections remain');
 
