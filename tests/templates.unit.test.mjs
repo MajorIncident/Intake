@@ -194,7 +194,25 @@ test('mode projections follow visibility rules from the manifest', () => {
     TEMPLATE_BETA.state.actions.analysisId,
     'intake mode preserves actions metadata'
   );
+  assert.deepEqual(
+    intakePayload.actions.items,
+    TEMPLATE_BETA.state.actions.items,
+    'intake mode preserves action items'
+  );
   assert.equal(intakePayload.steps.drawerOpen, false, 'intake mode closes the steps drawer');
+
+  const isPayload = getTemplatePayload(TEMPLATE_BETA.id, TEMPLATE_MODE_IDS.IS_IS_NOT);
+  assert.ok(isPayload);
+  assert.equal(
+    isPayload.actions.analysisId,
+    TEMPLATE_BETA.state.actions.analysisId,
+    'is/is-not mode preserves actions metadata'
+  );
+  assert.deepEqual(
+    isPayload.actions.items,
+    TEMPLATE_BETA.state.actions.items,
+    'is/is-not mode preserves action items'
+  );
 
   const fullPayload = getTemplatePayload(TEMPLATE_BETA.id, TEMPLATE_MODE_IDS.FULL);
   assert.ok(fullPayload.table.length > 0, 'full mode includes the table');
