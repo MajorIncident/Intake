@@ -189,7 +189,11 @@ test('mode projections follow visibility rules from the manifest', () => {
   assert.equal(intakePayload.table.length, 0, 'intake mode hides the table');
   assert.equal(intakePayload.causes.length, 0, 'intake mode hides causes');
   assert.equal(intakePayload.likelyCauseId, null, 'intake mode removes likely cause selection');
-  assert.equal(intakePayload.actions.analysisId, '', 'intake mode strips actions metadata');
+  assert.equal(
+    intakePayload.actions.analysisId,
+    TEMPLATE_BETA.state.actions.analysisId,
+    'intake mode preserves actions metadata'
+  );
   assert.equal(intakePayload.steps.drawerOpen, false, 'intake mode closes the steps drawer');
 
   const fullPayload = getTemplatePayload(TEMPLATE_BETA.id, TEMPLATE_MODE_IDS.FULL);
@@ -203,8 +207,16 @@ test('mode projections follow visibility rules from the manifest', () => {
   assert.ok(dcPayload);
   assert.equal(dcPayload.causes.length, 0, 'd&c mode hides causes');
   assert.equal(dcPayload.likelyCauseId, null, 'd&c mode removes likely cause selection');
-  assert.equal(dcPayload.actions.analysisId, '', 'd&c mode strips actions metadata');
-  assert.deepEqual(dcPayload.actions.items, [], 'd&c mode hides action items');
+  assert.equal(
+    dcPayload.actions.analysisId,
+    TEMPLATE_BETA.state.actions.analysisId,
+    'd&c mode preserves actions metadata'
+  );
+  assert.deepEqual(
+    dcPayload.actions.items,
+    TEMPLATE_BETA.state.actions.items,
+    'd&c mode preserves action items'
+  );
 });
 
 test('mode projections filter KT table columns per mode', () => {
