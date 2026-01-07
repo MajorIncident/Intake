@@ -60,21 +60,21 @@ export const MODE_RULES = Object.freeze({
     includeTable: false,
     includeCauses: false,
     includeSteps: false,
-    includeActions: false,
+    includeActions: true,
     tableFields: Object.freeze({ is: false, no: false, di: false, ch: false })
   }),
   [TEMPLATE_MODE_IDS.IS_IS_NOT]: Object.freeze({
     includeTable: true,
     includeCauses: false,
     includeSteps: false,
-    includeActions: false,
+    includeActions: true,
     tableFields: Object.freeze({ is: true, no: true, di: false, ch: false })
   }),
   [TEMPLATE_MODE_IDS.DC]: Object.freeze({
     includeTable: true,
     includeCauses: false,
     includeSteps: true,
-    includeActions: false,
+    includeActions: true,
     tableFields: Object.freeze({ is: true, no: true, di: true, ch: true })
   }),
   [TEMPLATE_MODE_IDS.FULL]: Object.freeze({
