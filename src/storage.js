@@ -13,6 +13,7 @@
 
 import { CAUSE_FINDING_MODES, CAUSE_FINDING_MODE_VALUES } from './constants.js';
 import { APP_STATE_VERSION } from './appStateVersion.js';
+import { DEFAULT_INTAKE_MODE, INTAKE_MODE_IDS } from './intakeModes.js';
 import { normalizeActionSnapshot, ACTIONS_STORAGE_KEY } from './actionsStore.js';
 import { STEPS_ITEMS_KEY, STEPS_DRAWER_KEY } from './steps.js';
 import { COMMS_DRAWER_STORAGE_KEY } from './commsDrawer.js';
@@ -50,7 +51,7 @@ import { normalizeTheme } from './theme.js';
 
 /**
  * @typedef {object} SerializedAppState
- * @property {{version: number, savedAt: (string|null)}} meta - Persistence metadata.
+ * @property {{version: number, savedAt: (string|null), intakeMode?: string}} meta - Persistence metadata.
  * @property {{theme: string}|undefined} [appearance] - Optional appearance preference.
  * @property {{oneLine: string, proof: string, objectPrefill: string, healthy: string, now: string}} pre
  *   - Preface inputs describing the incident summary.
@@ -590,10 +591,16 @@ function normalizeAppStateStructure(raw) {
     ? incoming.meta.savedAt
     : (typeof incoming.savedAt === 'string' ? incoming.savedAt : null);
 
+  const intakeModeRaw = incoming?.meta?.intakeMode ?? incoming?.intakeMode;
+  const intakeMode = typeof intakeModeRaw === 'string' && Object.values(INTAKE_MODE_IDS).includes(intakeModeRaw)
+    ? intakeModeRaw
+    : DEFAULT_INTAKE_MODE;
+
   const normalized = {
     meta: {
       version: APP_STATE_VERSION,
-      savedAt
+      savedAt,
+      intakeMode
     },
     pre,
     impact,
