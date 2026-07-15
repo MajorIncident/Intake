@@ -672,6 +672,9 @@ h2#docSubtitle{margin:12px 0 8px; font-size:16px; font-weight:700; color:#2a3957
 .comm-grid.comm-grid--single{ grid-template-columns:1fr; }
 .comm-log-toggle{ margin-top:8px; align-self:flex-start; display:inline-flex; align-items:center; }
 .inline{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+[hidden]{
+  display:none !important;
+}
 .chipset{ display:flex; gap:8px; flex-wrap:wrap; }
 .chipset .chip{ position:relative; display:flex; align-items:center; gap:6px; }
 .chipset .chip label{ display:inline-flex; align-items:center; justify-content:center; padding:8px 12px; border-radius:999px; border:1px solid var(--control-border); background:var(--control-bg); font-weight:600; font-size:13px; color:var(--control-ink); cursor:pointer; transition:border-color var(--speed), box-shadow var(--speed), background var(--speed); }
