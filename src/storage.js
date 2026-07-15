@@ -95,6 +95,18 @@ import { normalizeTheme } from './theme.js';
 export const STORAGE_KEY = 'kt-intake-full-v2';
 
 const ANALYSIS_ID_STORAGE_KEY = 'kt-analysis-id';
+
+const VALID_INTAKE_MODES = new Set(Object.values(INTAKE_MODE_IDS));
+
+/**
+ * Normalizes persisted intake-mode tokens to a supported mode identifier.
+ * @param {unknown} mode - Candidate mode value from storage or file imports.
+ * @returns {string} Supported mode ID, defaulting to Major Incident Management.
+ */
+function normalizeIntakeMode(mode) {
+  const candidate = typeof mode === 'string' ? mode.trim() : '';
+  return VALID_INTAKE_MODES.has(candidate) ? candidate : DEFAULT_INTAKE_MODE;
+}
 const HANDOVER_SECTION_IDS = [
   'current-state',
   'what-changed',
@@ -591,10 +603,7 @@ function normalizeAppStateStructure(raw) {
     ? incoming.meta.savedAt
     : (typeof incoming.savedAt === 'string' ? incoming.savedAt : null);
 
-  const intakeModeRaw = incoming?.meta?.intakeMode ?? incoming?.intakeMode;
-  const intakeMode = typeof intakeModeRaw === 'string' && Object.values(INTAKE_MODE_IDS).includes(intakeModeRaw)
-    ? intakeModeRaw
-    : DEFAULT_INTAKE_MODE;
+  const intakeMode = normalizeIntakeMode(incoming?.meta?.intakeMode ?? incoming?.intakeMode);
 
   const normalized = {
     meta: {
