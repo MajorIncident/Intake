@@ -43,6 +43,18 @@ Anchors present:
     <div class="header-title">
       <h1 id="docTitle">KT Intake</h1>
       <p class="header-subtitle">Capture incident context, sync updates, and export crisp summaries without leaving the bridge.</p>
+      <!-- [feature:intake-mode-selector] start -->
+      <div class="intake-mode-selector field">
+        <label for="intakeModeSelect">Intake mode</label>
+        <select id="intakeModeSelect" name="intakeMode" aria-describedby="intakeModeHelp">
+          <option value="general">General</option>
+          <option value="it">IT</option>
+          <option value="pharma">Pharma</option>
+          <option value="majorIncident">Major Incident Management</option>
+        </select>
+        <small id="intakeModeHelp">Choose the workflow lens before capturing details.</small>
+      </div>
+      <!-- [feature:intake-mode-selector] end -->
     </div>
     <nav class="menu-bar" aria-label="Primary menu" role="menubar">
       <div class="menu-group">

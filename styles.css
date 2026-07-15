@@ -81,6 +81,29 @@ header{
 .header-title{display:flex; flex-direction:column; gap:6px;}
 h1#docTitle{font-size:22px; font-weight:800; margin:0; letter-spacing:-0.01em; white-space:pre-wrap;}
 .header-subtitle{margin:0; font-size:14px; color:var(--muted); max-width:720px;}
+.intake-mode-selector{
+  width:min(100%, 360px);
+  margin-top:10px;
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:var(--panel);
+  box-shadow:var(--shadow);
+}
+.intake-mode-selector select{
+  width:100%;
+  box-sizing:border-box;
+  min-height:44px;
+  color:var(--ink);
+  background:var(--input-bg);
+  border:1px solid var(--input-border);
+  border-radius:12px;
+  padding:8px 12px;
+  font:15px/1.55 "SF Pro Text","SF Pro Display",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  outline:none;
+  transition:border-color var(--speed), box-shadow var(--speed), background var(--speed), color var(--speed);
+}
+.intake-mode-selector select:focus{border-color:var(--accent); box-shadow:0 0 0 4px var(--focus-ring); background:var(--panel);}
 .subtle{color:var(--muted); font-size:12px;}
 .muted{color:var(--muted); font-size:13px;}
 .menu-bar{
