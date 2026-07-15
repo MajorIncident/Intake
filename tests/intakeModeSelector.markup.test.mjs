@@ -49,3 +49,13 @@ test('intake mode selector stays within the header and preserves required anchor
   assert.match(INDEX_HTML, /<!-- \[feature:intake-mode-selector\] start -->/);
   assert.match(INDEX_HTML, /<!-- \[feature:intake-mode-selector\] end -->/);
 });
+
+test('mode-controlled Major Incident-only UI regions are marked for hiding', () => {
+  const document = buildIndexDocument();
+
+  assert.ok(document.querySelector('.menu-group[data-mode-section="collaboration"]'), 'collaboration menu group should be mode controlled');
+  assert.ok(document.querySelector('[data-mode-section="detectionSource"]'), 'detection source controls should be mode controlled');
+  assert.ok(document.querySelector('[data-mode-section="evidenceCollected"]'), 'evidence collected controls should be mode controlled');
+  assert.ok(document.querySelector('[data-mode-section="incidentProof"]'), 'incident proof field should be mode controlled');
+  assert.ok(document.querySelector('[data-mode-section="containment"]'), 'containment controls should be mode controlled');
+});

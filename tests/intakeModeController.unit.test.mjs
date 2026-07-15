@@ -29,9 +29,10 @@ function mountModeDom() {
       <div class="field"><h3 id="impactTimeHeading"></h3><label for="impactTime"></label><small></small><textarea id="impactTime"></textarea></div>
     </section>
     <section id="problem-summary"><h3></h3><div class="field"><label for="oneLine"></label><small></small><textarea id="oneLine"></textarea></div></section>
-    <section id="evidence-objects"><h3></h3><div class="field"><label for="proof"></label><small></small><textarea id="proof"></textarea></div><div class="field"><label for="objectPrefill"></label><small></small><textarea id="objectPrefill"></textarea></div></section>
+    <section id="evidence-objects"><h3></h3><div id="detectionSource" data-mode-section="detectionSource"></div><div id="evidenceCollected" data-mode-section="evidenceCollected"></div><div class="field" id="proofField" data-mode-section="incidentProof"><label for="proof"></label><small></small><textarea id="proof"></textarea></div><div class="field"><label for="objectPrefill"></label><small></small><textarea id="objectPrefill"></textarea></div></section>
     <section id="baseline-current"><h3></h3><div class="field"><label id="labelHealthy" for="healthy"></label><small></small><textarea id="healthy"></textarea></div><div class="field"><label id="labelNow" for="now"></label><small></small><textarea id="now"></textarea></div></section>
     <section id="containment" data-mode-section="containment"><input id="containDesc" value="keep me" /></section>
+    <div id="collaborationGroup" data-mode-section="collaboration"></div>
     <button id="commsBtn" data-mode-section="communications"></button>
     <aside id="commsDrawer" data-mode-section="communications"><input id="bridgeOpenedUtc" value="2026-01-01T00:00:00Z" /></aside>
     <button id="stepsBtn" data-mode-section="steps"></button>
@@ -68,7 +69,7 @@ test('non-major modes hide Major Incident-only regions without unmounting fields
   const document = mountModeDom();
   initIntakeModeController({ state: { meta: { intakeMode: INTAKE_MODE_IDS.IT } } });
 
-  ['containment', 'communications', 'steps', 'handover'].forEach((section) => {
+  ['collaboration', 'detectionSource', 'evidenceCollected', 'incidentProof', 'containment', 'communications', 'steps', 'handover'].forEach((section) => {
     document.querySelectorAll(`[data-mode-section="${section}"]`).forEach((element) => {
       assert.equal(element.hidden, true, `${section} should be hidden`);
       assert.equal(element.getAttribute('aria-hidden'), 'true');
@@ -76,6 +77,7 @@ test('non-major modes hide Major Incident-only regions without unmounting fields
   });
 
   assert.equal(document.getElementById('impact').hidden, false);
+  assert.equal(document.querySelector('label[for="objectPrefill"]').closest('.field').hidden, false);
   assert.equal(document.getElementById('containDesc').value, 'keep me');
   assert.ok(document.getElementById('bridgeOpenedUtc'), 'bridge field remains mounted for imports');
   assert.ok(document.getElementById('stepField'), 'steps field remains mounted for imports');
@@ -93,11 +95,19 @@ test('selector changes apply mode visibility and emit a save callback', () => {
   assert.equal(getActiveIntakeMode(), INTAKE_MODE_IDS.PHARMA);
   assert.deepEqual(changes, [INTAKE_MODE_IDS.PHARMA]);
   assert.equal(document.getElementById('commsDrawer').hidden, true);
+  assert.equal(document.getElementById('collaborationGroup').hidden, true);
+  assert.equal(document.getElementById('detectionSource').hidden, true);
+  assert.equal(document.getElementById('evidenceCollected').hidden, true);
+  assert.equal(document.getElementById('proofField').hidden, true);
   assert.equal(document.querySelector('label[for="proof"]').textContent, 'Deviation evidence');
   assert.equal(document.getElementById('impactNowHeading').textContent, 'Current quality or patient impact');
 
   applyIntakeMode(INTAKE_MODE_IDS.MAJOR_INCIDENT, { silent: true });
   assert.equal(document.getElementById('commsDrawer').hidden, false);
+  assert.equal(document.getElementById('collaborationGroup').hidden, false);
+  assert.equal(document.getElementById('detectionSource').hidden, false);
+  assert.equal(document.getElementById('evidenceCollected').hidden, false);
+  assert.equal(document.getElementById('proofField').hidden, false);
   assert.equal(document.getElementById('containment').hidden, false);
 });
 

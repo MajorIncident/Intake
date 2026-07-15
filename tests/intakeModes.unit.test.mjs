@@ -18,6 +18,10 @@ import {
 const REQUIRED_FIELD_IDS = ['oneLine', 'proof', 'objectPrefill', 'healthy', 'now', 'impactNow', 'impactFuture', 'impactTime'];
 const REQUIRED_SECTION_IDS = [
   'problemSummary',
+  'collaboration',
+  'detectionSource',
+  'evidenceCollected',
+  'incidentProof',
   'impact',
   'containment',
   'problemAnalysis',
