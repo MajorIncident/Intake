@@ -8,6 +8,8 @@
  *   such as communications, steps, bridge activation, handover, and containment.
  */
 
+import { applyCaptionLayer } from './captionLayer.js';
+
 import {
   DEFAULT_INTAKE_MODE,
   INTAKE_MODE_IDS,
@@ -84,6 +86,8 @@ export function applyIntakeMode(mode = DEFAULT_INTAKE_MODE, { silent = false } =
   if (modeSelect && modeSelect.value !== normalizedMode) {
     modeSelect.value = normalizedMode;
   }
+
+  applyCaptionLayer(normalizedMode);
 
   document.querySelectorAll('[data-mode-section]').forEach((element) => {
     const sectionKey = element.getAttribute('data-mode-section');

@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import {
   DEFAULT_INTAKE_MODE,
   INTAKE_MODE_CAPTION_OVERRIDES,
+  INTAKE_MODE_FIELD_CAPTIONS,
   INTAKE_MODE_HELPER_OVERRIDES,
   INTAKE_MODE_IDS,
   INTAKE_MODE_LABELS,
@@ -11,7 +12,7 @@ import {
   INTAKE_MODES
 } from '../src/intakeModes.js';
 
-const REQUIRED_FIELD_IDS = ['oneLine', 'objectPrefill', 'healthy', 'now', 'impactNow', 'impactFuture', 'impactTime'];
+const REQUIRED_FIELD_IDS = ['oneLine', 'proof', 'objectPrefill', 'healthy', 'now', 'impactNow', 'impactFuture', 'impactTime'];
 const REQUIRED_SECTION_IDS = [
   'problemSummary',
   'impact',
@@ -49,5 +50,12 @@ test('caption and helper override maps preserve stable field IDs for every mode'
   Object.values(INTAKE_MODE_IDS).forEach((modeId) => {
     assert.deepEqual(Object.keys(INTAKE_MODE_CAPTION_OVERRIDES[modeId]).sort(), [...REQUIRED_FIELD_IDS].sort());
     assert.deepEqual(Object.keys(INTAKE_MODE_HELPER_OVERRIDES[modeId]).sort(), [...REQUIRED_FIELD_IDS].sort());
+    assert.deepEqual(Object.keys(INTAKE_MODE_FIELD_CAPTIONS[modeId]).sort(), [...REQUIRED_FIELD_IDS].sort());
+    REQUIRED_FIELD_IDS.forEach((fieldId) => {
+      assert.equal(typeof INTAKE_MODE_FIELD_CAPTIONS[modeId][fieldId].label, 'string');
+      assert.equal(typeof INTAKE_MODE_FIELD_CAPTIONS[modeId][fieldId].helper, 'string');
+      assert.equal(typeof INTAKE_MODE_FIELD_CAPTIONS[modeId][fieldId].subtitle, 'string');
+      assert.equal(typeof INTAKE_MODE_FIELD_CAPTIONS[modeId][fieldId].placeholder, 'string');
+    });
   });
 });

@@ -87,16 +87,12 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
     <main>
       <h1 id="docTitle">KT Intake</h1>
       <p id="docSubtitle"></p>
-      <label id="labelNow" for="now"></label>
-      <label id="labelHealthy" for="healthy"></label>
-      <textarea id="oneLine"></textarea>
-      <textarea id="proof"></textarea>
-      <textarea id="objectPrefill"></textarea>
-      <textarea id="healthy"></textarea>
-      <textarea id="now"></textarea>
-      <textarea id="impactNow"></textarea>
-      <textarea id="impactFuture"></textarea>
-      <textarea id="impactTime"></textarea>
+      <section id="problem-summary"><h3></h3><div class="field"><label for="oneLine"></label><small></small><textarea id="oneLine"></textarea></div></section>
+      <section id="evidence-objects"><h3></h3><div class="field"><label for="proof"></label><small></small><textarea id="proof"></textarea></div><div class="field"><label for="objectPrefill"></label><small></small><textarea id="objectPrefill"></textarea></div></section>
+      <section id="baseline-current"><h3></h3><div class="field"><label id="labelHealthy" for="healthy"></label><small></small><textarea id="healthy"></textarea></div><div class="field"><label id="labelNow" for="now"></label><small></small><textarea id="now"></textarea></div></section>
+      <div class="field"><h3 id="impactNowHeading"></h3><label for="impactNow"></label><small></small><textarea id="impactNow"></textarea></div>
+      <div class="field"><h3 id="impactFutureHeading"></h3><label for="impactFuture"></label><small></small><textarea id="impactFuture"></textarea></div>
+      <div class="field"><h3 id="impactTimeHeading"></h3><label for="impactTime"></label><small></small><textarea id="impactTime"></textarea></div>
       <input id="bridgeOpenedUtc" />
       <input id="icName" />
       <input id="bcName" />
@@ -166,8 +162,8 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
   objectPrefill.dispatchEvent(new window.Event('input', { bubbles: true }));
 
   assert.equal(objectISField.value, 'Edge Router service');
-  assert.equal(document.getElementById('labelNow').textContent, 'What is happening now to Edge Router service?');
-  assert.equal(document.getElementById('labelHealthy').textContent, 'What does healthy look like here for Edge Router service?');
+  assert.equal(document.getElementById('labelNow').textContent, 'Current deviation');
+  assert.equal(document.getElementById('labelHealthy').textContent, 'Healthy baseline');
   assert.equal(document.getElementById('docTitle').textContent, 'KT Intake');
   assert.equal(document.getElementById('docSubtitle').textContent, '');
   assert.equal(document.title, 'KT Intake');
@@ -187,15 +183,15 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
   assert.equal(document.getElementById('docTitle').textContent, 'Edge Router service — Traffic drop for users');
   assert.equal(document.getElementById('docSubtitle').textContent, '');
   assert.equal(document.title, 'Edge Router service — Traffic drop for users · KT Intake');
-  assert.equal(document.getElementById('labelHealthy').textContent, 'What does healthy look like here for Edge Router service?');
+  assert.equal(document.getElementById('labelHealthy').textContent, 'Healthy baseline');
 
   deviationISField.value = '';
   nowField.value = '';
   nowField.dispatchEvent(new window.Event('input', { bubbles: true }));
   assert.equal(document.getElementById('docTitle').textContent, 'KT Intake');
   assert.equal(document.getElementById('docSubtitle').textContent, '');
-  assert.equal(document.getElementById('labelNow').textContent, 'What is happening now to Edge Router service?');
-  assert.equal(document.getElementById('labelHealthy').textContent, 'What does healthy look like here for Edge Router service?');
+  assert.equal(document.getElementById('labelNow').textContent, 'Current deviation');
+  assert.equal(document.getElementById('labelHealthy').textContent, 'Healthy baseline');
   assert.equal(document.title, 'KT Intake');
 
   objectISField.value = '';
@@ -203,8 +199,8 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
   objectPrefill.dispatchEvent(new window.Event('input', { bubbles: true }));
   assert.equal(document.getElementById('docTitle').textContent, 'KT Intake');
   assert.equal(document.getElementById('docSubtitle').textContent, '');
-  assert.equal(document.getElementById('labelNow').textContent, 'What is happening now to object?');
-  assert.equal(document.getElementById('labelHealthy').textContent, 'What does healthy look like here for object?');
+  assert.equal(document.getElementById('labelNow').textContent, 'Current deviation');
+  assert.equal(document.getElementById('labelHealthy').textContent, 'Healthy baseline');
 
   applyPrefaceState({
     ops: { containStatus: 'mitigation' }

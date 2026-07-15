@@ -4,6 +4,8 @@
  * This module wires up the descriptive "preface" section that captures what is happening now, what healthy looks like, and who is involved.
  * Several fields mirror into the incident summary (object and deviation), so synchronized updates keep the preface and knowledge tracker views aligned.
  */
+import { applyCaptionLayer } from './captionLayer.js';
+
 import {
   getObjectISField,
   getDeviationISField,
@@ -159,8 +161,6 @@ export function updatePrefaceTitles() {
   const {
     docTitle,
     docSubtitle,
-    labelHealthy,
-    labelNow,
     now,
     healthy
   } = ensureRefs();
@@ -187,12 +187,7 @@ export function updatePrefaceTitles() {
     document.title = 'KT Intake';
   }
 
-  if (labelNow) {
-    labelNow.textContent = objectAnchor ? `What is happening now to ${objectAnchor}?` : 'What is happening now?';
-  }
-  if (labelHealthy) {
-    labelHealthy.textContent = objectAnchor ? `What does healthy look like here for ${objectAnchor}?` : 'What does healthy look like?';
-  }
+  applyCaptionLayer(undefined, { objectText: objectAnchor });
 
   if (objectAnchor && now) {
     now.placeholder = '';
