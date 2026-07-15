@@ -26,7 +26,7 @@ let onModeChange = null;
  * Normalize a candidate mode token to a supported mode ID.
  *
  * @param {unknown} mode - Candidate mode value from state, selector, or callers.
- * @returns {string} Supported mode ID, defaulting to Major Incident Management.
+ * @returns {string} Supported mode ID, defaulting to General Intake.
  */
 function normalizeIntakeMode(mode) {
   const candidate = typeof mode === 'string' ? mode.trim() : '';
@@ -46,7 +46,7 @@ function setSectionVisibility(element, shouldShow) {
 }
 
 /**
- * Resolve the current mode from app-state-like payloads or the selector.
+ * Resolve the current mode from app-state-like payloads or the General default.
  *
  * @param {Partial<import('./storage.js').SerializedAppState>} [state] - Optional state snapshot.
  * @returns {string} Supported active intake mode ID.
@@ -55,7 +55,6 @@ function resolveModeFromState(state) {
   return normalizeIntakeMode(
     state?.meta?.intakeMode
       ?? state?.intakeMode
-      ?? activeIntakeMode
       ?? DEFAULT_INTAKE_MODE
   );
 }

@@ -176,7 +176,7 @@ test('migrateAppState normalizes persisted intake modes for saved snapshots', ()
   });
 });
 
-test('migrateAppState defaults missing or unknown intake modes to Major Incident Management', () => {
+test('migrateAppState defaults missing or unknown intake modes to General', () => {
   [undefined, '', 'unknown-mode'].forEach((intakeMode) => {
     const migrated = migrateAppState({
       meta: { version: APP_STATE_VERSION, savedAt: null, intakeMode },
@@ -186,6 +186,6 @@ test('migrateAppState defaults missing or unknown intake modes to Major Incident
     });
 
     assert.ok(migrated, 'state should migrate with a normalized mode');
-    assert.equal(migrated.meta.intakeMode, 'majorIncident');
+    assert.equal(migrated.meta.intakeMode, 'general');
   });
 });

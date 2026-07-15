@@ -39,7 +39,7 @@ test('intake mode IDs, labels, and default mode are exported for all supported m
     PHARMA: 'pharma',
     MAJOR_INCIDENT: 'majorIncident'
   });
-  assert.equal(DEFAULT_INTAKE_MODE, INTAKE_MODE_IDS.MAJOR_INCIDENT);
+  assert.equal(DEFAULT_INTAKE_MODE, INTAKE_MODE_IDS.GENERAL);
   assert.deepEqual(
     INTAKE_MODES.map(({ id, label }) => [id, label]),
     Object.values(INTAKE_MODE_IDS).map((id) => [id, INTAKE_MODE_LABELS[id]])

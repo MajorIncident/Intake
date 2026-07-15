@@ -53,7 +53,7 @@ afterEach(() => {
   delete globalThis.CustomEvent;
 });
 
-test('intake mode controller defaults to Major Incident Management and keeps all sections visible', () => {
+test('intake mode controller defaults to General and hides Major Incident-only regions', () => {
   const document = mountModeDom();
 
   const mode = initIntakeModeController();
@@ -61,8 +61,8 @@ test('intake mode controller defaults to Major Incident Management and keeps all
   assert.equal(mode, DEFAULT_INTAKE_MODE);
   assert.equal(getActiveIntakeMode(), DEFAULT_INTAKE_MODE);
   assert.equal(document.getElementById('intakeModeSelect').value, DEFAULT_INTAKE_MODE);
-  assert.equal(document.querySelector('[data-mode-section="communications"]').hidden, false);
-  assert.equal(document.getElementById('containment').hidden, false);
+  assert.equal(document.querySelector('[data-mode-section="communications"]').hidden, true);
+  assert.equal(document.getElementById('containment').hidden, true);
 });
 
 test('non-major modes hide Major Incident-only regions without unmounting fields', () => {
@@ -131,3 +131,25 @@ test('saved General, IT, Pharma, and Major Incident states restore the active mo
     dom = null;
   });
 });
+
+test('missing and invalid restored modes resolve to General even after another mode was active', () => {
+  let document = mountModeDom();
+  initIntakeModeController({ state: { meta: { intakeMode: INTAKE_MODE_IDS.MAJOR_INCIDENT } } });
+  assert.equal(getActiveIntakeMode(), INTAKE_MODE_IDS.MAJOR_INCIDENT);
+  dom.window.close();
+  dom = null;
+
+  document = mountModeDom();
+  initIntakeModeController({ state: { meta: { intakeMode: 'unsupported-mode' } } });
+  assert.equal(getActiveIntakeMode(), INTAKE_MODE_IDS.GENERAL);
+  assert.equal(document.getElementById('intakeModeSelect').value, INTAKE_MODE_IDS.GENERAL);
+  assert.equal(document.getElementById('commsDrawer').hidden, true);
+
+  dom.window.close();
+  dom = null;
+  document = mountModeDom();
+  initIntakeModeController({ state: { meta: {} } });
+  assert.equal(getActiveIntakeMode(), INTAKE_MODE_IDS.GENERAL);
+  assert.equal(document.getElementById('intakeModeSelect').value, INTAKE_MODE_IDS.GENERAL);
+});
+
