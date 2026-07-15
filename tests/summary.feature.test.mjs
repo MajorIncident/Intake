@@ -306,3 +306,92 @@ test('summary: generateSummary writes output to the summary card', async () => {
     }
   }
 });
+
+test('summary: non-major modes use mode labels and exclude major-incident-only sections', () => {
+  const tbody = {
+    querySelectorAll: () => [
+      {
+        classList: { contains: (name) => name === 'band' },
+        textContent: 'WHAT — Define the Problem'
+      },
+      {
+        classList: { contains: () => false },
+        querySelector: () => ({ textContent: 'WHAT — Specific Object/Thing is having the outage' }),
+        querySelectorAll: () => [
+          { value: 'Payments API' },
+          { value: 'Auth API' },
+          { value: 'Only checkout traffic' },
+          { value: 'Login traffic remains healthy' }
+        ]
+      }
+    ]
+  };
+  const state = {
+    meta: { intakeMode: 'it' },
+    docTitle: { textContent: 'IT Incident Charlie' },
+    docSubtitle: { textContent: 'Payments API disruption' },
+    oneLine: { value: 'Checkout payments are failing' },
+    proof: { value: 'Synthetic monitor and logs confirm errors' },
+    objectPrefill: { value: 'Payments API' },
+    healthy: { value: 'Checkout authorizes payments under 200ms' },
+    now: { value: 'Authorization requests return 503 responses' },
+    detectMonitoring: { checked: true },
+    detectUserReport: { checked: false },
+    detectAutomation: { checked: false },
+    detectOther: { checked: false },
+    evScreenshot: { checked: false },
+    evLogs: { checked: true },
+    evMetrics: { checked: false },
+    evRepro: { checked: false },
+    evOther: { checked: false },
+    impactNow: { value: 'Customers cannot complete checkout' },
+    impactFuture: { value: 'Backlog may trigger order cancellations' },
+    impactTime: { value: 'Detected at 12:45 UTC' },
+    getContainmentStatus: () => 'stabilized',
+    containDesc: { value: 'Do not include this containment detail' },
+    commLog: [{ type: 'internal', ts: '2024-01-01T10:00:00Z' }],
+    commNextDueIso: '2024-01-01T11:00:00Z',
+    bridgeOpenedUtc: { value: '2024-01-01 10:05Z' },
+    icName: { value: 'Incident Commander' },
+    bcName: { value: 'Bridge Captain' },
+    semOpsName: { value: 'Ops Lead' },
+    severity: { value: 'SEV-2' },
+    handover: { 'current-state': ['Handover should be hidden'] },
+    stepsItems: [{ id: 'step-activate', phase: 'A', checked: true }],
+    getStepsCounts: () => ({ total: 1, completed: 1 }),
+    possibleCauses: [{ id: 'cause-1', title: 'Dependency timeout', status: 'in_progress' }],
+    likelyCauseId: 'cause-1',
+    buildHypothesisSentence: (cause) => `${cause.title} is causing checkout failures`,
+    evidencePairIndexes: () => [],
+    rowsBuilt: [],
+    peekCauseFinding: () => null,
+    getRowKeyByIndex: () => '',
+    findingMode: () => '',
+    findingNote: () => '',
+    countCompletedEvidence: () => 0,
+    causeHasFailure: () => false,
+    causeStatusLabel: () => '',
+    tbody,
+    actions: [{ summary: 'Fail over payment dependency', status: 'Open', priority: 'P1', owner: { name: 'SRE' } }]
+  };
+
+  const text = buildSummaryText(state);
+
+  assert.ok(text.includes('— Incident Summary —'));
+  assert.ok(text.includes('• Incident summary: Checkout payments are failing'));
+  assert.ok(text.includes('• Affected service or component: Payments API'));
+  assert.ok(text.includes('Current user or system impact: Customers cannot complete checkout'));
+  assert.ok(text.includes('Expected escalation risk: Backlog may trigger order cancellations'));
+  assert.ok(text.includes('Detection and onset timeline: Detected at 12:45 UTC'));
+  assert.ok(text.includes('— Problem Analysis —'));
+  assert.ok(text.includes('— Possible Causes —'));
+  assert.ok(text.includes('Likely Cause:'));
+  assert.ok(text.includes('— Actions List —'));
+  assert.ok(!text.includes('— Bridge Activation —'));
+  assert.ok(!text.includes('— Containment —'));
+  assert.ok(!text.includes('Do not include this containment detail'));
+  assert.ok(!text.includes('— Communications —'));
+  assert.ok(!text.includes('— Major Incident Handover —'));
+  assert.ok(!text.includes('— Steps Checklist —'));
+  assert.ok(!text.includes('— ⭐ Likely Cause —'));
+});
