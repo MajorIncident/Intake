@@ -64,6 +64,7 @@ Anchors present:
             type="button"
             class="menu-item"
             id="commsBtn"
+            data-mode-section="communications"
             role="menuitem"
             aria-haspopup="dialog"
             aria-controls="commsDrawer"
@@ -76,6 +77,7 @@ Anchors present:
             type="button"
             class="menu-item"
             id="stepsBtn"
+            data-mode-section="steps"
             role="menuitem"
             aria-haspopup="dialog"
             aria-controls="stepsDrawer"
@@ -361,7 +363,7 @@ Anchors present:
           <textarea id="impactTime" aria-labelledby="impactTimeHeading" placeholder=""></textarea>
         </div>
       </div>
-      <div class="grid cols-3 gap-24 containment-grid">
+      <div class="grid cols-3 gap-24 containment-grid" data-mode-section="containment">
         <fieldset class="field contain-status">
           <legend>Current Service Recovery Stage</legend>
           <div class="containment-radios" role="radiogroup" aria-label="Current Service Recovery Stage">
@@ -458,8 +460,8 @@ Anchors present:
 
   </div>
 
-  <div class="drawer-backdrop comms-backdrop" id="commsBackdrop" aria-hidden="true"></div>
-  <aside class="drawer comms-drawer" id="commsDrawer" role="dialog" aria-modal="true" aria-labelledby="commsDrawerTitle" aria-hidden="true" tabindex="-1">
+  <div class="drawer-backdrop comms-backdrop" id="commsBackdrop" data-mode-section="communications" aria-hidden="true"></div>
+  <aside class="drawer comms-drawer" id="commsDrawer" data-mode-section="communications" role="dialog" aria-modal="true" aria-labelledby="commsDrawerTitle" aria-hidden="true" tabindex="-1">
     <div class="comms-drawer__panel">
       <header class="comms-drawer__header">
         <div class="comms-drawer__title-group">
@@ -469,7 +471,7 @@ Anchors present:
         <button type="button" class="comms-drawer__close-btn" id="commsCloseBtn">Close</button>
       </header>
       <div class="comms-drawer__body">
-        <section class="card comms-card">
+        <section class="card comms-card" data-mode-section="communications">
           <h3>Bridge Activation</h3>
           <p class="caption">Capture only what’s needed to activate the bridge and set comms cadence.</p>
           <div class="grid cols-3">
@@ -556,8 +558,8 @@ Anchors present:
     </div>
   </aside>
 
-  <div class="drawer-backdrop steps-backdrop" id="stepsBackdrop" aria-hidden="true"></div>
-  <aside class="drawer steps-drawer" id="stepsDrawer" role="dialog" aria-modal="true" aria-labelledby="stepsDrawerTitle" aria-hidden="true" tabindex="-1">
+  <div class="drawer-backdrop steps-backdrop" id="stepsBackdrop" data-mode-section="steps" aria-hidden="true"></div>
+  <aside class="drawer steps-drawer" id="stepsDrawer" data-mode-section="steps" role="dialog" aria-modal="true" aria-labelledby="stepsDrawerTitle" aria-hidden="true" tabindex="-1">
     <div class="steps-drawer__panel">
       <header class="steps-drawer__header">
         <div class="steps-drawer__title-row">

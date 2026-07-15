@@ -52,6 +52,7 @@ import { TEMPLATE_KINDS } from './src/templateKinds.js';
 import { applyThemePreference, getThemePreference, initThemeFromStorage, normalizeTheme } from './src/theme.js';
 import { initHandover } from './src/handover.js';
 import { initMenuBar } from './src/menuBar.js';
+import { initIntakeModeController, applyIntakeMode } from './src/intakeModeController.js';
 
 /**
  * Query the document for the first element that matches the provided CSS selector.
@@ -122,6 +123,7 @@ function startFresh() {
   resetAnalysisId();
   resetStepsState();
   applyAppState({});
+  applyIntakeMode(undefined, { silent: true });
   closeCommsDrawer();
   closeTemplatesDrawer();
   setBridgeOpenedNow();
@@ -170,6 +172,7 @@ function boot() {
   setSummaryStateProvider(getSummaryState);
 
   restoreSavedIntake();
+  initIntakeModeController({ onChange: saveAppState });
 
   const { ops } = getPrefaceState();
   if (!ops.bridgeOpenedUtc) {
@@ -484,6 +487,7 @@ function mountAfterPossibleCauses() {
 
   const handoverHost = document.createElement('div');
   host.insertAdjacentElement('afterend', handoverHost);
+  handoverHost.dataset.modeSection = 'handover';
   initHandover(handoverHost, { onChange: saveAppState, autoResize });
 }
 

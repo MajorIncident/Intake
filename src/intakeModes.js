@@ -109,11 +109,17 @@ export const INTAKE_MODE_SECTION_VISIBILITY = deepFreeze({
   },
   [INTAKE_MODE_IDS.IT]: {
     ...ALL_SECTIONS_VISIBLE,
-    handover: false
+    containment: false,
+    handover: false,
+    communications: false,
+    steps: false
   },
   [INTAKE_MODE_IDS.PHARMA]: {
     ...ALL_SECTIONS_VISIBLE,
-    communications: false
+    containment: false,
+    handover: false,
+    communications: false,
+    steps: false
   },
   [INTAKE_MODE_IDS.MAJOR_INCIDENT]: {
     ...ALL_SECTIONS_VISIBLE

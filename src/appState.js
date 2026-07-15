@@ -68,6 +68,7 @@ import { showToast } from './toast.js';
 import { refreshActionList } from '../components/actions/ActionListCard.js';
 import { applyThemePreference, getThemePreference, normalizeTheme } from './theme.js';
 import { collectHandoverState, applyHandoverState } from './handover.js';
+import { applyIntakeMode, getActiveIntakeMode } from './intakeModeController.js';
 
 const ANALYSIS_ID_KEY = 'kt-analysis-id';
 let cachedAnalysisId = '';
@@ -126,7 +127,8 @@ export function collectAppState() {
   return {
     meta: {
       version: APP_STATE_VERSION,
-      savedAt: new Date().toISOString()
+      savedAt: new Date().toISOString(),
+      intakeMode: getActiveIntakeMode()
     },
     appearance: {
       theme: getThemePreference()
@@ -195,6 +197,7 @@ export function applyAppState(data = {}) {
     ? normalizeTheme(appearanceState.theme)
     : getThemePreference();
   applyThemePreference(appliedTheme);
+  applyIntakeMode(data?.meta?.intakeMode ?? data?.intakeMode, { silent: true });
 
   applyPrefaceState({ pre, impact, ops: opsWithoutComms });
   applyCommunicationsState({ commCadence, commLog, commNextDueIso, commNextUpdateTime });
