@@ -138,6 +138,7 @@ export const INTAKE_MODE_SECTION_VISIBILITY = deepFreeze({
 export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
   [INTAKE_MODE_IDS.GENERAL]: {
     oneLine: 'One-line summary',
+    proof: 'Evidence',
     objectPrefill: 'Object or process',
     healthy: 'Expected state',
     now: 'Current state',
@@ -147,6 +148,7 @@ export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
   },
   [INTAKE_MODE_IDS.IT]: {
     oneLine: 'Incident summary',
+    proof: 'Incident evidence',
     objectPrefill: 'Affected service or component',
     healthy: 'Known-good service behavior',
     now: 'Current service behavior',
@@ -156,6 +158,7 @@ export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
   },
   [INTAKE_MODE_IDS.PHARMA]: {
     oneLine: 'Quality event summary',
+    proof: 'Deviation evidence',
     objectPrefill: 'Product, process, or batch',
     healthy: 'Expected validated state',
     now: 'Observed deviation',
@@ -165,6 +168,7 @@ export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
   },
   [INTAKE_MODE_IDS.MAJOR_INCIDENT]: {
     oneLine: 'Major incident summary',
+    proof: 'Incident proof',
     objectPrefill: 'Impacted object or service',
     healthy: 'Healthy baseline',
     now: 'Current deviation',
@@ -185,6 +189,7 @@ export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
 export const INTAKE_MODE_HELPER_OVERRIDES = deepFreeze({
   [INTAKE_MODE_IDS.GENERAL]: {
     oneLine: 'Summarize the issue in one calm, specific sentence.',
+    proof: 'List the evidence that confirms the issue is real.',
     objectPrefill: 'Name the object, workflow, or outcome being investigated.',
     healthy: 'Describe what normal looks like before comparing the deviation.',
     now: 'Describe what is happening right now.',
@@ -194,6 +199,7 @@ export const INTAKE_MODE_HELPER_OVERRIDES = deepFreeze({
   },
   [INTAKE_MODE_IDS.IT]: {
     oneLine: 'State the service disruption, scope, and symptom briefly.',
+    proof: 'Capture alerts, customer reports, logs, metrics, or reproduction evidence.',
     objectPrefill: 'Use the service, application, dependency, or infrastructure name.',
     healthy: 'Document the expected technical behavior or SLO baseline.',
     now: 'Capture the failing behavior, alerts, or user-reported symptom.',
@@ -203,6 +209,7 @@ export const INTAKE_MODE_HELPER_OVERRIDES = deepFreeze({
   },
   [INTAKE_MODE_IDS.PHARMA]: {
     oneLine: 'Summarize the deviation with product/process context and batch scope.',
+    proof: 'Capture inspection results, assay data, exceptions, complaints, or verified observations.',
     objectPrefill: 'Identify the material, equipment, process step, study, or batch.',
     healthy: 'Reference the approved specification, validated state, or expected control.',
     now: 'Describe the observed out-of-expectation condition without changing KT prompts.',
@@ -212,6 +219,7 @@ export const INTAKE_MODE_HELPER_OVERRIDES = deepFreeze({
   },
   [INTAKE_MODE_IDS.MAJOR_INCIDENT]: {
     oneLine: 'Summarize the major incident so responders can align quickly.',
+    proof: 'Capture the alerts, metrics, reports, screenshots, or logs proving abnormal behavior.',
     objectPrefill: 'Name the customer-facing service, platform, region, or workflow.',
     healthy: 'Describe the known-good baseline responders should compare against.',
     now: 'Describe the active deviation responders are seeing now.',
@@ -220,3 +228,33 @@ export const INTAKE_MODE_HELPER_OVERRIDES = deepFreeze({
     impactTime: 'Record start, detection, bridge, and update-cadence timing.'
   }
 });
+
+
+/**
+ * Full caption bundles for the visible non-KT fields controlled by intake mode.
+ *
+ * Labels and helpers are duplicated here so the application layer can update
+ * labels, helper text, subtitles, and placeholders from one immutable source
+ * without altering KT Problem Analysis rows in `src/constants.js`.
+ *
+ * @type {Readonly<Record<string, Readonly<Record<string, Readonly<{ label: string, helper: string, subtitle: string, placeholder: string }>>>>>}
+ */
+export const INTAKE_MODE_FIELD_CAPTIONS = deepFreeze(Object.fromEntries(
+  Object.values(INTAKE_MODE_IDS).map((modeId) => [modeId, Object.fromEntries(
+    Object.keys(INTAKE_MODE_HELPER_OVERRIDES[modeId]).map((fieldId) => [fieldId, {
+      label: INTAKE_MODE_CAPTION_OVERRIDES[modeId][fieldId],
+      helper: INTAKE_MODE_HELPER_OVERRIDES[modeId][fieldId],
+      subtitle: {
+        oneLine: modeId === INTAKE_MODE_IDS.MAJOR_INCIDENT ? 'Problem Summary' : 'Intake Summary',
+        proof: modeId === INTAKE_MODE_IDS.PHARMA ? 'Evidence & Affected Product' : 'Evidence & Affected Object',
+        objectPrefill: modeId === INTAKE_MODE_IDS.PHARMA ? 'Evidence & Affected Product' : 'Evidence & Affected Object',
+        healthy: 'Baseline vs Current Behavior',
+        now: 'Baseline vs Current Behavior',
+        impactNow: INTAKE_MODE_CAPTION_OVERRIDES[modeId].impactNow,
+        impactFuture: INTAKE_MODE_CAPTION_OVERRIDES[modeId].impactFuture,
+        impactTime: INTAKE_MODE_CAPTION_OVERRIDES[modeId].impactTime
+      }[fieldId],
+      placeholder: ''
+    }])
+  )])
+));

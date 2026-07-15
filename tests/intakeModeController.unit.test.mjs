@@ -23,7 +23,14 @@ function mountModeDom() {
       <option value="pharma">Pharma</option>
       <option value="majorIncident">Major Incident Management</option>
     </select>
-    <section id="impact" data-mode-section="impact"></section>
+    <section id="impact" data-mode-section="impact">
+      <div class="field"><h3 id="impactNowHeading"></h3><label for="impactNow"></label><small></small><textarea id="impactNow"></textarea></div>
+      <div class="field"><h3 id="impactFutureHeading"></h3><label for="impactFuture"></label><small></small><textarea id="impactFuture"></textarea></div>
+      <div class="field"><h3 id="impactTimeHeading"></h3><label for="impactTime"></label><small></small><textarea id="impactTime"></textarea></div>
+    </section>
+    <section id="problem-summary"><h3></h3><div class="field"><label for="oneLine"></label><small></small><textarea id="oneLine"></textarea></div></section>
+    <section id="evidence-objects"><h3></h3><div class="field"><label for="proof"></label><small></small><textarea id="proof"></textarea></div><div class="field"><label for="objectPrefill"></label><small></small><textarea id="objectPrefill"></textarea></div></section>
+    <section id="baseline-current"><h3></h3><div class="field"><label id="labelHealthy" for="healthy"></label><small></small><textarea id="healthy"></textarea></div><div class="field"><label id="labelNow" for="now"></label><small></small><textarea id="now"></textarea></div></section>
     <section id="containment" data-mode-section="containment"><input id="containDesc" value="keep me" /></section>
     <button id="commsBtn" data-mode-section="communications"></button>
     <aside id="commsDrawer" data-mode-section="communications"><input id="bridgeOpenedUtc" value="2026-01-01T00:00:00Z" /></aside>
@@ -86,6 +93,8 @@ test('selector changes apply mode visibility and emit a save callback', () => {
   assert.equal(getActiveIntakeMode(), INTAKE_MODE_IDS.PHARMA);
   assert.deepEqual(changes, [INTAKE_MODE_IDS.PHARMA]);
   assert.equal(document.getElementById('commsDrawer').hidden, true);
+  assert.equal(document.querySelector('label[for="proof"]').textContent, 'Deviation evidence');
+  assert.equal(document.getElementById('impactNowHeading').textContent, 'Current quality or patient impact');
 
   applyIntakeMode(INTAKE_MODE_IDS.MAJOR_INCIDENT, { silent: true });
   assert.equal(document.getElementById('commsDrawer').hidden, false);
