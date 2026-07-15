@@ -18,10 +18,16 @@ import { INTAKE_MODE_IDS } from '../src/intakeModes.js';
 import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
 
 const INDEX_HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const STYLES_CSS = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 const EVIDENCE_SECTION_SELECTOR = '#evidence-objects';
 const MODE_CONTROLLED_EVIDENCE_SECTIONS = [
   ['detectionSource', 'Detection Source'],
   ['evidenceCollected', 'Evidence Collected']
+];
+const MODE_CONTROLLED_LAYOUT_SECTIONS = [
+  ['detectionSource', '.inline'],
+  ['evidenceCollected', '.inline'],
+  ['containment', '.grid.containment-grid']
 ];
 
 let dom = null;
@@ -34,6 +40,9 @@ let globalsSnapshot = null;
 function mountIndexDocument() {
   dom = new JSDOM(INDEX_HTML, { url: 'http://localhost/' });
   globalsSnapshot = installJsdomGlobals(dom.window);
+  const style = dom.window.document.createElement('style');
+  style.textContent = STYLES_CSS;
+  dom.window.document.head.append(style);
   return dom.window.document;
 }
 
@@ -50,6 +59,36 @@ function getEvidenceControl(sectionKey, expectedText) {
   assert.match(element.textContent, new RegExp(expectedText), `${sectionKey} should contain ${expectedText}`);
 
   return element;
+}
+
+/**
+ * Finds every Major Incident-only mode section that also carries display utility classes.
+ * @returns {HTMLElement[]} Mode-controlled elements with layout classes that set display.
+ */
+function getModeControlledLayoutSections() {
+  return MODE_CONTROLLED_LAYOUT_SECTIONS.map(([sectionKey, classSelector]) => {
+    const element = document.querySelector(`[data-mode-section="${sectionKey}"]${classSelector}`);
+
+    assert.ok(element, `${sectionKey} should exist with ${classSelector} display classes`);
+
+    return element;
+  });
+}
+
+/**
+ * Asserts mode sections are hidden at both DOM attribute and computed CSS layers.
+ * @param {string} mode - Intake mode currently under assertion.
+ * @returns {void}
+ */
+function assertModeControlledLayoutSectionsAreCssHidden(mode) {
+  getModeControlledLayoutSections().forEach((element) => {
+    assert.equal(element.hidden, true, `${mode} should set hidden on ${element.dataset.modeSection}`);
+    assert.equal(
+      dom.window.getComputedStyle(element).display,
+      'none',
+      `${mode} should keep ${element.dataset.modeSection} CSS-hidden despite layout display classes`
+    );
+  });
 }
 
 /**
@@ -119,6 +158,25 @@ test('Evidence card mode controls are hidden for non-major selector changes and 
     INTAKE_MODE_IDS.PHARMA,
     INTAKE_MODE_IDS.MAJOR_INCIDENT
   ]);
+});
+
+test('hidden mode sections are not displayed by layout utility classes', () => {
+  for (const mode of [INTAKE_MODE_IDS.GENERAL, INTAKE_MODE_IDS.IT, INTAKE_MODE_IDS.PHARMA]) {
+    applyIntakeMode(mode, { silent: true });
+
+    assertModeControlledLayoutSectionsAreCssHidden(mode);
+  }
+
+  applyIntakeMode(INTAKE_MODE_IDS.MAJOR_INCIDENT, { silent: true });
+
+  getModeControlledLayoutSections().forEach((element) => {
+    assert.equal(element.hidden, false, `Major Incident should show ${element.dataset.modeSection}`);
+    assert.notEqual(
+      dom.window.getComputedStyle(element).display,
+      'none',
+      `Major Incident should leave ${element.dataset.modeSection} visible through its layout class`
+    );
+  });
 });
 
 test('explicit General state is not overwritten by a stale Major Incident active mode', () => {
