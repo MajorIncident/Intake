@@ -231,6 +231,7 @@ test('handover: summaries include formatted handover section', async () => {
     const summaryModule = await import('../src/summary.js?actual');
     const { buildSummaryText, generateSummary } = summaryModule;
     const summaryState = {
+      meta: { intakeMode: 'majorIncident' },
       docTitle: { textContent: 'Incident with Handover' },
       docSubtitle: { textContent: 'Service instability' },
       oneLine: { value: 'Outage affecting auth flows' },

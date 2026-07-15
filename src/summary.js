@@ -269,7 +269,7 @@ function splitLines(text){
 
 /**
  * Resolves the active summary mode from explicit state, saved metadata, or the
- * mounted intake-mode selector while preserving Major Incident as the default.
+ * mounted intake-mode selector while preserving General as the default.
  * @param {object} state - Summary state that may include `meta.intakeMode`.
  * @returns {string} Supported intake mode identifier.
  */
@@ -282,7 +282,7 @@ function resolveSummaryMode(state){
 }
 
 /**
- * Retrieves mode-aware field captions, falling back to Major Incident copy.
+ * Retrieves mode-aware field captions, falling back to General copy.
  * @param {string} mode - Active intake mode identifier.
  * @returns {Readonly<Record<string, {label: string}>>} Caption map for summary labels.
  */

@@ -101,7 +101,7 @@ const VALID_INTAKE_MODES = new Set(Object.values(INTAKE_MODE_IDS));
 /**
  * Normalizes persisted intake-mode tokens to a supported mode identifier.
  * @param {unknown} mode - Candidate mode value from storage or file imports.
- * @returns {string} Supported mode ID, defaulting to Major Incident Management.
+ * @returns {string} Supported mode ID, defaulting to General Intake.
  */
 function normalizeIntakeMode(mode) {
   const candidate = typeof mode === 'string' ? mode.trim() : '';

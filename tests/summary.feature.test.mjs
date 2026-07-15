@@ -20,6 +20,7 @@ afterEach(() => {
 test('summary: renders populated sections and normalises communication timestamps', () => {
 
   const state = {
+    meta: { intakeMode: 'majorIncident' },
     docTitle: { textContent: 'Major Incident Alpha' },
     docSubtitle: { textContent: 'Payments are timing out' },
     oneLine: { value: 'Card processing failures in NA region' },
@@ -134,6 +135,7 @@ test('summary: renders populated sections and normalises communication timestamp
 test('summary: omits optional sections when inputs are empty', () => {
 
   const state = {
+    meta: { intakeMode: 'majorIncident' },
     docTitle: { textContent: '' },
     docSubtitle: { textContent: '' },
     oneLine: { value: '   ' },
