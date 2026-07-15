@@ -40,6 +40,8 @@ const SUMMARY_MODE_CONFIG = Object.freeze({
     possibleSection: '— Possible Causes —',
     actionsSection: '— Actions List —',
     includeBridge: false,
+    includeEvidenceProof: false,
+    includeDetectionEvidence: false,
     includeContainment: false,
     includeCommunications: false,
     includeHandover: false,
@@ -53,6 +55,8 @@ const SUMMARY_MODE_CONFIG = Object.freeze({
     possibleSection: '— Possible Causes —',
     actionsSection: '— Actions List —',
     includeBridge: false,
+    includeEvidenceProof: false,
+    includeDetectionEvidence: false,
     includeContainment: false,
     includeCommunications: false,
     includeHandover: false,
@@ -66,6 +70,8 @@ const SUMMARY_MODE_CONFIG = Object.freeze({
     possibleSection: '— Possible Causes —',
     actionsSection: '— Actions List —',
     includeBridge: false,
+    includeEvidenceProof: false,
+    includeDetectionEvidence: false,
     includeContainment: false,
     includeCommunications: false,
     includeHandover: false,
@@ -79,6 +85,8 @@ const SUMMARY_MODE_CONFIG = Object.freeze({
     possibleSection: '— Possible Causes —',
     actionsSection: '— Action Items —',
     includeBridge: true,
+    includeEvidenceProof: true,
+    includeDetectionEvidence: true,
     includeContainment: true,
     includeCommunications: true,
     includeHandover: true,
@@ -1023,7 +1031,9 @@ export function buildSummaryText(stateInput, options = {}){
 
   const prefaceLines = [
     summaryBullet(captionLabel('oneLine', 'One-line'), oneLine?.value ?? document.getElementById('oneLine')?.value),
-    summaryBullet(captionLabel('proof', 'Evidence/Proof'), proof?.value ?? document.getElementById('proof')?.value),
+    modeConfig.includeEvidenceProof
+      ? summaryBullet(captionLabel('proof', 'Evidence/Proof'), proof?.value ?? document.getElementById('proof')?.value)
+      : '',
     summaryBullet(
       captionLabel('objectPrefill', 'Specific Object'),
       (objectPrefill?.value ?? document.getElementById('objectPrefill')?.value)
@@ -1031,8 +1041,8 @@ export function buildSummaryText(stateInput, options = {}){
     ),
     summaryBullet(captionLabel('healthy', 'Healthy Baseline'), healthy?.value ?? document.getElementById('healthy')?.value),
     summaryBullet(captionLabel('now', 'Current State (What is happening now?)'), now?.value ?? document.getElementById('now')?.value),
-    summaryBulletRaw('Detection Source', detectionSummary),
-    summaryBulletRaw('Evidence Collected', evidenceSummary)
+    modeConfig.includeDetectionEvidence ? summaryBulletRaw('Detection Source', detectionSummary) : '',
+    modeConfig.includeDetectionEvidence ? summaryBulletRaw('Evidence Collected', evidenceSummary) : ''
   ];
   const preface = joinSummaryLines(prefaceLines);
 

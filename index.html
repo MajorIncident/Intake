@@ -57,7 +57,7 @@ Anchors present:
       <!-- [feature:intake-mode-selector] end -->
     </div>
     <nav class="menu-bar" aria-label="Primary menu" role="menubar">
-      <div class="menu-group">
+      <div class="menu-group" data-mode-section="collaboration">
         <button type="button" class="menu-trigger" data-menu-target="collaborationMenu" aria-haspopup="true" aria-expanded="false">Collaboration</button>
         <div class="menu-panel" id="collaborationMenu" role="menu" aria-label="Collaboration" hidden>
           <button
@@ -257,7 +257,7 @@ Anchors present:
 
       <div class="card" id="evidence-objects">
         <h3>Evidence &amp; Affected Object</h3>
-        <div class="inline">
+        <div class="inline" data-mode-section="detectionSource">
           <span class="chip-label">Detection Source</span>
           <div class="chipset" role="group" aria-label="Detection Source">
             <div class="chip">
@@ -278,7 +278,7 @@ Anchors present:
             </div>
           </div>
         </div>
-        <div class="inline">
+        <div class="inline" data-mode-section="evidenceCollected">
           <span class="chip-label">Evidence Collected</span>
           <div class="chipset" role="group" aria-label="Evidence Collected">
             <div class="chip">
@@ -304,10 +304,12 @@ Anchors present:
           </div>
         </div>
         <div class="grid cols-2">
-          <div class="field">
-            <label for="proof">What concrete evidence proves a deviation from normal behavior?</label>
-            <small>Examples: alerts, error messages, metric spikes/drops, log lines, screenshots, reproducible steps.</small>
-            <textarea id="proof" placeholder=""></textarea>
+          <div data-mode-section="incidentProof">
+            <div class="field">
+              <label for="proof">What concrete evidence proves a deviation from normal behavior?</label>
+              <small>Examples: alerts, error messages, metric spikes/drops, log lines, screenshots, reproducible steps.</small>
+              <textarea id="proof" placeholder=""></textarea>
+            </div>
           </div>
           <div class="field">
             <label for="objectPrefill">Which specific service or component (object) is affected?</label>

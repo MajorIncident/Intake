@@ -80,6 +80,10 @@ export const INTAKE_MODES = deepFreeze([
 
 const ALL_SECTIONS_VISIBLE = deepFreeze({
   problemSummary: true,
+  collaboration: true,
+  detectionSource: true,
+  evidenceCollected: true,
+  incidentProof: true,
   impact: true,
   containment: true,
   problemAnalysis: true,
@@ -102,6 +106,10 @@ const ALL_SECTIONS_VISIBLE = deepFreeze({
 export const INTAKE_MODE_SECTION_VISIBILITY = deepFreeze({
   [INTAKE_MODE_IDS.GENERAL]: {
     ...ALL_SECTIONS_VISIBLE,
+    collaboration: false,
+    detectionSource: false,
+    evidenceCollected: false,
+    incidentProof: false,
     containment: false,
     handover: false,
     communications: false,
@@ -109,6 +117,10 @@ export const INTAKE_MODE_SECTION_VISIBILITY = deepFreeze({
   },
   [INTAKE_MODE_IDS.IT]: {
     ...ALL_SECTIONS_VISIBLE,
+    collaboration: false,
+    detectionSource: false,
+    evidenceCollected: false,
+    incidentProof: false,
     containment: false,
     handover: false,
     communications: false,
@@ -116,6 +128,10 @@ export const INTAKE_MODE_SECTION_VISIBILITY = deepFreeze({
   },
   [INTAKE_MODE_IDS.PHARMA]: {
     ...ALL_SECTIONS_VISIBLE,
+    collaboration: false,
+    detectionSource: false,
+    evidenceCollected: false,
+    incidentProof: false,
     containment: false,
     handover: false,
     communications: false,
