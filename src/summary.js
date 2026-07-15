@@ -7,6 +7,11 @@
  * shared with AI assistants.
  */
 import { CAUSE_FINDING_MODES, STEPS_PHASES } from './constants.js';
+import {
+  DEFAULT_INTAKE_MODE,
+  INTAKE_MODE_FIELD_CAPTIONS,
+  INTAKE_MODE_IDS
+} from './intakeModes.js';
 import { HANDOVER_SECTIONS } from '../components/handover/HandoverCard.js';
 
 let stateProvider = () => ({ });
@@ -25,6 +30,61 @@ const LEGACY_CONTAINMENT_STATUS_LABELS = Object.freeze({
   none: CONTAINMENT_STATUS_LABELS.assessing,
   mitigation: CONTAINMENT_STATUS_LABELS.stabilized,
   restore: CONTAINMENT_STATUS_LABELS.restoring
+});
+
+const SUMMARY_MODE_CONFIG = Object.freeze({
+  [INTAKE_MODE_IDS.GENERAL]: Object.freeze({
+    prefaceSection: '— Intake Summary —',
+    impactSection: '— Impact —',
+    ktSection: '— Problem Analysis —',
+    possibleSection: '— Possible Causes —',
+    actionsSection: '— Actions List —',
+    includeBridge: false,
+    includeContainment: false,
+    includeCommunications: false,
+    includeHandover: false,
+    includeSteps: false,
+    includeLikelyCauseSection: false
+  }),
+  [INTAKE_MODE_IDS.IT]: Object.freeze({
+    prefaceSection: '— Incident Summary —',
+    impactSection: '— Impact —',
+    ktSection: '— Problem Analysis —',
+    possibleSection: '— Possible Causes —',
+    actionsSection: '— Actions List —',
+    includeBridge: false,
+    includeContainment: false,
+    includeCommunications: false,
+    includeHandover: false,
+    includeSteps: false,
+    includeLikelyCauseSection: false
+  }),
+  [INTAKE_MODE_IDS.PHARMA]: Object.freeze({
+    prefaceSection: '— Quality Event Summary —',
+    impactSection: '— Impact —',
+    ktSection: '— Problem Analysis —',
+    possibleSection: '— Possible Causes —',
+    actionsSection: '— Actions List —',
+    includeBridge: false,
+    includeContainment: false,
+    includeCommunications: false,
+    includeHandover: false,
+    includeSteps: false,
+    includeLikelyCauseSection: false
+  }),
+  [INTAKE_MODE_IDS.MAJOR_INCIDENT]: Object.freeze({
+    prefaceSection: '— Preface —',
+    impactSection: '— Impact —',
+    ktSection: '— KT IS / IS NOT —',
+    possibleSection: '— Possible Causes —',
+    actionsSection: '— Action Items —',
+    includeBridge: true,
+    includeContainment: true,
+    includeCommunications: true,
+    includeHandover: true,
+    includeSteps: true,
+    includeLikelyCauseSection: true
+  })
 });
 
 /**
@@ -196,6 +256,53 @@ function splitLines(text){
   const v = (text || '').trim();
   if(!v) return [];
   return v.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+}
+
+
+/**
+ * Resolves the active summary mode from explicit state, saved metadata, or the
+ * mounted intake-mode selector while preserving Major Incident as the default.
+ * @param {object} state - Summary state that may include `meta.intakeMode`.
+ * @returns {string} Supported intake mode identifier.
+ */
+function resolveSummaryMode(state){
+  const selectorValue = typeof document === 'undefined'
+    ? ''
+    : document.getElementById('intakeModeSelect')?.value;
+  const candidate = state?.meta?.intakeMode ?? state?.intakeMode ?? selectorValue;
+  return SUMMARY_MODE_CONFIG[candidate] ? candidate : DEFAULT_INTAKE_MODE;
+}
+
+/**
+ * Retrieves mode-aware field captions, falling back to Major Incident copy.
+ * @param {string} mode - Active intake mode identifier.
+ * @returns {Readonly<Record<string, {label: string}>>} Caption map for summary labels.
+ */
+function summaryCaptionsForMode(mode){
+  return INTAKE_MODE_FIELD_CAPTIONS[mode] || INTAKE_MODE_FIELD_CAPTIONS[DEFAULT_INTAKE_MODE];
+}
+
+/**
+ * Builds a possible-cause section body, optionally folding the likely cause into
+ * the same section for non-major intake modes.
+ * @param {{likely?: string, possible?: string}} causeSections - Cause summaries.
+ * @param {boolean} separateLikelyCause - Whether likely cause receives its own section.
+ * @returns {string} Formatted possible cause section content.
+ */
+function composePossibleCausesBody(causeSections, separateLikelyCause){
+  const likely = typeof causeSections?.likely === 'string' ? causeSections.likely.trim() : '';
+  const possibleRaw = typeof causeSections?.possible === 'string' ? causeSections.possible : '';
+  const possible = possibleRaw.trim().length ? possibleRaw : '• None to show.';
+  if(separateLikelyCause || !likely){
+    return possible;
+  }
+  return joinSummaryLines([
+    'Likely Cause:',
+    likely,
+    '',
+    'Other Possible Causes:',
+    possible
+  ]);
 }
 
 /**
@@ -892,6 +999,12 @@ export function buildSummaryText(stateInput, options = {}){
   } = state;
   const title = (docTitle?.textContent || '').trim();
   const subtitle = (docSubtitle?.textContent || '').trim();
+  const mode = resolveSummaryMode(state);
+  const modeConfig = SUMMARY_MODE_CONFIG[mode] || SUMMARY_MODE_CONFIG[DEFAULT_INTAKE_MODE];
+  const captions = summaryCaptionsForMode(mode);
+  const captionLabel = (fieldId, fallback) => mode === INTAKE_MODE_IDS.MAJOR_INCIDENT
+    ? fallback
+    : (captions[fieldId]?.label || fallback);
 
   const detectionSummary = formatChipsetSelections([
     { el: detectMonitoring ?? document.getElementById('detectMonitoring'), label: 'Monitoring' },
@@ -909,24 +1022,24 @@ export function buildSummaryText(stateInput, options = {}){
   ]);
 
   const prefaceLines = [
-    summaryBullet('One-line', oneLine?.value ?? document.getElementById('oneLine')?.value),
-    summaryBullet('Evidence/Proof', proof?.value ?? document.getElementById('proof')?.value),
+    summaryBullet(captionLabel('oneLine', 'One-line'), oneLine?.value ?? document.getElementById('oneLine')?.value),
+    summaryBullet(captionLabel('proof', 'Evidence/Proof'), proof?.value ?? document.getElementById('proof')?.value),
     summaryBullet(
-      'Specific Object',
+      captionLabel('objectPrefill', 'Specific Object'),
       (objectPrefill?.value ?? document.getElementById('objectPrefill')?.value)
         || (objectIS?.value ?? '')
     ),
-    summaryBullet('Healthy Baseline', healthy?.value ?? document.getElementById('healthy')?.value),
-    summaryBullet('Current State (What is happening now?)', now?.value ?? document.getElementById('now')?.value),
+    summaryBullet(captionLabel('healthy', 'Healthy Baseline'), healthy?.value ?? document.getElementById('healthy')?.value),
+    summaryBullet(captionLabel('now', 'Current State (What is happening now?)'), now?.value ?? document.getElementById('now')?.value),
     summaryBulletRaw('Detection Source', detectionSummary),
     summaryBulletRaw('Evidence Collected', evidenceSummary)
   ];
   const preface = joinSummaryLines(prefaceLines);
 
   const impactLines = [
-    summaryLine('Current Impact', impactNow?.value ?? document.getElementById('impactNow')?.value),
-    summaryLine('Future Impact', impactFuture?.value ?? document.getElementById('impactFuture')?.value),
-    summaryLine('Timeframe', impactTime?.value ?? document.getElementById('impactTime')?.value)
+    summaryLine(captionLabel('impactNow', 'Current Impact'), impactNow?.value ?? document.getElementById('impactNow')?.value),
+    summaryLine(captionLabel('impactFuture', 'Future Impact'), impactFuture?.value ?? document.getElementById('impactFuture')?.value),
+    summaryLine(captionLabel('impactTime', 'Timeframe'), impactTime?.value ?? document.getElementById('impactTime')?.value)
   ];
   const imp = joinSummaryLines(impactLines);
 
@@ -971,35 +1084,31 @@ export function buildSummaryText(stateInput, options = {}){
     sectionsOut.push(content);
   }
 
-  pushSection('— Bridge Activation —', bridge);
-  pushSection('— Preface —', preface);
-  pushSection('— Containment —', containment);
-  pushSection('— Impact —', imp);
-  pushSection('— Communications —', communications);
-  pushSection('— Major Incident Handover —', handover);
+  if(modeConfig.includeBridge){ pushSection('— Bridge Activation —', bridge); }
+  pushSection(modeConfig.prefaceSection, preface);
+  if(modeConfig.includeContainment){ pushSection('— Containment —', containment); }
+  pushSection(modeConfig.impactSection, imp);
+  if(modeConfig.includeCommunications){ pushSection('— Communications —', communications); }
+  if(modeConfig.includeHandover){ pushSection('— Major Incident Handover —', handover); }
 
   const stepsSummary = formatStepsSummary(state);
-  if(stepsSummary.trim().length){
+  if(modeConfig.includeSteps && stepsSummary.trim().length){
     pushSection('— Steps Checklist —', stepsSummary);
   }
 
   const causeSections = formatPossibleCausesSummary(state);
   const likelySummary = typeof causeSections?.likely === 'string' ? causeSections.likely.trim() : '';
-  if(likelySummary){
+  if(modeConfig.includeLikelyCauseSection && likelySummary){
     pushSection('— ⭐ Likely Cause —', likelySummary);
   }
-  let possibleSummary = typeof causeSections?.possible === 'string' ? causeSections.possible : '';
-  if(!possibleSummary.trim().length){
-    possibleSummary = '• None to show.';
-  }
-  pushSection('— Possible Causes —', possibleSummary);
+  pushSection(modeConfig.possibleSection, composePossibleCausesBody(causeSections, modeConfig.includeLikelyCauseSection));
 
   const actionsSummary = formatActionsSummary(state);
-  pushSection('— Action Items —', actionsSummary);
+  pushSection(modeConfig.actionsSection, actionsSummary);
 
   const ktOut = formatKTTableSummary(state);
   if(ktOut.trim().length){
-    pushSection('— KT IS / IS NOT —', ktOut);
+    pushSection(modeConfig.ktSection, ktOut);
   }
 
   void options?.prependAIPreface; // Reserved for future extension
