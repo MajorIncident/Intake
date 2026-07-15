@@ -2,7 +2,7 @@
  * @module intakeModes
  * @summary Defines reusable intake-mode metadata for tailoring the visible workflow.
  * @description
- *   Exports immutable mode identifiers, display labels, the default scratch-form
+ *   Exports immutable mode identifiers, display labels, the default scratch/new-form
  *   intake mode, section visibility flags, and field caption/helper overrides. This
  *   module is configuration-only and manages no DOM anchors; consumers decide how to
  *   apply these settings without altering the protected Kepner-Tregoe row text in
@@ -59,8 +59,9 @@ export const INTAKE_MODE_LABELS = deepFreeze({
 /**
  * Default intake mode used when no explicit mode is stored or selected.
  *
- * General keeps new scratch forms lightweight while restored snapshots continue
- * to apply their saved `meta.intakeMode` value when present.
+ * Scratch and new forms default to General so they stay lightweight while
+ * restored snapshots continue to apply their saved `meta.intakeMode` value
+ * when present.
  *
  * @type {'general'}
  */
