@@ -301,3 +301,71 @@ test('handover: summaries include formatted handover section', async () => {
     domSummary.window.close();
   }
 });
+
+test('app state: non-major mode changes preserve hidden Major Incident fields', async () => {
+  const { document } = dom.window;
+  document.body.innerHTML = `
+    <select id="intakeModeSelect">
+      <option value="general">General</option>
+      <option value="majorIncident">Major Incident Management</option>
+    </select>
+    <section data-mode-section="containment">
+      <input type="radio" id="containAssessing" name="containStatus" value="assessing" />
+      <input type="radio" id="containStabilized" name="containStatus" value="stabilized" checked />
+      <input id="containDesc" value="Traffic shifted to standby" />
+    </section>
+    <section data-mode-section="communications">
+      <div id="commCadenceGroup">
+        <input type="radio" name="commCadence" value="15" />
+      </div>
+      <input id="commNextUpdateTime" />
+      <div id="commControlsCard"></div>
+      <div id="commCountdown"></div>
+      <div id="commDueAlert" hidden></div>
+      <ul id="commLogList"></ul>
+      <button id="commLogToggleBtn" hidden></button>
+    </section>
+    <section data-mode-section="steps"><button id="stepsBtn"></button></section>
+    <section id="handover-host" data-mode-section="handover"></section>
+  `;
+  mountHandoverCard(document.getElementById('handover-host'));
+  const handoverSnapshot = populateHandoverSections(document);
+
+  const appStateModule = await import('../src/appState.js?preserve-hidden');
+  const commsModule = await import('../src/comms.js');
+  const stepsModule = await import('../src/steps.js');
+
+  commsModule.applyCommunicationsState({
+    commCadence: '15',
+    commLog: [{ type: 'internal', ts: '2024-01-01T10:00:00Z', message: 'Bridge update sent' }],
+    commNextDueIso: '2024-01-01T10:15:00.000Z',
+    commNextUpdateTime: '10:15'
+  });
+  stepsModule.importStepsState({
+    drawerOpen: false,
+    items: [{ id: '1', label: 'Pre-analysis completed', checked: true }]
+  });
+
+  appStateModule.applyAppState({
+    meta: { intakeMode: 'general' },
+    pre: { oneLine: 'General mode summary' },
+    ops: {}
+  });
+
+  const collected = appStateModule.collectAppState();
+  assert.equal(collected.meta.intakeMode, 'general', 'mode changes to General');
+  assert.equal(document.querySelector('[data-mode-section="communications"]').hidden, true, 'communications UI is hidden');
+  assert.equal(document.querySelector('[data-mode-section="handover"]').hidden, true, 'handover UI is hidden');
+  assert.equal(collected.ops.containStatus, 'stabilized', 'containment status remains persisted');
+  assert.equal(collected.ops.containDesc, 'Traffic shifted to standby', 'containment description remains persisted');
+  assert.equal(collected.ops.commLog.length, 1, 'communications log remains persisted');
+  assert.equal(collected.ops.commLog[0].message, 'Bridge update sent');
+  assert.equal(collected.steps.items.find(item => item.id === '1')?.checked, true, 'steps state remains persisted');
+  assert.deepEqual(collected.handover, handoverSnapshot, 'handover notes remain persisted');
+
+  appStateModule.applyAppState({ meta: { intakeMode: 'majorIncident' } });
+  assert.equal(document.querySelector('[data-mode-section="communications"]').hidden, false, 'communications UI reappears');
+  assert.equal(document.querySelector('[data-mode-section="handover"]').hidden, false, 'handover UI reappears');
+  assert.equal(document.getElementById('containDesc').value, 'Traffic shifted to standby', 'containment description is recoverable');
+  assert.equal(document.querySelector('[data-section="current-state"]')?.value, handoverSnapshot['current-state'].join('\n'), 'handover values are recoverable');
+});
