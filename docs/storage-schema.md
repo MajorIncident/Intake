@@ -127,8 +127,8 @@ Refer back to [`docs/storage-schema.md`](storage-schema.md) for the canonical fi
 ### Global metadata (`src/appState.js` + `src/storage.js`)
 
 - **Anchors / DOM roots:** N/A (system-level helpers).
-- **Fields:** `meta.version`, `meta.savedAt`, plus the top-level `actions` wrapper object, `ops` object, and `steps` object shells that hold the grouped fields above.
-- **Notes:** `collectAppState()` (in `src/appState.js`) assembles the complete payload, sets the schema version, and stamps `meta.savedAt`. Any migration logic or new modules should register with `collectAppState()` / `applyAppState()` so the metadata stays accurate.
+- **Fields:** `meta.version`, `meta.savedAt`, `meta.intakeMode`, plus the top-level `actions` wrapper object, `ops` object, and `steps` object shells that hold the grouped fields above.
+- **Notes:** `collectAppState()` (in `src/appState.js`) assembles the complete payload, sets the schema version, stamps `meta.savedAt`, and records the active intake mode under `meta.intakeMode`. Any migration logic or new modules should register with `collectAppState()` / `applyAppState()` so the metadata stays accurate.
 
 ### Cross-cutting callouts
 

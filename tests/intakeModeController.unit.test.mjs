@@ -100,3 +100,24 @@ test('selector changes apply mode visibility and emit a save callback', () => {
   assert.equal(document.getElementById('commsDrawer').hidden, false);
   assert.equal(document.getElementById('containment').hidden, false);
 });
+
+test('saved General, IT, Pharma, and Major Incident states restore the active mode', () => {
+  const cases = [
+    [INTAKE_MODE_IDS.GENERAL, true],
+    [INTAKE_MODE_IDS.IT, true],
+    [INTAKE_MODE_IDS.PHARMA, true],
+    [INTAKE_MODE_IDS.MAJOR_INCIDENT, false]
+  ];
+
+  cases.forEach(([intakeMode, hidesMajorIncidentRegions]) => {
+    const document = mountModeDom();
+    initIntakeModeController({ state: { meta: { intakeMode } } });
+
+    assert.equal(getActiveIntakeMode(), intakeMode);
+    assert.equal(document.getElementById('intakeModeSelect').value, intakeMode);
+    assert.equal(document.getElementById('commsDrawer').hidden, hidesMajorIncidentRegions);
+
+    dom.window.close();
+    dom = null;
+  });
+});

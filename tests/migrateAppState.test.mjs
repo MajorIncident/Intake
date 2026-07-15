@@ -155,3 +155,37 @@ test('migrateAppState omits actions when legacy snapshots lack the field', () =>
   assert.ok(legacy);
   assert.equal(Object.prototype.hasOwnProperty.call(legacy, 'actions'), false);
 });
+test('migrateAppState normalizes persisted intake modes for saved snapshots', () => {
+  const modes = [
+    ['General', 'general'],
+    ['IT', 'it'],
+    ['Pharma', 'pharma'],
+    ['Major Incident', 'majorIncident']
+  ];
+
+  modes.forEach(([label, intakeMode]) => {
+    const migrated = migrateAppState({
+      meta: { version: APP_STATE_VERSION, savedAt: null, intakeMode },
+      pre: {},
+      ops: {},
+      steps: { items: [], drawerOpen: false }
+    });
+
+    assert.ok(migrated, `${label} state should migrate`);
+    assert.equal(migrated.meta.intakeMode, intakeMode, `${label} state should restore its active mode`);
+  });
+});
+
+test('migrateAppState defaults missing or unknown intake modes to Major Incident Management', () => {
+  [undefined, '', 'unknown-mode'].forEach((intakeMode) => {
+    const migrated = migrateAppState({
+      meta: { version: APP_STATE_VERSION, savedAt: null, intakeMode },
+      pre: {},
+      ops: {},
+      steps: { items: [], drawerOpen: false }
+    });
+
+    assert.ok(migrated, 'state should migrate with a normalized mode');
+    assert.equal(migrated.meta.intakeMode, 'majorIncident');
+  });
+});
