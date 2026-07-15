@@ -69,10 +69,76 @@ import { refreshActionList } from '../components/actions/ActionListCard.js';
 import { applyThemePreference, getThemePreference, normalizeTheme } from './theme.js';
 import { collectHandoverState, applyHandoverState } from './handover.js';
 import { applyIntakeMode, getActiveIntakeMode } from './intakeModeController.js';
+import { INTAKE_MODE_IDS } from './intakeModes.js';
 
 const ANALYSIS_ID_KEY = 'kt-analysis-id';
 let cachedAnalysisId = '';
 const ACTIONS_UPDATED_EVENT = 'intake:actions-updated';
+
+/**
+ * Check whether a nested object owns a specific direct property path.
+ *
+ * @param {object} source - Object to inspect.
+ * @param {string[]} path - Ordered property path to check.
+ * @returns {boolean} Whether every path segment exists as an own property.
+ */
+function hasOwnPath(source, path) {
+  let cursor = source;
+  for (const segment of path) {
+    if (!cursor || typeof cursor !== 'object' || !Object.prototype.hasOwnProperty.call(cursor, segment)) {
+      return false;
+    }
+    cursor = cursor[segment];
+  }
+  return true;
+}
+
+/**
+ * Preserve Major Incident-only data when applying a partial non-MIM mode change.
+ *
+ * @param {Partial<import('./storage.js').SerializedAppState>} incoming - Incoming state payload.
+ * @param {string} appliedMode - Normalized mode already applied to the UI.
+ * @param {object} current - Current hidden field snapshots captured before hydration.
+ * @param {object} current.ops - Current preface operations state.
+ * @param {object} current.comms - Current communications state.
+ * @param {object|null} current.steps - Current steps checklist state.
+ * @param {object} current.handover - Current handover state.
+ * @param {object} ops - Mutable operations payload being applied.
+ * @param {object|null} steps - Candidate steps payload.
+ * @param {object|null} handover - Candidate handover payload.
+ * @returns {{ ops: object, steps: object|null, handover: object|null }} Payload with hidden fields preserved when absent.
+ */
+function preserveHiddenMajorIncidentState(incoming, appliedMode, current, ops, steps, handover) {
+  const hasExplicitModeChange = hasOwnPath(incoming, ['meta', 'intakeMode']) || hasOwnPath(incoming, ['intakeMode']);
+  if (appliedMode === INTAKE_MODE_IDS.MAJOR_INCIDENT && !hasExplicitModeChange) {
+    return { ops, steps, handover };
+  }
+
+  const nextOps = { ...(ops || {}) };
+  const opsDefaults = current?.ops || {};
+  const commDefaults = current?.comms || {};
+  [
+    ['containStatus', opsDefaults.containStatus],
+    ['containDesc', opsDefaults.containDesc],
+    ['commCadence', commDefaults.commCadence],
+    ['commLog', commDefaults.commLog],
+    ['commNextDueIso', commDefaults.commNextDueIso],
+    ['commNextUpdateTime', commDefaults.commNextUpdateTime]
+  ].forEach(([key, value]) => {
+    if (!hasOwnPath(incoming, ['ops', key]) && !hasOwnPath(incoming, [key])) {
+      nextOps[key] = Array.isArray(value) ? value.map(entry => ({ ...entry })) : value;
+    }
+  });
+
+  const nextSteps = hasOwnPath(incoming, ['steps']) || hasOwnPath(incoming, ['stepsState'])
+    ? steps
+    : current.steps;
+  const nextHandover = hasOwnPath(incoming, ['handover'])
+    ? handover
+    : current.handover;
+
+  return { ops: nextOps, steps: nextSteps, handover: nextHandover };
+}
 
 function ensureAnalysisId() {
   if (cachedAnalysisId) {
@@ -184,6 +250,27 @@ export function applyAppState(data = {}) {
   const importedActions = actionsResolution.shouldImport
     ? importActionsState(targetAnalysisId, actionsResolution.items)
     : listActions(targetAnalysisId);
+  const currentHiddenState = {
+    ops: getPrefaceState().ops,
+    comms: getCommunicationsState(),
+    steps: exportStepsState(),
+    handover: collectHandoverState()
+  };
+
+  const appliedTheme = appearanceState && typeof appearanceState.theme === 'string'
+    ? normalizeTheme(appearanceState.theme)
+    : getThemePreference();
+  applyThemePreference(appliedTheme);
+  const appliedMode = applyIntakeMode(data?.meta?.intakeMode ?? data?.intakeMode, { silent: true });
+
+  const preserved = preserveHiddenMajorIncidentState(
+    data,
+    appliedMode,
+    currentHiddenState,
+    ops,
+    steps,
+    savedHandoverState
+  );
   const {
     commCadence = '',
     commLog = [],
@@ -191,13 +278,7 @@ export function applyAppState(data = {}) {
     commNextUpdateTime = '',
     tableFocusMode: savedFocusMode = '',
     ...opsWithoutComms
-  } = ops || {};
-
-  const appliedTheme = appearanceState && typeof appearanceState.theme === 'string'
-    ? normalizeTheme(appearanceState.theme)
-    : getThemePreference();
-  applyThemePreference(appliedTheme);
-  applyIntakeMode(data?.meta?.intakeMode ?? data?.intakeMode, { silent: true });
+  } = preserved.ops || {};
 
   applyPrefaceState({ pre, impact, ops: opsWithoutComms });
   applyCommunicationsState({ commCadence, commLog, commNextDueIso, commNextUpdateTime });
@@ -221,11 +302,11 @@ export function applyAppState(data = {}) {
   }
   updateCauseEvidencePreviews();
 
-  if (steps) {
-    importStepsState(steps);
+  if (preserved.steps) {
+    importStepsState(preserved.steps);
   }
 
-  applyHandoverState(savedHandoverState || {});
+  applyHandoverState(preserved.handover || {});
 
   if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
     try {

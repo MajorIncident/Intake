@@ -6,6 +6,7 @@
  */
 
 let refs = null;
+let refsDocument = null;
 let commLog = [];
 let commCadence = '';
 let commNextDueIso = '';
@@ -22,7 +23,8 @@ let toastHandler = () => {};
  * @returns {Object} Cached reference collection for communications controls.
  */
 function ensureRefs() {
-  if (refs) return refs;
+  if (refs && refsDocument === document) return refs;
+  refsDocument = document;
   const group = document.getElementById('commCadenceGroup');
   refs = {
     internalBtn: document.getElementById('commInternalStampBtn'),

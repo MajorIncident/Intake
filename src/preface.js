@@ -15,6 +15,7 @@ import {
 } from './kt.js';
 
 let refs = null;
+let refsDocument = null;
 let saveHandler = () => {};
 let mirrorTimerId = null;
 let lastObjectValue = '';
@@ -55,7 +56,8 @@ function normalizeContainmentStatus(value) {
  * @returns {Record<string, HTMLElement | null>} Map of reference keys to nodes.
  */
 function ensureRefs() {
-  if (refs) return refs;
+  if (refs && refsDocument === document) return refs;
+  refsDocument = document;
   refs = {
     oneLine: document.getElementById('oneLine'),
     proof: document.getElementById('proof'),
