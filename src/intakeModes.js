@@ -147,14 +147,14 @@ export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
     impactTime: 'Timing context'
   },
   [INTAKE_MODE_IDS.IT]: {
-    oneLine: 'Incident summary',
-    proof: 'Incident evidence',
+    oneLine: 'Technology operations summary',
+    proof: 'Operational evidence',
     objectPrefill: 'Affected service or component',
-    healthy: 'Known-good service behavior',
+    healthy: 'Expected service behavior',
     now: 'Current service behavior',
     impactNow: 'Current user or system impact',
-    impactFuture: 'Expected escalation risk',
-    impactTime: 'Detection and onset timeline'
+    impactFuture: 'Potential operational risk',
+    impactTime: 'Detection and timing context'
   },
   [INTAKE_MODE_IDS.PHARMA]: {
     oneLine: 'Quality event summary',
@@ -198,13 +198,13 @@ export const INTAKE_MODE_HELPER_OVERRIDES = deepFreeze({
     impactTime: 'Record when the issue started or was first noticed.'
   },
   [INTAKE_MODE_IDS.IT]: {
-    oneLine: 'State the service disruption, scope, and symptom briefly.',
+    oneLine: 'Summarize the technology operations issue, scope, and symptom briefly.',
     proof: 'Capture alerts, customer reports, logs, metrics, or reproduction evidence.',
     objectPrefill: 'Use the service, application, dependency, or infrastructure name.',
     healthy: 'Document the expected technical behavior or SLO baseline.',
-    now: 'Capture the failing behavior, alerts, or user-reported symptom.',
+    now: 'Capture the current behavior, alerts, or user-reported symptom.',
     impactNow: 'Quantify affected users, transactions, regions, or dependencies.',
-    impactFuture: 'Call out likely escalation paths, deadlines, or cascading risks.',
+    impactFuture: 'Call out likely downstream operational risks, deadlines, or dependencies.',
     impactTime: 'Include detection time, suspected start, and recent change windows.'
   },
   [INTAKE_MODE_IDS.PHARMA]: {

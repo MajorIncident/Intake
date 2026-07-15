@@ -47,7 +47,7 @@ const SUMMARY_MODE_CONFIG = Object.freeze({
     includeLikelyCauseSection: false
   }),
   [INTAKE_MODE_IDS.IT]: Object.freeze({
-    prefaceSection: '— Incident Summary —',
+    prefaceSection: '— Technology Operations Summary —',
     impactSection: '— Impact —',
     ktSection: '— Problem Analysis —',
     possibleSection: '— Possible Causes —',

@@ -1,3 +1,6 @@
+/**
+ * @file Verifies intake-mode metadata, visibility, and copy-map contracts.
+ */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -58,4 +61,41 @@ test('caption and helper override maps preserve stable field IDs for every mode'
       assert.equal(typeof INTAKE_MODE_FIELD_CAPTIONS[modeId][fieldId].placeholder, 'string');
     });
   });
+});
+
+test('IT and Major Incident use distinct operations and incident copy maps', () => {
+  assert.notDeepEqual(
+    INTAKE_MODE_CAPTION_OVERRIDES[INTAKE_MODE_IDS.IT],
+    INTAKE_MODE_CAPTION_OVERRIDES[INTAKE_MODE_IDS.MAJOR_INCIDENT]
+  );
+  assert.notDeepEqual(
+    INTAKE_MODE_HELPER_OVERRIDES[INTAKE_MODE_IDS.IT],
+    INTAKE_MODE_HELPER_OVERRIDES[INTAKE_MODE_IDS.MAJOR_INCIDENT]
+  );
+
+  const itCopy = [
+    ...Object.values(INTAKE_MODE_CAPTION_OVERRIDES[INTAKE_MODE_IDS.IT]),
+    ...Object.values(INTAKE_MODE_HELPER_OVERRIDES[INTAKE_MODE_IDS.IT])
+  ].join(' ');
+  assert.doesNotMatch(itCopy, /\b(bridge|comms|communications|handover)\b/i);
+  assert.match(itCopy, /technology operations/i);
+
+  const majorIncidentCopy = [
+    ...Object.values(INTAKE_MODE_CAPTION_OVERRIDES[INTAKE_MODE_IDS.MAJOR_INCIDENT]),
+    ...Object.values(INTAKE_MODE_HELPER_OVERRIDES[INTAKE_MODE_IDS.MAJOR_INCIDENT])
+  ].join(' ');
+  assert.match(majorIncidentCopy, /major incident/i);
+  assert.match(majorIncidentCopy, /responders/i);
+  assert.match(majorIncidentCopy, /bridge/i);
+});
+
+test('IT keeps the same minimal visible sections as General and Pharma', () => {
+  assert.deepEqual(
+    INTAKE_MODE_SECTION_VISIBILITY[INTAKE_MODE_IDS.IT],
+    INTAKE_MODE_SECTION_VISIBILITY[INTAKE_MODE_IDS.GENERAL]
+  );
+  assert.deepEqual(
+    INTAKE_MODE_SECTION_VISIBILITY[INTAKE_MODE_IDS.IT],
+    INTAKE_MODE_SECTION_VISIBILITY[INTAKE_MODE_IDS.PHARMA]
+  );
 });
