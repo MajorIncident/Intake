@@ -36,12 +36,16 @@ test('header exposes an accessible intake mode selector with supported modes', (
   ]);
 });
 
-test('intake mode selector stays within the header and preserves required anchors', () => {
+test('intake mode selector stays within the menu bar and preserves required anchors', () => {
   const document = buildIndexDocument();
   const header = document.querySelector('header');
+  const menuBar = document.querySelector('.menu-bar');
+  const headerTitle = document.querySelector('.header-title');
   const selector = document.getElementById('intakeModeSelect');
 
-  assert.ok(header?.contains(selector), 'selector should render near the header title region');
+  assert.ok(header?.contains(selector), 'selector should stay in the header');
+  assert.ok(menuBar?.contains(selector), 'selector should render inside the primary menu bar');
+  assert.equal(headerTitle?.contains(selector), false, 'selector should no longer render inside the header title stack');
   assert.match(INDEX_HTML, /<!-- \[header\] start -->/);
   assert.match(INDEX_HTML, /<!-- \[header\] end -->/);
   assert.match(INDEX_HTML, /<!-- \[section:preface\] start -->/);

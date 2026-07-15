@@ -82,28 +82,23 @@ header{
 h1#docTitle{font-size:22px; font-weight:800; margin:0; letter-spacing:-0.01em; white-space:pre-wrap;}
 .header-subtitle{margin:0; font-size:14px; color:var(--muted); max-width:720px;}
 .intake-mode-selector{
-  width:min(100%, 360px);
-  margin-top:10px;
-  padding:16px;
-  border:1px solid var(--line);
-  border-radius:16px;
-  background:var(--panel);
-  box-shadow:var(--shadow);
+  flex:0 1 280px;
+  min-width:220px;
+  margin:0;
 }
 .intake-mode-selector select{
-  width:100%;
-  box-sizing:border-box;
-  min-height:44px;
-  color:var(--ink);
-  background:var(--input-bg);
-  border:1px solid var(--input-border);
-  border-radius:12px;
-  padding:8px 12px;
-  font:15px/1.55 "SF Pro Text","SF Pro Display",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-  outline:none;
-  transition:border-color var(--speed), box-shadow var(--speed), background var(--speed), color var(--speed);
+  min-height:42px;
 }
-.intake-mode-selector select:focus{border-color:var(--accent); box-shadow:0 0 0 4px var(--focus-ring); background:var(--panel);}
+.menu-bar .intake-mode-selector{
+  align-self:stretch;
+  justify-content:center;
+  padding:0 16px 0 0;
+  border-right:1px solid var(--line);
+}
+.menu-bar .intake-mode-selector small{
+  max-width:260px;
+  line-height:1.35;
+}
 .subtle{color:var(--muted); font-size:12px;}
 .muted{color:var(--muted); font-size:13px;}
 .menu-bar{
@@ -120,6 +115,7 @@ h1#docTitle{font-size:22px; font-weight:800; margin:0; letter-spacing:-0.01em; w
   box-shadow:var(--shadow);
 }
 .menu-group{position:relative;}
+.menu-bar .menu-group{align-self:flex-start;}
 .menu-trigger{
   appearance:none;
   background:var(--panel);
@@ -190,6 +186,8 @@ h1#docTitle{font-size:22px; font-weight:800; margin:0; letter-spacing:-0.01em; w
 @media(max-width:640px){
   header{padding:0 16px;}
   .menu-bar{padding:12px;}
+  .menu-bar .intake-mode-selector{flex:1 1 100%; padding:0 0 12px; border-right:0; border-bottom:1px solid var(--line);}
+  .menu-bar .intake-mode-selector small{max-width:none;}
 }
 .theme-toggle{
   display:flex;
