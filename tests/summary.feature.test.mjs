@@ -377,12 +377,12 @@ test('summary: non-major modes use mode labels and exclude major-incident-only s
 
   const text = buildSummaryText(state);
 
-  assert.ok(text.includes('— Incident Summary —'));
-  assert.ok(text.includes('• Incident summary: Checkout payments are failing'));
+  assert.ok(text.includes('— Technology Operations Summary —'));
+  assert.ok(text.includes('• Technology operations summary: Checkout payments are failing'));
   assert.ok(text.includes('• Affected service or component: Payments API'));
   assert.ok(text.includes('Current user or system impact: Customers cannot complete checkout'));
-  assert.ok(text.includes('Expected escalation risk: Backlog may trigger order cancellations'));
-  assert.ok(text.includes('Detection and onset timeline: Detected at 12:45 UTC'));
+  assert.ok(text.includes('Potential operational risk: Backlog may trigger order cancellations'));
+  assert.ok(text.includes('Detection and timing context: Detected at 12:45 UTC'));
   assert.ok(text.includes('— Problem Analysis —'));
   assert.ok(text.includes('— Possible Causes —'));
   assert.ok(text.includes('Likely Cause:'));
