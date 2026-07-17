@@ -265,7 +265,13 @@ test('kt causes: renders compact verdict controls and preserves finding callback
   verdictInputs[0].click();
   assert.equal(cause.findings[findingKey].mode, 'yes');
   assert.equal(noteField.hidden, false);
-  assert.equal(ktModule.countCompletedEvidence(cause), 0, 'a verdict alone does not complete a finding');
+  assert.equal(
+    noteInput.value,
+    'This cause naturally explains the IS / IS NOT relationship because ',
+    'the selected verdict supplies its reasoning starter'
+  );
+  assert.equal(cause.findings[findingKey].note, noteInput.value, 'the reasoning starter persists with the finding');
+  assert.equal(ktModule.countCompletedEvidence(cause), 1, 'a verdict with non-empty starter reasoning completes a finding');
   assert.match(noteLabel.textContent, /Alpha detail/);
   assert.match(noteLabel.textContent, /Beta detail/);
 
@@ -273,6 +279,23 @@ test('kt causes: renders compact verdict controls and preserves finding callback
   noteInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
   assert.equal(cause.findings[findingKey].note, 'It matches the observed region.');
   assert.equal(ktModule.countCompletedEvidence(cause), 1, 'a finding is complete only after its note is supplied');
+
+  verdictInputs[1].click();
+  assert.equal(
+    noteInput.value,
+    'It matches the observed region.',
+    'changing verdicts preserves user-modified reasoning'
+  );
+
+  noteInput.value = 'This explanation requires assuming that ';
+  noteInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  verdictInputs[2].click();
+  assert.equal(
+    noteInput.value,
+    'This cause does not explain the IS / IS NOT relationship because ',
+    'changing a mode replaces only the prior mode starter'
+  );
+  assert.equal(cause.findings[findingKey].note, noteInput.value, 'the replacement starter persists with the finding');
   assert.ok(resizeSpy.mock.calls.length > 0, 'autosize runs for the conditional textarea');
   assert.ok(saveSpy.mock.calls.length >= 2, 'verdict and reasoning changes retain save callbacks');
 

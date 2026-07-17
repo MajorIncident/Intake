@@ -215,6 +215,18 @@ const TABLE_MODE_ROWS = Object.freeze({
 const DEFAULT_TABLE_FOCUS_MODE = 'rapid';
 
 /**
+ * Initial reasoning text supplied when a finding verdict is selected. These
+ * starters give each verdict an actionable explanation prompt and satisfy the
+ * existing non-empty reasoning requirement until the analyst refines them.
+ * @type {Readonly<Record<string, string>>}
+ */
+const CAUSE_FINDING_NOTE_STARTERS = Object.freeze({
+  [CAUSE_FINDING_MODES.YES]: 'This cause naturally explains the IS / IS NOT relationship because ',
+  [CAUSE_FINDING_MODES.ASSUMPTION]: 'This explanation requires assuming that ',
+  [CAUSE_FINDING_MODES.FAIL]: 'This cause does not explain the IS / IS NOT relationship because '
+});
+
+/**
  * Row prompts whose Distinctions/Changes fields should appear semi-disabled.
  * @type {Set<string>}
  */
@@ -1983,6 +1995,9 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
      */
     function applyMode(newMode, opts = {}){
       const active = isValidFindingMode(newMode) ? newMode : '';
+      const priorMode = findingMode(getCauseFinding(cause, rowKey));
+      const priorStarter = CAUSE_FINDING_NOTE_STARTERS[priorMode] || '';
+      const canReplaceNote = !priorMode || noteInput.value === priorStarter;
       options.forEach(option => {
         const isSelected = option.mode === active;
         option.input.checked = isSelected;
@@ -1997,6 +2012,11 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
         delete noteInput.dataset.placeholderTemplate;
         noteInput.disabled = false;
         noteField.hidden = false;
+        if(!opts.silent && active !== priorMode && canReplaceNote){
+          const starter = CAUSE_FINDING_NOTE_STARTERS[active] || '';
+          noteInput.value = starter;
+          setCauseFindingValue(cause, rowKey, 'note', starter);
+        }
       }else{
         noteLabel.textContent = '';
         delete noteLabel.dataset.template;
@@ -2005,7 +2025,12 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
         noteInput.value = '';
         noteInput.disabled = true;
         noteField.hidden = true;
-        setCauseFindingValue(cause, rowKey, 'note', '');
+        if(!opts.silent){
+          setCauseFindingValue(cause, rowKey, 'note', '');
+        }
+      }
+      if(!opts.silent){
+        setCauseFindingValue(cause, rowKey, 'mode', active);
       }
       autoResize(noteInput);
       if(!opts.silent){
@@ -2027,7 +2052,6 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
       input.value = def.mode;
       input.addEventListener('change', () => {
         if(!input.checked) return;
-        setCauseFindingValue(cause, rowKey, 'mode', def.mode);
         applyMode(def.mode);
       });
       option.append(input, document.createTextNode(def.buttonLabel));
