@@ -1,7 +1,7 @@
 /**
  * KT possible causes integration tests.
  *
- * Validates that cause testing UI renders expected evidence previews,
+ * Validates that cause testing UI renders compact verdict controls,
  * action badges, and toast/save callbacks when users manipulate
  * Likely Cause state.
  */
@@ -183,16 +183,17 @@ test('kt causes: refreshes action badges from mocked counts', async () => {
   assert.equal(listActionsMock.mock.calls[0].arguments[0], 'analysis-test');
 });
 
-test('kt causes: updates evidence previews and emits toast/save callbacks', async () => {
+test('kt causes: renders compact verdict controls and preserves finding callbacks', async () => {
   const ktModule = await loadKtModule();
   const rows = ktModule.getRowsBuilt();
   rows.length = 0;
 
   const saveSpy = mock.fn();
   const toastSpy = mock.fn();
-  ktModule.configureKT({ autoResize: () => {}, onSave: saveSpy, showToast: toastSpy });
+  const resizeSpy = mock.fn();
+  ktModule.configureKT({ autoResize: resizeSpy, onSave: saveSpy, showToast: toastSpy });
 
-  const cause = { id: 'cause-a', suspect: 'Alpha subsystem', accusation: 'is failing health checks', findings: {} };
+  const cause = { id: 'cause-a', suspect: 'Alpha subsystem', accusation: 'is failing health checks', findings: {}, testingOpen: true };
   ktModule.setPossibleCauses([cause]);
 
   const isTextarea = document.createElement('textarea');
@@ -201,63 +202,44 @@ test('kt causes: updates evidence previews and emits toast/save callbacks', asyn
   notTextarea.value = 'Beta detail';
   rows.push({
     tr: { hidden: false },
-    th: { textContent: 'Where is it failing?' },
+    th: { textContent: 'WHERE — Where is it failing?' },
     def: { q: 'Where is {OBJECT} misbehaving?' },
     isTA: isTextarea,
     notTA: notTextarea
   });
 
-  const causeList = document.getElementById('causeList');
-  const rowEl = document.createElement('section');
-  rowEl.className = 'cause-eval-row';
-  rowEl.dataset.rowIndex = '0';
+  ktModule.renderCauses();
 
-  const questionEl = document.createElement('div');
-  questionEl.dataset.role = 'question';
+  const rowEl = document.querySelector('.cause-eval-row');
+  const questionEl = rowEl.querySelector('[data-role="question"]');
+  const noteField = rowEl.querySelector('.cause-eval-note');
+  const noteLabel = rowEl.querySelector('[data-role="note-label"]');
+  const noteInput = rowEl.querySelector('[data-role="finding-note"]');
+  const verdicts = rowEl.querySelectorAll('.cause-eval-option');
+  const findingKey = ktModule.getRowKeyByIndex(0);
 
-  const evidenceWrap = document.createElement('div');
-  const isValue = document.createElement('div');
-  isValue.dataset.role = 'is-value';
-  const notValue = document.createElement('div');
-  notValue.dataset.role = 'not-value';
-  evidenceWrap.append(isValue, notValue);
+  assert.equal(rowEl.querySelector('.cause-eval-dimension').textContent, 'WHERE');
+  assert.equal(questionEl.textContent, 'If Alpha subsystem is failing health checks, how does it explain WHERE — Where is it failing?');
+  assert.equal(verdicts.length, 3, 'each evidence pair gets exactly three verdict controls');
+  assert.equal(noteField.hidden, true, 'reasoning is hidden until a verdict is selected');
+  assert.equal(rowEl.querySelector('[data-role="is-value"]'), null, 'IS evidence cards are not rendered');
+  assert.equal(rowEl.querySelector('[data-role="not-value"]'), null, 'IS NOT evidence cards are not rendered');
 
-  const inputsWrap = document.createElement('div');
-  const noteField = document.createElement('div');
-  const noteLabel = document.createElement('label');
-  noteLabel.dataset.role = 'note-label';
-  noteLabel.dataset.template = 'Explain <is> vs <is not>';
-  const noteInput = document.createElement('textarea');
-  noteInput.dataset.role = 'finding-note';
-  noteField.append(noteLabel, noteInput);
-  inputsWrap.append(noteField);
+  verdicts[1].click();
+  assert.equal(cause.findings[findingKey].mode, 'yes');
+  assert.equal(noteField.hidden, false);
+  assert.match(noteLabel.textContent, /Alpha detail/);
+  assert.match(noteLabel.textContent, /Beta detail/);
 
-  rowEl.append(questionEl, evidenceWrap, inputsWrap);
-  const card = document.createElement('div');
-  card.className = 'cause-card';
-  card.dataset.causeId = cause.id;
-  card.append(rowEl);
-  causeList.append(card);
+  noteInput.value = 'It matches the observed region.';
+  noteInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  assert.equal(cause.findings[findingKey].note, 'It matches the observed region.');
+  assert.ok(resizeSpy.mock.calls.length > 0, 'autosize runs for the conditional textarea');
+  assert.ok(saveSpy.mock.calls.length >= 2, 'verdict and reasoning changes retain save callbacks');
 
-  ktModule.updateCauseEvidencePreviews();
-
-  assert.equal(questionEl.textContent, 'If Alpha subsystem is failing health checks, how does it explain Where is it failing?');
-  assert.equal(isValue.textContent, '• Alpha detail');
-  assert.equal(notValue.textContent, '• Beta detail');
-  assert.equal(noteLabel.textContent, 'Explain Alpha detail vs Beta detail');
-  assert.equal(noteInput.placeholder, '');
-
-  isTextarea.value = 'Alpha detail\nDelta factor';
-  notTextarea.value = '';
-  ktModule.updateCauseEvidencePreviews();
-
-  assert.equal(isValue.textContent, '• Alpha detail\n• Delta factor');
-  assert.equal(notValue.textContent, '—');
-  assert.equal(noteLabel.textContent, 'Explain Alpha detail\nDelta factor vs IS NOT column');
-  assert.equal(noteInput.placeholder, '');
-
+  const savesBeforeLikelyCause = saveSpy.mock.calls.length;
   ktModule.setLikelyCauseId('cause-a', { skipRender: true });
-  assert.equal(saveSpy.mock.calls.length, 1, 'setLikelyCauseId triggers the save callback');
+  assert.equal(saveSpy.mock.calls.length, savesBeforeLikelyCause + 1, 'setLikelyCauseId triggers the save callback');
   assert.equal(toastSpy.mock.calls.length, 1, 'setLikelyCauseId emits a toast message');
   assert.equal(toastSpy.mock.calls[0].arguments[0], 'Likely Cause set to: Alpha subsystem.');
 });
