@@ -1270,13 +1270,19 @@ export function buildHypothesisSentence(cause){
 }
 
 /**
- * Returns the canonical key for a KT row, typically the prompt text.
+ * Returns the canonical stable key for a KT row.
  * @param {number} index - Index within `rowsBuilt`.
  * @returns {string} Unique row key suitable for use in maps.
  */
 export function getRowKeyByIndex(index){
   const row = rowsBuilt[index];
-  if(row && row.def && row.def.q){
+  if(row?.questionId){
+    return row.questionId;
+  }
+  if(row?.def?.id){
+    return row.def.id;
+  }
+  if(row?.def?.q){
     return row.def.q;
   }
   return `row-${index}`;

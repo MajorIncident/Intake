@@ -6,4 +6,4 @@
  * Current schema version for persisted app state, used by storage migrations to
  * decide when to transform saved data.
  */
-export const APP_STATE_VERSION = 1;
+export const APP_STATE_VERSION = 2;

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { APP_STATE_VERSION } from '../src/appStateVersion.js';
+import { ROWS } from '../src/constants.js';
 
 const { normalizeActionSnapshot } = await import('../src/actionsStore.js?actions-tests');
 
@@ -108,6 +109,39 @@ test('migrateAppState preserves savedAt for already versioned states', () => {
   assert.equal(migrated.ops.tableFocusMode, '');
   assert.deepEqual(migrated.ops.commLog, []);
   assert.deepEqual(migrated.steps, { items: [], drawerOpen: true });
+});
+
+test('migrateAppState replaces legacy finding prompts with stable row IDs', () => {
+  const row = ROWS.find(candidate => candidate.id && candidate.q);
+  const unknownKey = 'Unmapped legacy finding';
+  const migrated = migrateAppState({
+    meta: { version: 1, savedAt: null },
+    causes: [{
+      id: 'cause-with-legacy-findings',
+      findings: {
+        [row.q]: { mode: 'fail', note: 'Legacy prompt value' },
+        [row.id]: { mode: 'yes', note: 'Stable value wins' },
+        [unknownKey]: { mode: 'assumption', note: 'Keep this key' }
+      }
+    }]
+  });
+
+  const findings = migrated.causes[0].findings;
+  assert.deepEqual(findings[row.id], { mode: 'yes', note: 'Stable value wins' });
+  assert.equal(Object.hasOwn(findings, row.q), false, 'legacy prompt key is removed');
+  assert.deepEqual(findings[unknownKey], { mode: 'assumption', note: 'Keep this key' });
+});
+
+test('migrateAppState defensively normalizes legacy finding prompts in current imports', () => {
+  const row = ROWS.find(candidate => candidate.id && candidate.q);
+  const migrated = migrateAppState({
+    meta: { version: APP_STATE_VERSION, savedAt: null },
+    causes: [{ findings: { [row.q]: { mode: 'yes', note: 'Imported legacy key' } } }]
+  });
+
+  assert.deepEqual(migrated.causes[0].findings, {
+    [row.id]: { mode: 'yes', note: 'Imported legacy key' }
+  });
 });
 
 test('migrateAppState retains sanitized actions snapshots when present', () => {
