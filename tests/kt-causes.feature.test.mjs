@@ -10,6 +10,7 @@ import { after, afterEach, before, beforeEach, mock, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
 import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
+import { CAUSE_TEST_METADATA, ROWS } from '../src/constants.js';
 
 const BASE_HTML = `
 <!doctype html>
@@ -146,6 +147,21 @@ after(() => {
   previousGlobals = {};
 });
 
+test('KT rows: define immutable cause-test metadata for every stable question ID', () => {
+  const questionRows = ROWS.filter(row => row.id);
+
+  assert.deepEqual(
+    questionRows.map(row => row.id),
+    Object.keys(CAUSE_TEST_METADATA),
+    'metadata keys stay aligned with persisted question IDs'
+  );
+  questionRows.forEach(row => {
+    assert.equal(row.causeTest, CAUSE_TEST_METADATA[row.id]);
+    assert.match(row.causeTest.template, /\{cause\}.*\{problem\}.*\{is\}.*\{isNot\}/u);
+    assert.equal(Object.isFrozen(row.causeTest), true);
+  });
+});
+
 test('kt causes: refreshes action badges from mocked counts', async () => {
   const ktModule = await loadKtModule();
   const rows = ktModule.getRowsBuilt();
@@ -191,7 +207,13 @@ test('kt causes: renders compact verdict controls and preserves finding callback
   const saveSpy = mock.fn();
   const toastSpy = mock.fn();
   const resizeSpy = mock.fn();
-  ktModule.configureKT({ autoResize: resizeSpy, onSave: saveSpy, showToast: toastSpy });
+  ktModule.configureKT({
+    autoResize: resizeSpy,
+    onSave: saveSpy,
+    showToast: toastSpy,
+    getObjectFull: () => 'payment service',
+    getDeviationFull: () => 'timeouts'
+  });
 
   const cause = { id: 'cause-a', suspect: 'Alpha subsystem', accusation: 'is failing health checks', findings: {}, testingOpen: true };
   ktModule.setPossibleCauses([cause]);
@@ -203,7 +225,10 @@ test('kt causes: renders compact verdict controls and preserves finding callback
   rows.push({
     tr: { hidden: false },
     th: { textContent: 'WHERE — Where is it failing?' },
-    def: { q: 'Where is {OBJECT} misbehaving?' },
+    def: {
+      q: 'Where is {OBJECT} misbehaving?',
+      causeTest: CAUSE_TEST_METADATA['where-location']
+    },
     isTA: isTextarea,
     notTA: notTextarea
   });
@@ -219,7 +244,7 @@ test('kt causes: renders compact verdict controls and preserves finding callback
   const findingKey = ktModule.getRowKeyByIndex(0);
 
   assert.equal(rowEl.querySelector('.cause-eval-dimension').textContent, 'WHERE');
-  assert.equal(questionEl.textContent, 'If Alpha subsystem is failing health checks, how does it explain WHERE — Where is it failing?');
+  assert.equal(questionEl.textContent, 'If Alpha subsystem is failing health checks, why does the issue affecting payment service (timeouts) occur at Alpha detail but not at Beta detail?');
   assert.equal(verdicts.length, 3, 'each evidence pair gets exactly three verdict controls');
   assert.equal(noteField.hidden, true, 'reasoning is hidden until a verdict is selected');
   assert.equal(rowEl.querySelector('[data-role="is-value"]'), null, 'IS evidence cards are not rendered');
@@ -256,11 +281,18 @@ test('kt causes: renders standardized testing prompts for plural suspects', asyn
   rows.push({
     tr: { hidden: false },
     th: { textContent: 'When does it occur?' },
-    def: { q: 'When does the {OBJECT} show the {DEVIATION}?' },
+    def: {
+      q: 'When does the {OBJECT} show the {DEVIATION}?',
+      causeTest: CAUSE_TEST_METADATA['when-pattern']
+    },
     isTA: isTextarea,
     notTA: notTextarea
   });
 
+  ktModule.configureKT({
+    getObjectFull: () => 'checkout API',
+    getDeviationFull: () => 'latency spikes'
+  });
   ktModule.setPossibleCauses([
     { id: 'cause-b', suspect: 'API nodes', accusation: 'were throttled overnight', findings: {}, testingOpen: true }
   ]);
@@ -269,7 +301,41 @@ test('kt causes: renders standardized testing prompts for plural suspects', asyn
 
   const questionEl = document.querySelector('.cause-eval-row [data-role="question"]');
   assert.ok(questionEl, 'question prompt renders');
-  assert.equal(questionEl.textContent, 'If API nodes were throttled overnight, how does it explain When does it occur?');
+  assert.equal(questionEl.textContent, 'If API nodes were throttled overnight, why does the issue affecting checkout API (latency spikes) follow the pattern Cache nodes at AZ-1 but not Cache nodes at AZ-2?');
+});
+
+test('kt causes: uses one generic evidence-aware prompt when a row cannot use metadata', async () => {
+  const ktModule = await loadKtModule();
+  const rows = ktModule.getRowsBuilt();
+  rows.length = 0;
+
+  const isTextarea = document.createElement('textarea');
+  const notTextarea = document.createElement('textarea');
+  isTextarea.value = 'cluster A';
+  notTextarea.value = 'cluster B';
+  rows.push({
+    tr: { hidden: false },
+    def: { q: 'Custom diagnostic question' },
+    isTA: isTextarea,
+    notTA: notTextarea
+  });
+  ktModule.configureKT({
+    getObjectFull: () => '',
+    getDeviationFull: () => ''
+  });
+  ktModule.setPossibleCauses([
+    { id: 'cause-fallback', suspect: 'A cache rule', accusation: 'is misconfigured', findings: {}, testingOpen: true }
+  ]);
+
+  ktModule.renderCauses();
+
+  const rowEl = document.querySelector('.cause-eval-row');
+  assert.equal(
+    rowEl.querySelector('[data-role="question"]').textContent,
+    'If A cache rule is misconfigured, how does that explain the problem is cluster A but not cluster B?'
+  );
+  assert.equal(rowEl.querySelector('[data-role="is-value"]'), null);
+  assert.equal(rowEl.querySelector('[data-role="not-value"]'), null);
 });
 
 test('kt causes: hypothesis editor normalizes inputs and stores summary metadata', async () => {

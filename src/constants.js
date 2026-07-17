@@ -21,6 +21,7 @@
  * @property {('p1'|'p2')} [priority] - Visual priority indicator for the row.
  * @property {string} [isPH] - Prompt for what is happening (Positive Hypothesis).
  * @property {string} [notPH] - Prompt for what is not happening (Negative Hypothesis).
+ * @property {CauseTestMetadata} [causeTest] - Row-specific cause-testing prompt metadata.
  */
 
 /**
@@ -67,12 +68,57 @@ function deepFreeze(obj) {
   return Object.freeze(obj);
 }
 
+/**
+ * @typedef {Object} CauseTestMetadata
+ * @property {string} template - Prompt template with `{cause}`, `{problem}`,
+ * `{is}`, and `{isNot}` placeholders.
+ */
+
+/**
+ * Cause-test prompt templates keyed by the stable KT question identifiers.
+ * Each template frames the distinction represented by the corresponding row.
+ * @type {Record<string, CauseTestMetadata>}
+ */
+export const CAUSE_TEST_METADATA = deepFreeze({
+  'what-object': {
+    template: 'If {cause}, why is {problem} seen on {is} but not on {isNot}?'
+  },
+  'what-deviation': {
+    template: 'If {cause}, why does {problem} present as {is} rather than {isNot}?'
+  },
+  'where-location': {
+    template: 'If {cause}, why does {problem} occur at {is} but not at {isNot}?'
+  },
+  'where-on-object': {
+    template: 'If {cause}, why is {problem} observed on {is} but not on {isNot}?'
+  },
+  'when-first-observed': {
+    template: 'If {cause}, why was {problem} first observed at {is} rather than {isNot}?'
+  },
+  'when-pattern': {
+    template: 'If {cause}, why does {problem} follow the pattern {is} but not {isNot}?'
+  },
+  'when-description': {
+    template: 'If {cause}, why does {problem} appear {is} but not {isNot}?'
+  },
+  'extent-population': {
+    template: 'If {cause}, why does {problem} affect {is} but not {isNot}?'
+  },
+  'extent-size': {
+    template: 'If {cause}, why is {problem} {is} rather than {isNot}?'
+  },
+  'extent-count': {
+    template: 'If {cause}, why does {problem} occur {is} rather than {isNot}?'
+  }
+});
+
 /** @type {RowDefinition[]} */
 const ROWS_UNFROZEN = [
   { band: "WHAT", note: "Define the problem precisely (Object & Deviation)." },
 
   {
     id: 'what-object',
+    causeTest: CAUSE_TEST_METADATA['what-object'],
     q: "WHAT — Specific Object/Thing is having the {DEVIATION}",
     priority: 'p1',
     isPH:
@@ -82,6 +128,7 @@ const ROWS_UNFROZEN = [
   },
   {
     id: 'what-deviation',
+    causeTest: CAUSE_TEST_METADATA['what-deviation'],
     q: "WHAT — Specific Deviation does the {OBJECT} have?",
     priority: 'p1',
     isPH:
@@ -94,6 +141,7 @@ const ROWS_UNFROZEN = [
 
   {
     id: 'where-location',
+    causeTest: CAUSE_TEST_METADATA['where-location'],
     q: "WHERE — is the {OBJECT} geographically/topology when the {DEVIATION} occurs?",
     priority: 'p1',
     isPH:
@@ -103,6 +151,7 @@ const ROWS_UNFROZEN = [
   },
   {
     id: 'where-on-object',
+    causeTest: CAUSE_TEST_METADATA['where-on-object'],
     q: "WHERE — On the {OBJECT} is the {DEVIATION} observed?",
     priority: 'p2',
     isPH:
@@ -115,6 +164,7 @@ const ROWS_UNFROZEN = [
 
   {
     id: 'when-first-observed',
+    causeTest: CAUSE_TEST_METADATA['when-first-observed'],
     q: "WHEN — Was the {DEVIATION} First observed for {OBJECT}",
     priority: 'p2',
     isPH:
@@ -124,6 +174,7 @@ const ROWS_UNFROZEN = [
   },
   {
     id: 'when-pattern',
+    causeTest: CAUSE_TEST_METADATA['when-pattern'],
     q: "WHEN — Since the first occurrence has {DEVIATION} been logged? What Pattern?",
     isPH:
       "Since first occurrence, when does {DEVIATION} re-occur?\n• What Pattern (continuous/periodic/sporadic/one time)",
@@ -132,6 +183,7 @@ const ROWS_UNFROZEN = [
   },
   {
     id: 'when-description',
+    causeTest: CAUSE_TEST_METADATA['when-description'],
     q: "WHEN — Describe using words When the {DEVIATION} was first seen",
     isPH:
       "At what point in {OBJECT}’s life-cycle did {DEVIATION} appear?\n• Use words like before, during, or after to describe these times and consider multiple lifecycles",
@@ -143,6 +195,7 @@ const ROWS_UNFROZEN = [
 
   {
     id: 'extent-population',
+    causeTest: CAUSE_TEST_METADATA['extent-population'],
     q: "EXTENT — What is the population or size of {OBJECT} affected?",
     isPH:
       "How many {OBJECT}s have {DEVIATION}?\nTrend (↑/↓/stable)?",
@@ -151,6 +204,7 @@ const ROWS_UNFROZEN = [
   },
   {
     id: 'extent-size',
+    causeTest: CAUSE_TEST_METADATA['extent-size'],
     q: "EXTENT — What is the size of a single {DEVIATION}?",
     isPH:
       "How big is a single {DEVIATION} on {OBJECT}?\nTrend (↑/↓/stable)?",
@@ -159,6 +213,7 @@ const ROWS_UNFROZEN = [
   },
   {
     id: 'extent-count',
+    causeTest: CAUSE_TEST_METADATA['extent-count'],
     q: "EXTENT — How many {DEVIATION} are occuring on each {OBJECT}?",
     isPH:
       "How many instances of {DEVIATION} per {OBJECT}?\nTrend (↑/↓/stable)?",

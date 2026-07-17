@@ -56,28 +56,80 @@ function defaultGetDeviationFull(){
 }
 
 /**
- * Builds a standardized cause-testing question tying the hypothesis to a KT row.
+ * Builds the normalized hypothesis phrase used in cause-testing prompts.
  * @param {PossibleCause} [cause] - Cause supplying suspect and accusation context.
- * @param {KTRowBinding} [row] - KT row binding containing the question prompt.
- * @returns {string} Prompt framed to explain how the hypothesis addresses the row.
+ * @returns {string} Cause phrase suitable for insertion after "If".
  */
-function buildCauseTestQuestionPrompt(cause, row){
+function buildCausePhrase(cause){
   const suspectClean = normalizeHypothesisValue(cause?.suspect || '');
   const suspectText = suspectClean || 'this cause';
   const accusationClean = normalizeHypothesisValue(cause?.accusation || '');
-  const hasAccusation = Boolean(accusationClean);
   const accusationNormalized = normalizeAccusation(accusationClean);
   const suspectIsPlural = /\b(?:and|&)\b/iu.test(suspectText)
     || /s$/iu.test((suspectText.split(/\s+/u).pop() || '').replace(/[^a-z]/giu, ''));
-  const accusationClauseRaw = hasAccusation
+  const accusationClauseRaw = accusationClean
     ? buildDirectAccusationClause(accusationNormalized, suspectIsPlural)
     : (suspectIsPlural ? 'are causing the deviation' : 'is causing the deviation');
   const accusationClause = trimValue(accusationClauseRaw) && accusationClauseRaw !== '…'
     ? accusationClauseRaw.trim()
     : (suspectIsPlural ? 'are causing the deviation' : 'is causing the deviation');
-  const rowQuestion = row?.th?.textContent?.trim() || fillTokens(row?.def?.q || '') || 'this KT row';
-  const questionClean = rowQuestion.replace(/[?]+$/u, '').trim() || 'this KT row';
-  return `If ${suspectText} ${accusationClause}, how does it explain ${questionClean}?`;
+  return `${suspectText} ${accusationClause}`;
+}
+
+/**
+ * Builds the object-and-deviation phrase used in cause-testing prompts.
+ * @returns {string} Problem phrase based on the current KT problem definition.
+ */
+function buildProblemPhrase(){
+  const object = firstSnippet(objectIS?.value) || firstSnippet(getObjectFullFn());
+  const deviation = firstSnippet(deviationIS?.value) || firstSnippet(getDeviationFullFn());
+  if(!object || !deviation) return '';
+  return `the issue affecting ${object} (${deviation})`;
+}
+
+/**
+ * Applies a cause-test template with its hypothesis, problem, and evidence values.
+ * @param {string} template - Row-specific template containing named placeholders.
+ * @param {Record<string, string>} values - Replacement values for the template.
+ * @returns {string} Filled prompt, or an empty string when a value cannot fit naturally.
+ */
+function applyCauseTestTemplate(template, values){
+  if(typeof template !== 'string' || !template.trim()) return '';
+  const requiredTokens = ['cause', 'problem', 'is', 'isNot'];
+  if(requiredTokens.some(token => !values[token])) return '';
+  let prompt = template;
+  requiredTokens.forEach(token => {
+    prompt = prompt.replaceAll(`{${token}}`, values[token]);
+  });
+  return /\{(?:cause|problem|is|isNot)\}/u.test(prompt) ? '' : prompt.trim();
+}
+
+/**
+ * Builds the row-specific cause-testing question without rendering separate
+ * evidence cards. Falls back to one generic evidence-aware question when a
+ * row template or a natural problem phrase is unavailable.
+ * @param {PossibleCause} [cause] - Cause supplying suspect and accusation context.
+ * @param {KTRowBinding} [row] - KT row binding containing metadata and evidence.
+ * @returns {string} Prompt that connects the cause to the IS / IS NOT distinction.
+ */
+function buildCauseTestPrompt(cause, row){
+  const causePhrase = buildCausePhrase(cause);
+  const problemPhrase = buildProblemPhrase();
+  const isValue = trimValue(row?.isTA?.value || '');
+  const isNotValue = trimValue(row?.notTA?.value || '');
+  const template = row?.def?.causeTest?.template;
+  const prompt = applyCauseTestTemplate(template, {
+    cause: causePhrase,
+    problem: problemPhrase,
+    is: isValue,
+    isNot: isNotValue
+  });
+  if(prompt) return prompt;
+
+  const genericProblem = problemPhrase || 'the problem';
+  const genericIs = isValue || 'the observed IS evidence';
+  const genericIsNot = isNotValue || 'the IS NOT evidence';
+  return `If ${causePhrase}, how does that explain ${genericProblem} is ${genericIs} but not ${genericIsNot}?`;
 }
 
 let autoResize = defaultAutoResize;
@@ -1864,7 +1916,7 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
     const qText = document.createElement('div');
     qText.className = 'cause-eval-question-text';
     qText.dataset.role = 'question';
-    qText.textContent = buildCauseTestQuestionPrompt(cause, row);
+    qText.textContent = buildCauseTestPrompt(cause, row);
     rowEl.append(dimension, qText);
     const inputsWrap = document.createElement('div');
     inputsWrap.className = 'cause-eval-inputs';
@@ -2004,7 +2056,7 @@ export function updateCauseEvidencePreviews(){
     const cause = possibleCauses.find(item => item.id === causeId);
     rowEl.hidden = Boolean(row?.tr?.hidden);
     const questionEl = rowEl.querySelector('[data-role="question"]');
-    if(questionEl){ questionEl.textContent = buildCauseTestQuestionPrompt(cause, row); }
+    if(questionEl){ questionEl.textContent = buildCauseTestPrompt(cause, row); }
     const rawIs = row?.isTA?.value || '';
     const rawNot = row?.notTA?.value || '';
     const noteLabel = rowEl.querySelector('[data-role="note-label"]');
