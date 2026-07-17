@@ -1411,28 +1411,6 @@ function updateCauseCardIndicators(card, cause){
 }
 
 /**
- * Formats textarea content into a bullet-style preview for cause testing.
- * @param {string} value - Raw textarea value.
- * @returns {string} Preview text or a dash placeholder.
- */
-function previewEvidenceText(value){
-  const lines = splitLines(value);
-  if(!lines.length) return '—';
-  return lines.map(line => `• ${line}`).join('\n');
-}
-
-/**
- * Splits a block of text into trimmed lines while omitting blanks.
- * @param {string} text - Raw text content.
- * @returns {string[]} Array of non-empty lines.
- */
-function splitLines(text){
-  const v = (text || '').trim();
-  if(!v) return [];
-  return v.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-}
-
-/**
  * Creates the remove button for a cause card, wiring persistence handlers.
  * @param {PossibleCause} cause - Cause associated with the button.
  * @returns {HTMLButtonElement} Configured remove button element.
@@ -1844,8 +1822,8 @@ export function renderCauses(){
 }
 
 /**
- * Builds the cause testing panel containing question summaries and finding
- * controls.
+ * Builds the cause testing panel containing one compact finding control set
+ * for each eligible KT evidence pair.
  * @param {PossibleCause} cause - Cause being tested.
  * @param {HTMLElement} progressChip - Chip element showing progress counts.
  * @param {HTMLElement} statusEl - Element displaying the status label.
@@ -1856,10 +1834,6 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
   const panel = document.createElement('div');
   panel.className = 'cause-test';
   const actionBadge = card?.querySelector('[data-role="action-count"]');
-  const intro = document.createElement('p');
-  intro.className = 'cause-test__intro';
-  intro.textContent = 'For each KT row, choose how this hypothesis handles the IS / IS NOT evidence and document your reasoning.';
-  panel.appendChild(intro);
   if(!rowsBuilt.length){
     const empty = document.createElement('div');
     empty.className = 'cause-empty';
@@ -1884,39 +1858,14 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
     rowEl.dataset.rowIndex = index;
     rowEl.dataset.rowKey = rowKey;
     rowEl.hidden = Boolean(row?.tr?.hidden);
+    const dimension = document.createElement('div');
+    dimension.className = 'cause-eval-dimension';
+    dimension.textContent = (row?.th?.textContent || row?.def?.q || '').split('—')[0].trim() || 'KT dimension';
     const qText = document.createElement('div');
     qText.className = 'cause-eval-question-text';
     qText.dataset.role = 'question';
     qText.textContent = buildCauseTestQuestionPrompt(cause, row);
-    rowEl.appendChild(qText);
-    const evidenceWrap = document.createElement('div');
-    evidenceWrap.className = 'cause-evidence-wrap';
-    const isBlock = document.createElement('div');
-    isBlock.className = 'cause-evidence-block';
-    isBlock.dataset.rowIndex = index;
-    isBlock.dataset.type = 'is';
-    const isLabel = document.createElement('span');
-    isLabel.className = 'cause-evidence-label';
-    isLabel.textContent = 'IS evidence';
-    const isValue = document.createElement('div');
-    isValue.className = 'cause-evidence-text';
-    isValue.dataset.role = 'is-value';
-    isValue.textContent = previewEvidenceText(row?.isTA?.value || '');
-    isBlock.append(isLabel, isValue);
-    const notBlock = document.createElement('div');
-    notBlock.className = 'cause-evidence-block';
-    notBlock.dataset.rowIndex = index;
-    notBlock.dataset.type = 'not';
-    const notLabel = document.createElement('span');
-    notLabel.className = 'cause-evidence-label';
-    notLabel.textContent = 'IS NOT evidence';
-    const notValue = document.createElement('div');
-    notValue.className = 'cause-evidence-text';
-    notValue.dataset.role = 'not-value';
-    notValue.textContent = previewEvidenceText(row?.notTA?.value || '');
-    notBlock.append(notLabel, notValue);
-    evidenceWrap.append(isBlock, notBlock);
-    rowEl.appendChild(evidenceWrap);
+    rowEl.append(dimension, qText);
     const inputsWrap = document.createElement('div');
     inputsWrap.className = 'cause-eval-inputs';
     const optionWrap = document.createElement('div');
@@ -2041,7 +1990,7 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
 
 /**
  * Synchronizes the cause-testing panels with the latest KT table evidence and
- * action counts.
+ * action counts, including dynamic reasoning prompts.
  * @returns {void}
  */
 export function updateCauseEvidencePreviews(){
@@ -2056,12 +2005,8 @@ export function updateCauseEvidencePreviews(){
     rowEl.hidden = Boolean(row?.tr?.hidden);
     const questionEl = rowEl.querySelector('[data-role="question"]');
     if(questionEl){ questionEl.textContent = buildCauseTestQuestionPrompt(cause, row); }
-    const isValue = rowEl.querySelector('[data-role="is-value"]');
     const rawIs = row?.isTA?.value || '';
     const rawNot = row?.notTA?.value || '';
-    if(isValue){ isValue.textContent = previewEvidenceText(rawIs); }
-    const notValue = rowEl.querySelector('[data-role="not-value"]');
-    if(notValue){ notValue.textContent = previewEvidenceText(rawNot); }
     const noteLabel = rowEl.querySelector('[data-role="note-label"]');
     if(noteLabel && noteLabel.dataset.template){
       noteLabel.textContent = substituteEvidenceTokens(noteLabel.dataset.template, rawIs, rawNot);
