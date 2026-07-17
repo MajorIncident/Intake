@@ -1920,8 +1920,12 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
     rowEl.append(dimension, qText);
     const inputsWrap = document.createElement('div');
     inputsWrap.className = 'cause-eval-inputs';
-    const optionWrap = document.createElement('div');
+    const optionWrap = document.createElement('fieldset');
     optionWrap.className = 'cause-eval-options';
+    const optionLegend = document.createElement('legend');
+    optionLegend.className = 'cause-eval-options-legend';
+    optionLegend.textContent = `Verdict for ${dimension.textContent} evidence`;
+    optionWrap.appendChild(optionLegend);
     const noteField = document.createElement('div');
     noteField.className = 'field cause-eval-note';
     noteField.hidden = true;
@@ -1949,27 +1953,28 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
 
     const optionDefs = [
       {
-        mode: CAUSE_FINDING_MODES.ASSUMPTION,
-        buttonLabel: 'Explains Only if…',
-        noteLabel: 'What assumptions are necessary to explain why we see it on the <is> and not the <is not>?'
-      },
-      {
         mode: CAUSE_FINDING_MODES.YES,
-        buttonLabel: 'Yes, because…',
+        buttonLabel: 'Explains Naturally',
         noteLabel: 'How does this naturally explain that we see <is> and that we don\'t see <is not>?'
       },
       {
+        mode: CAUSE_FINDING_MODES.ASSUMPTION,
+        buttonLabel: 'Requires Assumptions',
+        noteLabel: 'What assumptions are necessary to explain why we see it on the <is> and not the <is not>?'
+      },
+      {
         mode: CAUSE_FINDING_MODES.FAIL,
-        buttonLabel: 'Does not explain…',
+        buttonLabel: 'Does Not Explain',
         noteLabel: 'Why can\'t we explain the <is> being present, but not the <is not>?'
       }
     ];
-    const buttons = [];
+    const options = [];
+    const optionGroupName = `cause-finding-${cause.id}-${rowKey}`;
     const rawIs = row?.isTA?.value || '';
     const rawNot = row?.notTA?.value || '';
 
     /**
-     * Updates button selection and note fields based on the chosen mode.
+     * Updates radio selection and note fields based on the chosen mode.
      * @param {string} newMode - Mode to activate.
      * @param {object} [opts] - Behavior flags for the update.
      * @param {boolean} [opts.silent] - When true prevents persistence and toast
@@ -1978,8 +1983,10 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
      */
     function applyMode(newMode, opts = {}){
       const active = isValidFindingMode(newMode) ? newMode : '';
-      buttons.forEach(btn => {
-        btn.element.classList.toggle('is-selected', btn.mode === active);
+      options.forEach(option => {
+        const isSelected = option.mode === active;
+        option.input.checked = isSelected;
+        option.element.classList.toggle('is-selected', isSelected);
       });
       if(active){
         const config = optionDefs.find(def => def.mode === active);
@@ -2011,24 +2018,21 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
     }
 
     optionDefs.forEach(def => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'cause-eval-option';
-      btn.textContent = def.buttonLabel;
-      btn.dataset.mode = def.mode;
-      btn.addEventListener('click', () => {
-        const entry = getCauseFinding(cause, rowKey);
-        const current = findingMode(entry);
-        if(current === def.mode){
-          setCauseFindingValue(cause, rowKey, 'mode', '');
-          applyMode('');
-        }else{
-          setCauseFindingValue(cause, rowKey, 'mode', def.mode);
-          applyMode(def.mode);
-        }
+      const option = document.createElement('label');
+      option.className = 'cause-eval-option';
+      option.dataset.mode = def.mode;
+      const input = document.createElement('input');
+      input.type = 'radio';
+      input.name = optionGroupName;
+      input.value = def.mode;
+      input.addEventListener('change', () => {
+        if(!input.checked) return;
+        setCauseFindingValue(cause, rowKey, 'mode', def.mode);
+        applyMode(def.mode);
       });
-      optionWrap.appendChild(btn);
-      buttons.push({ element: btn, mode: def.mode });
+      option.append(input, document.createTextNode(def.buttonLabel));
+      optionWrap.appendChild(option);
+      options.push({ element: option, input, mode: def.mode });
     });
 
     const startingMode = findingMode(finding);

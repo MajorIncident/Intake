@@ -241,24 +241,38 @@ test('kt causes: renders compact verdict controls and preserves finding callback
   const noteLabel = rowEl.querySelector('[data-role="note-label"]');
   const noteInput = rowEl.querySelector('[data-role="finding-note"]');
   const verdicts = rowEl.querySelectorAll('.cause-eval-option');
+  const verdictInputs = rowEl.querySelectorAll('.cause-eval-option input[type="radio"]');
   const findingKey = ktModule.getRowKeyByIndex(0);
 
   assert.equal(rowEl.querySelector('.cause-eval-dimension').textContent, 'WHERE');
   assert.equal(questionEl.textContent, 'If Alpha subsystem is failing health checks, why does the issue affecting payment service (timeouts) occur at Alpha detail but not at Beta detail?');
   assert.equal(verdicts.length, 3, 'each evidence pair gets exactly three verdict controls');
+  assert.equal(rowEl.querySelector('.cause-eval-options').tagName, 'FIELDSET', 'verdict controls are an accessible choice group');
+  assert.deepEqual(
+    [...verdictInputs].map(input => [input.value, input.parentElement.textContent]),
+    [
+      ['yes', 'Explains Naturally'],
+      ['assumption', 'Requires Assumptions'],
+      ['fail', 'Does Not Explain']
+    ],
+    'verdicts retain the prescribed values, labels, and order'
+  );
+  assert.equal(new Set([...verdictInputs].map(input => input.name)).size, 1, 'verdict radios share one exclusive-choice group');
   assert.equal(noteField.hidden, true, 'reasoning is hidden until a verdict is selected');
   assert.equal(rowEl.querySelector('[data-role="is-value"]'), null, 'IS evidence cards are not rendered');
   assert.equal(rowEl.querySelector('[data-role="not-value"]'), null, 'IS NOT evidence cards are not rendered');
 
-  verdicts[1].click();
+  verdictInputs[0].click();
   assert.equal(cause.findings[findingKey].mode, 'yes');
   assert.equal(noteField.hidden, false);
+  assert.equal(ktModule.countCompletedEvidence(cause), 0, 'a verdict alone does not complete a finding');
   assert.match(noteLabel.textContent, /Alpha detail/);
   assert.match(noteLabel.textContent, /Beta detail/);
 
   noteInput.value = 'It matches the observed region.';
   noteInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
   assert.equal(cause.findings[findingKey].note, 'It matches the observed region.');
+  assert.equal(ktModule.countCompletedEvidence(cause), 1, 'a finding is complete only after its note is supplied');
   assert.ok(resizeSpy.mock.calls.length > 0, 'autosize runs for the conditional textarea');
   assert.ok(saveSpy.mock.calls.length >= 2, 'verdict and reasoning changes retain save callbacks');
 
