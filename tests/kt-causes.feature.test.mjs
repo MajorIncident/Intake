@@ -226,9 +226,11 @@ test('kt causes: renders compact verdict controls and preserves finding callback
     tr: { hidden: false },
     th: { textContent: 'WHERE — Where is it failing?' },
     def: {
+      id: 'fallback-row-id',
       q: 'Where is {OBJECT} misbehaving?',
       causeTest: CAUSE_TEST_METADATA['where-location']
     },
+    questionId: 'where-location',
     isTA: isTextarea,
     notTA: notTextarea
   });
@@ -243,6 +245,7 @@ test('kt causes: renders compact verdict controls and preserves finding callback
   const verdicts = rowEl.querySelectorAll('.cause-eval-option');
   const verdictInputs = rowEl.querySelectorAll('.cause-eval-option input[type="radio"]');
   const findingKey = ktModule.getRowKeyByIndex(0);
+  assert.equal(findingKey, 'where-location', 'findings prefer the stable question ID over the row definition and prompt text');
 
   assert.equal(rowEl.querySelector('.cause-eval-dimension').textContent, 'WHERE');
   assert.equal(questionEl.textContent, 'If Alpha subsystem is failing health checks, why does the issue affecting payment service (timeouts) occur at Alpha detail but not at Beta detail?');

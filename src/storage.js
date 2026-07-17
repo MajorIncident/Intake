@@ -11,7 +11,7 @@
  * `restoreFromStorage`, `clearStorage`).
  */
 
-import { CAUSE_FINDING_MODES, CAUSE_FINDING_MODE_VALUES } from './constants.js';
+import { CAUSE_FINDING_MODES, CAUSE_FINDING_MODE_VALUES, ROWS } from './constants.js';
 import { APP_STATE_VERSION } from './appStateVersion.js';
 import { DEFAULT_INTAKE_MODE, INTAKE_MODE_IDS } from './intakeModes.js';
 import { normalizeActionSnapshot, ACTIONS_STORAGE_KEY } from './actionsStore.js';
@@ -202,6 +202,51 @@ function findingMode(entry) {
 function findingNote(entry) {
   if (!entry || typeof entry !== 'object') return '';
   return typeof entry.note === 'string' ? entry.note : '';
+}
+
+/**
+ * Maps legacy KT prompt keys to their stable row identifiers.
+ * @type {ReadonlyMap<string, string>}
+ */
+const FINDING_KEY_BY_LEGACY_QUESTION = new Map(
+  ROWS.filter(row => typeof row?.id === 'string' && typeof row?.q === 'string')
+    .map(row => [row.q, row.id])
+);
+
+/**
+ * Maps a finding key to its stable identifier when it is a current legacy prompt.
+ * @param {string} key - Persisted finding key.
+ * @returns {string} Stable key for known legacy prompts, otherwise the original key.
+ */
+function normalizeFindingKey(key) {
+  return FINDING_KEY_BY_LEGACY_QUESTION.get(key) || key;
+}
+
+/**
+ * Normalizes a cause findings map while preserving unknown keys. Explicit stable
+ * entries are processed before their legacy prompt aliases so valid stable
+ * entries remain authoritative when both forms are present.
+ * @param {unknown} source - Raw findings map from storage or an import.
+ * @returns {Record<string, CauseFinding>} Finding records keyed by stable IDs where known.
+ */
+function normalizeCauseFindings(source) {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return {};
+
+  const findings = {};
+  const entries = Object.entries(source);
+  const stableEntries = entries.filter(([key]) => !FINDING_KEY_BY_LEGACY_QUESTION.has(key));
+  const legacyEntries = entries.filter(([key]) => FINDING_KEY_BY_LEGACY_QUESTION.has(key));
+  [...stableEntries, ...legacyEntries].forEach(([key, entry]) => {
+    const normalized = normalizeFindingEntry(entry);
+    const mode = findingMode(normalized);
+    const note = findingNote(normalized);
+    if (!mode && !note.trim()) return;
+
+    const normalizedKey = normalizeFindingKey(key);
+    if (Object.prototype.hasOwnProperty.call(findings, normalizedKey)) return;
+    findings[normalizedKey] = { mode, note };
+  });
+  return findings;
 }
 
 /**
@@ -503,13 +548,34 @@ function migrateLegacyState(raw) {
 }
 
 /**
+ * Replaces legacy question-text cause finding keys with stable KT row IDs.
+ * @param {unknown} raw - Version 1 application state.
+ * @returns {object} Cloned state upgraded to version 2.
+ */
+function migrateCauseFindingKeys(raw) {
+  const state = cloneState(raw) || {};
+  if (state && typeof state === 'object') {
+    ['causes', 'possibleCauses'].forEach(causesKey => {
+      if (!Array.isArray(state[causesKey])) return;
+      state[causesKey] = state[causesKey].map(cause => {
+        if (!cause || typeof cause !== 'object') return cause;
+        return { ...cause, findings: normalizeCauseFindings(cause.findings) };
+      });
+    });
+    state.meta = { ...(state.meta || {}), version: 2 };
+  }
+  return state;
+}
+
+/**
  * Ordered map of migration handlers. Keys represent the version found in
  * persisted payloads, and values are invoked until {@link APP_STATE_VERSION}
  * is reached. Additional migrations should be appended with incrementing keys
  * to preserve replay order.
  */
 const MIGRATIONS = new Map([
-  [0, migrateLegacyState]
+  [0, migrateLegacyState],
+  [1, migrateCauseFindingKeys]
 ]);
 
 /**
@@ -674,20 +740,8 @@ export function serializeCauses(causes) {
   if (!Array.isArray(causes)) return [];
   return causes.map(cause => {
     const record = cause && typeof cause === 'object' ? cause : {};
-    const findings = {};
-    if (record.findings && typeof record.findings === 'object') {
-      Object.keys(record.findings).forEach(key => {
-        const normalized = normalizeFindingEntry(record.findings[key]);
-        const mode = findingMode(normalized);
-        const note = findingNote(normalized);
-        if (mode || note.trim()) {
-          findings[key] = { mode, note };
-          record.findings[key] = normalized;
-        } else {
-          delete record.findings[key];
-        }
-      });
-    }
+    const findings = normalizeCauseFindings(record.findings);
+    record.findings = findings;
     const confidenceRaw = typeof record.confidence === 'string' ? record.confidence.trim().toLowerCase() : '';
     const normalizedConfidence = ['low', 'medium', 'high'].includes(confidenceRaw) ? confidenceRaw : '';
     return {
@@ -729,16 +783,7 @@ export function deserializeCauses(serialized) {
       editing: !!raw?.editing,
       testingOpen: !!raw?.testingOpen
     };
-    if (raw && raw.findings && typeof raw.findings === 'object') {
-      Object.keys(raw.findings).forEach(key => {
-        const normalized = normalizeFindingEntry(raw.findings[key]);
-        const mode = findingMode(normalized);
-        const note = findingNote(normalized);
-        if (mode || note.trim()) {
-          cause.findings[key] = normalized;
-        }
-      });
-    }
+    cause.findings = normalizeCauseFindings(raw?.findings);
     return cause;
   });
 }
