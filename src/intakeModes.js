@@ -164,9 +164,9 @@ export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
     impactTime: 'When is a decision or resolution needed?'
   },
   [INTAKE_MODE_IDS.IT]: {
-    oneLine: 'What IT service or capability is degraded?',
-    proof: 'What evidence confirms the technical deviation?',
-    objectPrefill: 'Which IT object is affected?',
+    oneLine: 'What problem is affecting the service or system?',
+    proof: 'What observed evidence confirms the technical deviation?',
+    objectPrefill: 'Which system is affected?',
     healthy: 'What service behavior is expected?',
     now: 'What is the actual service behavior now?',
     impactNow: 'What is the current user or system impact?',
@@ -215,14 +215,14 @@ export const INTAKE_MODE_HELPER_OVERRIDES = deepFreeze({
     impactTime: 'For example, state a decision date, delivery date, dependency, deadline, or point of no return.'
   },
   [INTAKE_MODE_IDS.IT]: {
-    oneLine: 'State the degraded service or capability, symptom, and affected scope.',
+    oneLine: 'State the affected service or system, the problem, and the affected scope.',
     proof: 'Include alerts, logs, metrics, customer reports, or reproduction results.',
-    objectPrefill: 'Provide the service, application, dependency, host, OS, platform, version, or configuration identifier.',
-    healthy: 'Give the expected behavior, SLO, metric, or known-good configuration.',
+    objectPrefill: 'Include optional identification details such as the application, dependency, host, environment, version, or configuration.',
+    healthy: 'Give the expected baseline behavior, expected service target, metric, or known-good configuration. A service-level objective (SLO) is one type of expected service target.',
     now: 'Record current behavior, alerts, metrics, or user symptoms against the baseline.',
     impactNow: 'Identify affected users, transactions, regions, systems, or dependencies and quantify the scope.',
     impactFuture: 'Describe the operational risk, deadline, or dependent service at risk.',
-    impactTime: 'Include the applicable SLA, release, dependency, or other deadline.'
+    impactTime: 'Include the applicable service-level agreement (SLA), release, dependency, or other deadline.'
   },
   [INTAKE_MODE_IDS.PHARMA]: {
     oneLine: 'State the deviation, product or process context, and batch scope.',

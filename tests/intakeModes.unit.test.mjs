@@ -76,8 +76,9 @@ test('controlled fields use single-question labels and mode-appropriate helper g
       impactTime: /decision or resolution needed/i
     },
     [INTAKE_MODE_IDS.IT]: {
-      oneLine: /IT service or capability.*degraded/i,
-      objectPrefill: /which IT object is affected/i,
+      oneLine: /what problem is affecting the service or system/i,
+      proof: /observed evidence confirms the technical deviation/i,
+      objectPrefill: /which system is affected/i,
       impactTime: /decision or resolution needed/i
     },
     [INTAKE_MODE_IDS.PHARMA]: {
@@ -113,7 +114,7 @@ test('controlled fields use single-question labels and mode-appropriate helper g
 test('General, IT, and Pharma helpers guide operators to concrete answer details', () => {
   const guidancePatterns = {
     [INTAKE_MODE_IDS.GENERAL]: /for example.*product defect.*photos.*equipment item.*approved specification.*delivery date/is,
-    [INTAKE_MODE_IDS.IT]: /logs.*metrics.*identifier.*scope.*SLA/is,
+    [INTAKE_MODE_IDS.IT]: /scope.*logs.*metrics.*application.*dependency.*host.*environment.*version.*configuration.*service-level objective \(SLO\).*service-level agreement \(SLA\)/is,
     [INTAKE_MODE_IDS.PHARMA]: /assay data.*identifier.*release.*hold points/is
   };
 
@@ -121,6 +122,24 @@ test('General, IT, and Pharma helpers guide operators to concrete answer details
     const helpers = Object.values(INTAKE_MODE_HELPER_OVERRIDES[modeId]).join(' ');
     assert.match(helpers, pattern, `${modeId} helpers should identify concrete evidence and decision details`);
   });
+});
+
+test('IT primary questions stay plain-language while helpers define technical details', () => {
+  const captions = INTAKE_MODE_CAPTION_OVERRIDES[INTAKE_MODE_IDS.IT];
+  const helpers = INTAKE_MODE_HELPER_OVERRIDES[INTAKE_MODE_IDS.IT];
+
+  assert.equal(captions.oneLine, 'What problem is affecting the service or system?');
+  assert.equal(captions.objectPrefill, 'Which system is affected?');
+  assert.doesNotMatch(Object.values(captions).join(' '), /\b(?:IT|SLO|SLA|OS)\b/);
+  assert.match(helpers.objectPrefill, /application.*dependency.*host.*environment.*version.*configuration/i);
+  assert.match(helpers.healthy, /service-level objective \(SLO\)/i);
+  assert.match(helpers.impactTime, /service-level agreement \(SLA\)/i);
+  assert.match(captions.proof, /observed evidence/i);
+  assert.match(captions.healthy, /service behavior.*expected/i);
+  assert.match(captions.now, /actual service behavior now/i);
+  assert.match(captions.impactNow, /current user or system impact/i);
+  assert.match(captions.impactFuture, /future operational impact.*unresolved/i);
+  assert.match(captions.impactTime, /decision or resolution needed/i);
 });
 
 test('General captions and helpers support operational and non-technical intake', () => {
