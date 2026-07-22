@@ -99,8 +99,8 @@ test('selector changes apply mode visibility and emit a save callback', () => {
   assert.equal(document.getElementById('detectionSource').hidden, true);
   assert.equal(document.getElementById('evidenceCollected').hidden, true);
   assert.equal(document.getElementById('proofField').hidden, true);
-  assert.equal(document.querySelector('label[for="proof"]').textContent, 'Deviation evidence');
-  assert.equal(document.getElementById('impactNowHeading').textContent, 'Current quality or patient impact');
+  assert.equal(document.querySelector('label[for="proof"]').textContent, 'What observable or measurable evidence confirms the deviation?');
+  assert.equal(document.getElementById('impactNowHeading').textContent, 'What is the current quality, release, safety, or patient impact?');
 
   applyIntakeMode(INTAKE_MODE_IDS.MAJOR_INCIDENT, { silent: true });
   assert.equal(document.getElementById('commsDrawer').hidden, false);
@@ -109,6 +109,26 @@ test('selector changes apply mode visibility and emit a save callback', () => {
   assert.equal(document.getElementById('evidenceCollected').hidden, false);
   assert.equal(document.getElementById('proofField').hidden, false);
   assert.equal(document.getElementById('containment').hidden, false);
+});
+
+
+test('mode changes render representative question-led captions in the mounted DOM', () => {
+  const document = mountModeDom();
+  initIntakeModeController();
+
+  const expected = {
+    [INTAKE_MODE_IDS.GENERAL]: ['What issue is affecting the service or capability, and how is it degraded?', 'What is the current impact?'],
+    [INTAKE_MODE_IDS.IT]: ['Which specific IT object is affected, including its OS, platform, version, and configuration?', 'What is the current user or system impact?'],
+    [INTAKE_MODE_IDS.PHARMA]: ['What quality event is affecting which product, process, or batch?', 'What is the current quality, release, safety, or patient impact?'],
+    [INTAKE_MODE_IDS.MAJOR_INCIDENT]: ['What major incident is degrading which customer-facing service or capability?', 'What is the current incident impact and blast radius?']
+  };
+
+  Object.entries(expected).forEach(([modeId, [labelText, headingText]]) => {
+    applyIntakeMode(modeId, { silent: true });
+    const label = [...document.querySelectorAll('label')].find((element) => element.textContent === labelText);
+    assert.ok(label, `${modeId} should render its representative question label`);
+    assert.equal(document.getElementById('impactNowHeading').textContent, headingText);
+  });
 });
 
 test('saved General, IT, Pharma, and Major Incident states restore the active mode', () => {

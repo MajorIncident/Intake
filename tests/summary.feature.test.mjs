@@ -380,15 +380,15 @@ test('summary: non-major modes use mode labels and exclude major-incident-only s
   const text = buildSummaryText(state);
 
   assert.ok(text.includes('— Technology Operations Summary —'));
-  assert.ok(text.includes('• Technology operations summary: Checkout payments are failing'));
-  assert.ok(text.includes('• Affected service or component: Payments API'));
+  assert.ok(text.includes('• What stated issue is degrading which service or capability?: Checkout payments are failing'));
+  assert.ok(text.includes('• Which specific IT object is affected, including its OS, platform, version, and configuration?: Payments API'));
   assert.ok(!text.includes('Operational evidence'));
   assert.ok(!text.includes('Synthetic monitor and logs confirm errors'));
   assert.ok(!text.includes('Detection Source'));
   assert.ok(!text.includes('Evidence Collected'));
-  assert.ok(text.includes('Current user or system impact: Customers cannot complete checkout'));
-  assert.ok(text.includes('Potential operational risk: Backlog may trigger order cancellations'));
-  assert.ok(text.includes('Detection and timing context: Detected at 12:45 UTC'));
+  assert.ok(text.includes('What is the current user or system impact?: Customers cannot complete checkout'));
+  assert.ok(text.includes('What future operational impact is likely if the issue remains unresolved?: Backlog may trigger order cancellations'));
+  assert.ok(text.includes('By what specific deadline or timeframe does resolution become difficult, expensive, impossible, or meaningless?: Detected at 12:45 UTC'));
   assert.ok(text.includes('— Problem Analysis —'));
   assert.ok(text.includes('— Possible Causes —'));
   assert.ok(text.includes('Likely Cause:'));

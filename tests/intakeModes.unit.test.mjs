@@ -67,6 +67,45 @@ test('caption and helper override maps preserve stable field IDs for every mode'
   });
 });
 
+
+test('every mode provides question-led prompts for each controlled field', () => {
+  const expectedCopy = {
+    [INTAKE_MODE_IDS.GENERAL]: {
+      oneLine: /service or capability.*degraded/i,
+      objectPrefill: /specific object.*identifies it/i,
+      impactTime: /difficult, expensive, impossible, or meaningless/i
+    },
+    [INTAKE_MODE_IDS.IT]: {
+      oneLine: /stated issue.*service or capability/i,
+      objectPrefill: /OS, platform, version, and configuration/i,
+      impactTime: /difficult, expensive, impossible, or meaningless/i
+    },
+    [INTAKE_MODE_IDS.PHARMA]: {
+      oneLine: /quality event.*product, process, or batch/i,
+      proof: /observable or measurable evidence/i,
+      impactTime: /difficult, expensive, impossible, or meaningless/i
+    },
+    [INTAKE_MODE_IDS.MAJOR_INCIDENT]: {
+      oneLine: /major incident.*service or capability/i,
+      now: /differ from the baseline/i,
+      impactTime: /difficult, expensive, impossible, or meaningless/i
+    }
+  };
+
+  Object.values(INTAKE_MODE_IDS).forEach((modeId) => {
+    REQUIRED_FIELD_IDS.forEach((fieldId) => {
+      const { label, helper } = INTAKE_MODE_FIELD_CAPTIONS[modeId][fieldId];
+      assert.match(label, /\?$/, `${modeId}.${fieldId} label should be a question`);
+      assert.match(helper, /\?$/, `${modeId}.${fieldId} helper should be a question`);
+      assert.equal(label, INTAKE_MODE_CAPTION_OVERRIDES[modeId][fieldId]);
+      assert.equal(helper, INTAKE_MODE_HELPER_OVERRIDES[modeId][fieldId]);
+    });
+    Object.entries(expectedCopy[modeId]).forEach(([fieldId, pattern]) => {
+      assert.match(INTAKE_MODE_FIELD_CAPTIONS[modeId][fieldId].label, pattern);
+    });
+  });
+});
+
 test('IT and Major Incident use distinct operations and incident copy maps', () => {
   assert.notDeepEqual(
     INTAKE_MODE_CAPTION_OVERRIDES[INTAKE_MODE_IDS.IT],
@@ -82,7 +121,7 @@ test('IT and Major Incident use distinct operations and incident copy maps', () 
     ...Object.values(INTAKE_MODE_HELPER_OVERRIDES[INTAKE_MODE_IDS.IT])
   ].join(' ');
   assert.doesNotMatch(itCopy, /\b(bridge|comms|communications|handover)\b/i);
-  assert.match(itCopy, /technology operations/i);
+  assert.match(itCopy, /technical deviation/i);
 
   const majorIncidentCopy = [
     ...Object.values(INTAKE_MODE_CAPTION_OVERRIDES[INTAKE_MODE_IDS.MAJOR_INCIDENT]),
@@ -90,7 +129,7 @@ test('IT and Major Incident use distinct operations and incident copy maps', () 
   ].join(' ');
   assert.match(majorIncidentCopy, /major incident/i);
   assert.match(majorIncidentCopy, /responders/i);
-  assert.match(majorIncidentCopy, /bridge/i);
+  assert.match(majorIncidentCopy, /blast radius/i);
 });
 
 test('IT keeps the same minimal visible sections as General and Pharma', () => {
