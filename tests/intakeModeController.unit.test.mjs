@@ -99,7 +99,7 @@ test('selector changes apply mode visibility and emit a save callback', () => {
   assert.equal(document.getElementById('detectionSource').hidden, true);
   assert.equal(document.getElementById('evidenceCollected').hidden, true);
   assert.equal(document.getElementById('proofField').hidden, true);
-  assert.equal(document.querySelector('label[for="proof"]').textContent, 'What observable or measurable evidence confirms the deviation?');
+  assert.equal(document.querySelector('label[for="proof"]').textContent, 'What evidence confirms the quality deviation?');
   assert.equal(document.getElementById('impactNowHeading').textContent, 'What is the current quality, release, safety, or patient impact?');
 
   applyIntakeMode(INTAKE_MODE_IDS.MAJOR_INCIDENT, { silent: true });
@@ -117,9 +117,9 @@ test('mode changes render representative question-led captions in the mounted DO
   initIntakeModeController();
 
   const expected = {
-    [INTAKE_MODE_IDS.GENERAL]: ['What issue is affecting the service or capability, and how is it degraded?', 'What is the current impact?'],
-    [INTAKE_MODE_IDS.IT]: ['Which specific IT object is affected, including its OS, platform, version, and configuration?', 'What is the current user or system impact?'],
-    [INTAKE_MODE_IDS.PHARMA]: ['What quality event is affecting which product, process, or batch?', 'What is the current quality, release, safety, or patient impact?'],
+    [INTAKE_MODE_IDS.GENERAL]: ['What problem is affecting the service or capability?', 'What is the current impact?'],
+    [INTAKE_MODE_IDS.IT]: ['Which IT object is affected?', 'What is the current user or system impact?'],
+    [INTAKE_MODE_IDS.PHARMA]: ['What quality event is affecting the product, process, or batch?', 'What is the current quality, release, safety, or patient impact?'],
     [INTAKE_MODE_IDS.MAJOR_INCIDENT]: ['What major incident is degrading which customer-facing service or capability?', 'What is the current incident impact and blast radius?']
   };
 
@@ -172,4 +172,3 @@ test('missing and invalid restored modes resolve to General even after another m
   assert.equal(getActiveIntakeMode(), INTAKE_MODE_IDS.GENERAL);
   assert.equal(document.getElementById('intakeModeSelect').value, INTAKE_MODE_IDS.GENERAL);
 });
-

@@ -162,8 +162,8 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
   objectPrefill.dispatchEvent(new window.Event('input', { bubbles: true }));
 
   assert.equal(objectISField.value, 'Edge Router service');
-  assert.equal(document.getElementById('labelNow').textContent, 'What is this object doing now, and how does that actual behavior differ from the baseline?');
-  assert.equal(document.getElementById('labelHealthy').textContent, 'What normally should this object do, and what baseline establishes that expectation?');
+  assert.equal(document.getElementById('labelNow').textContent, 'What is the object doing now?');
+  assert.equal(document.getElementById('labelHealthy').textContent, 'What should the object do normally?');
   assert.equal(document.getElementById('docTitle').textContent, 'KT Intake');
   assert.equal(document.getElementById('docSubtitle').textContent, '');
   assert.equal(document.title, 'KT Intake');
@@ -183,15 +183,15 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
   assert.equal(document.getElementById('docTitle').textContent, 'Edge Router service — Traffic drop for users');
   assert.equal(document.getElementById('docSubtitle').textContent, '');
   assert.equal(document.title, 'Edge Router service — Traffic drop for users · KT Intake');
-  assert.equal(document.getElementById('labelHealthy').textContent, 'What normally should this object do, and what baseline establishes that expectation?');
+  assert.equal(document.getElementById('labelHealthy').textContent, 'What should the object do normally?');
 
   deviationISField.value = '';
   nowField.value = '';
   nowField.dispatchEvent(new window.Event('input', { bubbles: true }));
   assert.equal(document.getElementById('docTitle').textContent, 'KT Intake');
   assert.equal(document.getElementById('docSubtitle').textContent, '');
-  assert.equal(document.getElementById('labelNow').textContent, 'What is this object doing now, and how does that actual behavior differ from the baseline?');
-  assert.equal(document.getElementById('labelHealthy').textContent, 'What normally should this object do, and what baseline establishes that expectation?');
+  assert.equal(document.getElementById('labelNow').textContent, 'What is the object doing now?');
+  assert.equal(document.getElementById('labelHealthy').textContent, 'What should the object do normally?');
   assert.equal(document.title, 'KT Intake');
 
   objectISField.value = '';
@@ -199,8 +199,8 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
   objectPrefill.dispatchEvent(new window.Event('input', { bubbles: true }));
   assert.equal(document.getElementById('docTitle').textContent, 'KT Intake');
   assert.equal(document.getElementById('docSubtitle').textContent, '');
-  assert.equal(document.getElementById('labelNow').textContent, 'What is this object doing now, and how does that actual behavior differ from the baseline?');
-  assert.equal(document.getElementById('labelHealthy').textContent, 'What normally should this object do, and what baseline establishes that expectation?');
+  assert.equal(document.getElementById('labelNow').textContent, 'What is the object doing now?');
+  assert.equal(document.getElementById('labelHealthy').textContent, 'What should the object do normally?');
 
   applyPrefaceState({
     ops: { containStatus: 'mitigation' }
