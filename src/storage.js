@@ -85,6 +85,7 @@ import { normalizeTheme } from './theme.js';
  * @property {{items: Array<{id: string, label: string, checked: boolean}>, drawerOpen: boolean}} steps - Steps drawer state.
  * @property {{analysisId: string, items: import('./actionsStore.js').ActionRecord[]}|undefined} actions - Optional actions snapshot.
  * @property {SerializedHandoverState|undefined} handover - Optional handover notes keyed by section identifier.
+ * @property {{notes: Array<{id: string, text: string}>, open: boolean}|undefined} notesWorkspace - Persistent notes dock items and open preference.
  */
 
 /**
@@ -298,6 +299,19 @@ function normalizeHandoverState(source) {
     acc[key] = normalizeHandoverItems(value);
     return acc;
   }, handoverBase);
+}
+
+/** Normalizes persistent notes workspace data into safe note objects. @param {unknown} source - Raw notes payload. @returns {{notes:Array<{id:string,text:string}>,open:boolean}} Normalized workspace state. */
+function normalizeNotesWorkspaceState(source) {
+  const raw = source && typeof source === 'object' && !Array.isArray(source) ? source : {};
+  const seen = new Set();
+  const notes = Array.isArray(raw.notes) ? raw.notes.reduce((items, item) => {
+    const id = typeof item?.id === 'string' ? item.id.trim() : '';
+    const text = typeof item?.text === 'string' ? item.text.trim() : '';
+    if (id && text && !seen.has(id)) { seen.add(id); items.push({ id, text }); }
+    return items;
+  }, []) : [];
+  return { notes, open: raw.open !== false };
 }
 
 /**
@@ -688,6 +702,7 @@ function normalizeAppStateStructure(raw) {
   };
 
   normalized.handover = normalizeHandoverState(incoming.handover);
+  normalized.notesWorkspace = normalizeNotesWorkspaceState(incoming.notesWorkspace);
 
   const actions = normalizeActionsState(incoming.actions, hasActionsField);
   if (actions) {

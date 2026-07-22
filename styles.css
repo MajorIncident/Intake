@@ -619,6 +619,22 @@ body.comms-drawer-open{overflow:hidden;}
 }
 .wrap{max-width:1240px; margin:0 auto 40px; padding:0 12px;}
 
+/* Persistent, non-modal notes dock. It never locks page scrolling or obscures the form. */
+.notes-workspace{
+  position:fixed; top:24px; right:24px; width:300px; max-height:calc(100vh - 48px); overflow:auto;
+  z-index:70; padding:20px; border:1px solid var(--line); border-radius:var(--radius); background:var(--panel-raised); box-shadow:var(--shadow);
+}
+.notes-workspace__header{display:flex; gap:12px; justify-content:space-between; align-items:flex-start;}
+.notes-workspace__header h2{margin:0; font-size:17px; color:var(--ink-strong);}
+.notes-workspace__header p{margin:4px 0 0; color:var(--muted); font-size:12px; line-height:1.45;}
+.notes-workspace__toggle,.notes-workspace__place{border:1px solid var(--control-border); border-radius:9px; background:var(--control-bg); color:var(--control-ink); padding:7px 9px; font:inherit; font-size:12px; font-weight:700; cursor:pointer;}
+.notes-workspace__controls{margin-top:16px;}.notes-workspace__controls label{display:block; margin-bottom:6px; font-size:13px; font-weight:700;}.notes-workspace__controls>div{display:flex; gap:8px;}.notes-workspace__controls input{min-width:0; flex:1;}
+.notes-workspace__list{display:flex; flex-direction:column; gap:8px; list-style:none; margin:16px 0 0; padding:0;}
+.notes-workspace__item{display:flex; align-items:center; gap:8px; padding:10px; border:1px solid var(--line); border-radius:10px; background:var(--panel-muted); cursor:grab;}.notes-workspace__text{flex:1; overflow-wrap:anywhere; font-size:13px; line-height:1.35;}.notes-workspace__empty{color:var(--muted); font-size:13px;}
+.notes-workspace :is(button,input,.notes-workspace__item):focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--focus-ring);}
+@media (min-width:921px){.wrap{margin-right:340px;}.site-footer{margin-right:340px;}}
+@media (max-width:920px){.notes-workspace{top:auto; bottom:16px; right:16px; width:min(360px,calc(100vw - 32px)); max-height:min(55vh,440px);}.notes-workspace.is-collapsed{max-height:54px; overflow:hidden;}.notes-workspace.is-collapsed .notes-workspace__header p{display:none;}}
+
 .site-footer{
   max-width:1240px;
   margin:40px auto 32px;

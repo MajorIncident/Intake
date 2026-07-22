@@ -26,7 +26,7 @@ This document explains how the intake app boots, which modules own which DOM reg
    - Summary buttons (`#genSummaryBtn`, `#generateAiSummaryBtn`) call `generateSummary()`.
    - Comms, templates, and “Start Fresh” controls toggle their drawers or invoke `startFresh()`.
    - File Save/Load buttons call `exportAppStateToFile()` and `importAppStateFromFile()`.
-   - `wireKeyboardShortcuts()` installs Alt-key shortcuts for summary and communications logging.
+   - `wireKeyboardShortcuts()` installs Alt-key shortcuts for summary, communications logging, and the Notes workspace (`Alt+N`).
 9. **Finalize utilities** – `initVersionStamp()` stamps the footer, `mountAfterPossibleCauses()` inserts the Actions List card, and `exposeGlobals()` retains legacy `window.onGenerateSummary` helpers for bookmarked scripts.
 
 ## Module responsibilities & shared callbacks
@@ -41,6 +41,7 @@ This document explains how the intake app boots, which modules own which DOM reg
 | `src/steps.js` | Controls the checklist drawer anchored near the table, maintains completion metrics, and exposes import/export helpers. | Accepts `{ onSave, onLog }` callbacks; exposes `exportStepsState`, `importStepsState`, `getStepsItems`, and `getStepsCounts` for `appState` + summary. |
 | `components/actions/ActionListCard.js` & `src/actionsStore.js` | Render the Actions card mounted after `#possibleCausesCard`, persist action items under `kt-actions-by-analysis-v1`, and notify listeners via `refreshActionList()`. | `appState` imports/exports actions alongside the main intake snapshot and dispatches `intake:actions-updated` events when rehydrated. |
 | `src/appState.js` | Central collector/rehydrator that aggregates feature state, converts it into a serialized snapshot, and reapplies it later. | Supplies `collectAppState`, `applyAppState`, `getSummaryState`, `resetAnalysisId`. Imports helpers from Preface, KT, communications, steps, and actions modules to do so. |
+| `src/notesWorkspace.js` | Owns the non-modal `[feature:notes-workspace]` dock, note list, keyboard placement, valid drag/drop targets, and its save callback. | Supplies `initNotesWorkspace`, `toggleNotesWorkspace`, `getNotesWorkspaceState`, and `applyNotesWorkspaceState`; state is included as `notesWorkspace` in the primary snapshot. |
 | `src/storage.js` | Owns the `kt-intake-full-v2` serialization contract, handles migrations, and exposes `saveToStorage`, `restoreFromStorage`, `clearAllIntakeStorage`, plus cause serialization helpers. | Called exclusively via `main.js` (saving/restoring) and `appState`. |
 | `src/summary.js` | Formats Preface, KT, steps, comms, and actions state into readable summaries or AI prompts. | Depends on `setSummaryStateProvider(getSummaryState)` so it never touches DOM directly; `generateSummary()` is invoked by buttons and keyboard shortcuts. |
 | `src/fileTransfer.js` | Bridges `collectAppState()` / `applyAppState()` with Blob/FileReader APIs to power Save/Load buttons in the header. | Used solely by `main.js` so user actions can export/import snapshots outside of `localStorage`. |
@@ -48,7 +49,7 @@ This document explains how the intake app boots, which modules own which DOM reg
 
 ### Callback graph highlights
 
-- **Persistence hooks** – Preface, communications, KT, steps, and drawer modules all receive `onSave: saveAppState`, letting them trigger serialization after significant edits. `saveAppState()` simply calls `collectAppState()` and forwards the snapshot to `saveToStorage()`.
+- **Persistence hooks** – Preface, communications, KT, steps, notes workspace, and drawer modules all receive `onSave: saveAppState`, letting them trigger serialization after significant edits. `saveAppState()` simply calls `collectAppState()` and forwards the snapshot to `saveToStorage()`.
 - **Communications + steps loop** – `initStepsFeature()` receives `onLog: logCommunication`. Checking certain steps emits an internal/external log entry, keeping ops leaders in sync without duplicating logging logic.
 - **Preface token sharing** – KT configuration pulls Preface getters so cause cards, tooltips, and summary builders can render the same `{OBJECT}` / `{DEVIATION}` strings without re-querying the DOM.
 - **Summary coupling** – `main.js` calls `setSummaryStateProvider(getSummaryState)` exactly once; from then on the summary module resolves everything lazily (bridge names, containment status, cause evidence, steps counts, comms log, and action items) when any summary button fires.

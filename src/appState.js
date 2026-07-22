@@ -70,6 +70,7 @@ import { applyThemePreference, getThemePreference, normalizeTheme } from './them
 import { collectHandoverState, applyHandoverState } from './handover.js';
 import { applyIntakeMode, getActiveIntakeMode } from './intakeModeController.js';
 import { INTAKE_MODE_IDS } from './intakeModes.js';
+import { getNotesWorkspaceState, applyNotesWorkspaceState } from './notesWorkspace.js';
 
 const ANALYSIS_ID_KEY = 'kt-analysis-id';
 let cachedAnalysisId = '';
@@ -210,7 +211,8 @@ export function collectAppState() {
       analysisId,
       items: serializedActions
     },
-    handover
+    handover,
+    notesWorkspace: getNotesWorkspaceState()
   };
 }
 
@@ -235,7 +237,8 @@ export function applyAppState(data = {}) {
     likelyCauseId: savedLikelyCauseId = null,
     actions: savedActionsState = null,
     appearance: appearanceState = null,
-    handover: savedHandoverState = null
+    handover: savedHandoverState = null,
+    notesWorkspace: savedNotesWorkspaceState = null
   } = data;
   const currentAnalysisId = getAnalysisId();
   const hasActionsSnapshot = Object.prototype.hasOwnProperty.call(data, 'actions');
@@ -307,6 +310,7 @@ export function applyAppState(data = {}) {
   }
 
   applyHandoverState(preserved.handover || {});
+  applyNotesWorkspaceState(savedNotesWorkspaceState || {});
 
   if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
     try {

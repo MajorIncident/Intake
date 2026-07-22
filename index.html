@@ -109,6 +109,9 @@ Anchors present:
       <div class="menu-group">
         <button type="button" class="menu-trigger" data-menu-target="viewMenu" aria-haspopup="true" aria-expanded="false">View</button>
         <div class="menu-panel" id="viewMenu" role="menu" aria-label="View" hidden>
+          <button type="button" class="menu-item" id="notesWorkspaceMenuBtn" role="menuitem" aria-controls="notesWorkspace" aria-expanded="true">
+            <span class="menu-item__label">Notes workspace</span><span class="menu-shortcut">Alt+N</span>
+          </button>
           <button type="button" class="menu-item theme-toggle" id="themeToggle" role="menuitem" aria-pressed="false">
             <span class="menu-item__label">Theme</span>
             <span class="menu-item__meta">
@@ -461,6 +464,20 @@ Anchors present:
     <!-- [section:summary] end -->
 
   </div>
+
+  <!-- [feature:notes-workspace] start -->
+  <aside class="notes-workspace" id="notesWorkspace" aria-labelledby="notesWorkspaceTitle" aria-hidden="false">
+    <header class="notes-workspace__header">
+      <div><h2 id="notesWorkspaceTitle">Notes workspace</h2><p>Drag notes to an editable intake field, or place one in the focused field.</p></div>
+      <button type="button" class="notes-workspace__toggle" id="notesWorkspaceToggle" aria-controls="notesWorkspaceControls notesWorkspaceList" aria-expanded="true">Collapse notes</button>
+    </header>
+    <div class="notes-workspace__controls" id="notesWorkspaceControls">
+      <label for="notesWorkspaceInput">Add note</label>
+      <div><input id="notesWorkspaceInput" type="text" placeholder="Capture a detail to place later" /><button type="button" class="btn-mini" id="notesWorkspaceAddBtn">Add note</button></div>
+    </div>
+    <ul class="notes-workspace__list" id="notesWorkspaceList" aria-label="Captured notes"></ul>
+  </aside>
+  <!-- [feature:notes-workspace] end -->
 
   <div class="drawer-backdrop comms-backdrop" id="commsBackdrop" data-mode-section="communications" aria-hidden="true"></div>
   <aside class="drawer comms-drawer" id="commsDrawer" data-mode-section="communications" role="dialog" aria-modal="true" aria-labelledby="commsDrawerTitle" aria-hidden="true" tabindex="-1">
