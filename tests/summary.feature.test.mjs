@@ -388,7 +388,7 @@ test('summary: non-major modes use mode labels and exclude major-incident-only s
   assert.ok(!text.includes('Evidence Collected'));
   assert.ok(text.includes('What is the current user or system impact?: Customers cannot complete checkout'));
   assert.ok(text.includes('What future operational impact is likely if unresolved?: Backlog may trigger order cancellations'));
-  assert.ok(text.includes('When is a decision or resolution needed?: Detected at 12:45 UTC'));
+  assert.ok(text.includes('When is action or resolution needed to avoid additional impact?: Detected at 12:45 UTC'));
   assert.ok(text.includes('— Problem Analysis —'));
   assert.ok(text.includes('— Possible Causes —'));
   assert.ok(text.includes('Likely Cause:'));

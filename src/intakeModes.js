@@ -161,7 +161,7 @@ export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
     now: 'What condition or behavior is observed for the affected item now?',
     impactNow: 'What is the current impact?',
     impactFuture: 'What future impact is likely if unresolved?',
-    impactTime: 'When is a decision or resolution needed?'
+    impactTime: 'When is action or resolution needed to avoid additional impact?'
   },
   [INTAKE_MODE_IDS.IT]: {
     oneLine: 'What problem is affecting the service or system?',
@@ -171,7 +171,7 @@ export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
     now: 'What is the actual service behavior now?',
     impactNow: 'What is the current user or system impact?',
     impactFuture: 'What future operational impact is likely if unresolved?',
-    impactTime: 'When is a decision or resolution needed?'
+    impactTime: 'When is action or resolution needed to avoid additional impact?'
   },
   [INTAKE_MODE_IDS.PHARMA]: {
     oneLine: 'What observed deviation affects which product, process, material, equipment, study, or batch?',
@@ -181,7 +181,7 @@ export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
     now: 'What condition is observed now?',
     impactNow: 'What confirmed current impact is known, or what is the current assessment status?',
     impactFuture: 'What credible potential risk could arise if the deviation remains unresolved?',
-    impactTime: 'When is a quality decision or resolution needed?'
+    impactTime: 'When is action or resolution needed to avoid additional impact?'
   },
   [INTAKE_MODE_IDS.MAJOR_INCIDENT]: {
     oneLine: 'What major incident is degrading which customer-facing service or capability?',
@@ -212,7 +212,7 @@ export const INTAKE_MODE_HELPER_OVERRIDES = deepFreeze({
     now: 'For example, record the observed defect, result, measurement, timing, or condition.',
     impactNow: 'For example, identify effects on people, output, cost, quality, safety, schedule, or availability.',
     impactFuture: 'For example, note likely rework, delay, loss, risk, or wider effect if unresolved.',
-    impactTime: 'For example, state a decision date, delivery date, dependency, deadline, or point of no return.'
+    impactTime: 'For example, complete the correction by 15 May before the month-end close; include the specific date or timeframe and the governing business or process deadline, dependency, milestone, or decision point.'
   },
   [INTAKE_MODE_IDS.IT]: {
     oneLine: 'State the affected service or system, the problem, and the affected scope.',
@@ -222,7 +222,7 @@ export const INTAKE_MODE_HELPER_OVERRIDES = deepFreeze({
     now: 'Record current behavior, alerts, metrics, or user symptoms against the baseline.',
     impactNow: 'Identify affected users, transactions, regions, systems, or dependencies and quantify the scope.',
     impactFuture: 'Describe the operational risk, deadline, or dependent service at risk.',
-    impactTime: 'Include the applicable service-level agreement (SLA), release, dependency, or other deadline.'
+    impactTime: 'For example, restore service before the 18:00 UTC release window; include the specific date or timeframe and the governing service-level agreement (SLA), release date, dependency, or decision point.'
   },
   [INTAKE_MODE_IDS.PHARMA]: {
     oneLine: 'State the observed deviation, affected product or process context, and batch or lot scope.',
@@ -232,7 +232,7 @@ export const INTAKE_MODE_HELPER_OVERRIDES = deepFreeze({
     now: 'Record the observed condition, its difference from the approved baseline, and the relevant specification reference.',
     impactNow: 'Record confirmed current quality, release, or safety implications; if not known, state the assessment status and any batch hold or release status.',
     impactFuture: 'Describe only credible potential risk if unresolved, with supporting rationale; include possible safety implications where applicable.',
-    impactTime: 'Include batch holds, release status, release dates, investigation milestones, or process deadlines.'
+    impactTime: 'For example, complete the assessment before batch release on 15 May; include the specific date or timeframe and the governing batch hold point, release date, process milestone or deadline, or decision point.'
   },
   [INTAKE_MODE_IDS.MAJOR_INCIDENT]: {
     oneLine: 'Which major incident, degraded customer-facing service or capability, and scope should responders align on?',
