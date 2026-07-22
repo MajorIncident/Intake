@@ -154,11 +154,11 @@ export const INTAKE_MODE_SECTION_VISIBILITY = deepFreeze({
  */
 export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
   [INTAKE_MODE_IDS.GENERAL]: {
-    oneLine: 'What problem is affecting the service or capability?',
-    proof: 'What evidence confirms the deviation?',
-    objectPrefill: 'Which object is affected?',
-    healthy: 'What should the object do normally?',
-    now: 'What is the object doing now?',
+    oneLine: 'What is wrong, what affected item is involved, and how does it differ from expectation?',
+    proof: 'What evidence confirms the observed difference?',
+    objectPrefill: 'Which affected item or object should be examined?',
+    healthy: 'What condition or behavior is expected for the affected item?',
+    now: 'What condition or behavior is observed for the affected item now?',
     impactNow: 'What is the current impact?',
     impactFuture: 'What future impact is likely if unresolved?',
     impactTime: 'When is a decision or resolution needed?'
@@ -205,14 +205,14 @@ export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
  */
 export const INTAKE_MODE_HELPER_OVERRIDES = deepFreeze({
   [INTAKE_MODE_IDS.GENERAL]: {
-    oneLine: 'State the affected service or capability and the observed degradation.',
-    proof: 'Include alerts, observations, measurements, reports, or reproducible results.',
-    objectPrefill: 'Provide the service, process, tool, machine, model, or configuration identifier.',
-    healthy: 'Give the expected behavior, measure, or prior normal condition.',
-    now: 'Record current observations or measurements and the difference from normal.',
-    impactNow: 'Identify who or what is affected and quantify the current scope or severity.',
-    impactFuture: 'Describe the likely downstream effect if the deviation continues.',
-    impactTime: 'Include the relevant deadline, dependency, or decision point.'
+    oneLine: 'For example, describe a product defect, delayed workflow, equipment fault, or unexpected service result.',
+    proof: 'For example, include observations, measurements, photos, reports, test results, or user feedback.',
+    objectPrefill: 'For example, name a product, process step, equipment item, workflow, document, or service.',
+    healthy: 'For example, note the approved specification, expected result, normal timing, or prior condition.',
+    now: 'For example, record the observed defect, result, measurement, timing, or condition.',
+    impactNow: 'For example, identify effects on people, output, cost, quality, safety, schedule, or availability.',
+    impactFuture: 'For example, note likely rework, delay, loss, risk, or wider effect if unresolved.',
+    impactTime: 'For example, state a decision date, delivery date, dependency, deadline, or point of no return.'
   },
   [INTAKE_MODE_IDS.IT]: {
     oneLine: 'State the degraded service or capability, symptom, and affected scope.',
