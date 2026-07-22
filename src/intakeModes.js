@@ -154,34 +154,34 @@ export const INTAKE_MODE_SECTION_VISIBILITY = deepFreeze({
  */
 export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
   [INTAKE_MODE_IDS.GENERAL]: {
-    oneLine: 'What issue is affecting the service or capability, and how is it degraded?',
-    proof: 'What observable or measurable evidence confirms a deviation from normal?',
-    objectPrefill: 'Which specific object is affected, and what identifies it?',
-    healthy: 'What normally should this object do, and what baseline establishes that expectation?',
-    now: 'What is this object doing now, and how does that actual behavior differ from the baseline?',
+    oneLine: 'What problem is affecting the service or capability?',
+    proof: 'What evidence confirms the deviation?',
+    objectPrefill: 'Which object is affected?',
+    healthy: 'What should the object do normally?',
+    now: 'What is the object doing now?',
     impactNow: 'What is the current impact?',
-    impactFuture: 'What future impact is likely if the issue remains unresolved?',
-    impactTime: 'By what specific deadline or timeframe does resolution become difficult, expensive, impossible, or meaningless?'
+    impactFuture: 'What future impact is likely if unresolved?',
+    impactTime: 'When is a decision or resolution needed?'
   },
   [INTAKE_MODE_IDS.IT]: {
-    oneLine: 'What stated issue is degrading which service or capability?',
-    proof: 'What observable or measurable evidence confirms the technical deviation?',
-    objectPrefill: 'Which specific IT object is affected, including its OS, platform, version, and configuration?',
-    healthy: 'What service behavior is expected, and what technical baseline or SLO defines normal?',
-    now: 'What is the actual service behavior now, and how does it differ from that baseline?',
+    oneLine: 'What IT service or capability is degraded?',
+    proof: 'What evidence confirms the technical deviation?',
+    objectPrefill: 'Which IT object is affected?',
+    healthy: 'What service behavior is expected?',
+    now: 'What is the actual service behavior now?',
     impactNow: 'What is the current user or system impact?',
-    impactFuture: 'What future operational impact is likely if the issue remains unresolved?',
-    impactTime: 'By what specific deadline or timeframe does resolution become difficult, expensive, impossible, or meaningless?'
+    impactFuture: 'What future operational impact is likely if unresolved?',
+    impactTime: 'When is a decision or resolution needed?'
   },
   [INTAKE_MODE_IDS.PHARMA]: {
-    oneLine: 'What quality event is affecting which product, process, or batch?',
-    proof: 'What observable or measurable evidence confirms the deviation?',
-    objectPrefill: 'Which specific product, process, batch, material, or equipment object is affected?',
-    healthy: 'What validated or approved state is expected, and what baseline defines it?',
-    now: 'What actual condition is observed now, and how does it differ from the expected state?',
+    oneLine: 'What quality event is affecting the product, process, or batch?',
+    proof: 'What evidence confirms the quality deviation?',
+    objectPrefill: 'Which product, process, batch, material, or equipment is affected?',
+    healthy: 'What validated or approved state is expected?',
+    now: 'What condition is observed now?',
     impactNow: 'What is the current quality, release, safety, or patient impact?',
     impactFuture: 'What future compliance, stability, supply, or patient impact is likely if unresolved?',
-    impactTime: 'By what process deadline or timeframe does resolution become difficult, expensive, impossible, or meaningless?'
+    impactTime: 'When is a quality decision or resolution needed?'
   },
   [INTAKE_MODE_IDS.MAJOR_INCIDENT]: {
     oneLine: 'What major incident is degrading which customer-facing service or capability?',
@@ -205,34 +205,34 @@ export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
  */
 export const INTAKE_MODE_HELPER_OVERRIDES = deepFreeze({
   [INTAKE_MODE_IDS.GENERAL]: {
-    oneLine: 'Which issue, affected service or capability, and degradation belong in one concise statement?',
-    proof: 'Which alerts, observations, measurements, reports, or reproducible results demonstrate the deviation?',
-    objectPrefill: 'Which service, process, tool, machine, model, or configuration details distinguish the affected object?',
-    healthy: 'Which expected behavior, measure, or prior condition provides the normal baseline?',
-    now: 'Which current observations or measurements show how actual behavior differs from that baseline?',
-    impactNow: 'Who or what is affected now, and how large or severe is the impact?',
-    impactFuture: 'What downstream effect is likely if the deviation continues unresolved?',
-    impactTime: 'When does a deadline, dependency, or decision point make resolution difficult, expensive, impossible, or meaningless?'
+    oneLine: 'State the affected service or capability and the observed degradation.',
+    proof: 'Include alerts, observations, measurements, reports, or reproducible results.',
+    objectPrefill: 'Provide the service, process, tool, machine, model, or configuration identifier.',
+    healthy: 'Give the expected behavior, measure, or prior normal condition.',
+    now: 'Record current observations or measurements and the difference from normal.',
+    impactNow: 'Identify who or what is affected and quantify the current scope or severity.',
+    impactFuture: 'Describe the likely downstream effect if the deviation continues.',
+    impactTime: 'Include the relevant deadline, dependency, or decision point.'
   },
   [INTAKE_MODE_IDS.IT]: {
-    oneLine: 'Which stated issue, degraded service or capability, scope, and symptom belong in one concise statement?',
-    proof: 'Which alerts, logs, metrics, customer reports, or reproduction results measure the technical deviation?',
-    objectPrefill: 'Which service, application, dependency, host, OS, platform, version, and configuration identify the affected IT object?',
-    healthy: 'Which expected technical behavior, SLO, metric, or known-good configuration provides the baseline?',
-    now: 'Which current behavior, alerts, metrics, or user symptoms show the difference from that baseline?',
-    impactNow: 'Which users, transactions, regions, systems, or dependencies are affected now, and by how much?',
-    impactFuture: 'Which operational risk, deadline, or dependent service will be affected if the issue remains unresolved?',
-    impactTime: 'When do an SLA, release, dependency, or other deadline make resolution difficult, expensive, impossible, or meaningless?'
+    oneLine: 'State the degraded service or capability, symptom, and affected scope.',
+    proof: 'Include alerts, logs, metrics, customer reports, or reproduction results.',
+    objectPrefill: 'Provide the service, application, dependency, host, OS, platform, version, or configuration identifier.',
+    healthy: 'Give the expected behavior, SLO, metric, or known-good configuration.',
+    now: 'Record current behavior, alerts, metrics, or user symptoms against the baseline.',
+    impactNow: 'Identify affected users, transactions, regions, systems, or dependencies and quantify the scope.',
+    impactFuture: 'Describe the operational risk, deadline, or dependent service at risk.',
+    impactTime: 'Include the applicable SLA, release, dependency, or other deadline.'
   },
   [INTAKE_MODE_IDS.PHARMA]: {
-    oneLine: 'Which deviation, product or process context, and batch scope belong in one concise statement?',
-    proof: 'Which inspection results, assay data, exceptions, complaints, or verified observations demonstrate the deviation?',
-    objectPrefill: 'Which material, equipment, process step, study, product, or batch identifiers distinguish the affected object?',
-    healthy: 'Which approved specification, validated state, or control provides the expected baseline?',
-    now: 'Which observed out-of-expectation condition shows the difference from the approved baseline?',
-    impactNow: 'Which current quality, safety, release, or patient implications are present now?',
-    impactFuture: 'Which compliance, stability, supply, or investigation risk is likely if the deviation remains unresolved?',
-    impactTime: 'When do hold points, release dates, or process deadlines make resolution difficult, expensive, impossible, or meaningless?'
+    oneLine: 'State the deviation, product or process context, and batch scope.',
+    proof: 'Include inspection results, assay data, exceptions, complaints, or verified observations.',
+    objectPrefill: 'Provide the material, equipment, process step, study, product, or batch identifier.',
+    healthy: 'Give the approved specification, validated state, or control.',
+    now: 'Record the observed condition and its difference from the approved baseline.',
+    impactNow: 'Identify current quality, safety, release, or patient implications.',
+    impactFuture: 'Describe the likely compliance, stability, supply, or investigation risk.',
+    impactTime: 'Include hold points, release dates, or process deadlines.'
   },
   [INTAKE_MODE_IDS.MAJOR_INCIDENT]: {
     oneLine: 'Which major incident, degraded customer-facing service or capability, and scope should responders align on?',

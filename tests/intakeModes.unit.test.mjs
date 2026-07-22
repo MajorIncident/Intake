@@ -68,22 +68,22 @@ test('caption and helper override maps preserve stable field IDs for every mode'
 });
 
 
-test('every mode provides question-led prompts for each controlled field', () => {
+test('controlled fields use single-question labels and mode-appropriate helper guidance', () => {
   const expectedCopy = {
     [INTAKE_MODE_IDS.GENERAL]: {
-      oneLine: /service or capability.*degraded/i,
-      objectPrefill: /specific object.*identifies it/i,
-      impactTime: /difficult, expensive, impossible, or meaningless/i
+      oneLine: /problem.*service or capability/i,
+      objectPrefill: /which object is affected/i,
+      impactTime: /decision or resolution needed/i
     },
     [INTAKE_MODE_IDS.IT]: {
-      oneLine: /stated issue.*service or capability/i,
-      objectPrefill: /OS, platform, version, and configuration/i,
-      impactTime: /difficult, expensive, impossible, or meaningless/i
+      oneLine: /IT service or capability.*degraded/i,
+      objectPrefill: /which IT object is affected/i,
+      impactTime: /decision or resolution needed/i
     },
     [INTAKE_MODE_IDS.PHARMA]: {
       oneLine: /quality event.*product, process, or batch/i,
-      proof: /observable or measurable evidence/i,
-      impactTime: /difficult, expensive, impossible, or meaningless/i
+      proof: /evidence confirms the quality deviation/i,
+      impactTime: /quality decision or resolution needed/i
     },
     [INTAKE_MODE_IDS.MAJOR_INCIDENT]: {
       oneLine: /major incident.*service or capability/i,
@@ -96,13 +96,30 @@ test('every mode provides question-led prompts for each controlled field', () =>
     REQUIRED_FIELD_IDS.forEach((fieldId) => {
       const { label, helper } = INTAKE_MODE_FIELD_CAPTIONS[modeId][fieldId];
       assert.match(label, /\?$/, `${modeId}.${fieldId} label should be a question`);
-      assert.match(helper, /\?$/, `${modeId}.${fieldId} helper should be a question`);
+      if (modeId === INTAKE_MODE_IDS.MAJOR_INCIDENT) {
+        assert.match(helper, /\?$/, `${modeId}.${fieldId} helper should be a question`);
+      } else {
+        assert.doesNotMatch(helper, /\?$/, `${modeId}.${fieldId} helper should be concise guidance, not a question`);
+      }
       assert.equal(label, INTAKE_MODE_CAPTION_OVERRIDES[modeId][fieldId]);
       assert.equal(helper, INTAKE_MODE_HELPER_OVERRIDES[modeId][fieldId]);
     });
     Object.entries(expectedCopy[modeId]).forEach(([fieldId, pattern]) => {
       assert.match(INTAKE_MODE_FIELD_CAPTIONS[modeId][fieldId].label, pattern);
     });
+  });
+});
+
+test('General, IT, and Pharma helpers guide operators to concrete answer details', () => {
+  const guidancePatterns = {
+    [INTAKE_MODE_IDS.GENERAL]: /alerts.*measurements.*identifier.*scope.*deadline/is,
+    [INTAKE_MODE_IDS.IT]: /logs.*metrics.*identifier.*scope.*SLA/is,
+    [INTAKE_MODE_IDS.PHARMA]: /assay data.*identifier.*release.*hold points/is
+  };
+
+  Object.entries(guidancePatterns).forEach(([modeId, pattern]) => {
+    const helpers = Object.values(INTAKE_MODE_HELPER_OVERRIDES[modeId]).join(' ');
+    assert.match(helpers, pattern, `${modeId} helpers should identify concrete evidence and decision details`);
   });
 });
 
