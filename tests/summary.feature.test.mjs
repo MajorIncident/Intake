@@ -380,8 +380,8 @@ test('summary: non-major modes use mode labels and exclude major-incident-only s
   const text = buildSummaryText(state);
 
   assert.ok(text.includes('— Technology Operations Summary —'));
-  assert.ok(text.includes('• What IT service or capability is degraded?: Checkout payments are failing'));
-  assert.ok(text.includes('• Which IT object is affected?: Payments API'));
+  assert.ok(text.includes('• What problem is affecting the service or system?: Checkout payments are failing'));
+  assert.ok(text.includes('• Which system is affected?: Payments API'));
   assert.ok(!text.includes('Operational evidence'));
   assert.ok(!text.includes('Synthetic monitor and logs confirm errors'));
   assert.ok(!text.includes('Detection Source'));
