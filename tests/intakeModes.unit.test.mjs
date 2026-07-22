@@ -73,18 +73,18 @@ test('controlled fields use single-question labels and mode-appropriate helper g
     [INTAKE_MODE_IDS.GENERAL]: {
       oneLine: /what is wrong.*affected item.*differ from expectation/i,
       objectPrefill: /affected item or object/i,
-      impactTime: /decision or resolution needed/i
+      impactTime: /action or resolution needed to avoid additional impact/i
     },
     [INTAKE_MODE_IDS.IT]: {
       oneLine: /what problem is affecting the service or system/i,
       proof: /observed evidence confirms the technical deviation/i,
       objectPrefill: /which system is affected/i,
-      impactTime: /decision or resolution needed/i
+      impactTime: /action or resolution needed to avoid additional impact/i
     },
     [INTAKE_MODE_IDS.PHARMA]: {
       oneLine: /observed deviation.*product, process, material, equipment, study, or batch/i,
       proof: /evidence confirms the quality deviation/i,
-      impactTime: /quality decision or resolution needed/i
+      impactTime: /action or resolution needed to avoid additional impact/i
     },
     [INTAKE_MODE_IDS.MAJOR_INCIDENT]: {
       oneLine: /major incident.*service or capability/i,
@@ -113,7 +113,7 @@ test('controlled fields use single-question labels and mode-appropriate helper g
 
 test('General, IT, and Pharma helpers guide operators to concrete answer details', () => {
   const guidancePatterns = {
-    [INTAKE_MODE_IDS.GENERAL]: /for example.*product defect.*photos.*equipment item.*approved specification.*delivery date/is,
+    [INTAKE_MODE_IDS.GENERAL]: /for example.*product defect.*photos.*equipment item.*approved specification.*business or process deadline/is,
     [INTAKE_MODE_IDS.IT]: /scope.*logs.*metrics.*application.*dependency.*host.*environment.*version.*configuration.*service-level objective \(SLO\).*service-level agreement \(SLA\)/is,
     [INTAKE_MODE_IDS.PHARMA]: /assay results.*specification references.*identifier.*batch hold.*release status/is
   };
@@ -121,6 +121,22 @@ test('General, IT, and Pharma helpers guide operators to concrete answer details
   Object.entries(guidancePatterns).forEach(([modeId, pattern]) => {
     const helpers = Object.values(INTAKE_MODE_HELPER_OVERRIDES[modeId]).join(' ');
     assert.match(helpers, pattern, `${modeId} helpers should identify concrete evidence and decision details`);
+  });
+});
+
+test('impact timeframe copy identifies the deadline that governs action for each intake mode', () => {
+  const expectedGuidance = {
+    [INTAKE_MODE_IDS.GENERAL]: /specific date or timeframe.*business or process deadline.*dependency.*milestone.*decision point/i,
+    [INTAKE_MODE_IDS.IT]: /specific date or timeframe.*service-level agreement \(SLA\).*release date.*dependency.*decision point/i,
+    [INTAKE_MODE_IDS.PHARMA]: /specific date or timeframe.*batch hold point.*release date.*process milestone or deadline.*decision point/i
+  };
+
+  Object.entries(expectedGuidance).forEach(([modeId, helperPattern]) => {
+    const { label, helper } = INTAKE_MODE_FIELD_CAPTIONS[modeId].impactTime;
+    assert.equal(label, 'When is action or resolution needed to avoid additional impact?');
+    assert.match(helper, /^For example,/i);
+    assert.match(helper, helperPattern);
+    assert.doesNotMatch(helper, /difficult, expensive, impossible, or meaningless/i);
   });
 });
 
@@ -154,7 +170,7 @@ test('IT primary questions stay plain-language while helpers define technical de
   assert.match(captions.now, /actual service behavior now/i);
   assert.match(captions.impactNow, /current user or system impact/i);
   assert.match(captions.impactFuture, /future operational impact.*unresolved/i);
-  assert.match(captions.impactTime, /decision or resolution needed/i);
+  assert.match(captions.impactTime, /action or resolution needed to avoid additional impact/i);
 });
 
 test('General captions and helpers support operational and non-technical intake', () => {
@@ -168,7 +184,7 @@ test('General captions and helpers support operational and non-technical intake'
   assert.match(captions.proof, /evidence confirms the observed difference/i);
   assert.match(captions.impactNow, /current impact/i);
   assert.match(captions.impactFuture, /future impact.*unresolved/i);
-  assert.match(captions.impactTime, /decision or resolution needed/i);
+  assert.match(captions.impactTime, /action or resolution needed to avoid additional impact/i);
 
   Object.entries(helpers).forEach(([fieldId, helper]) => {
     assert.match(helper, /^For example,/i, `General ${fieldId} helper should provide examples`);
