@@ -117,7 +117,7 @@ test('mode changes render representative question-led captions in the mounted DO
   initIntakeModeController();
 
   const expected = {
-    [INTAKE_MODE_IDS.GENERAL]: ['What problem is affecting the service or capability?', 'What is the current impact?'],
+    [INTAKE_MODE_IDS.GENERAL]: ['What is wrong, what affected item is involved, and how does it differ from expectation?', 'What is the current impact?'],
     [INTAKE_MODE_IDS.IT]: ['Which IT object is affected?', 'What is the current user or system impact?'],
     [INTAKE_MODE_IDS.PHARMA]: ['What quality event is affecting the product, process, or batch?', 'What is the current quality, release, safety, or patient impact?'],
     [INTAKE_MODE_IDS.MAJOR_INCIDENT]: ['What major incident is degrading which customer-facing service or capability?', 'What is the current incident impact and blast radius?']

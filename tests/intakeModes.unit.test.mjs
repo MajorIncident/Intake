@@ -71,8 +71,8 @@ test('caption and helper override maps preserve stable field IDs for every mode'
 test('controlled fields use single-question labels and mode-appropriate helper guidance', () => {
   const expectedCopy = {
     [INTAKE_MODE_IDS.GENERAL]: {
-      oneLine: /problem.*service or capability/i,
-      objectPrefill: /which object is affected/i,
+      oneLine: /what is wrong.*affected item.*differ from expectation/i,
+      objectPrefill: /affected item or object/i,
       impactTime: /decision or resolution needed/i
     },
     [INTAKE_MODE_IDS.IT]: {
@@ -112,7 +112,7 @@ test('controlled fields use single-question labels and mode-appropriate helper g
 
 test('General, IT, and Pharma helpers guide operators to concrete answer details', () => {
   const guidancePatterns = {
-    [INTAKE_MODE_IDS.GENERAL]: /alerts.*measurements.*identifier.*scope.*deadline/is,
+    [INTAKE_MODE_IDS.GENERAL]: /for example.*product defect.*photos.*equipment item.*approved specification.*delivery date/is,
     [INTAKE_MODE_IDS.IT]: /logs.*metrics.*identifier.*scope.*SLA/is,
     [INTAKE_MODE_IDS.PHARMA]: /assay data.*identifier.*release.*hold points/is
   };
@@ -121,6 +121,25 @@ test('General, IT, and Pharma helpers guide operators to concrete answer details
     const helpers = Object.values(INTAKE_MODE_HELPER_OVERRIDES[modeId]).join(' ');
     assert.match(helpers, pattern, `${modeId} helpers should identify concrete evidence and decision details`);
   });
+});
+
+test('General captions and helpers support operational and non-technical intake', () => {
+  const captions = INTAKE_MODE_CAPTION_OVERRIDES[INTAKE_MODE_IDS.GENERAL];
+  const helpers = INTAKE_MODE_HELPER_OVERRIDES[INTAKE_MODE_IDS.GENERAL];
+
+  assert.match(captions.oneLine, /what is wrong.*affected item.*differ from expectation/i);
+  assert.match(captions.objectPrefill, /affected item or object/i);
+  assert.match(captions.healthy, /expected.*affected item/i);
+  assert.match(captions.now, /observed.*affected item/i);
+  assert.match(captions.proof, /evidence confirms the observed difference/i);
+  assert.match(captions.impactNow, /current impact/i);
+  assert.match(captions.impactFuture, /future impact.*unresolved/i);
+  assert.match(captions.impactTime, /decision or resolution needed/i);
+
+  Object.entries(helpers).forEach(([fieldId, helper]) => {
+    assert.match(helper, /^For example,/i, `General ${fieldId} helper should provide examples`);
+  });
+  assert.match(Object.values(helpers).join(' '), /product defect.*workflow.*equipment.*service/is);
 });
 
 test('IT and Major Incident use distinct operations and incident copy maps', () => {
