@@ -43,6 +43,7 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 | `src/constants.js` | Deep-frozen config: KT table rows, phase metadata, finding modes, and step definitions. |
 | `src/storage.js` | Helpers that persist and hydrate the entire UI state under `kt-intake-full-v2`. |
 | `src/appState.js` | Collects and reapplies UI state across modules (`collectAppState`, `applyAppState`, `getSummaryState`). |
+| `src/notesWorkspace.js` | Owns the persistent Notes workspace, accessible note placement, drag/drop validation, and its snapshot state. |
 | `src/preface.js` | Manages bridge activation fields, mirror sync, detection chips, and token updates for `{OBJECT}` / `{DEVIATION}`. |
 | `src/kt.js` | Builds the KT IS/IS NOT table, manages paired facts, possible causes, and related UI affordances. |
 | `src/steps.js` | Controls the incident checklist drawer, keyboard shortcuts, and completion metrics. |
@@ -56,7 +57,11 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 
 ### Storage keys
 
-- `kt-intake-full-v2`: Primary snapshot containing the intake form, table, steps, communications log, and possible causes.
+- `kt-intake-full-v2`: Primary snapshot containing the intake form, table, steps, communications log, possible causes, and `notesWorkspace` notes/open preference. Save to File and Load from File include this full snapshot automatically.
+
+## Notes workspace
+
+Use **View → Notes workspace** or **Alt+N** to open or collapse the persistent notes dock. Add short capture notes, then drag a note to an editable text field in the main intake form. Keyboard users can focus a field, then activate **Place in focused field** on a note. Successful placement removes the note and saves the intake; invalid targets retain it.
 - `kt-actions-by-analysis-v1`: Dedicated action registry keyed by analysis ID that powers the action list card and owner audit trail.
 
 Need to know which module owns a given storage field? Jump to the [Storage-to-Module Responsibility Map](docs/storage-schema.appendix.md#storage-to-module-responsibility-map) for a field-by-field lookup tied to the DOM anchors and runtime files that persist each value.

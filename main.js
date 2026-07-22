@@ -53,6 +53,7 @@ import { applyThemePreference, getThemePreference, initThemeFromStorage, normali
 import { initHandover } from './src/handover.js';
 import { initMenuBar } from './src/menuBar.js';
 import { initIntakeModeController, applyIntakeMode } from './src/intakeModeController.js';
+import { initNotesWorkspace, toggleNotesWorkspace } from './src/notesWorkspace.js';
 
 /**
  * Query the document for the first element that matches the provided CSS selector.
@@ -164,6 +165,7 @@ function boot() {
   initPreface({ onSave: saveAppState });
   initCommsDrawer();
   initTemplatesDrawer();
+  initNotesWorkspace({ onSave: saveAppState, showToast });
   initializeCommunications({ onSave: saveAppState, showToast });
   initStepsFeature({ onSave: saveAppState, onLog: logCommunication });
 
@@ -187,6 +189,7 @@ function boot() {
   wireSummaryEvents();
   wireCommsEvents();
   wireTemplatesEvents();
+  wireNotesWorkspaceEvents();
   wireStartFreshButton();
   wireBridgeNowButton();
   wireFileTransferControls();
@@ -264,6 +267,11 @@ function wireTemplatesEvents() {
   on(templatesCloseBtn, 'click', closeTemplatesDrawer);
   on(templatesBackdrop, 'click', closeTemplatesDrawer);
   on(templatesSaveBtn, 'click', handleTemplateExportClick);
+}
+
+/** Wire the menu launcher to the persistent notes workspace. @returns {void} */
+function wireNotesWorkspaceEvents() {
+  on($('#notesWorkspaceMenuBtn'), 'click', toggleNotesWorkspace);
 }
 
 /**
@@ -464,7 +472,7 @@ function wireKeyboardShortcuts() {
         break;
       case 'n':
         event.preventDefault();
-        setBridgeOpenedNow();
+        toggleNotesWorkspace();
         break;
       default:
         break;
