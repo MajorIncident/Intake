@@ -103,7 +103,7 @@ test('selector changes apply mode visibility and emit a save callback', () => {
   assert.equal(document.getElementById('evidenceCollected').hidden, true);
   assert.equal(document.getElementById('proofField').hidden, true);
   assert.equal(document.querySelector('label[for="proof"]').textContent, 'What evidence confirms the quality deviation?');
-  assert.equal(document.getElementById('impactNowHeading').textContent, 'What is the current quality, release, safety, or patient impact?');
+  assert.equal(document.getElementById('impactNowHeading').textContent, 'What confirmed current impact is known, or what is the current assessment status?');
 
   applyIntakeMode(INTAKE_MODE_IDS.MAJOR_INCIDENT, { silent: true });
   assert.equal(document.getElementById('commsDrawer').hidden, false);
@@ -122,7 +122,7 @@ test('mode changes render representative question-led captions in the mounted DO
   const expected = {
     [INTAKE_MODE_IDS.GENERAL]: ['What is wrong, what affected item is involved, and how does it differ from expectation?', 'What is the current impact?'],
     [INTAKE_MODE_IDS.IT]: ['Which system is affected?', 'What is the current user or system impact?'],
-    [INTAKE_MODE_IDS.PHARMA]: ['What quality event is affecting the product, process, or batch?', 'What is the current quality, release, safety, or patient impact?'],
+    [INTAKE_MODE_IDS.PHARMA]: ['What observed deviation affects which product, process, material, equipment, study, or batch?', 'What confirmed current impact is known, or what is the current assessment status?'],
     [INTAKE_MODE_IDS.MAJOR_INCIDENT]: ['What major incident is degrading which customer-facing service or capability?', 'What is the current incident impact and blast radius?']
   };
 

@@ -82,7 +82,7 @@ test('controlled fields use single-question labels and mode-appropriate helper g
       impactTime: /decision or resolution needed/i
     },
     [INTAKE_MODE_IDS.PHARMA]: {
-      oneLine: /quality event.*product, process, or batch/i,
+      oneLine: /observed deviation.*product, process, material, equipment, study, or batch/i,
       proof: /evidence confirms the quality deviation/i,
       impactTime: /quality decision or resolution needed/i
     },
@@ -115,13 +115,28 @@ test('General, IT, and Pharma helpers guide operators to concrete answer details
   const guidancePatterns = {
     [INTAKE_MODE_IDS.GENERAL]: /for example.*product defect.*photos.*equipment item.*approved specification.*delivery date/is,
     [INTAKE_MODE_IDS.IT]: /scope.*logs.*metrics.*application.*dependency.*host.*environment.*version.*configuration.*service-level objective \(SLO\).*service-level agreement \(SLA\)/is,
-    [INTAKE_MODE_IDS.PHARMA]: /assay data.*identifier.*release.*hold points/is
+    [INTAKE_MODE_IDS.PHARMA]: /assay results.*specification references.*identifier.*batch hold.*release status/is
   };
 
   Object.entries(guidancePatterns).forEach(([modeId, pattern]) => {
     const helpers = Object.values(INTAKE_MODE_HELPER_OVERRIDES[modeId]).join(' ');
     assert.match(helpers, pattern, `${modeId} helpers should identify concrete evidence and decision details`);
   });
+});
+
+test('Pharma copy distinguishes confirmed impact, assessment status, and potential unresolved risk', () => {
+  const captions = INTAKE_MODE_CAPTION_OVERRIDES[INTAKE_MODE_IDS.PHARMA];
+  const helpers = INTAKE_MODE_HELPER_OVERRIDES[INTAKE_MODE_IDS.PHARMA];
+
+  assert.match(captions.oneLine, /observed deviation.*product.*process.*material.*equipment.*study.*batch/i);
+  assert.match(captions.impactNow, /confirmed current impact.*current assessment status/i);
+  assert.match(captions.impactFuture, /credible potential risk.*remains unresolved/i);
+  assert.doesNotMatch(captions.impactFuture, /(?:compliance|stability|supply|patient) impact is likely/i);
+  assert.match(helpers.oneLine, /batch or lot scope/i);
+  assert.match(helpers.proof, /specification references/i);
+  assert.match(helpers.objectPrefill, /batch, or lot identifier/i);
+  assert.match(helpers.impactNow, /assessment status.*batch hold or release status/i);
+  assert.match(helpers.impactFuture, /potential risk.*safety implications where applicable/i);
 });
 
 test('IT primary questions stay plain-language while helpers define technical details', () => {

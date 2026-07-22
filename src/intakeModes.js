@@ -174,13 +174,13 @@ export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
     impactTime: 'When is a decision or resolution needed?'
   },
   [INTAKE_MODE_IDS.PHARMA]: {
-    oneLine: 'What quality event is affecting the product, process, or batch?',
+    oneLine: 'What observed deviation affects which product, process, material, equipment, study, or batch?',
     proof: 'What evidence confirms the quality deviation?',
     objectPrefill: 'Which product, process, batch, material, or equipment is affected?',
     healthy: 'What validated or approved state is expected?',
     now: 'What condition is observed now?',
-    impactNow: 'What is the current quality, release, safety, or patient impact?',
-    impactFuture: 'What future compliance, stability, supply, or patient impact is likely if unresolved?',
+    impactNow: 'What confirmed current impact is known, or what is the current assessment status?',
+    impactFuture: 'What credible potential risk could arise if the deviation remains unresolved?',
     impactTime: 'When is a quality decision or resolution needed?'
   },
   [INTAKE_MODE_IDS.MAJOR_INCIDENT]: {
@@ -225,14 +225,14 @@ export const INTAKE_MODE_HELPER_OVERRIDES = deepFreeze({
     impactTime: 'Include the applicable service-level agreement (SLA), release, dependency, or other deadline.'
   },
   [INTAKE_MODE_IDS.PHARMA]: {
-    oneLine: 'State the deviation, product or process context, and batch scope.',
-    proof: 'Include inspection results, assay data, exceptions, complaints, or verified observations.',
-    objectPrefill: 'Provide the material, equipment, process step, study, product, or batch identifier.',
-    healthy: 'Give the approved specification, validated state, or control.',
-    now: 'Record the observed condition and its difference from the approved baseline.',
-    impactNow: 'Identify current quality, safety, release, or patient implications.',
-    impactFuture: 'Describe the likely compliance, stability, supply, or investigation risk.',
-    impactTime: 'Include hold points, release dates, or process deadlines.'
+    oneLine: 'State the observed deviation, affected product or process context, and batch or lot scope.',
+    proof: 'Include verified observations, inspection or assay results, exceptions, complaints, and supporting specification references.',
+    objectPrefill: 'Provide the product, material, equipment, process step, study, batch, or lot identifier.',
+    healthy: 'Give the approved specification, validated state, control, or documented acceptance criterion.',
+    now: 'Record the observed condition, its difference from the approved baseline, and the relevant specification reference.',
+    impactNow: 'Record confirmed current quality, release, or safety implications; if not known, state the assessment status and any batch hold or release status.',
+    impactFuture: 'Describe only credible potential risk if unresolved, with supporting rationale; include possible safety implications where applicable.',
+    impactTime: 'Include batch holds, release status, release dates, investigation milestones, or process deadlines.'
   },
   [INTAKE_MODE_IDS.MAJOR_INCIDENT]: {
     oneLine: 'Which major incident, degraded customer-facing service or capability, and scope should responders align on?',
