@@ -1049,7 +1049,7 @@ export function buildSummaryText(stateInput, options = {}){
   const impactLines = [
     summaryLine(captionLabel('impactNow', 'Current Impact'), impactNow?.value ?? document.getElementById('impactNow')?.value),
     summaryLine(captionLabel('impactFuture', 'Future Impact'), impactFuture?.value ?? document.getElementById('impactFuture')?.value),
-    summaryLine(captionLabel('impactTime', 'Timeframe'), impactTime?.value ?? document.getElementById('impactTime')?.value)
+    summaryLine('Timeframe', impactTime?.value ?? document.getElementById('impactTime')?.value)
   ];
   const imp = joinSummaryLines(impactLines);
 

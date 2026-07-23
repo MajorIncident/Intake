@@ -102,8 +102,8 @@ test('selector changes apply mode visibility and emit a save callback', () => {
   assert.equal(document.getElementById('detectionSource').hidden, true);
   assert.equal(document.getElementById('evidenceCollected').hidden, true);
   assert.equal(document.getElementById('proofField').hidden, true);
-  assert.equal(document.querySelector('label[for="proof"]').textContent, 'What evidence confirms the quality deviation?');
-  assert.equal(document.getElementById('impactNowHeading').textContent, 'What confirmed current impact is known, or what is the current assessment status?');
+  assert.equal(document.querySelector('label[for="proof"]').textContent, 'What records or observations confirm the event?');
+  assert.equal(document.getElementById('impactNowHeading').textContent, 'What impact is confirmed now, and what is still being assessed?');
 
   applyIntakeMode(INTAKE_MODE_IDS.MAJOR_INCIDENT, { silent: true });
   assert.equal(document.getElementById('commsDrawer').hidden, false);
@@ -120,10 +120,10 @@ test('mode changes render representative question-led captions in the mounted DO
   initIntakeModeController();
 
   const expected = {
-    [INTAKE_MODE_IDS.GENERAL]: ['What is wrong, what affected item is involved, and how does it differ from expectation?', 'What is the current impact?'],
-    [INTAKE_MODE_IDS.IT]: ['Which system is affected?', 'What is the current user or system impact?'],
-    [INTAKE_MODE_IDS.PHARMA]: ['What observed deviation affects which product, process, material, equipment, study, or batch?', 'What confirmed current impact is known, or what is the current assessment status?'],
-    [INTAKE_MODE_IDS.MAJOR_INCIDENT]: ['What major incident is degrading which customer-facing service or capability?', 'What is the current incident impact and blast radius?']
+    [INTAKE_MODE_IDS.GENERAL]: ['What item is affected, and what is wrong with it?', 'What impact is the problem causing now?'],
+    [INTAKE_MODE_IDS.IT]: ['What specific system or service is affected?', 'Who or what is affected right now?'],
+    [INTAKE_MODE_IDS.PHARMA]: ['What unexpected condition was observed, and what product, batch, process, material, or equipment may be affected?', 'What impact is confirmed now, and what is still being assessed?'],
+    [INTAKE_MODE_IDS.MAJOR_INCIDENT]: ['What critical service or business capability is affected, and what is happening?', 'Who cannot do what right now?']
   };
 
   Object.entries(expected).forEach(([modeId, [labelText, headingText]]) => {
