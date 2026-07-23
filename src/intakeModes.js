@@ -154,44 +154,44 @@ export const INTAKE_MODE_SECTION_VISIBILITY = deepFreeze({
  */
 export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
   [INTAKE_MODE_IDS.GENERAL]: {
-    oneLine: 'What is wrong, what affected item is involved, and how does it differ from expectation?',
-    proof: 'What evidence confirms the observed difference?',
-    objectPrefill: 'Which affected item or object should be examined?',
-    healthy: 'What condition or behavior is expected for the affected item?',
-    now: 'What condition or behavior is observed for the affected item now?',
-    impactNow: 'What is the current impact?',
-    impactFuture: 'What future impact is likely if unresolved?',
-    impactTime: 'When is action or resolution needed to avoid additional impact?'
+    oneLine: 'What item is affected, and what is wrong with it?',
+    proof: 'What evidence shows that the problem is real?',
+    objectPrefill: 'What specific item should we examine?',
+    healthy: 'What should normally happen?',
+    now: 'What is happening instead?',
+    impactNow: 'What impact is the problem causing now?',
+    impactFuture: 'What could happen if no effective action is taken?',
+    impactTime: 'By when must action be taken before the impact gets worse?'
   },
   [INTAKE_MODE_IDS.IT]: {
-    oneLine: 'What problem is affecting the service or system?',
-    proof: 'What observed evidence confirms the technical deviation?',
-    objectPrefill: 'Which system is affected?',
-    healthy: 'What service behavior is expected?',
-    now: 'What is the actual service behavior now?',
-    impactNow: 'What is the current user or system impact?',
-    impactFuture: 'What future operational impact is likely if unresolved?',
-    impactTime: 'When is action or resolution needed to avoid additional impact?'
+    oneLine: 'What service or system is affected, and what is it doing wrong?',
+    proof: 'What evidence confirms the incident?',
+    objectPrefill: 'What specific system or service is affected?',
+    healthy: 'What should the service normally do?',
+    now: 'What is the service doing now?',
+    impactNow: 'Who or what is affected right now?',
+    impactFuture: 'What additional impact could occur if the incident continues?',
+    impactTime: 'What is the next deadline or event before the impact becomes worse?'
   },
   [INTAKE_MODE_IDS.PHARMA]: {
-    oneLine: 'What observed deviation affects which product, process, material, equipment, study, or batch?',
-    proof: 'What evidence confirms the quality deviation?',
-    objectPrefill: 'Which product, process, batch, material, or equipment is affected?',
-    healthy: 'What validated or approved state is expected?',
-    now: 'What condition is observed now?',
-    impactNow: 'What confirmed current impact is known, or what is the current assessment status?',
-    impactFuture: 'What credible potential risk could arise if the deviation remains unresolved?',
-    impactTime: 'When is action or resolution needed to avoid additional impact?'
+    oneLine: 'What unexpected condition was observed, and what product, batch, process, material, or equipment may be affected?',
+    proof: 'What records or observations confirm the event?',
+    objectPrefill: 'What specific product, batch, material, process, or equipment may be affected?',
+    healthy: 'What approved requirement should have been met?',
+    now: 'What was observed instead?',
+    impactNow: 'What impact is confirmed now, and what is still being assessed?',
+    impactFuture: 'What credible risk could arise if the event is not contained or addressed?',
+    impactTime: 'By when must containment, assessment, or a decision occur?'
   },
   [INTAKE_MODE_IDS.MAJOR_INCIDENT]: {
-    oneLine: 'What major incident is degrading which customer-facing service or capability?',
-    proof: 'What observable or measurable evidence confirms the incident deviation?',
-    objectPrefill: 'Which specific service, platform, region, or workflow object is affected?',
-    healthy: 'What known-good behavior is expected, and what baseline should responders use?',
-    now: 'What actual behavior are responders seeing now, and how does it differ from the baseline?',
-    impactNow: 'What is the current incident impact and blast radius?',
-    impactFuture: 'What future incident impact is likely if containment does not improve?',
-    impactTime: 'By what incident deadline or timeframe does resolution become difficult, expensive, impossible, or meaningless?'
+    oneLine: 'What critical service or business capability is affected, and what is happening?',
+    proof: 'What current evidence confirms the incident?',
+    objectPrefill: 'What specific service, region, platform, or customer journey is affected?',
+    healthy: 'What should customers, users, or the business normally experience?',
+    now: 'What is happening right now?',
+    impactNow: 'Who cannot do what right now?',
+    impactFuture: 'What could happen next if the incident continues or spreads?',
+    impactTime: 'What is the next hard deadline before the impact becomes much worse?'
   }
 });
 
@@ -205,44 +205,44 @@ export const INTAKE_MODE_CAPTION_OVERRIDES = deepFreeze({
  */
 export const INTAKE_MODE_HELPER_OVERRIDES = deepFreeze({
   [INTAKE_MODE_IDS.GENERAL]: {
-    oneLine: 'For example, describe a product defect, delayed workflow, equipment fault, or unexpected service result.',
-    proof: 'For example, include observations, measurements, photos, reports, test results, or user feedback.',
-    objectPrefill: 'For example, name a product, process step, equipment item, workflow, document, or service.',
-    healthy: 'For example, note the approved specification, expected result, normal timing, or prior condition.',
-    now: 'For example, record the observed defect, result, measurement, timing, or condition.',
-    impactNow: 'For example, identify effects on people, output, cost, quality, safety, schedule, or availability.',
-    impactFuture: 'For example, note likely rework, delay, loss, risk, or wider effect if unresolved.',
-    impactTime: 'For example, complete the correction by 15 May before the month-end close; include the specific date or timeframe and the governing business or process deadline, dependency, milestone, or decision point.'
+    oneLine: 'Describe one item and one clear difference from what should be happening. Do not include the cause or solution.',
+    proof: 'Include observations, measurements, photos, test results, reports, or feedback.',
+    objectPrefill: 'Name the product, part, machine, process step, workflow, document, or service. Include an ID or location if helpful.',
+    healthy: 'State the expected condition, result, measurement, timing, or approved requirement.',
+    now: 'Describe the actual condition and how much it differs from what is expected. Include when and how often it occurs.',
+    impactNow: 'Consider people, safety, quality, output, customers, cost, schedule, or availability.',
+    impactFuture: 'Describe the most likely additional impact, not only the worst possible outcome.',
+    impactTime: 'Give a date, time, deadline, or event, and explain what changes after that point.'
   },
   [INTAKE_MODE_IDS.IT]: {
-    oneLine: 'State the affected service or system, the problem, and the affected scope.',
-    proof: 'Include alerts, logs, metrics, customer reports, or reproduction results.',
-    objectPrefill: 'Include optional identification details such as the application, dependency, host, environment, version, or configuration.',
-    healthy: 'Give the expected baseline behavior, expected service target, metric, or known-good configuration. A service-level objective (SLO) is one type of expected service target.',
-    now: 'Record current behavior, alerts, metrics, or user symptoms against the baseline.',
-    impactNow: 'Identify affected users, transactions, regions, systems, or dependencies and quantify the scope.',
-    impactFuture: 'Describe the operational risk, deadline, or dependent service at risk.',
-    impactTime: 'For example, restore service before the 18:00 UTC release window; include the specific date or timeframe and the governing service-level agreement (SLA), release date, dependency, or decision point.'
+    oneLine: 'State the affected service, the problem users or systems are seeing, and the known scope. Do not include a suspected cause.',
+    proof: 'Include alerts, logs, metrics, error messages, test results, or user reports. Add the time observed when possible.',
+    objectPrefill: 'Name the application, service, API, database, host, network, environment, region, or version.',
+    healthy: 'State the expected user result, system behaviour, performance level, service target, or known-good condition.',
+    now: 'Describe the symptoms, errors, measurements, timing, and whether the condition is improving, stable, or getting worse.',
+    impactNow: 'Identify affected users, transactions, regions, systems, or business activities. Include the size of the impact and any usable workaround.',
+    impactFuture: 'Consider growing backlogs, missed deadlines, dependent systems, data issues, customer impact, or loss of service.',
+    impactTime: 'Give the specific time and consequence, such as a processing cutoff, release window, capacity limit, or business deadline.'
   },
   [INTAKE_MODE_IDS.PHARMA]: {
-    oneLine: 'State the observed deviation, affected product or process context, and batch or lot scope.',
-    proof: 'Include verified observations, inspection or assay results, exceptions, complaints, and supporting specification references.',
-    objectPrefill: 'Provide the product, material, equipment, process step, study, batch, or lot identifier.',
-    healthy: 'Give the approved specification, validated state, control, or documented acceptance criterion.',
-    now: 'Record the observed condition, its difference from the approved baseline, and the relevant specification reference.',
-    impactNow: 'Record confirmed current quality, release, or safety implications; if not known, state the assessment status and any batch hold or release status.',
-    impactFuture: 'Describe only credible potential risk if unresolved, with supporting rationale; include possible safety implications where applicable.',
-    impactTime: 'For example, complete the assessment before batch release on 15 May; include the specific date or timeframe and the governing batch hold point, release date, process milestone or deadline, or decision point.'
+    oneLine: 'State what was observed and the initial scope. Do not include an assumed cause or unconfirmed product impact.',
+    proof: 'Include test results, batch records, instrument data, inspection findings, complaints, photos, or direct observations.',
+    objectPrefill: 'Include the product name, batch or lot number, equipment ID, process step, site, line, room, sample, or study.',
+    healthy: 'State the applicable specification, validated range, procedure, batch record, method, protocol, or acceptance limit.',
+    now: 'Record the actual condition or result, how it differs from the requirement, and when it occurred. Keep retest results separate from the original result.',
+    impactNow: 'State known quality, safety, release, or data implications. Include whether the batch is on hold, released, distributed, or still under review.',
+    impactFuture: 'Consider patients, product quality, other batches, recurrence, contamination, data validity, supply, or regulatory impact. Do not present possible harm as confirmed harm.',
+    impactTime: 'Give the relevant hold point, release date, manufacturing step, shipment, reporting deadline, or other decision point.'
   },
   [INTAKE_MODE_IDS.MAJOR_INCIDENT]: {
-    oneLine: 'Which major incident, degraded customer-facing service or capability, and scope should responders align on?',
-    proof: 'Which alerts, metrics, reports, screenshots, or logs demonstrate the incident deviation?',
-    objectPrefill: 'Which customer-facing service, platform, region, workflow, or configuration details distinguish the affected object?',
-    healthy: 'Which known-good behavior, metric, or service baseline should responders use for comparison?',
-    now: 'Which active behavior, measurements, or customer symptoms show the difference from that baseline?',
-    impactNow: 'Which customers, services, regions, or business functions are affected now, and what is the blast radius?',
-    impactFuture: 'Which near-term escalation or customer impact is likely if containment does not improve?',
-    impactTime: 'When do recovery commitments, updates, or business deadlines make resolution difficult, expensive, impossible, or meaningless?'
+    oneLine: 'State the affected capability, the current problem, and the confirmed scope. Do not include a suspected cause.',
+    proof: 'Include alerts, metrics, logs, test results, transaction failures, screenshots, or customer reports. Add the observation time.',
+    objectPrefill: 'Identify the exact service, transaction path, environment, region, customer group, release, or configuration. Include what is known to be unaffected when helpful.',
+    healthy: 'State the expected result and any useful baseline, such as success rate, response time, availability, throughput, or known-good condition.',
+    now: 'Describe the current symptoms, measurements, scope, mitigation status, and whether the incident is improving, stable, or getting worse. Include an “as of” time.',
+    impactNow: 'Quantify affected customers, users, transactions, regions, services, or business functions. Include any workaround.',
+    impactFuture: 'Consider growing customer impact, backlogs, dependent-service failures, capacity limits, data issues, missed deadlines, or fewer recovery options.',
+    impactTime: 'Give the exact time, event, or threshold and explain the consequence. Track communication update times separately.'
   }
 });
 
