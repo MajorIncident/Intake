@@ -787,6 +787,7 @@ fieldset.field legend{font-weight:700; margin-bottom:6px; font-size:14px; color:
   font-size:17px;
   font-weight:700;
   letter-spacing:-0.02em;
+  text-transform:none;
   color:#1f2b40;
   font-family:"SF Pro Display","SF Pro Text",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 }
@@ -796,6 +797,7 @@ fieldset.field legend{font-weight:700; margin-bottom:6px; font-size:14px; color:
   font-size:15px;
   font-weight:600;
   letter-spacing:-0.015em;
+  text-transform:none;
   color:#22324b;
   font-family:"SF Pro Display","SF Pro Text",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 }
