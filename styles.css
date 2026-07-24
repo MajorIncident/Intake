@@ -74,7 +74,7 @@ body{
   transition:background-color var(--speed), color var(--speed);
 }
 body.theme-dark,body[data-theme="dark"]{color-scheme:dark;}
-header{
+body > header{
   max-width:1240px; margin:26px auto 12px; padding:0 12px;
   display:flex; flex-direction:column; gap:18px;
 }
@@ -184,7 +184,7 @@ h1#docTitle{font-size:22px; font-weight:800; margin:0; letter-spacing:-0.01em; w
   font-variant-numeric:tabular-nums;
 }
 @media(max-width:640px){
-  header{padding:0 16px;}
+  body > header{padding:0 16px;}
   .menu-bar{padding:12px;}
   .menu-bar .intake-mode-selector{flex:1 1 100%; padding:0 0 12px; border-right:0; border-bottom:1px solid var(--line);}
   .menu-bar .intake-mode-selector small{max-width:none;}
@@ -633,7 +633,7 @@ body.comms-drawer-open{overflow:hidden;}
 .notes-workspace__item{display:flex; align-items:center; gap:8px; padding:10px; border:1px solid var(--line); border-radius:10px; background:var(--panel-muted); cursor:grab;}.notes-workspace__text{flex:1; overflow-wrap:anywhere; font-size:13px; line-height:1.35;}.notes-workspace__empty{color:var(--muted); font-size:13px;}
 .notes-workspace :is(button,input,.notes-workspace__item):focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--focus-ring);}
 /* Reserve the notes dock across every primary content region so their edges stay aligned at browser zoom levels. */
-@media (min-width:921px){header,.wrap{margin-right:340px;}.site-footer{margin-right:340px;}}
+@media (min-width:921px){body > header,.wrap{margin-right:340px;}.site-footer{margin-right:340px;}}
 @media (max-width:920px){.notes-workspace{top:auto; bottom:16px; right:16px; width:min(360px,calc(100vw - 32px)); max-height:min(55vh,440px);}.notes-workspace.is-collapsed{max-height:54px; overflow:hidden;}.notes-workspace.is-collapsed .notes-workspace__header p{display:none;}}
 
 .site-footer{
