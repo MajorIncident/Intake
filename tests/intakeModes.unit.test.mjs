@@ -4,6 +4,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { ROWS } from '../src/constants.js';
+
 import {
   DEFAULT_INTAKE_MODE,
   INTAKE_MODE_CAPTION_OVERRIDES,
@@ -12,7 +14,9 @@ import {
   INTAKE_MODE_IDS,
   INTAKE_MODE_LABELS,
   INTAKE_MODE_SECTION_VISIBILITY,
-  INTAKE_MODES
+  INTAKE_MODES,
+  MAJOR_INCIDENT_KT_PHASES,
+  MAJOR_INCIDENT_WORKFLOW_METADATA
 } from '../src/intakeModes.js';
 
 const REQUIRED_FIELD_IDS = ['oneLine', 'proof', 'objectPrefill', 'healthy', 'now', 'impactNow', 'impactFuture', 'impactTime'];
@@ -51,6 +55,38 @@ test('each intake mode declares visibility for every known workflow section', ()
     assert.deepEqual(Object.keys(INTAKE_MODE_SECTION_VISIBILITY[modeId]).sort(), [...REQUIRED_SECTION_IDS].sort());
   });
   assert.ok(Object.values(INTAKE_MODE_SECTION_VISIBILITY[INTAKE_MODE_IDS.MAJOR_INCIDENT]).every(Boolean));
+});
+
+test('Major Incident workflow metadata assigns every area a semantic KT phase and explicit participation', () => {
+  assert.deepEqual(Object.keys(MAJOR_INCIDENT_WORKFLOW_METADATA).sort(), [...REQUIRED_SECTION_IDS].sort());
+  assert.deepEqual(
+    MAJOR_INCIDENT_KT_PHASES.map(({ id, label, color }) => [id, label, color]),
+    [
+      ['situationAppraisal', 'Situation Appraisal', 'blue'],
+      ['problemAnalysis', 'Problem Analysis', 'red'],
+      ['decisionAnalysis', 'Decision Analysis', 'green'],
+      ['potentialProblemAnalysis', 'Potential Problem Analysis', 'orange']
+    ]
+  );
+
+  Object.values(MAJOR_INCIDENT_WORKFLOW_METADATA).forEach((area) => {
+    assert.match(area.phase.purpose, /.+/);
+    assert.equal(area.primaryRespondent.participation, 'Primary responder');
+    assert.ok(area.supportingRoles.length > 0);
+    area.supportingRoles.forEach((role) => assert.equal(role.participation, 'Consult'));
+    assert.equal(area.approvalDecisionRole.participation, 'Approves');
+  });
+});
+
+test('Major Incident metadata maps protected KT row IDs to Problem Analysis without changing ROWS', () => {
+  const questionIds = ROWS.flatMap((row) => (row.id ? [row.id] : []));
+  const problemAnalysis = MAJOR_INCIDENT_WORKFLOW_METADATA.problemAnalysis;
+
+  assert.equal(problemAnalysis.phase.id, 'problemAnalysis');
+  assert.deepEqual(problemAnalysis.questionIds, questionIds);
+  assert.ok(Object.isFrozen(MAJOR_INCIDENT_WORKFLOW_METADATA));
+  assert.ok(Object.isFrozen(problemAnalysis.questionIds));
+  assert.ok(Object.isFrozen(ROWS));
 });
 
 test('caption and helper override maps preserve stable field IDs for every mode', () => {
