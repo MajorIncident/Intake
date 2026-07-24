@@ -9,6 +9,8 @@
  *   `src/constants.js`.
  */
 
+import { ROWS } from './constants.js';
+
 /**
  * Recursively freezes an intake-mode configuration object.
  *
@@ -78,6 +80,124 @@ export const INTAKE_MODES = deepFreeze([
   { id: INTAKE_MODE_IDS.PHARMA, label: INTAKE_MODE_LABELS[INTAKE_MODE_IDS.PHARMA] },
   { id: INTAKE_MODE_IDS.MAJOR_INCIDENT, label: INTAKE_MODE_LABELS[INTAKE_MODE_IDS.MAJOR_INCIDENT] }
 ]);
+
+/**
+ * Major-Incident KT phases, including their semantic colour and accountability
+ * guidance. Participation labels are intentionally explicit so consumers do
+ * not need to infer ownership from a phase colour.
+ *
+ * @type {ReadonlyArray<Readonly<{
+ *   id: string,
+ *   label: string,
+ *   color: string,
+ *   purpose: string,
+ *   primaryRespondent: Readonly<{ participation: 'Primary responder', role: string }>,
+ *   supportingRoles: ReadonlyArray<Readonly<{ participation: 'Consult', role: string }>>,
+ *   approvalDecisionRole: Readonly<{ participation: 'Approves', role: string }>
+ * }>>}
+ */
+export const MAJOR_INCIDENT_KT_PHASES = deepFreeze([
+  {
+    id: 'situationAppraisal',
+    label: 'Situation Appraisal',
+    color: 'blue',
+    purpose: 'Establishes impact, urgency, priorities, containment status, bridge coordination, and communications.',
+    primaryRespondent: { participation: 'Primary responder', role: 'Incident Manager / Incident Commander' },
+    supportingRoles: [
+      { participation: 'Consult', role: 'Communications Lead' },
+      { participation: 'Consult', role: 'Technical Bridge Lead' }
+    ],
+    approvalDecisionRole: { participation: 'Approves', role: 'Incident Manager / Incident Commander' }
+  },
+  {
+    id: 'problemAnalysis',
+    label: 'Problem Analysis',
+    color: 'red',
+    purpose: 'Supplies factual IS / IS NOT evidence, distinctions, changes, and tests possible causes.',
+    primaryRespondent: { participation: 'Primary responder', role: 'Subject-Matter Expert' },
+    supportingRoles: [
+      { participation: 'Consult', role: 'Incident Manager / Incident Commander' },
+      { participation: 'Consult', role: 'Technical Bridge Lead' }
+    ],
+    approvalDecisionRole: { participation: 'Approves', role: 'Application Owner or delegated business/service owner' }
+  },
+  {
+    id: 'decisionAnalysis',
+    label: 'Decision Analysis',
+    color: 'green',
+    purpose: 'Selects and authorizes the preferred mitigation or recovery decision after SME input.',
+    primaryRespondent: { participation: 'Primary responder', role: 'Application Owner or delegated business/service owner' },
+    supportingRoles: [
+      { participation: 'Consult', role: 'Subject-Matter Expert' },
+      { participation: 'Consult', role: 'Incident Manager / Incident Commander' }
+    ],
+    approvalDecisionRole: { participation: 'Approves', role: 'Application Owner or delegated business/service owner' }
+  },
+  {
+    id: 'potentialProblemAnalysis',
+    label: 'Potential Problem Analysis',
+    color: 'orange',
+    purpose: 'Assesses implementation risk, controls, rollback, and contingency actions.',
+    primaryRespondent: { participation: 'Primary responder', role: 'Change Manager' },
+    supportingRoles: [
+      { participation: 'Consult', role: 'Subject-Matter Expert' },
+      { participation: 'Consult', role: 'Application Owner or delegated business/service owner' }
+    ],
+    approvalDecisionRole: { participation: 'Approves', role: 'Change Manager' }
+  }
+]);
+
+const MAJOR_INCIDENT_PHASE_BY_ID = Object.fromEntries(
+  MAJOR_INCIDENT_KT_PHASES.map((phase) => [phase.id, phase])
+);
+
+const KT_PROBLEM_ANALYSIS_QUESTION_IDS = deepFreeze(
+  ROWS.flatMap((row) => (typeof row.id === 'string' ? [row.id] : []))
+);
+
+/**
+ * Major-Incident ownership metadata keyed by the stable workflow-area IDs used
+ * by `data-mode-section`. KT row IDs remain owned by the immutable `ROWS`
+ * collection; the `problemAnalysis` area associates those existing IDs with
+ * Problem Analysis here rather than changing the question definitions.
+ *
+ * @type {Readonly<Record<string, Readonly<{
+ *   phase: Readonly<{ id: string, label: string, color: string, purpose: string }>,
+ *   primaryRespondent: Readonly<{ participation: 'Primary responder', role: string }>,
+ *   supportingRoles: ReadonlyArray<Readonly<{ participation: 'Consult', role: string }>>,
+ *   approvalDecisionRole: Readonly<{ participation: 'Approves', role: string }>,
+ *   questionIds?: ReadonlyArray<string>
+ * }>>>}
+ */
+export const MAJOR_INCIDENT_WORKFLOW_METADATA = deepFreeze(Object.fromEntries([
+  ['problemSummary', 'situationAppraisal'],
+  ['collaboration', 'situationAppraisal'],
+  ['detectionSource', 'situationAppraisal'],
+  ['evidenceCollected', 'situationAppraisal'],
+  ['incidentProof', 'situationAppraisal'],
+  ['impact', 'situationAppraisal'],
+  ['containment', 'situationAppraisal'],
+  ['communications', 'situationAppraisal'],
+  ['problemAnalysis', 'problemAnalysis'],
+  ['possibleCauses', 'problemAnalysis'],
+  ['actions', 'decisionAnalysis'],
+  ['steps', 'potentialProblemAnalysis'],
+  ['handover', 'potentialProblemAnalysis']
+].map(([workflowArea, phaseId]) => {
+  const phase = MAJOR_INCIDENT_PHASE_BY_ID[phaseId];
+  return [workflowArea, {
+    phase: {
+      id: phase.id,
+      label: phase.label,
+      color: phase.color,
+      purpose: phase.purpose
+    },
+    primaryRespondent: phase.primaryRespondent,
+    supportingRoles: phase.supportingRoles,
+    approvalDecisionRole: phase.approvalDecisionRole,
+    ...(workflowArea === 'problemAnalysis' ? { questionIds: KT_PROBLEM_ANALYSIS_QUESTION_IDS } : {})
+  }];
+})));
 
 const ALL_SECTIONS_VISIBLE = deepFreeze({
   problemSummary: true,
