@@ -54,6 +54,7 @@ import { initHandover } from './src/handover.js';
 import { initMenuBar } from './src/menuBar.js';
 import { initIntakeModeController, applyIntakeMode } from './src/intakeModeController.js';
 import { initNotesWorkspace, toggleNotesWorkspace } from './src/notesWorkspace.js';
+import { initMajorIncidentRoles } from './src/majorIncidentRoles.js';
 
 /**
  * Query the document for the first element that matches the provided CSS selector.
@@ -175,6 +176,7 @@ function boot() {
 
   restoreSavedIntake();
   initIntakeModeController({ onChange: saveAppState });
+  initMajorIncidentRoles();
 
   const { ops } = getPrefaceState();
   if (!ops.bridgeOpenedUtc) {
