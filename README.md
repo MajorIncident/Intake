@@ -42,6 +42,7 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 | ---- | ------- |
 | `src/constants.js` | Deep-frozen config: KT table rows, phase metadata, finding modes, and step definitions. |
 | `src/storage.js` | Helpers that persist and hydrate the entire UI state under `kt-intake-full-v2`. |
+| `src/majorIncidentAnalysis.js` | Owns the Major Incident-only Decision Analysis and action-compatible Potential Problem Analysis cards after Possible Causes. |
 | `src/appState.js` | Collects and reapplies UI state across modules (`collectAppState`, `applyAppState`, `getSummaryState`). |
 | `src/notesWorkspace.js` | Owns the persistent Notes workspace, accessible note placement, drag/drop validation, and its snapshot state. |
 | `src/preface.js` | Manages bridge activation fields, mirror sync, detection chips, and token updates for `{OBJECT}` / `{DEVIATION}`. |

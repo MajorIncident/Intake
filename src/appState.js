@@ -71,6 +71,7 @@ import { collectHandoverState, applyHandoverState } from './handover.js';
 import { applyIntakeMode, getActiveIntakeMode } from './intakeModeController.js';
 import { INTAKE_MODE_IDS } from './intakeModes.js';
 import { getNotesWorkspaceState, applyNotesWorkspaceState } from './notesWorkspace.js';
+import { collectMajorIncidentAnalysisState, applyMajorIncidentAnalysisState } from './majorIncidentAnalysis.js';
 
 const ANALYSIS_ID_KEY = 'kt-analysis-id';
 let cachedAnalysisId = '';
@@ -104,15 +105,22 @@ function hasOwnPath(source, path) {
  * @param {object} current.comms - Current communications state.
  * @param {object|null} current.steps - Current steps checklist state.
  * @param {object} current.handover - Current handover state.
+ * @param {object} current.majorAnalysis - Current decision and risk card state.
  * @param {object} ops - Mutable operations payload being applied.
  * @param {object|null} steps - Candidate steps payload.
  * @param {object|null} handover - Candidate handover payload.
- * @returns {{ ops: object, steps: object|null, handover: object|null }} Payload with hidden fields preserved when absent.
+ * @returns {{ ops: object, steps: object|null, handover: object|null, majorAnalysis: object }} Payload with hidden fields preserved when absent.
  */
 function preserveHiddenMajorIncidentState(incoming, appliedMode, current, ops, steps, handover) {
   const hasExplicitModeChange = hasOwnPath(incoming, ['meta', 'intakeMode']) || hasOwnPath(incoming, ['intakeMode']);
   if (appliedMode === INTAKE_MODE_IDS.MAJOR_INCIDENT && !hasExplicitModeChange) {
-    return { ops, steps, handover };
+    return {
+      ops, steps, handover,
+      majorAnalysis: {
+        decisionAnalysis: incoming.decisionAnalysis || current.majorAnalysis.decisionAnalysis,
+        potentialProblemAnalysis: incoming.potentialProblemAnalysis || current.majorAnalysis.potentialProblemAnalysis
+      }
+    };
   }
 
   const nextOps = { ...(ops || {}) };
@@ -138,7 +146,11 @@ function preserveHiddenMajorIncidentState(incoming, appliedMode, current, ops, s
     ? handover
     : current.handover;
 
-  return { ops: nextOps, steps: nextSteps, handover: nextHandover };
+  const majorAnalysis = {
+    decisionAnalysis: hasOwnPath(incoming, ['decisionAnalysis']) ? incoming.decisionAnalysis : current.majorAnalysis.decisionAnalysis,
+    potentialProblemAnalysis: hasOwnPath(incoming, ['potentialProblemAnalysis']) ? incoming.potentialProblemAnalysis : current.majorAnalysis.potentialProblemAnalysis
+  };
+  return { ops: nextOps, steps: nextSteps, handover: nextHandover, majorAnalysis };
 }
 
 function ensureAnalysisId() {
@@ -212,6 +224,7 @@ export function collectAppState() {
       items: serializedActions
     },
     handover,
+    ...collectMajorIncidentAnalysisState(),
     notesWorkspace: getNotesWorkspaceState()
   };
 }
@@ -238,6 +251,8 @@ export function applyAppState(data = {}) {
     actions: savedActionsState = null,
     appearance: appearanceState = null,
     handover: savedHandoverState = null,
+    decisionAnalysis: savedDecisionAnalysis = null,
+    potentialProblemAnalysis: savedPotentialProblemAnalysis = null,
     notesWorkspace: savedNotesWorkspaceState = null
   } = data;
   const currentAnalysisId = getAnalysisId();
@@ -257,7 +272,8 @@ export function applyAppState(data = {}) {
     ops: getPrefaceState().ops,
     comms: getCommunicationsState(),
     steps: exportStepsState(),
-    handover: collectHandoverState()
+    handover: collectHandoverState(),
+    majorAnalysis: collectMajorIncidentAnalysisState()
   };
 
   const appliedTheme = appearanceState && typeof appearanceState.theme === 'string'
@@ -310,6 +326,10 @@ export function applyAppState(data = {}) {
   }
 
   applyHandoverState(preserved.handover || {});
+  applyMajorIncidentAnalysisState(preserved.majorAnalysis || {
+    decisionAnalysis: savedDecisionAnalysis || {},
+    potentialProblemAnalysis: savedPotentialProblemAnalysis || {}
+  });
   applyNotesWorkspaceState(savedNotesWorkspaceState || {});
 
   if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
@@ -375,7 +395,8 @@ export function getSummaryState() {
     getDeviationFull,
     showToast,
     actions: Array.isArray(actions) ? actions : [],
-    handover: collectHandoverState()
+    handover: collectHandoverState(),
+    ...collectMajorIncidentAnalysisState()
   };
 }
 

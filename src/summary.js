@@ -721,6 +721,24 @@ export function formatActionsSummary(stateInput){
   return lines.join('\n');
 }
 
+/** Format Major Incident decision and implementation-risk readiness. @param {object} state - Summary state. @returns {string} Workflow summary lines. */
+function formatMajorIncidentAnalysisSummary(state){
+  const decision = state?.decisionAnalysis || {};
+  const potential = state?.potentialProblemAnalysis || {};
+  const selected = inlineSummaryText(decision.selectedOption);
+  const owner = inlineSummaryText(decision.delegatedOwner) || inlineSummaryText(decision.ownerRole) || 'Application Owner';
+  const riskOwner = inlineSummaryText(potential?.owner?.name);
+  const rollback = inlineSummaryText(potential?.changeControl?.rollbackPlan || potential?.risk?.ifHappens);
+  const verification = inlineSummaryText(potential?.verification?.result);
+  const lines = [];
+  if(selected) lines.push(`Selected Decision: ${selected}`);
+  if(selected || decision.decision) lines.push(`Decision Owner: ${owner}`);
+  if(riskOwner) lines.push(`Change / Risk Owner: ${riskOwner}`);
+  if(rollback || potential?.risk?.impactIfFails) lines.push(`Rollback Readiness: ${rollback ? `Ready — ${rollback}` : 'Not recorded'}`);
+  if(verification) lines.push(`Verification Condition: ${verification}`);
+  return lines.join('\n');
+}
+
 /**
  * Summarizes the task checklist, grouped by phase, to show overall completion
  * and outstanding categories.
@@ -1112,6 +1130,10 @@ export function buildSummaryText(stateInput, options = {}){
     pushSection('— ⭐ Likely Cause —', likelySummary);
   }
   pushSection(modeConfig.possibleSection, composePossibleCausesBody(causeSections, modeConfig.includeLikelyCauseSection));
+
+  if(mode === INTAKE_MODE_IDS.MAJOR_INCIDENT){
+    pushSection('— Decision & Potential Problem Analysis —', formatMajorIncidentAnalysisSummary(state));
+  }
 
   const actionsSummary = formatActionsSummary(state);
   pushSection(modeConfig.actionsSection, actionsSummary);

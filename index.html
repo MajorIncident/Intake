@@ -469,6 +469,31 @@ Anchors present:
       </div>
     </div>
 
+    <!-- [feature:major-incident-analysis] start -->
+    <details class="card workflow-card workflow-card--decision" id="decisionAnalysisCard" data-mode-section="collaboration">
+      <summary><span>Decision Analysis</span><small>Choose and authorize the recovery path</small></summary>
+      <div class="workflow-card__body">
+        <div class="field"><label for="decisionToMake">Decision to make</label><input id="decisionToMake" type="text" placeholder="What must be decided now?" /></div>
+        <div class="field"><label for="decisionOptions">Options considered</label><textarea id="decisionOptions" placeholder="List viable options and trade-offs"></textarea></div>
+        <div class="field"><label for="decisionSelectedOption">Selected option</label><input id="decisionSelectedOption" type="text" placeholder="Preferred mitigation or recovery option" /></div>
+        <div class="workflow-card__grid"><div class="field"><label for="decisionOwnerRole">Recommended decision owner</label><input id="decisionOwnerRole" type="text" value="Application Owner" /></div><div class="field"><label for="decisionDelegatedOwner">Delegated named owner <span class="subtle">(optional)</span></label><input id="decisionDelegatedOwner" type="text" placeholder="Name of delegated approver" /></div></div>
+        <div class="field"><label for="decisionRationale">Rationale</label><textarea id="decisionRationale" placeholder="Why this option best meets the decision criteria"></textarea></div>
+        <div class="field"><label for="decisionTimestamp">Decision timestamp</label><input id="decisionTimestamp" type="datetime-local" /></div>
+      </div>
+    </details>
+
+    <details class="card workflow-card workflow-card--risk" id="potentialProblemAnalysisCard" data-mode-section="collaboration">
+      <summary><span>Potential Problem Analysis</span><small>Make implementation and rollback risk explicit</small></summary>
+      <div class="workflow-card__body">
+        <div class="workflow-card__grid"><div class="field"><label for="riskOwner">Change / risk owner</label><input id="riskOwner" type="text" placeholder="Named owner accountable for the risk" /></div><div class="field"><label for="potentialRiskLevel">Risk level</label><select id="potentialRiskLevel"><option>None</option><option>Low</option><option>Medium</option><option>High</option></select></div></div>
+        <div class="field"><label for="potentialFailure">What could fail</label><textarea id="potentialFailure" placeholder="Impact if the selected action fails"></textarea></div>
+        <div class="field"><label for="preventiveControl">Preventive control</label><textarea id="preventiveControl" placeholder="Control that reduces likelihood or impact"></textarea></div>
+        <div class="field"><label for="rollbackContingency">Rollback / contingency</label><textarea id="rollbackContingency" placeholder="How the change will be backed out or contained"></textarea></div>
+        <div class="field"><label for="verificationCondition">Verification condition</label><input id="verificationCondition" type="text" placeholder="Observable condition that proves readiness or success" /></div>
+      </div>
+    </details>
+    <!-- [feature:major-incident-analysis] end -->
+
 
     <!-- Summary card showing the most recent export for manual copy. -->
     <!-- [section:summary] start -->
