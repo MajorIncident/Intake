@@ -65,6 +65,37 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 Use **View → Notes workspace** or **Alt+N** to open or collapse the persistent notes dock. Add short capture notes, then drag a note to an editable text field in the main intake form. Keyboard users can focus a field, then activate **Place in focused field** on a note. Successful placement removes the note and saves the intake; invalid targets retain it.
 - `kt-actions-by-analysis-v1`: Dedicated action registry keyed by analysis ID that powers the action list card and owner audit trail.
 
+## Shared collaboration (first version)
+
+The **Collaboration** menu can create a shared session from the complete state returned by `collectAppState()`, copy its secret link, show synchronization health, and leave the session. Opening a link containing `?workspace=<secret-token>` loads that workspace through the server API, applies the snapshot with `applyAppState()`, and continues keeping the normal `kt-intake-full-v2` browser copy as recovery. Edits still save locally immediately; remote writes are debounced, and clients poll for newer integer revisions about every 2.5 seconds while the tab is visible.
+
+### Secret-link security model
+
+Possession of the full link grants read and edit access in v1. Share it only with incident participants and avoid pasting it into tickets, chat rooms, analytics, or logs. The browser calls the stable `/api/workspaces/session` endpoint and sends the capability in an `Authorization: Bearer` header, never in an API URL. Neon stores only its SHA-256 hash, never the raw token, and responses carry `Cache-Control: no-store` and `Referrer-Policy: no-referrer`. There is deliberately no workspace-list endpoint. Leaving removes the token from the current URL; it does not revoke the link or delete shared data.
+
+### Neon and Vercel configuration
+
+The existing Vercel project is **`intake`**, with the **`neon-intake`** integration expected to inject a server-side connection string. The API detects `DATABASE_URL` first, then the common integration aliases `POSTGRES_URL` and `NEON_DATABASE_URL`. Set one of those variables for Preview and Production environments; never expose it with a `VITE_`, `NEXT_PUBLIC_`, or other browser-visible prefix. `WORKSPACE_EXPIRY_DAYS` is optional and defaults to `30` when missing or invalid.
+
+`@neondatabase/serverless` is imported lazily by the Vercel Function, so static builds and browser modules never need database credentials. On the first database request, the server idempotently runs `CREATE TABLE IF NOT EXISTS collaboration_workspaces` and creates its expiry index. The table contains a generated ID, token hash, JSONB snapshot, positive integer revision, created/updated timestamps, and expiry timestamp. This automatic initialization means normal deployments do not require a person to edit the production database. A human must still confirm that the Neon integration exposes one supported connection variable to each desired Vercel environment and that the database role can create the table/index on first use.
+
+### Conflict recovery and two-window testing
+
+Updates use optimistic revision control: each complete snapshot retains the revision observed when it was captured. Only one PUT is sent at a time; edits made during that request collapse to the latest snapshot and follow the successful response at its returned revision. A stale write receives HTTP 409 and cannot overwrite the newer row. If polling finds a newer revision while local work is queued or in flight, the browser does not apply it silently: it stores the local version under `kt-collaboration-recovery-v1`, shows **Conflict**, and offers **Load newest shared version** or **Export local recovery**. Loading shared state does not delete that recovery record; neither does leaving the session. Invalid (400/401) and missing or expired (404) sessions stop polling, while network failures show **Offline** and 5xx failures show **Temporary server error** before retrying.
+
+To preview manually:
+
+1. Deploy or run an environment with a Neon connection variable and open the intake in window A.
+2. Enter a recognizable value, choose **Collaboration → Start shared session**, then copy the collaboration link.
+3. Open that link in window B and confirm the value loads and both indicators show **Synced**.
+4. Edit in one window, stop typing, and confirm the other updates after the debounce plus a polling interval.
+5. To exercise a conflict, make edits in both windows before either receives the other's revision. Confirm one browser shows **Conflict**, then export its recovery before choosing whether to load the newest shared copy.
+6. Disconnect the network briefly to confirm **Offline**, reconnect, and verify polling resumes. Leave the session and confirm the local intake remains available.
+
+This is snapshot-based collaboration, not character-level co-editing. Concurrent edits to different fields can still conflict; there is no merge UI, user identity, audit trail, revocation, presence display, end-to-end encryption, or server-side deletion action in v1. Expired rows behave as missing (404); physical cleanup of expired rows can be added later without changing that behavior.
+
+- `kt-collaboration-recovery-v1`: A conflict-only local recovery envelope containing the losing snapshot and capture time; it is intentionally separate from the normal intake key.
+
 Need to know which module owns a given storage field? Jump to the [Storage-to-Module Responsibility Map](docs/storage-schema.appendix.md#storage-to-module-responsibility-map) for a field-by-field lookup tied to the DOM anchors and runtime files that persist each value.
 
 ## Development Guidelines
@@ -83,6 +114,7 @@ Need to know which module owns a given storage field? Jump to the [Storage-to-Mo
 - Production deploys on Vercel now execute `npm run build && npm test` (see `vercel.json`). The build step regenerates `src/templates.manifest.js` so templates remain in sync, and the test pass acts as a guardrail for regressions before traffic hits the static bundle.
 - When modifying the manifest workflow or required quality gates, update both the README and `vercel.json` so the documented steps mirror the actual build command.
 - Use `vercel build` (or run `npm run build && npm test`) locally to mirror the hosted environment whenever you change deployment requirements.
+- Dependency changes must be installed through the normal npm registry so npm generates the complete lockfile. Run `npm run verify:lockfile` before committing and `npm ci` from a clean dependency tree; the offline guard catches missing resolved root-package entries before CI reaches its clean install.
 
 ## Documentation & anchor hygiene
 - Add or update module docblocks and JSDoc summaries whenever you touch a runtime file. The patterns in [`docs/commenting-guide.md`](docs/commenting-guide.md) are canonical.

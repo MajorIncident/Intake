@@ -12,7 +12,11 @@
     "lint": "eslint",
     "verify:tests": "node scripts/ensure-tests-cover-changes.js",
     "verify:summary": "node scripts/ensure-summary-integrations.js",
-    "verify:persistence": "node scripts/ensure-persistence-integrations.js"
+    "verify:persistence": "node scripts/ensure-persistence-integrations.js",
+    "verify:lockfile": "node scripts/verify-lockfile.js"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "1.1.0"
   },
   "devDependencies": {
     "eslint": "^8.57.1",

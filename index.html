@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+<meta name="referrer" content="no-referrer" />
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>KT Intake</title>
@@ -60,6 +61,17 @@ Anchors present:
       <div class="menu-group" data-mode-section="collaboration">
         <button type="button" class="menu-trigger" data-menu-target="collaborationMenu" aria-haspopup="true" aria-expanded="false">Collaboration</button>
         <div class="menu-panel" id="collaborationMenu" role="menu" aria-label="Collaboration" hidden>
+          <!-- [feature:collaboration] start -->
+          <div class="collaboration-status" id="collaborationStatus" data-state="local-only" role="status" aria-live="polite">Local only</div>
+          <button type="button" class="menu-item" id="startCollaborationBtn" role="menuitem"><span class="menu-item__label">Start shared session</span></button>
+          <button type="button" class="menu-item" id="copyCollaborationLinkBtn" role="menuitem" disabled><span class="menu-item__label">Copy collaboration link</span></button>
+          <button type="button" class="menu-item" id="leaveCollaborationBtn" role="menuitem" disabled><span class="menu-item__label">Leave shared session</span></button>
+          <div class="collaboration-conflict" id="collaborationConflictActions" hidden>
+            <p>A newer shared revision exists. Your local version is preserved for recovery.</p>
+            <button type="button" class="menu-item" id="loadSharedVersionBtn" role="menuitem">Load newest shared version</button>
+            <button type="button" class="menu-item" id="exportRecoveryBtn" role="menuitem">Export local recovery</button>
+          </div>
+          <!-- [feature:collaboration] end -->
           <button
             type="button"
             class="menu-item"

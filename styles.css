@@ -1882,6 +1882,22 @@ textarea.tableta.tableta--muted:focus{
   background:rgba(0,122,255,.16);
   color:#0b55d3;
 }
+.collaboration-status{
+  margin:4px 4px 8px;
+  padding:8px 12px;
+  border-radius:10px;
+  background:var(--soft, #f1f4fa);
+  color:var(--muted, #526078);
+  font-size:12px;
+  font-weight:700;
+}
+.collaboration-status::before{content:"";display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:#7b879b;}
+.collaboration-status[data-state="synced"]::before{background:#248a3d;}
+.collaboration-status[data-state="connecting"]::before,.collaboration-status[data-state="saving"]::before{background:#0a84ff;}
+.collaboration-status[data-state="offline"]::before,.collaboration-status[data-state="conflict"]::before{background:#c9342f;}
+.collaboration-conflict{max-width:280px;margin:8px 4px;padding:8px;border:1px solid #efb2ae;border-radius:12px;background:#fff3f2;}
+.collaboration-conflict p{margin:0 4px 8px;font-size:12px;line-height:1.4;color:#7b201c;}
+.menu-item:disabled{cursor:not-allowed;opacity:.5;}
 .action-dialog-backdrop{
   position:fixed;
   inset:0;

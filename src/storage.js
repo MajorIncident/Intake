@@ -8,7 +8,8 @@
  * serialization contract for `localStorage`, including versioned migrations via
  * {@link migrateAppState}. Key exports cover cause list serialization,
  * app-state migrations, and storage lifecycle helpers (`saveToStorage`,
- * `restoreFromStorage`, `clearStorage`).
+ * `restoreFromStorage`, `clearStorage`). Collaboration status and capability tokens are deliberately
+ * excluded; `src/collaboration.js` stores only conflict recovery in its separate local key.
  */
 
 import { CAUSE_FINDING_MODES, CAUSE_FINDING_MODE_VALUES, ROWS } from './constants.js';
