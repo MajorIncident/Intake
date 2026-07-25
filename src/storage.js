@@ -8,7 +8,7 @@
  * serialization contract for `localStorage`, including versioned migrations via
  * {@link migrateAppState}. Key exports cover cause list serialization,
  * app-state migrations, and storage lifecycle helpers (`saveToStorage`,
- * `restoreFromStorage`, `clearStorage`). Collaboration status and capability tokens are deliberately
+ * `restoreFromStorage`, `clearStorage`). Collaboration status, manual sync actions, and capability tokens are deliberately
  * excluded; `src/collaboration.js` stores only conflict recovery in its separate local key.
  */
 

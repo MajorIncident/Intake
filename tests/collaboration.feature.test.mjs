@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
-import { createCollaborationController, RECOVERY_STORAGE_KEY } from '../src/collaboration.js';
+import { createCollaborationController, POLL_DELAY_MS, RECOVERY_STORAGE_KEY, SAVE_DELAY_MS } from '../src/collaboration.js';
 
 /** Creates a manually resolvable promise. @returns {object} Deferred promise. */
 function deferred() {
@@ -28,7 +28,8 @@ function setup(url = 'https://intake.test/', initial = { local: true }) {
   const controller = createCollaborationController({
     collect: () => current, apply: value => { applyCalls.push(value); current = value; }, saveLocal: value => localSaves.push(value), fetchImpl,
     location: dom.window.location, history: dom.window.history, storage: dom.window.localStorage, documentRef: dom.window.document,
-    setTimeoutImpl: callback => { const timer = { callback, cancelled: false }; timers.push(timer); return timer; },
+    windowRef: dom.window, navigatorRef: dom.window.navigator,
+    setTimeoutImpl: (callback, delay) => { const timer = { callback, delay, cancelled: false }; timers.push(timer); return timer; },
     clearTimeoutImpl: timer => { if (timer) timer.cancelled = true; }
   });
   const runNextTimer = async () => {
@@ -51,9 +52,51 @@ test('joining uses bearer authorization on a stable API URL and does not queue a
   await join(env);
   assert.deepEqual(env.applyCalls, [{ shared: true }]);
   assert.deepEqual(env.localSaves, [{ shared: true }]);
-  assert.equal(env.requests[0][0], '/api/workspaces/session');
+  assert.equal(env.requests[0][0], '/api/workspaces/session?afterRevision=0');
   assert.equal(env.requests[0][0].includes(token), false);
   assert.equal(env.requests[0][1].headers.Authorization, `Bearer ${token}`);
+  assert.equal(env.controller.getState().pendingSave, null);
+});
+
+test('text changes use the 300ms debounce while structured changes can save immediately', async () => {
+  const env = setup(`https://intake.test/?workspace=${token}`); await join(env);
+  env.controller.notifyLocalChange({ text: 'typing' });
+  assert.equal(env.timers.at(-1).delay, SAVE_DELAY_MS);
+  env.controller.notifyLocalChange({ selected: true }, { immediate: true });
+  assert.equal(env.timers.at(-1).delay, 0);
+});
+
+test('foreground polling uses the mobile cadence and lifecycle bursts share one GET', async () => {
+  const env = setup(`https://intake.test/?workspace=${token}`); await join(env);
+  assert.equal(env.timers.some(timer => timer.delay === POLL_DELAY_MS), true);
+  const get = deferred(); setup.handler = async () => get.promise;
+  env.dom.window.dispatchEvent(new env.dom.window.Event('focus'));
+  env.dom.window.dispatchEvent(new env.dom.window.PageTransitionEvent('pageshow', { persisted: true }));
+  env.dom.window.dispatchEvent(new env.dom.window.Event('online'));
+  await Promise.resolve();
+  assert.equal(env.requests.length, 2, 'only one lifecycle GET joins the initial GET');
+  get.resolve(reply(204, {})); await Promise.resolve(); await Promise.resolve();
+});
+
+test('visibility recovery does not depend on suspended polling timers and flushes local work', async () => {
+  const env = setup(`https://intake.test/?workspace=${token}`); await join(env);
+  env.controller.notifyLocalChange({ mobile: 'kept' });
+  Object.defineProperty(env.dom.window.document, 'hidden', { configurable: true, value: true });
+  env.dom.window.document.dispatchEvent(new env.dom.window.Event('visibilitychange'));
+  Object.defineProperty(env.dom.window.document, 'hidden', { configurable: true, value: false });
+  setup.handler = async (_url, options) => options.method === 'PUT' ? reply(200, { revision: 2 }) : reply(204, {});
+  env.dom.window.document.dispatchEvent(new env.dom.window.Event('visibilitychange'));
+  await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  assert.equal(env.requests.some(([, options]) => options.method === 'PUT'), true);
+});
+
+test('every persisted top-level area survives a collaboration round trip without an apply-save loop', async () => {
+  const areas = ['meta', 'appearance', 'pre', 'impact', 'ops', 'table', 'causes', 'likelyCauseId', 'steps', 'actions', 'handover', 'decisionAnalysis', 'potentialProblemAnalysis', 'notesWorkspace'];
+  const snapshot = Object.fromEntries(areas.map((area, index) => [area, { marker: `${area}-${index}` }]));
+  const env = setup(`https://intake.test/?workspace=${token}`, {});
+  setup.handler = async () => reply(200, { revision: 42, snapshot }); await env.controller.init();
+  assert.deepEqual(env.applyCalls[0], snapshot);
+  for (const area of areas) assert.equal(env.applyCalls[0][area].marker.startsWith(area), true, area);
   assert.equal(env.controller.getState().pendingSave, null);
 });
 
@@ -141,9 +184,9 @@ test('invalid and missing sessions stop polling while network and server failure
   const server = setup(`https://intake.test/?workspace=${token}`);
   setup.handler = async () => reply(500, {}); await server.controller.init();
   assert.equal(server.controller.getState().pollingStopped, false);
-  assert.equal(server.dom.window.document.getElementById('collaborationStatus').textContent, 'Temporary server error');
+  assert.equal(server.dom.window.document.getElementById('collaborationStatus').textContent, 'Retrying…');
   const offline = setup(`https://intake.test/?workspace=${token}`);
   setup.handler = async () => { throw new Error('network'); }; await offline.controller.init();
   assert.equal(offline.controller.getState().pollingStopped, false);
-  assert.equal(offline.dom.window.document.getElementById('collaborationStatus').textContent, 'Offline');
+  assert.equal(offline.dom.window.document.getElementById('collaborationStatus').textContent, 'Offline · Changes kept locally');
 });

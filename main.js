@@ -91,7 +91,9 @@ function saveAppState() {
   try {
     const state = collectAppState();
     saveToStorage(state);
-    collaborationController?.notifyLocalChange(state);
+    const control = document.activeElement;
+    const immediate = control?.matches?.('select, input[type="checkbox"], input[type="radio"], button') || false;
+    collaborationController?.notifyLocalChange(state, { immediate });
   } catch (error) {
     console.error('Failed to save state:', error);
   }
