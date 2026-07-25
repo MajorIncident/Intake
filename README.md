@@ -67,7 +67,7 @@ Use **View → Notes workspace** or **Alt+N** to open or collapse the persistent
 
 ## Shared collaboration (first version)
 
-The **Collaboration** menu can create a shared session from the complete state returned by `collectAppState()`, copy its secret link, show synchronization health, and leave the session. Opening a link containing `?workspace=<secret-token>` loads that workspace through the server API, applies the snapshot with `applyAppState()`, and continues keeping the normal `kt-intake-full-v2` browser copy as recovery. Edits still save locally immediately; remote writes are debounced, and clients poll for newer integer revisions about every 2.5 seconds while the tab is visible.
+The **Collaboration** menu is available in every intake mode. It can create a shared session from the complete state returned by `collectAppState()`, copy its secret link, show synchronization health, and leave the session. Opening a link containing `?workspace=<secret-token>` loads that workspace through the server API, applies the snapshot with `applyAppState()`, and continues keeping the normal `kt-intake-full-v2` browser copy as recovery. Edits still save locally immediately; remote writes are debounced, and clients poll for newer integer revisions about every 2.5 seconds while the tab is visible.
 
 ### Secret-link security model
 

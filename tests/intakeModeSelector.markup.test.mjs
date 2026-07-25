@@ -54,10 +54,12 @@ test('intake mode selector stays within the menu bar and preserves required anch
   assert.match(INDEX_HTML, /<!-- \[feature:intake-mode-selector\] end -->/);
 });
 
-test('mode-controlled Major Incident-only UI regions are marked for hiding', () => {
+test('collaboration stays available while Major Incident-only UI regions are marked for hiding', () => {
   const document = buildIndexDocument();
 
-  assert.ok(document.querySelector('.menu-group[data-mode-section="collaboration"]'), 'collaboration menu group should be mode controlled');
+  const collaborationMenu = document.getElementById('collaborationMenu')?.closest('.menu-group');
+  assert.ok(collaborationMenu, 'collaboration menu group should be present');
+  assert.equal(collaborationMenu.hasAttribute('data-mode-section'), false, 'collaboration menu should remain visible in every mode');
   assert.ok(document.querySelector('[data-mode-section="detectionSource"]'), 'detection source controls should be mode controlled');
   assert.ok(document.querySelector('[data-mode-section="evidenceCollected"]'), 'evidence collected controls should be mode controlled');
   assert.ok(document.querySelector('[data-mode-section="incidentProof"]'), 'incident proof field should be mode controlled');
