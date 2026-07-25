@@ -36,6 +36,8 @@ const HEADING_TARGETS = Object.freeze([
   ['.card.impact > h3', 'impact'],
   ['#kt-is-is-not', 'problemAnalysis'],
   ['#possibleCausesCard > h3', 'possibleCauses'],
+  ['#decisionAnalysisCard > summary', 'actions'],
+  ['#potentialProblemAnalysisCard > summary', 'handover'],
   ['#commsDrawerTitle', 'communications'],
   ['#stepsDrawerTitle', 'steps']
 ]);
