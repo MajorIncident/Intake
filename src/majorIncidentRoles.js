@@ -95,6 +95,9 @@ function renderContextualBadges() {
 
 /** Shows role guidance only in Major Incident mode while retaining reusable badge DOM. */
 function updateVisibility() {
+  // Caption changes replace heading contents before the mode event is emitted,
+  // so restore any contextual badges removed by that update first.
+  renderContextualBadges();
   const active = getActiveIntakeMode() === INTAKE_MODE_IDS.MAJOR_INCIDENT;
   const legend = document.getElementById('majorIncidentRoleLegend');
   if (legend) {

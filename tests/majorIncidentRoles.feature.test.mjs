@@ -28,6 +28,7 @@ test('renders all phases and exposes badges only for Major Incident mode', () =>
   applyIntakeMode('majorIncident');
   const badge = document.querySelector('#problem-summary .major-incident-role-badge');
   assert.equal(document.getElementById('majorIncidentRoleLegend').hidden, false);
+  assert.ok(badge, 'mode caption refresh restores the Problem Summary role badge');
   assert.match(badge.textContent, /Situation Appraisal · Incident Manager leads/);
   assert.match(badge.title, /Consulted:/);
   assert.match(badge.title, /Approver:/);
