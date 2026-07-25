@@ -53,6 +53,7 @@ This file applies to the entire repository unless a more specific `AGENTS.md` fi
 - Every feature pull request must add or update automated tests that cover the behaviours it introduces or changes.
 - Consult [`docs/testing-guidelines.md`](docs/testing-guidelines.md) for instructions on when to write unit tests versus DOM integration tests, how to use `collectAppState()` / `applyAppState()` in new suites, and the required naming/location conventions under `tests/`.
 - Start new coverage from the reusable template in `tests/template.feature.test.mjs` to keep imports, teardown patterns, and file names consistent.
+- Whenever `package.json` dependencies change, run a successful `npm install` against the normal npm registry, commit the fully generated lockfile, then run `npm run verify:lockfile` and `npm ci`. Never edit only the root dependency block in `package-lock.json`.
 
 ## Using Sub-Guidelines
 - Specialized editing rules for `index.html` live in `index.AGENTS.md`. Review that file before modifying the intake page.

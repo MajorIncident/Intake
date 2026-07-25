@@ -31,6 +31,13 @@ export function validateSnapshot(snapshot) {
 /** Validates a secret token shape. @param {unknown} token Candidate token. @returns {boolean} Whether valid. */
 export function validateToken(token) { return typeof token === 'string' && TOKEN_PATTERN.test(token); }
 
+/** Extracts a bearer workspace token without accepting tokens in URLs. @param {unknown} authorization Header value. @returns {string|null} Token or null. */
+export function parseAuthorizationToken(authorization) {
+  if (typeof authorization !== 'string') return null;
+  const match = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(authorization);
+  return match ? match[1] : null;
+}
+
 /** Resolves a server-only Neon integration variable. @returns {string} Connection string or empty string. */
 function connectionString() {
   return process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.NEON_DATABASE_URL || '';
@@ -113,8 +120,10 @@ export function createWorkspaceHandler({ getRepository = getWorkspaceRepository 
 /** Creates a Vercel load/update handler. @param {object} [dependencies] Dependencies. @returns {Function} Handler. */
 export function workspaceHandler({ getRepository = getWorkspaceRepository } = {}) {
   return async (req, res) => {
-    const token = req.query?.token;
-    if (!validateToken(token)) return send(res, 400, { error: 'Invalid request.' });
+    const authorization = req.headers?.authorization;
+    if (authorization === undefined) return send(res, 401, { error: 'Authorization required.' });
+    const token = parseAuthorizationToken(authorization);
+    if (!token) return send(res, 400, { error: 'Invalid authorization.' });
     if (!['GET', 'PUT'].includes(req.method)) return methodNotAllowed(res, 'GET, PUT');
     try {
       const repository = await getRepository();

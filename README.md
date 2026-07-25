@@ -71,7 +71,7 @@ The **Collaboration** menu can create a shared session from the complete state r
 
 ### Secret-link security model
 
-Possession of the full link grants read and edit access in v1. Share it only with incident participants and avoid pasting it into tickets, chat rooms, analytics, or logs. The browser sends the capability only to the workspace API. Neon stores only its SHA-256 hash, never the raw token, and responses carry `Cache-Control: no-store` and `Referrer-Policy: no-referrer`. There is deliberately no workspace-list endpoint. Leaving removes the token from the current URL; it does not revoke the link or delete shared data.
+Possession of the full link grants read and edit access in v1. Share it only with incident participants and avoid pasting it into tickets, chat rooms, analytics, or logs. The browser calls the stable `/api/workspaces/session` endpoint and sends the capability in an `Authorization: Bearer` header, never in an API URL. Neon stores only its SHA-256 hash, never the raw token, and responses carry `Cache-Control: no-store` and `Referrer-Policy: no-referrer`. There is deliberately no workspace-list endpoint. Leaving removes the token from the current URL; it does not revoke the link or delete shared data.
 
 ### Neon and Vercel configuration
 
@@ -81,7 +81,7 @@ The existing Vercel project is **`intake`**, with the **`neon-intake`** integrat
 
 ### Conflict recovery and two-window testing
 
-Updates use optimistic revision control: each complete snapshot includes the revision the browser last observed. A stale write receives HTTP 409 and cannot overwrite the newer row. The losing browser stores its full local version under `kt-collaboration-recovery-v1`, shows **Conflict**, and offers **Load newest shared version** or **Export local recovery**. Loading shared state does not delete that recovery record; neither does leaving the session.
+Updates use optimistic revision control: each complete snapshot retains the revision observed when it was captured. Only one PUT is sent at a time; edits made during that request collapse to the latest snapshot and follow the successful response at its returned revision. A stale write receives HTTP 409 and cannot overwrite the newer row. If polling finds a newer revision while local work is queued or in flight, the browser does not apply it silently: it stores the local version under `kt-collaboration-recovery-v1`, shows **Conflict**, and offers **Load newest shared version** or **Export local recovery**. Loading shared state does not delete that recovery record; neither does leaving the session. Invalid (400/401) and missing or expired (404) sessions stop polling, while network failures show **Offline** and 5xx failures show **Temporary server error** before retrying.
 
 To preview manually:
 
@@ -114,6 +114,7 @@ Need to know which module owns a given storage field? Jump to the [Storage-to-Mo
 - Production deploys on Vercel now execute `npm run build && npm test` (see `vercel.json`). The build step regenerates `src/templates.manifest.js` so templates remain in sync, and the test pass acts as a guardrail for regressions before traffic hits the static bundle.
 - When modifying the manifest workflow or required quality gates, update both the README and `vercel.json` so the documented steps mirror the actual build command.
 - Use `vercel build` (or run `npm run build && npm test`) locally to mirror the hosted environment whenever you change deployment requirements.
+- Dependency changes must be installed through the normal npm registry so npm generates the complete lockfile. Run `npm run verify:lockfile` before committing and `npm ci` from a clean dependency tree; the offline guard catches missing resolved root-package entries before CI reaches its clean install.
 
 ## Documentation & anchor hygiene
 - Add or update module docblocks and JSDoc summaries whenever you touch a runtime file. The patterns in [`docs/commenting-guide.md`](docs/commenting-guide.md) are canonical.
