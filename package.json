@@ -14,6 +14,9 @@
     "verify:summary": "node scripts/ensure-summary-integrations.js",
     "verify:persistence": "node scripts/ensure-persistence-integrations.js"
   },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2"
+  },
   "devDependencies": {
     "eslint": "^8.57.1",
     "eslint-plugin-jsdoc": "^61.1.12",

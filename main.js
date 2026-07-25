@@ -56,6 +56,10 @@ import { initIntakeModeController, applyIntakeMode } from './src/intakeModeContr
 import { initNotesWorkspace, toggleNotesWorkspace } from './src/notesWorkspace.js';
 import { initMajorIncidentRoles } from './src/majorIncidentRoles.js';
 import { initMajorIncidentAnalysis } from './src/majorIncidentAnalysis.js';
+import { initCollaboration } from './src/collaboration.js';
+
+/** Active shared-session controller, initialized during boot. @type {object|null} */
+let collaborationController = null;
 
 /**
  * Query the document for the first element that matches the provided CSS selector.
@@ -87,6 +91,7 @@ function saveAppState() {
   try {
     const state = collectAppState();
     saveToStorage(state);
+    collaborationController?.notifyLocalChange(state);
   } catch (error) {
     console.error('Failed to save state:', error);
   }
@@ -189,6 +194,12 @@ function boot() {
   startMirrorSync();
 
   initMenuBar();
+  collaborationController = initCollaboration({
+    collect: collectAppState,
+    apply: applyAppState,
+    saveLocal: saveToStorage,
+    toast: showToast
+  });
   wireThemeToggle();
   wireSummaryEvents();
   wireCommsEvents();
