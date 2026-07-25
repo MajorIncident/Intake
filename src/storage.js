@@ -18,6 +18,7 @@ import { normalizeActionSnapshot, ACTIONS_STORAGE_KEY } from './actionsStore.js'
 import { STEPS_ITEMS_KEY, STEPS_DRAWER_KEY } from './steps.js';
 import { COMMS_DRAWER_STORAGE_KEY } from './commsDrawer.js';
 import { normalizeTheme } from './theme.js';
+import { normalizePotentialProblemAnalysis } from './majorIncidentAnalysis.js';
 /* eslint-enable jsdoc/require-jsdoc */
 
 /**
@@ -86,6 +87,8 @@ import { normalizeTheme } from './theme.js';
  * @property {{analysisId: string, items: import('./actionsStore.js').ActionRecord[]}|undefined} actions - Optional actions snapshot.
  * @property {SerializedHandoverState|undefined} handover - Optional handover notes keyed by section identifier.
  * @property {{notes: Array<{id: string, text: string}>, open: boolean}|undefined} notesWorkspace - Persistent notes dock items and open preference.
+ * @property {object|undefined} decisionAnalysis - Major Incident decision record.
+ * @property {object|undefined} potentialProblemAnalysis - Canonical action-compatible implementation risk record.
  */
 
 /**
@@ -312,6 +315,16 @@ function normalizeNotesWorkspaceState(source) {
     return items;
   }, []) : [];
   return { notes, open: raw.open !== false };
+}
+
+/** Normalize the Major Incident decision record. @param {unknown} source - Raw record. @returns {object} Safe decision fields. */
+function normalizeDecisionAnalysis(source) {
+  const raw = source && typeof source === 'object' && !Array.isArray(source) ? source : {};
+  return {
+    decision: toString(raw.decision), options: toString(raw.options), selectedOption: toString(raw.selectedOption),
+    ownerRole: toString(raw.ownerRole) || 'Application Owner', delegatedOwner: toString(raw.delegatedOwner),
+    rationale: toString(raw.rationale), timestamp: toString(raw.timestamp)
+  };
 }
 
 /**
@@ -703,6 +716,8 @@ function normalizeAppStateStructure(raw) {
 
   normalized.handover = normalizeHandoverState(incoming.handover);
   normalized.notesWorkspace = normalizeNotesWorkspaceState(incoming.notesWorkspace);
+  normalized.decisionAnalysis = normalizeDecisionAnalysis(incoming.decisionAnalysis);
+  normalized.potentialProblemAnalysis = normalizePotentialProblemAnalysis(incoming.potentialProblemAnalysis);
 
   const actions = normalizeActionsState(incoming.actions, hasActionsField);
   if (actions) {
