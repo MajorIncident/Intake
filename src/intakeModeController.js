@@ -82,6 +82,11 @@ export function applyIntakeMode(mode = DEFAULT_INTAKE_MODE, { silent = false } =
     || INTAKE_MODE_SECTION_VISIBILITY[DEFAULT_INTAKE_MODE];
 
   activeIntakeMode = normalizedMode;
+  // Expose the active mode as a styling hook so semantic Major Incident
+  // treatments cannot be confused with the table's non-semantic row accents.
+  if (document.body) {
+    document.body.dataset.intakeMode = normalizedMode;
+  }
   if (modeSelect && modeSelect.value !== normalizedMode) {
     modeSelect.value = normalizedMode;
   }

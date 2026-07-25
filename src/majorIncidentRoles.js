@@ -15,12 +15,21 @@ import {
 
 const MODE_CHANGE_EVENT = 'intake:mode-changed';
 const BADGE_CLASS = 'major-incident-role-badge';
-const PHASE_ICONS = Object.freeze({
-  situationAppraisal: '◎',
-  problemAnalysis: '⌕',
-  decisionAnalysis: '✓',
-  potentialProblemAnalysis: '⛨'
+const PHASE_ICON_PATHS = Object.freeze({
+  situationAppraisal: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+  problemAnalysis: '<circle cx="11" cy="11" r="7"/><path d="m16 16 4 4M8 11h6M11 8v6"/>',
+  decisionAnalysis: '<path d="M5 12.5 9.5 17 19 7"/>',
+  potentialProblemAnalysis: '<path d="M12 3 4 6v5c0 5 3.4 8.3 8 10 4.6-1.7 8-5 8-10V6l-8-3Z"/><path d="M12 8v5M12 16h.01"/>'
 });
+
+/**
+ * Returns a consistent decorative outline icon for a KT phase.
+ * @param {string} phaseId - Major Incident phase identifier.
+ * @returns {string} Decorative inline SVG markup.
+ */
+function phaseIcon(phaseId) {
+  return `<svg class="major-incident-role-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${PHASE_ICON_PATHS[phaseId]}</svg>`;
+}
 
 const HEADING_TARGETS = Object.freeze([
   ['#problem-summary > h3', 'problemSummary'],
@@ -50,9 +59,10 @@ function createBadge(metadata) {
   const badge = document.createElement('span');
   badge.className = BADGE_CLASS;
   badge.dataset.phase = metadata.phase.id;
+  badge.tabIndex = 0;
   badge.title = describeRoles(metadata);
   badge.setAttribute('aria-label', describeRoles(metadata));
-  badge.innerHTML = `<span aria-hidden="true">${PHASE_ICONS[metadata.phase.id]}</span><span>${metadata.phase.label} · ${shortRole(metadata.primaryRespondent.role)} leads</span>`;
+  badge.innerHTML = `${phaseIcon(metadata.phase.id)}<span>${metadata.phase.label} — ${shortRole(metadata.primaryRespondent.role)} leads</span>`;
   return badge;
 }
 
@@ -65,10 +75,12 @@ function renderLegend() {
     const item = document.createElement('article');
     item.className = 'major-incident-role-legend__item';
     item.dataset.phase = phase.id;
+    item.tabIndex = 0;
+    item.setAttribute('aria-label', describeRoles({ ...phase, phase }));
     item.innerHTML = `
       <div class="major-incident-role-legend__heading">
         <span class="major-incident-role-legend__swatch" aria-hidden="true"></span>
-        <span class="major-incident-role-legend__icon" aria-hidden="true">${PHASE_ICONS[phase.id]}</span>
+        ${phaseIcon(phase.id)}
         <span><small>KT phase</small><strong>${phase.label}</strong></span>
       </div>
       <p class="major-incident-role-legend__role">${shortRole(phase.primaryRespondent.role)} leads</p>
