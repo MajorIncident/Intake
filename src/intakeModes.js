@@ -180,6 +180,8 @@ export const MAJOR_INCIDENT_WORKFLOW_METADATA = deepFreeze(Object.fromEntries([
   ['communications', 'situationAppraisal'],
   ['problemAnalysis', 'problemAnalysis'],
   ['possibleCauses', 'problemAnalysis'],
+  ['decisionAnalysis', 'decisionAnalysis'],
+  ['potentialProblemAnalysis', 'potentialProblemAnalysis'],
   ['actions', 'decisionAnalysis'],
   ['steps', 'potentialProblemAnalysis'],
   ['handover', 'potentialProblemAnalysis']

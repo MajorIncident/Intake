@@ -48,7 +48,7 @@ test('renders all phases and exposes badges only for Major Incident mode', () =>
   const expectedTargets = [
     ['#problem-summary > h3', 'problemSummary'], ['.card.impact > h3', 'impact'],
     ['#kt-is-is-not', 'problemAnalysis'], ['#possibleCausesCard > h3', 'possibleCauses'],
-    ['#decisionAnalysisCard > summary', 'actions'], ['#potentialProblemAnalysisCard > summary', 'handover'],
+    ['#decisionAnalysisCard > summary', 'decisionAnalysis'], ['#potentialProblemAnalysisCard > summary', 'potentialProblemAnalysis'],
     ['#commsDrawerTitle', 'communications'], ['#stepsDrawerTitle', 'steps']
   ];
   expectedTargets.forEach(([selector, area]) => {
@@ -57,6 +57,16 @@ test('renders all phases and exposes badges only for Major Incident mode', () =>
     assert.match(targetBadge?.textContent || '', new RegExp(metadata.phase.label), `${area} exposes its KT phase`);
     assert.match(targetBadge?.getAttribute('aria-label') || '', new RegExp(`Primary: ${metadata.primaryRespondent.role}`), `${area} exposes its primary role`);
   });
+  assert.equal(
+    document.querySelector('#decisionAnalysisCard .major-incident-role-badge')?.dataset.phase,
+    'decisionAnalysis',
+    'Decision Analysis uses the green semantic phase pill'
+  );
+  assert.equal(
+    document.querySelector('#potentialProblemAnalysisCard .major-incident-role-badge')?.dataset.phase,
+    'potentialProblemAnalysis',
+    'Potential Problem Analysis uses the orange semantic phase pill'
+  );
   document.querySelectorAll('#tbody tr[data-question-id]').forEach(row => {
     const rowBadge = row.querySelector('.major-incident-role-badge');
     assert.match(rowBadge?.textContent || '', /Problem Analysis/, `${row.dataset.questionId} exposes its phase`);

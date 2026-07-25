@@ -58,7 +58,10 @@ test('each intake mode declares visibility for every known workflow section', ()
 });
 
 test('Major Incident workflow metadata assigns every area a semantic KT phase and explicit participation', () => {
-  assert.deepEqual(Object.keys(MAJOR_INCIDENT_WORKFLOW_METADATA).sort(), [...REQUIRED_SECTION_IDS].sort());
+  assert.deepEqual(
+    Object.keys(MAJOR_INCIDENT_WORKFLOW_METADATA).sort(),
+    [...REQUIRED_SECTION_IDS, 'decisionAnalysis', 'potentialProblemAnalysis'].sort()
+  );
   assert.deepEqual(
     MAJOR_INCIDENT_KT_PHASES.map(({ id, label, color }) => [id, label, color]),
     [
