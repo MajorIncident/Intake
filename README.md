@@ -133,3 +133,6 @@ Continuous integration runs automatically on pull requests and pushes to `main`,
 - Refer to `index.AGENTS.md` when altering the HTML structure; it documents anchor expectations and storage invariants.
 - For AI-specific onboarding notes, including module extension patterns, read `docs/AI-ONBOARDING.md`.
 - Consult `docs/commenting-guide.md` for required docblocks, anchor formats, and the merge checklist.
+## Major Incident role guidance
+
+Selecting **Major Incident Management** reveals a compact four-phase role guide and contextual ownership badges beside relevant workflow headings and KT questions. Each badge names the phase and lead in text, with the consulted and approval roles available in its accessible description. The guidance is presentational and does not add fields or change saved intake data.
