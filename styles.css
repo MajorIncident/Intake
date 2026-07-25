@@ -26,6 +26,22 @@
   --accent-shadow:0 6px 18px rgba(0,122,255,.18);
   --accent-shadow-strong:0 10px 24px rgba(0,122,255,.28);
 
+  /* Major Incident semantic roles: restrained surfaces with AA text contrast. */
+  --mi-role-foreground:#172033;
+  --mi-role-border:#c7ceda;
+  --mi-role-blue:#1769aa;
+  --mi-role-blue-bg:#edf6fd;
+  --mi-role-blue-border:#8ab9dc;
+  --mi-role-red:#a32929;
+  --mi-role-red-bg:#fdf1f1;
+  --mi-role-red-border:#dfa0a0;
+  --mi-role-green:#176b45;
+  --mi-role-green-bg:#edf8f2;
+  --mi-role-green-border:#83bea1;
+  --mi-role-orange:#914c0b;
+  --mi-role-orange-bg:#fff5e9;
+  --mi-role-orange-border:#dda96f;
+
   /* Layout */
   --qcol-w:10.5rem;     /* narrow KT Question column */
   --ta-fs:15px;         /* textarea font size */
@@ -60,6 +76,21 @@ body[data-theme="dark"]{
   --focus-ring:rgba(10,132,255,.28);
   --accent-shadow:0 6px 18px rgba(10,132,255,.32);
   --accent-shadow-strong:0 10px 26px rgba(10,132,255,.4);
+
+  --mi-role-foreground:#f4f7fb;
+  --mi-role-border:#596476;
+  --mi-role-blue:#8ccaff;
+  --mi-role-blue-bg:#152b3d;
+  --mi-role-blue-border:#3979a8;
+  --mi-role-red:#ffaaaa;
+  --mi-role-red-bg:#381d22;
+  --mi-role-red-border:#a94f59;
+  --mi-role-green:#86ddb2;
+  --mi-role-green-bg:#173126;
+  --mi-role-green-border:#39845e;
+  --mi-role-orange:#ffc17d;
+  --mi-role-orange-bg:#382719;
+  --mi-role-orange-border:#9b6734;
 
   --shadow:0 8px 24px rgba(0,0,0,.46);
   --shadow-strong:0 14px 36px rgba(0,0,0,.62);
@@ -1023,12 +1054,14 @@ tbody th{
   margin:0 0 32px;
 }
 
-#ktTable tbody tr[data-row-theme] > th{
+#ktTable tbody tr[data-row-theme] > th,
+body[data-intake-mode="majorIncident"] #ktTable tbody tr[data-question-id] > th{
   position:relative;
   background-clip:padding-box;
   padding-left:8px;
 }
-#ktTable tbody tr[data-row-theme] > th::before{
+#ktTable tbody tr[data-row-theme] > th::before,
+body[data-intake-mode="majorIncident"] #ktTable tbody tr[data-question-id] > th::before{
   content:'';
   position:absolute;
   left:0;
@@ -1038,16 +1071,23 @@ tbody th{
   border-radius:999px;
   pointer-events:none;
 }
-#ktTable tbody tr[data-row-theme="blue"] > th{
+body:not([data-intake-mode="majorIncident"]) #ktTable tbody tr[data-row-theme="blue"] > th{
   background:linear-gradient(90deg, rgba(0,122,255,.16), rgba(0,122,255,0));
   color:#13315b;
 }
-#ktTable tbody tr[data-row-theme="blue"] > th::before{background:rgba(0,122,255,.24);}
-#ktTable tbody tr[data-row-theme="lavender"] > th{
+body:not([data-intake-mode="majorIncident"]) #ktTable tbody tr[data-row-theme="blue"] > th::before{background:rgba(0,122,255,.24);}
+body:not([data-intake-mode="majorIncident"]) #ktTable tbody tr[data-row-theme="lavender"] > th{
   background:linear-gradient(90deg, rgba(168,132,255,.16), rgba(168,132,255,0));
   color:#33275b;
 }
-#ktTable tbody tr[data-row-theme="lavender"] > th::before{background:rgba(168,132,255,.28);}
+body:not([data-intake-mode="majorIncident"]) #ktTable tbody tr[data-row-theme="lavender"] > th::before{background:rgba(168,132,255,.28);}
+body[data-intake-mode="majorIncident"] #ktTable tbody tr[data-question-id] > th{
+  background:linear-gradient(90deg, var(--mi-role-red-bg), transparent);
+  color:var(--mi-role-foreground);
+}
+body[data-intake-mode="majorIncident"] #ktTable tbody tr[data-question-id] > th::before{
+  background:var(--mi-role-red);
+}
 textarea.tableta{
   width:100%; min-height:var(--ta-min-h); resize:vertical; box-sizing:border-box;
   font:var(--ta-fs)/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
@@ -2709,39 +2749,52 @@ body.dialog-open{overflow:hidden;}
   gap: 16px;
 }
 .major-incident-role-legend__item {
+  --role-accent: var(--mi-role-blue);
+  --role-surface: var(--mi-role-blue-bg);
+  --role-border: var(--mi-role-blue-border);
   padding: 16px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--role-border);
+  border-left: 4px solid var(--role-accent);
   border-radius: 14px;
+  background: var(--role-surface);
+  color: var(--mi-role-foreground);
 }
+.major-incident-role-legend__item:focus-visible,
+.major-incident-role-badge:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.major-incident-role-legend__item[data-phase="problemAnalysis"],
+.major-incident-role-badge[data-phase="problemAnalysis"] { --role-accent:var(--mi-role-red); --role-surface:var(--mi-role-red-bg); --role-border:var(--mi-role-red-border); }
+.major-incident-role-legend__item[data-phase="decisionAnalysis"],
+.major-incident-role-badge[data-phase="decisionAnalysis"] { --role-accent:var(--mi-role-green); --role-surface:var(--mi-role-green-bg); --role-border:var(--mi-role-green-border); }
+.major-incident-role-legend__item[data-phase="potentialProblemAnalysis"],
+.major-incident-role-badge[data-phase="potentialProblemAnalysis"] { --role-accent:var(--mi-role-orange); --role-surface:var(--mi-role-orange-bg); --role-border:var(--mi-role-orange-border); }
 .major-incident-role-legend__heading { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .major-incident-role-legend__heading small { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
 .major-incident-role-legend__heading strong { display: block; font-size: 14px; }
-.major-incident-role-legend__swatch { width: 8px; height: 32px; border-radius: 8px; background: #3578e5; }
-[data-phase="problemAnalysis"] .major-incident-role-legend__swatch { background: #d84a4a; }
-[data-phase="decisionAnalysis"] .major-incident-role-legend__swatch { background: #2c9563; }
-[data-phase="potentialProblemAnalysis"] .major-incident-role-legend__swatch { background: #d97922; }
+.major-incident-role-legend__swatch { width: 8px; height: 32px; border-radius: 8px; background: var(--role-accent); }
+.major-incident-role-icon { width: 18px; height: 18px; flex:0 0 auto; fill:none; stroke:var(--role-accent); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .major-incident-role-legend__role { margin-bottom: 6px !important; color: var(--ink) !important; font-size: 13px; font-weight: 700; }
 .major-incident-role-legend__item > p:last-child { font-size: 12px; line-height: 1.45; }
 
 .major-incident-role-badge {
+  --role-accent: var(--mi-role-blue);
+  --role-surface: var(--mi-role-blue-bg);
+  --role-border: var(--mi-role-blue-border);
   display: inline-flex;
   align-items: center;
   gap: 5px;
   max-width: 100%;
   margin-left: 8px;
   padding: 4px 8px;
-  border: 1px solid color-mix(in srgb, #3578e5 35%, transparent);
+  border: 1px solid var(--role-border);
+  border-left: 4px solid var(--role-accent);
   border-radius: 999px;
-  background: color-mix(in srgb, #3578e5 10%, transparent);
-  color: var(--ink);
+  background: var(--role-surface);
+  color: var(--mi-role-foreground);
   font-size: 11px;
   font-weight: 650;
   line-height: 1.25;
   vertical-align: middle;
 }
-.major-incident-role-badge[data-phase="problemAnalysis"] { border-color: color-mix(in srgb, #d84a4a 35%, transparent); background: color-mix(in srgb, #d84a4a 10%, transparent); }
-.major-incident-role-badge[data-phase="decisionAnalysis"] { border-color: color-mix(in srgb, #2c9563 35%, transparent); background: color-mix(in srgb, #2c9563 10%, transparent); }
-.major-incident-role-badge[data-phase="potentialProblemAnalysis"] { border-color: color-mix(in srgb, #d97922 35%, transparent); background: color-mix(in srgb, #d97922 10%, transparent); }
 #ktTable .major-incident-role-badge { display: flex; width: fit-content; margin: 8px 0 0; white-space: normal; }
 
 @media (max-width: 900px) {
