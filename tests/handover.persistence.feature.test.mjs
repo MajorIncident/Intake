@@ -328,6 +328,23 @@ test('app state: non-major mode changes preserve hidden Major Incident fields', 
     </section>
     <section data-mode-section="steps"><button id="stepsBtn"></button></section>
     <section id="handover-host" data-mode-section="handover"></section>
+    <section id="decisionAnalysisCard">
+      <input id="decisionToMake" value="Choose recovery route" />
+      <input id="decisionOptions" value="Fail over or roll back" />
+      <input id="decisionSelectedOption" value="Fail over" />
+      <input id="decisionOwnerRole" value="Application Owner" />
+      <input id="decisionDelegatedOwner" value="Taylor" />
+      <input id="decisionRationale" value="Fastest safe recovery" />
+      <input id="decisionTimestamp" value="2024-03-01T10:20" />
+    </section>
+    <section id="potentialProblemAnalysisCard">
+      <input id="riskOwner" value="Morgan" />
+      <select id="potentialRiskLevel"><option selected>High</option></select>
+      <input id="potentialFailure" value="Replication lag" />
+      <input id="preventiveControl" value="Check lag before cutover" />
+      <input id="rollbackContingency" value="Return traffic" />
+      <input id="verificationCondition" value="Errors below one percent" />
+    </section>
   `;
   mountHandoverCard(document.getElementById('handover-host'));
   const handoverSnapshot = populateHandoverSections(document);
@@ -363,6 +380,16 @@ test('app state: non-major mode changes preserve hidden Major Incident fields', 
   assert.equal(collected.ops.commLog[0].message, 'Bridge update sent');
   assert.equal(collected.steps.items.find(item => item.id === '1')?.checked, true, 'steps state remains persisted');
   assert.deepEqual(collected.handover, handoverSnapshot, 'handover notes remain persisted');
+  assert.equal(collected.decisionAnalysis.selectedOption, 'Fail over', 'Decision gate is included by collectAppState');
+  assert.equal(collected.potentialProblemAnalysis.risk.level, 'High', 'Risk gate is included by collectAppState');
+
+  document.getElementById('decisionSelectedOption').value = '';
+  document.getElementById('potentialRiskLevel').value = '';
+  document.getElementById('rollbackContingency').value = '';
+  appStateModule.applyAppState(collected);
+  assert.equal(document.getElementById('decisionSelectedOption').value, 'Fail over', 'applyAppState restores the Decision gate');
+  assert.equal(document.getElementById('potentialRiskLevel').value, 'High', 'applyAppState restores the Risk gate level');
+  assert.equal(document.getElementById('rollbackContingency').value, 'Return traffic', 'applyAppState restores Risk gate contingency data');
 
   appStateModule.applyAppState({ meta: { intakeMode: 'majorIncident' } });
   assert.equal(document.querySelector('[data-mode-section="communications"]').hidden, false, 'communications UI reappears');
