@@ -16,15 +16,17 @@ export function createCollaborationController({
   collect, apply, saveLocal, fetchImpl = globalThis.fetch?.bind(globalThis),
   location = globalThis.location, history = globalThis.history, storage = globalThis.localStorage,
   documentRef = globalThis.document, windowRef = globalThis.window, navigatorRef = globalThis.navigator,
-  setTimeoutImpl = globalThis.setTimeout, clearTimeoutImpl = globalThis.clearTimeout,
+  setTimeoutImpl, clearTimeoutImpl,
   now = () => Date.now(), toast = () => {}, diagnostics = () => {}
 }) {
+  const scheduleTimeout = setTimeoutImpl || windowRef?.setTimeout?.bind(windowRef) || globalThis.setTimeout;
+  const cancelTimeout = clearTimeoutImpl || windowRef?.clearTimeout?.bind(windowRef) || globalThis.clearTimeout;
   let token = null; let revision = 0; let saveTimer = null; let pollTimer = null;
   let pendingSave = null; let inFlightSave = null; let inFlightSavePromise = null; let resolveInFlightSave = null; let inFlightGet = null;
   let applyingRemote = false; let conflicted = false; let pollingStopped = false;
   let sessionEpoch = 0; let requestSequence = 0; let latestAcceptedGet = 0;
   let retryDelay = POLL_DELAY_MS; let retrying = false; let lastSuccessfulSync = null; let statusTimer = null;
-  let lastSnapshot = null; let conflictCount = 0; let terminalStatus = null;
+  let lastSnapshot = null; let conflictCount = 0; let terminalStatus = null; let initialized = false; let destroyed = false;
   const activeLocation = location || documentRef?.location;
   const activeHistory = history || documentRef?.defaultView?.history;
   const element = id => documentRef?.getElementById(id) || null;
@@ -62,9 +64,9 @@ export function createCollaborationController({
   const markSuccess = () => { terminalStatus = null; lastSuccessfulSync = now(); retryDelay = POLL_DELAY_MS; retrying = false; renderStatus('Synced'); };
   const markRetry = offline => { retrying = true; retryDelay = Math.min(MAX_BACKOFF_MS, Math.max(POLL_DELAY_MS * 2, retryDelay * 2)); renderStatus(offline ? 'Offline' : 'Retrying'); };
   const schedulePoll = () => {
-    clearTimeoutImpl(pollTimer);
-    if (!token || conflicted || pollingStopped || documentRef?.hidden || !online()) return;
-    pollTimer = setTimeoutImpl(poll, retrying ? retryDelay : POLL_DELAY_MS);
+    cancelTimeout(pollTimer);
+    if (destroyed || !token || conflicted || pollingStopped || documentRef?.hidden || !online()) return;
+    pollTimer = scheduleTimeout(poll, retrying ? retryDelay : POLL_DELAY_MS);
   };
   const request = async (url, options) => {
     const response = await fetchImpl(url, options);
@@ -72,7 +74,7 @@ export function createCollaborationController({
     return { response, body };
   };
   const preserveConflict = snapshot => {
-    clearTimeoutImpl(saveTimer); pendingSave = null;
+    cancelTimeout(saveTimer); pendingSave = null;
     storage?.setItem(RECOVERY_STORAGE_KEY, JSON.stringify({ savedAt: new Date(now()).toISOString(), snapshot: snapshot || collect() }));
     conflicted = true; conflictCount += 1; renderStatus('Conflict'); updateActions();
   };
@@ -116,7 +118,7 @@ export function createCollaborationController({
   }
   /** Flushes the queued snapshot while enforcing one PUT. @returns {Promise<void>} */
   async function flushSave() {
-    clearTimeoutImpl(saveTimer);
+    cancelTimeout(saveTimer);
     if (inFlightSave) return inFlightSavePromise;
     if (!token || applyingRemote || conflicted || !pendingSave) return;
     if (!online()) { renderStatus('Offline'); return; }
@@ -132,13 +134,13 @@ export function createCollaborationController({
     } catch { if (epoch === sessionEpoch && token) { if (!pendingSave) pendingSave = saving; markRetry(true); } }
     finally {
       emitDiagnostic('PUT', started, sections);
-      if (epoch === sessionEpoch) { inFlightSave = null; resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSavePromise = null; if (pendingSave && !conflicted && !pollingStopped) saveTimer = setTimeoutImpl(flushSave, retrying ? retryDelay : 0); else schedulePoll(); }
+      if (epoch === sessionEpoch) { inFlightSave = null; resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSavePromise = null; if (pendingSave && !conflicted && !pollingStopped) saveTimer = scheduleTimeout(flushSave, retrying ? retryDelay : 0); else schedulePoll(); }
     }
   }
   const notifyLocalChange = (snapshot, { immediate = false } = {}) => {
     if (!token || applyingRemote || conflicted || pollingStopped) return;
-    pendingSave = { snapshot, expectedRevision: revision, changedSections: changedSections(snapshot) }; clearTimeoutImpl(saveTimer); renderStatus('Saving');
-    if (!inFlightSave) saveTimer = setTimeoutImpl(flushSave, immediate ? 0 : SAVE_DELAY_MS);
+    pendingSave = { snapshot, expectedRevision: revision, changedSections: changedSections(snapshot) }; cancelTimeout(saveTimer); renderStatus('Saving');
+    if (!inFlightSave) saveTimer = scheduleTimeout(flushSave, immediate ? 0 : SAVE_DELAY_MS);
   };
   const loadNewest = async () => { terminalStatus = null; conflicted = false; pollingStopped = false; updateActions(); return poll(); };
   const activate = async () => { if (!token) return false; const checked = await poll(); await flushSave(); schedulePoll(); return checked; };
@@ -155,18 +157,42 @@ export function createCollaborationController({
     finally { emitDiagnostic('POST', started); }
   };
   const joinFromUrl = async () => { const candidate = new URL(activeLocation.href).searchParams.get('workspace'); if (!candidate) { updateActions(); return false; } sessionEpoch += 1; terminalStatus = null; token = candidate; pollingStopped = false; updateActions(); return poll(); };
-  const leave = () => { sessionEpoch += 1; clearTimeoutImpl(saveTimer); clearTimeoutImpl(pollTimer); clearTimeoutImpl(statusTimer); terminalStatus = null; token = null; revision = 0; pendingSave = null; inFlightSave = null; resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSavePromise = null; inFlightGet = null; conflicted = false; pollingStopped = true; retrying = false; const url = new URL(activeLocation.href); url.searchParams.delete('workspace'); activeHistory.replaceState({}, '', url); updateActions(); toast('Left shared session. Local and recovery copies were kept.'); };
+  const leave = () => { sessionEpoch += 1; cancelTimeout(saveTimer); cancelTimeout(pollTimer); terminalStatus = null; token = null; revision = 0; pendingSave = null; inFlightSave = null; resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSavePromise = null; inFlightGet = null; conflicted = false; pollingStopped = true; retrying = false; const url = new URL(activeLocation.href); url.searchParams.delete('workspace'); activeHistory.replaceState({}, '', url); updateActions(); toast('Left shared session. Local and recovery copies were kept.'); };
   const copyLink = async () => { if (!token) return false; try { await navigatorRef.clipboard.writeText(activeLocation.href); toast('Collaboration link copied.'); return true; } catch { toast('Copy failed. Copy the current address from your browser.'); return false; } };
   const exportRecovery = () => { const recovery = storage?.getItem(RECOVERY_STORAGE_KEY); if (!recovery) { toast('No local recovery snapshot is available.'); return false; } const blob = new Blob([recovery], { type: 'application/json' }); const href = URL.createObjectURL(blob); const anchor = documentRef.createElement('a'); anchor.href = href; anchor.download = 'intake-collaboration-recovery.json'; anchor.click(); URL.revokeObjectURL(href); return true; };
+  const handleVisibilityChange = () => { if (!documentRef.hidden) activate(); };
+  const handleFocusOut = () => { flushSave(); };
+  const handleFocus = () => { activate(); };
+  const handlePageShow = () => { activate(); };
+  const handleOnline = () => { activate(); };
+  const handleOffline = () => { renderStatus('Offline'); };
+  const refreshStatus = () => {
+    if (destroyed) return;
+    renderStatus(token ? 'Synced' : 'Local only');
+    statusTimer = scheduleTimeout(refreshStatus, 1000);
+  };
   const init = () => {
+    if (initialized || destroyed) return Promise.resolve(false);
+    initialized = true;
     element('startCollaborationBtn')?.addEventListener('click', start); element('copyCollaborationLinkBtn')?.addEventListener('click', copyLink); element('leaveCollaborationBtn')?.addEventListener('click', leave); element('syncCollaborationBtn')?.addEventListener('click', syncNow); element('loadSharedVersionBtn')?.addEventListener('click', loadNewest); element('exportRecoveryBtn')?.addEventListener('click', exportRecovery);
-    documentRef?.addEventListener('visibilitychange', () => { if (!documentRef.hidden) activate(); });
-    documentRef?.addEventListener('focusout', () => flushSave());
-    windowRef?.addEventListener('focus', activate); windowRef?.addEventListener('pageshow', activate); windowRef?.addEventListener('online', activate); windowRef?.addEventListener('offline', () => renderStatus('Offline'));
-    statusTimer = setTimeoutImpl(function refresh() { renderStatus(token ? 'Synced' : 'Local only'); statusTimer = setTimeoutImpl(refresh, 1000); }, 1000);
+    documentRef?.addEventListener('visibilitychange', handleVisibilityChange);
+    documentRef?.addEventListener('focusout', handleFocusOut);
+    windowRef?.addEventListener('focus', handleFocus); windowRef?.addEventListener('pageshow', handlePageShow); windowRef?.addEventListener('online', handleOnline); windowRef?.addEventListener('offline', handleOffline);
+    statusTimer = scheduleTimeout(refreshStatus, 1000);
     return joinFromUrl();
   };
-  return { init, start, leave, loadNewest, poll, flushSave, syncNow, notifyLocalChange, copyLink, exportRecovery, getState: () => ({ token, revision, applyingRemote, conflicted, pollingStopped, pendingSave, inFlightSave, inFlightGet, sessionEpoch, retryDelay, retrying, lastSuccessfulSync, terminalStatus }) };
+  /** Tears down timers, listeners, and session work. Safe to call repeatedly. @returns {void} */
+  const destroy = () => {
+    if (destroyed) return;
+    destroyed = true; sessionEpoch += 1; pollingStopped = true;
+    cancelTimeout(saveTimer); cancelTimeout(pollTimer); cancelTimeout(statusTimer);
+    saveTimer = null; pollTimer = null; statusTimer = null; pendingSave = null; inFlightGet = null;
+    resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSave = null; inFlightSavePromise = null;
+    element('startCollaborationBtn')?.removeEventListener('click', start); element('copyCollaborationLinkBtn')?.removeEventListener('click', copyLink); element('leaveCollaborationBtn')?.removeEventListener('click', leave); element('syncCollaborationBtn')?.removeEventListener('click', syncNow); element('loadSharedVersionBtn')?.removeEventListener('click', loadNewest); element('exportRecoveryBtn')?.removeEventListener('click', exportRecovery);
+    documentRef?.removeEventListener('visibilitychange', handleVisibilityChange); documentRef?.removeEventListener('focusout', handleFocusOut);
+    windowRef?.removeEventListener('focus', handleFocus); windowRef?.removeEventListener('pageshow', handlePageShow); windowRef?.removeEventListener('online', handleOnline); windowRef?.removeEventListener('offline', handleOffline);
+  };
+  return { init, destroy, start, leave, loadNewest, poll, flushSave, syncNow, notifyLocalChange, copyLink, exportRecovery, getState: () => ({ token, revision, applyingRemote, conflicted, pollingStopped, pendingSave, inFlightSave, inFlightGet, sessionEpoch, retryDelay, retrying, lastSuccessfulSync, terminalStatus, destroyed }) };
 }
 
 /** Initializes collaboration. @param {object} options Dependencies. @returns {object} Controller. */

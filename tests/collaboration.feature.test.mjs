@@ -76,6 +76,45 @@ test('no-op blur, manual sync, and hidden polling never create false Offline sta
   assert.equal(shared.dom.window.document.getElementById('collaborationStatus').textContent, 'Shared · Revision 1');
 });
 
+test('destroy clears status, save, and poll timers and removes lifecycle listeners', async () => {
+  const env = setup(`https://intake.test/?workspace=${token}`); await join(env);
+  env.controller.notifyLocalChange({ pending: true });
+  const requestsBeforeDestroy = env.requests.length;
+  const epochBeforeDestroy = env.controller.getState().sessionEpoch;
+
+  env.controller.destroy();
+  env.controller.destroy();
+
+  assert.equal(env.timers.filter(timer => !timer.cancelled).length, 0, 'all controller timers are cancelled');
+  assert.equal(env.controller.getState().pendingSave, null);
+  assert.equal(env.controller.getState().destroyed, true);
+  assert.equal(env.controller.getState().sessionEpoch, epochBeforeDestroy + 1, 'idempotent destroy invalidates work once');
+
+  env.dom.window.dispatchEvent(new env.dom.window.Event('focus'));
+  env.dom.window.dispatchEvent(new env.dom.window.PageTransitionEvent('pageshow', { persisted: true }));
+  env.dom.window.dispatchEvent(new env.dom.window.Event('online'));
+  env.dom.window.document.dispatchEvent(new env.dom.window.Event('visibilitychange'));
+  await Promise.resolve();
+  assert.equal(env.requests.length, requestsBeforeDestroy, 'destroyed lifecycle listeners cannot issue requests');
+});
+
+test('default scheduling uses the provided JSDOM window timer and teardown cancels it', async () => {
+  const dom = new JSDOM('<!doctype html><body><div id="collaborationStatus"></div></body>', { url: 'https://intake.test/' });
+  const scheduled = []; const cancelled = [];
+  dom.window.setTimeout = (callback, delay) => { const timer = { callback, delay }; scheduled.push(timer); return timer; };
+  dom.window.clearTimeout = timer => { cancelled.push(timer); };
+  const controller = createCollaborationController({
+    collect: () => ({}), apply: () => {}, saveLocal: () => {}, fetchImpl: async () => reply(204, {}),
+    location: dom.window.location, history: dom.window.history, storage: dom.window.localStorage,
+    documentRef: dom.window.document, windowRef: dom.window, navigatorRef: dom.window.navigator
+  });
+  await controller.init();
+  assert.equal(scheduled.some(timer => timer.delay === 1000), true);
+  controller.destroy();
+  assert.equal(cancelled.includes(scheduled.find(timer => timer.delay === 1000)), true);
+  dom.window.close();
+});
+
 test('text changes use the 300ms debounce while structured changes can save immediately', async () => {
   const env = setup(`https://intake.test/?workspace=${token}`); await join(env);
   env.controller.notifyLocalChange({ text: 'typing' });

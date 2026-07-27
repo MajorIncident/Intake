@@ -61,6 +61,12 @@ import { initCollaboration } from './src/collaboration.js';
 /** Active shared-session controller, initialized during boot. @type {object|null} */
 let collaborationController = null;
 
+/** Destroys collaboration resources during application or test teardown. @returns {void} */
+export function destroyCollaboration() {
+  collaborationController?.destroy();
+  collaborationController = null;
+}
+
 /**
  * Query the document for the first element that matches the provided CSS selector.
  * @param {string} selector - The CSS selector identifying the desired element.

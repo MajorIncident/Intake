@@ -185,7 +185,7 @@ test('main: announces saved intake restore', async () => {
   const storageModule = await import('../src/storage.js');
   window.localStorage.setItem(storageModule.STORAGE_KEY, JSON.stringify(savedSnapshot));
 
-  await import('../main.js');
+  const mainModule = await import('../main.js');
 
   document.dispatchEvent(new window.Event('DOMContentLoaded'));
 
@@ -195,4 +195,6 @@ test('main: announces saved intake restore', async () => {
   assert.ok(restoredArg.meta, 'restored snapshot retains its metadata block');
   assert.equal(showToastSpy.mock.calls.length, 1, 'a toast announces the restore');
   assert.equal(showToastSpy.mock.calls[0].arguments[0], 'Saved intake reloaded ✨');
+  mainModule.destroyCollaboration();
+  mainModule.destroyCollaboration();
 });

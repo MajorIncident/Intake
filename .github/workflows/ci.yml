@@ -1,11 +1,14 @@
 name: CI
 
 on:
-  push:
   pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
   tests:
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -37,6 +40,7 @@ jobs:
 
       - name: Run test suite
         id: run-tests
+        timeout-minutes: 10
         run: |
           mkdir -p test-results
           npm test -- --test-reporter=junit --test-reporter-destination=test-results/junit.xml
