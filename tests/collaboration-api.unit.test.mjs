@@ -8,7 +8,7 @@ import {
 
 /** Builds a minimal Vercel response double. @returns {object} Response double. */
 function response() {
-  return { headers: {}, statusCode: 0, body: null, setHeader(k, v) { this.headers[k] = v; }, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
+  return { headers: {}, statusCode: 0, body: null, setHeader(k, v) { this.headers[k] = v; }, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; }, end() { return this; } };
 }
 
 test('workspace tokens are secure URL-safe values and hash deterministically', () => {
@@ -37,6 +37,25 @@ test('load returns a workspace snapshot', async () => {
   const repository = { load: async () => ({ snapshot: { pre: { oneLine: 'safe' } }, revision: 3 }) };
   const res = response(); await workspaceHandler({ getRepository: async () => repository })({ method: 'GET', headers: { authorization: `Bearer ${generateWorkspaceToken()}` } }, res);
   assert.equal(res.statusCode, 200); assert.equal(res.body.revision, 3);
+});
+
+test('revision-aware load returns 204 when unchanged and a snapshot when newer', async () => {
+  const repository = { load: async () => ({ snapshot: { marker: 'newest' }, revision: 42 }) };
+  const handler = workspaceHandler({ getRepository: async () => repository }); const authorization = `Bearer ${generateWorkspaceToken()}`;
+  const unchanged = response(); await handler({ method: 'GET', headers: { authorization }, query: { afterRevision: '42' } }, unchanged);
+  assert.equal(unchanged.statusCode, 204); assert.equal(unchanged.body, null);
+  const newer = response(); await handler({ method: 'GET', headers: { authorization }, query: { afterRevision: '41' } }, newer);
+  assert.equal(newer.statusCode, 200); assert.equal(newer.body.snapshot.marker, 'newest');
+});
+
+test('invalid revision queries are rejected before loading a workspace', async () => {
+  let loads = 0; const repository = { load: async () => { loads += 1; return null; } };
+  const handler = workspaceHandler({ getRepository: async () => repository });
+  for (const afterRevision of ['0', '-1', '1.5', 'nope']) {
+    const res = response(); await handler({ method: 'GET', headers: { authorization: `Bearer ${generateWorkspaceToken()}` }, query: { afterRevision } }, res);
+    assert.equal(res.statusCode, 400);
+  }
+  assert.equal(loads, 0);
 });
 
 test('update succeeds with an expected revision', async () => {

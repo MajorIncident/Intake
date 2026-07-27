@@ -81,7 +81,11 @@ The existing Vercel project is **`intake`**, with the **`neon-intake`** integrat
 
 ### Conflict recovery and two-window testing
 
-Updates use optimistic revision control: each complete snapshot retains the revision observed when it was captured. Only one PUT is sent at a time; edits made during that request collapse to the latest snapshot and follow the successful response at its returned revision. A stale write receives HTTP 409 and cannot overwrite the newer row. If polling finds a newer revision while local work is queued or in flight, the browser does not apply it silently: it stores the local version under `kt-collaboration-recovery-v1`, shows **Conflict**, and offers **Load newest shared version** or **Export local recovery**. Loading shared state does not delete that recovery record; neither does leaving the session. Invalid (400/401) and missing or expired (404) sessions stop polling, while network failures show **Offline** and 5xx failures show **Temporary server error** before retrying.
+Updates use optimistic revision control: each complete snapshot retains the revision observed when it was captured. Text edits wait about 300 ms so typing is responsive, blur flushes pending text, and completed select, checkbox, radio, and button-driven changes save immediately where the owning control is identifiable. Only one PUT is sent at a time; edits made during that request collapse to the latest snapshot and follow the successful response at its returned revision. A stale write receives HTTP 409 and cannot overwrite the newer row.
+
+While the page is visible and online, the client checks approximately every 900 ms with `afterRevision`; an unchanged revision produces an empty 204 response. GETs never overlap, and stale session responses are ignored. Network and 5xx failures use exponential backoff (up to 30 seconds) and return to the normal cadence after success. Mobile browsers may suspend timers, so visibility restoration, window focus, `pageshow` (including back-forward-cache restoration), and returning online trigger an immediate revision check and safe pending-save flush. **Sync now** performs the same safe flush and check without bypassing revision protection.
+
+The Collaboration menu reports `Shared · Revision …`, last successful sync age, pending saves, offline recovery, retries, and conflicts. If polling finds a newer revision while local work is queued or in flight, the browser does not apply it silently: it stores the local version under `kt-collaboration-recovery-v1`, shows **Conflict · Review required**, and offers **Load newest shared version** or **Export local recovery**. Loading shared state does not delete that recovery record; neither does leaving the session. Invalid (400/401) and missing or expired (404) sessions stop polling.
 
 To preview manually:
 
@@ -93,6 +97,14 @@ To preview manually:
 6. Disconnect the network briefly to confirm **Offline**, reconnect, and verify polling resumes. Leave the session and confirm the local intake remains available.
 
 This is snapshot-based collaboration, not character-level co-editing. Concurrent edits to different fields can still conflict; there is no merge UI, user identity, audit trail, revocation, presence display, end-to-end encryption, or server-side deletion action in v1. Expired rows behave as missing (404); physical cleanup of expired rows can be added later without changing that behavior.
+
+### Manual collaboration checks
+
+1. Open one shared link in two browsers, edit a text field in browser A, and confirm browser B receives it after the debounce and poll interval.
+2. Edit both browsers before either synchronizes and confirm the stale writer shows conflict recovery rather than overwriting.
+3. On a phone, background the page, edit the workspace from the second browser, then return through the app switcher and browser Back/Forward navigation; confirm synchronization resumes without refresh.
+4. Disable networking, make an edit, confirm **Offline · Changes kept locally**, restore networking, and confirm the queued edit either saves at its expected revision or enters conflict.
+5. Select **Sync now** with and without a pending edit and confirm requests remain serialized and the displayed revision advances.
 
 - `kt-collaboration-recovery-v1`: A conflict-only local recovery envelope containing the losing snapshot and capture time; it is intentionally separate from the normal intake key.
 

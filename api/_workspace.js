@@ -128,8 +128,17 @@ export function workspaceHandler({ getRepository = getWorkspaceRepository } = {}
     try {
       const repository = await getRepository();
       if (req.method === 'GET') {
+        const rawAfterRevision = req.query?.afterRevision;
+        if (rawAfterRevision !== undefined && (!/^\d+$/.test(String(rawAfterRevision)) || Number(rawAfterRevision) < 1 || !Number.isSafeInteger(Number(rawAfterRevision)))) {
+          return send(res, 400, { error: 'Invalid revision query.' });
+        }
         const workspace = await repository.load(hashWorkspaceToken(token));
-        return workspace ? send(res, 200, workspace) : send(res, 404, { error: 'Workspace not found.' });
+        if (!workspace) return send(res, 404, { error: 'Workspace not found.' });
+        if (rawAfterRevision !== undefined && Number(rawAfterRevision) === workspace.revision) {
+          headers(res);
+          return res.status(204).end();
+        }
+        return send(res, 200, workspace);
       }
       const validation = validateSnapshot(req.body?.snapshot);
       if (!validation.ok) return send(res, validation.status, { error: validation.status === 413 ? 'Snapshot is too large.' : 'Invalid request.' });

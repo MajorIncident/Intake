@@ -5,7 +5,7 @@
  *   This module aggregates state from feature modules into a persisted snapshot and re-applies that
  *   snapshot to the DOM and supporting stores. It also exposes summary state for reporting and
  *   orchestrates the actions list refresh cycle. Collaboration consumes this complete snapshot but
- *   keeps session capabilities and conflict recovery outside the persisted app-state schema.
+ *   keeps session capabilities, synchronization status/actions, and conflict recovery outside the persisted app-state schema.
  */
 
 import {
