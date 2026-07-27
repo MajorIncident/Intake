@@ -143,7 +143,7 @@ test('visibility recovery does not depend on suspended polling timers and flushe
   Object.defineProperty(env.dom.window.document, 'hidden', { configurable: true, value: false });
   setup.handler = async (_url, options) => options.method === 'PUT' ? reply(200, { revision: 2 }) : reply(204, {});
   env.dom.window.document.dispatchEvent(new env.dom.window.Event('visibilitychange'));
-  await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(env.requests.some(([, options]) => options.method === 'PUT'), true);
 });
 

@@ -45,6 +45,7 @@ export function createCollaborationController({
     if (terminalStatus) text = terminalStatus;
     else if (conflicted) text = 'Conflict · Review required';
     else if (!online()) text = 'Offline · Changes kept locally';
+    else if (state === 'Offline') text = 'Offline · Changes kept locally';
     else if (state === 'Saving' || pendingSave || inFlightSave) text = 'Saving changes…';
     else if (retrying) text = 'Retrying…';
     else if (token && state === 'Synced') text = `Shared · Revision ${revision}`;
@@ -134,7 +135,12 @@ export function createCollaborationController({
     } catch { if (epoch === sessionEpoch && token) { if (!pendingSave) pendingSave = saving; markRetry(true); } }
     finally {
       emitDiagnostic('PUT', started, sections);
-      if (epoch === sessionEpoch) { inFlightSave = null; resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSavePromise = null; if (pendingSave && !conflicted && !pollingStopped) saveTimer = scheduleTimeout(flushSave, retrying ? retryDelay : 0); else schedulePoll(); }
+      if (epoch === sessionEpoch) {
+        inFlightSave = null; resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSavePromise = null;
+        if (pendingSave && !conflicted && !pollingStopped && !retrying) await flushSave();
+        else if (pendingSave && !conflicted && !pollingStopped) saveTimer = scheduleTimeout(flushSave, retryDelay);
+        else schedulePoll();
+      }
     }
   }
   const notifyLocalChange = (snapshot, { immediate = false } = {}) => {
