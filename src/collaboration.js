@@ -24,7 +24,7 @@ export function createCollaborationController({
   let applyingRemote = false; let conflicted = false; let pollingStopped = false;
   let sessionEpoch = 0; let requestSequence = 0; let latestAcceptedGet = 0;
   let retryDelay = POLL_DELAY_MS; let retrying = false; let lastSuccessfulSync = null; let statusTimer = null;
-  let lastSnapshot = null; let conflictCount = 0;
+  let lastSnapshot = null; let conflictCount = 0; let terminalStatus = null;
   const activeLocation = location || documentRef?.location;
   const activeHistory = history || documentRef?.defaultView?.history;
   const element = id => documentRef?.getElementById(id) || null;
@@ -39,8 +39,9 @@ export function createCollaborationController({
   const renderStatus = state => {
     const indicator = element('collaborationStatus');
     if (!indicator) return;
-    let text = state;
-    if (conflicted) text = 'Conflict · Review required';
+    let text = terminalStatus || state;
+    if (terminalStatus) text = terminalStatus;
+    else if (conflicted) text = 'Conflict · Review required';
     else if (!online()) text = 'Offline · Changes kept locally';
     else if (state === 'Saving' || pendingSave || inFlightSave) text = 'Saving changes…';
     else if (retrying) text = 'Retrying…';
@@ -58,7 +59,7 @@ export function createCollaborationController({
     renderStatus(token ? 'Synced' : 'Local only');
   };
   const authorizationHeaders = extra => ({ ...extra, Authorization: `Bearer ${token}` });
-  const markSuccess = () => { lastSuccessfulSync = now(); retryDelay = POLL_DELAY_MS; retrying = false; renderStatus('Synced'); };
+  const markSuccess = () => { terminalStatus = null; lastSuccessfulSync = now(); retryDelay = POLL_DELAY_MS; retrying = false; renderStatus('Synced'); };
   const markRetry = offline => { retrying = true; retryDelay = Math.min(MAX_BACKOFF_MS, Math.max(POLL_DELAY_MS * 2, retryDelay * 2)); renderStatus(offline ? 'Offline' : 'Retrying'); };
   const schedulePoll = () => {
     clearTimeoutImpl(pollTimer);
@@ -76,8 +77,8 @@ export function createCollaborationController({
     conflicted = true; conflictCount += 1; renderStatus('Conflict'); updateActions();
   };
   const unavailable = status => {
-    if (status === 400 || status === 401) { pollingStopped = true; renderStatus('Invalid collaboration link'); toast('This collaboration link is invalid. Your local copy is safe.'); return; }
-    if (status === 404) { pollingStopped = true; renderStatus('Missing or expired session'); toast('This shared session is missing or expired. Your local copy is safe.'); return; }
+    if (status === 400 || status === 401) { pollingStopped = true; terminalStatus = 'Invalid collaboration link'; renderStatus(terminalStatus); toast('This collaboration link is invalid. Your local copy is safe.'); return; }
+    if (status === 404) { pollingStopped = true; terminalStatus = 'Missing or expired session'; renderStatus(terminalStatus); toast('This shared session is missing or expired. Your local copy is safe.'); return; }
     if (status >= 500) markRetry(false);
   };
   const applyIncoming = workspace => {
@@ -90,12 +91,15 @@ export function createCollaborationController({
   };
   /** Polls once, coalescing concurrent callers and ignoring stale completions. @returns {Promise<boolean>} Whether a newer snapshot was applied. */
   async function poll() {
-    if (!token || conflicted || pollingStopped || documentRef?.hidden || !online()) { renderStatus('Offline'); return false; }
+    if (!token || conflicted || pollingStopped || documentRef?.hidden) return false;
+    if (!online()) { renderStatus('Offline'); return false; }
     if (inFlightGet) return inFlightGet;
     const epoch = sessionEpoch; const sequence = ++requestSequence; const started = now(); const requestedRevision = revision;
     const operation = (async () => {
       try {
-        const url = `${SESSION_ENDPOINT}?afterRevision=${encodeURIComponent(requestedRevision)}`;
+        const url = requestedRevision > 0
+          ? `${SESSION_ENDPOINT}?afterRevision=${encodeURIComponent(requestedRevision)}`
+          : SESSION_ENDPOINT;
         const { response, body } = await request(url, { headers: authorizationHeaders({ Accept: 'application/json' }) });
         if (epoch !== sessionEpoch || sequence < latestAcceptedGet || !token) return false;
         latestAcceptedGet = sequence;
@@ -114,7 +118,8 @@ export function createCollaborationController({
   async function flushSave() {
     clearTimeoutImpl(saveTimer);
     if (inFlightSave) return inFlightSavePromise;
-    if (!token || applyingRemote || conflicted || !pendingSave || !online()) { renderStatus('Offline'); return; }
+    if (!token || applyingRemote || conflicted || !pendingSave) return;
+    if (!online()) { renderStatus('Offline'); return; }
     const epoch = sessionEpoch; const saving = pendingSave; const sections = saving.changedSections; pendingSave = null; inFlightSave = saving;
     inFlightSavePromise = new Promise(resolve => { resolveInFlightSave = resolve; });
     renderStatus('Saving'); const started = now();
@@ -135,11 +140,11 @@ export function createCollaborationController({
     pendingSave = { snapshot, expectedRevision: revision, changedSections: changedSections(snapshot) }; clearTimeoutImpl(saveTimer); renderStatus('Saving');
     if (!inFlightSave) saveTimer = setTimeoutImpl(flushSave, immediate ? 0 : SAVE_DELAY_MS);
   };
-  const loadNewest = async () => { conflicted = false; pollingStopped = false; updateActions(); return poll(); };
+  const loadNewest = async () => { terminalStatus = null; conflicted = false; pollingStopped = false; updateActions(); return poll(); };
   const activate = async () => { if (!token) return false; const checked = await poll(); await flushSave(); schedulePoll(); return checked; };
   const syncNow = async () => { await flushSave(); return poll(); };
   const start = async () => {
-    const epoch = ++sessionEpoch; renderStatus('Connecting'); const snapshot = collect(); const started = now();
+    const epoch = ++sessionEpoch; terminalStatus = null; renderStatus('Connecting'); const snapshot = collect(); const started = now();
     try {
       const { response, body } = await request('/api/workspaces', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ snapshot }) });
       if (epoch !== sessionEpoch) return false; if (!response.ok) { unavailable(response.status); return false; }
@@ -149,8 +154,8 @@ export function createCollaborationController({
     } catch { if (epoch === sessionEpoch) { markRetry(true); toast('Could not start a shared session. Your local copy is safe.'); } return false; }
     finally { emitDiagnostic('POST', started); }
   };
-  const joinFromUrl = async () => { const candidate = new URL(activeLocation.href).searchParams.get('workspace'); if (!candidate) { updateActions(); return false; } sessionEpoch += 1; token = candidate; pollingStopped = false; updateActions(); return poll(); };
-  const leave = () => { sessionEpoch += 1; clearTimeoutImpl(saveTimer); clearTimeoutImpl(pollTimer); clearTimeoutImpl(statusTimer); token = null; revision = 0; pendingSave = null; inFlightSave = null; resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSavePromise = null; inFlightGet = null; conflicted = false; pollingStopped = true; retrying = false; const url = new URL(activeLocation.href); url.searchParams.delete('workspace'); activeHistory.replaceState({}, '', url); updateActions(); toast('Left shared session. Local and recovery copies were kept.'); };
+  const joinFromUrl = async () => { const candidate = new URL(activeLocation.href).searchParams.get('workspace'); if (!candidate) { updateActions(); return false; } sessionEpoch += 1; terminalStatus = null; token = candidate; pollingStopped = false; updateActions(); return poll(); };
+  const leave = () => { sessionEpoch += 1; clearTimeoutImpl(saveTimer); clearTimeoutImpl(pollTimer); clearTimeoutImpl(statusTimer); terminalStatus = null; token = null; revision = 0; pendingSave = null; inFlightSave = null; resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSavePromise = null; inFlightGet = null; conflicted = false; pollingStopped = true; retrying = false; const url = new URL(activeLocation.href); url.searchParams.delete('workspace'); activeHistory.replaceState({}, '', url); updateActions(); toast('Left shared session. Local and recovery copies were kept.'); };
   const copyLink = async () => { if (!token) return false; try { await navigatorRef.clipboard.writeText(activeLocation.href); toast('Collaboration link copied.'); return true; } catch { toast('Copy failed. Copy the current address from your browser.'); return false; } };
   const exportRecovery = () => { const recovery = storage?.getItem(RECOVERY_STORAGE_KEY); if (!recovery) { toast('No local recovery snapshot is available.'); return false; } const blob = new Blob([recovery], { type: 'application/json' }); const href = URL.createObjectURL(blob); const anchor = documentRef.createElement('a'); anchor.href = href; anchor.download = 'intake-collaboration-recovery.json'; anchor.click(); URL.revokeObjectURL(href); return true; };
   const init = () => {
@@ -161,7 +166,7 @@ export function createCollaborationController({
     statusTimer = setTimeoutImpl(function refresh() { renderStatus(token ? 'Synced' : 'Local only'); statusTimer = setTimeoutImpl(refresh, 1000); }, 1000);
     return joinFromUrl();
   };
-  return { init, start, leave, loadNewest, poll, flushSave, syncNow, notifyLocalChange, copyLink, exportRecovery, getState: () => ({ token, revision, applyingRemote, conflicted, pollingStopped, pendingSave, inFlightSave, inFlightGet, sessionEpoch, retryDelay, retrying, lastSuccessfulSync }) };
+  return { init, start, leave, loadNewest, poll, flushSave, syncNow, notifyLocalChange, copyLink, exportRecovery, getState: () => ({ token, revision, applyingRemote, conflicted, pollingStopped, pendingSave, inFlightSave, inFlightGet, sessionEpoch, retryDelay, retrying, lastSuccessfulSync, terminalStatus }) };
 }
 
 /** Initializes collaboration. @param {object} options Dependencies. @returns {object} Controller. */
