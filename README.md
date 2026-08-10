@@ -62,7 +62,7 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 
 ## Notes workspace
 
-Use **View → Notes workspace** or **Alt+N** to open or collapse the persistent notes dock. Add short capture notes, then quickly edit or delete them before placing them into the intake. Drag a note to an editable text field in the main intake form. Keyboard users can focus a field, then activate **Place in focused field** on a note. Successful placement removes the note and saves the intake; invalid targets retain it.
+Use **View → Notes workspace** or **Alt+N** to open or collapse the persistent notes dock. Add short capture notes, then quickly edit or delete them before placing them into the intake. Drag a note to an editable text field in the main intake form. Keyboard users can focus a field, then focus and activate the note card with **Enter** or **Space**. Successful placement removes the note and saves the intake; invalid targets retain it.
 - `kt-actions-by-analysis-v1`: Dedicated action registry keyed by analysis ID that powers the action list card and owner audit trail.
 
 ## Shared collaboration (first version)

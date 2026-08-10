@@ -82,13 +82,14 @@ test('valid drop inserts at selection, dispatches editing events, and removes th
   assert.equal(document.querySelector('[data-note-id]'), null);
 });
 
-test('invalid drops retain the note and keyboard placement uses the focused field', () => {
+test('note cards omit the redundant placement button and support keyboard placement', () => {
   const id = addNote('accessible');
+  assert.equal(document.querySelector('.notes-workspace__place'), null);
   const invalid = document.querySelector('#invalid');
   invalid.dispatchEvent(Object.assign(new Event('drop', { bubbles: true, cancelable: true }), { dataTransfer: { getData: () => id } }));
   assert.ok(document.querySelector(`[data-note-id="${id}"]`));
   const target = document.querySelector('#target'); target.focus();
-  document.querySelector('.notes-workspace__place').click();
+  press(document.querySelector('.notes-workspace__item'), 'Enter');
   assert.equal(target.value, 'accessible');
   assert.equal(document.querySelector('[data-note-id]'), null);
 });
