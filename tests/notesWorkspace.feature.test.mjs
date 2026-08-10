@@ -37,8 +37,14 @@ afterEach(() => {
 function addNote(text) {
   document.querySelector('#notesWorkspaceInput').value = text;
   document.querySelector('#notesWorkspaceAddBtn').click();
-  return document.querySelector('[data-note-id]').dataset.noteId;
+  return getNotesWorkspaceState().notes.at(-1).id;
 }
+
+function press(target, key) {
+  target.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+}
+
+const settleFocus = () => new Promise(resolve => queueMicrotask(resolve));
 
 test('notes workspace is always mounted across all four intake modes', () => {
   assert.equal(document.querySelector('#notesWorkspace').dataset.modeSection, undefined);
@@ -85,4 +91,76 @@ test('invalid drops retain the note and keyboard placement uses the focused fiel
   document.querySelector('.notes-workspace__place').click();
   assert.equal(target.value, 'accessible');
   assert.equal(document.querySelector('[data-note-id]'), null);
+});
+
+test('Edit opens a focused, accessible inline editor with the current text', async () => {
+  addNote('Call the service owner');
+  const edit = document.querySelector('.notes-workspace__edit');
+  assert.match(edit.getAttribute('aria-label'), /Edit note: Call the service owner/u);
+  assert.match(document.querySelector('.notes-workspace__delete').getAttribute('aria-label'), /Delete note: Call the service owner/u);
+  edit.click(); await settleFocus();
+  const editor = document.querySelector('.notes-workspace__edit-input');
+  assert.equal(editor.value, 'Call the service owner');
+  assert.equal(document.activeElement, editor);
+  assert.match(editor.getAttribute('aria-label'), /Call the service owner/u);
+});
+
+test('Save and Enter trim updates, preserve IDs, persist once, and restore focus', async () => {
+  let saves = 0; const toasts = [];
+  initNotesWorkspace({ onSave: () => { saves += 1; }, showToast: message => toasts.push(message) });
+  const firstId = addNote('First draft'); saves = 0; toasts.length = 0;
+  document.querySelector('.notes-workspace__edit').click(); await settleFocus();
+  document.querySelector('.notes-workspace__edit-input').value = '  Saved draft  ';
+  document.querySelector('.notes-workspace__save').click(); await settleFocus();
+  assert.deepEqual(getNotesWorkspaceState().notes, [{ id: firstId, text: 'Saved draft' }]);
+  assert.equal(saves, 1); assert.deepEqual(toasts, ['Note updated.']);
+  assert.equal(document.activeElement, document.querySelector('.notes-workspace__edit'));
+
+  document.querySelector('.notes-workspace__edit').click(); await settleFocus();
+  document.querySelector('.notes-workspace__edit-input').value = 'Saved with Enter';
+  press(document.querySelector('.notes-workspace__edit-input'), 'Enter'); await settleFocus();
+  assert.deepEqual(getNotesWorkspaceState().notes, [{ id: firstId, text: 'Saved with Enter' }]);
+  assert.equal(saves, 2);
+});
+
+test('Cancel and Escape retain text, do not persist, and restore Edit focus', async () => {
+  let saves = 0;
+  initNotesWorkspace({ onSave: () => { saves += 1; } });
+  const id = addNote('Keep this'); saves = 0;
+  document.querySelector('.notes-workspace__edit').click(); await settleFocus();
+  document.querySelector('.notes-workspace__edit-input').value = 'Discard this';
+  document.querySelector('.notes-workspace__cancel').click(); await settleFocus();
+  assert.deepEqual(getNotesWorkspaceState().notes, [{ id, text: 'Keep this' }]);
+  assert.equal(saves, 0); assert.equal(document.activeElement, document.querySelector('.notes-workspace__edit'));
+
+  document.querySelector('.notes-workspace__edit').click(); await settleFocus();
+  document.querySelector('.notes-workspace__edit-input').value = 'Also discard';
+  press(document.querySelector('.notes-workspace__edit-input'), 'Escape'); await settleFocus();
+  assert.deepEqual(getNotesWorkspaceState().notes, [{ id, text: 'Keep this' }]);
+  assert.equal(saves, 0); assert.equal(document.activeElement, document.querySelector('.notes-workspace__edit'));
+});
+
+test('blank edits cannot replace a note or trigger persistence', async () => {
+  let saves = 0; const toasts = [];
+  initNotesWorkspace({ onSave: () => { saves += 1; }, showToast: message => toasts.push(message) });
+  const id = addNote('Never blank'); saves = 0; toasts.length = 0;
+  document.querySelector('.notes-workspace__edit').click(); await settleFocus();
+  const editor = document.querySelector('.notes-workspace__edit-input'); editor.value = '   ';
+  press(editor, 'Enter');
+  assert.deepEqual(getNotesWorkspaceState().notes, [{ id, text: 'Never blank' }]);
+  assert.equal(saves, 0); assert.match(toasts[0], /text before saving/u); assert.equal(document.activeElement, editor);
+});
+
+test('Delete removes only its note, persists once, toasts, and focuses the next note', async () => {
+  let saves = 0; const toasts = [];
+  initNotesWorkspace({ onSave: () => { saves += 1; }, showToast: message => toasts.push(message) });
+  const firstId = addNote('First'); const secondId = addNote('Second'); saves = 0; toasts.length = 0;
+  document.querySelector(`[data-note-id="${firstId}"] .notes-workspace__delete`).click(); await settleFocus();
+  assert.deepEqual(getNotesWorkspaceState().notes, [{ id: secondId, text: 'Second' }]);
+  assert.equal(saves, 1); assert.deepEqual(toasts, ['Note deleted.']);
+  assert.equal(document.activeElement.dataset.noteId, secondId);
+
+  document.querySelector('.notes-workspace__delete').click(); await settleFocus();
+  assert.deepEqual(getNotesWorkspaceState().notes, []);
+  assert.equal(document.activeElement, document.querySelector('#notesWorkspaceInput'));
 });
