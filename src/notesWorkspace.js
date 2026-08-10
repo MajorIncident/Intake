@@ -66,7 +66,7 @@ function render({ focusNoteId = null, focusEdit = false } = {}) {
   }
   notes.forEach(note => {
     const item = document.createElement('li'); item.className = 'notes-workspace__item'; item.draggable = true; item.tabIndex = 0; item.dataset.noteId = note.id;
-    item.setAttribute('aria-label', `Note: ${note.text}. Drag to a text field or select then place in focused field.`);
+    item.setAttribute('aria-label', `Note: ${note.text}. Drag to a text field, or focus a text field and activate this note.`);
     if (editingNoteId === note.id) {
       item.classList.add('is-editing'); item.draggable = false; item.tabIndex = -1;
       const input = createWorkspaceControl('input', 'notes-workspace__edit-input', note.id); input.value = note.text; input.setAttribute('aria-label', `Edit note: ${note.text}`);
@@ -79,10 +79,9 @@ function render({ focusNoteId = null, focusEdit = false } = {}) {
     }
     const text = document.createElement('span'); text.className = 'notes-workspace__text'; text.textContent = note.text;
     const actions = document.createElement('div'); actions.className = 'notes-workspace__actions';
-    const place = createWorkspaceControl('button', 'notes-workspace__place', note.id); place.textContent = 'Place in focused field'; place.setAttribute('aria-label', `Place note in focused field: ${note.text}`);
     const edit = createWorkspaceControl('button', 'notes-workspace__edit', note.id); edit.textContent = 'Edit'; edit.setAttribute('aria-label', `Edit note: ${note.text}`);
     const remove = createWorkspaceControl('button', 'notes-workspace__delete', note.id); remove.textContent = 'Delete'; remove.setAttribute('aria-label', `Delete note: ${note.text}`);
-    actions.append(place, edit, remove); item.append(text, actions); list.append(item);
+    actions.append(edit, remove); item.append(text, actions); list.append(item);
   });
   if (focusNoteId) queueMicrotask(() => {
     const item = [...document.querySelectorAll('.notes-workspace__item[data-note-id]')].find(entry => entry.dataset.noteId === focusNoteId);
@@ -159,8 +158,7 @@ export function initNotesWorkspace({ onSave: save = () => {}, showToast: toast =
   document.addEventListener('drop', event => { if (!isEditableIntakeField(event.target)) return; const id = event.dataTransfer?.getData('text/x-intake-note-id'); if (id) { event.preventDefault(); placeNote(id, event.target); } });
   document.querySelector('#notesWorkspaceList')?.addEventListener('click', event => {
     const control = event.target.closest?.('button[data-note-id]'); if (!control) return;
-    if (control.matches('.notes-workspace__place')) placeNote(control.dataset.noteId, lastFocusedField || document.activeElement);
-    else if (control.matches('.notes-workspace__edit')) editNote(control.dataset.noteId);
+    if (control.matches('.notes-workspace__edit')) editNote(control.dataset.noteId);
     else if (control.matches('.notes-workspace__save')) saveEdit(control.dataset.noteId, document.querySelector('.notes-workspace__edit-input')?.value || '');
     else if (control.matches('.notes-workspace__cancel')) cancelEdit(control.dataset.noteId);
     else if (control.matches('.notes-workspace__delete')) deleteNote(control.dataset.noteId);
