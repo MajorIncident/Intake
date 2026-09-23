@@ -2,8 +2,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  MAX_SNAPSHOT_BYTES, createWorkspaceHandler, generateWorkspaceToken,
-  hashWorkspaceToken, parseAuthorizationToken, validateSnapshot, validateToken, workspaceHandler
+  DISPLAY_NAME_MAX_LENGTH, MAX_SNAPSHOT_BYTES, TEAM_NAME_MAX_LENGTH, createWorkspaceHandler, generateWorkspaceToken,
+  hashWorkspaceToken, normalizeCollaborationName, parseAuthorizationToken, presenceHandler, validateParticipantId,
+  validateSnapshot, validateToken, workspaceHandler
 } from '../api/_workspace.js';
 
 /** Builds a minimal Vercel response double. @returns {object} Response double. */
@@ -27,10 +28,56 @@ test('snapshot validation rejects invalid and oversized JSON', () => {
 });
 
 test('create returns 201 and security headers', async () => {
-  const repository = { create: async (hash, snapshot, days) => ({ revision: 1, expires_at: 'future', hash, snapshot, days }) };
-  const res = response(); await createWorkspaceHandler({ getRepository: async () => repository })({ method: 'POST', body: { snapshot: { pre: {} } } }, res);
+  const participantId = '11111111-1111-4111-8111-111111111111';
+  const repository = {
+    create: async (hash, snapshot, days, teamName) => ({ revision: 1, expires_at: 'future', hash, snapshot, days, teamName }),
+    upsertPresence: async (_hash, id, displayName) => ({ teamName: 'Response team', self: { id, displayName }, participants: [{ id, displayName }] })
+  };
+  const res = response(); await createWorkspaceHandler({ getRepository: async () => repository })({ method: 'POST', body: { snapshot: { pre: {} }, teamName: '  Response   team ', participant: { id: participantId, displayName: ' Sam ' } } }, res);
   assert.equal(res.statusCode, 201); assert.equal(res.body.revision, 1); assert.equal(validateToken(res.body.token), true);
+  assert.equal(res.body.teamName, 'Response team'); assert.equal(res.body.self.displayName, 'Sam');
   assert.equal(res.headers['Cache-Control'], 'no-store'); assert.equal(res.headers['Referrer-Policy'], 'no-referrer');
+});
+
+test('collaboration labels and participant IDs are validated and normalized', () => {
+  assert.equal(normalizeCollaborationName('  Incident   Team ', TEAM_NAME_MAX_LENGTH), 'Incident Team');
+  assert.equal(normalizeCollaborationName('', DISPLAY_NAME_MAX_LENGTH), '');
+  assert.equal(normalizeCollaborationName('x'.repeat(TEAM_NAME_MAX_LENGTH + 1), TEAM_NAME_MAX_LENGTH), null);
+  assert.equal(normalizeCollaborationName('unsafe\nname', DISPLAY_NAME_MAX_LENGTH), null);
+  assert.equal(validateParticipantId('11111111-1111-4111-8111-111111111111'), true);
+  assert.equal(validateParticipantId('not-a-uuid'), false);
+});
+
+test('create rejects malformed profiles before repository access', async () => {
+  let accessed = false; const handler = createWorkspaceHandler({ getRepository: async () => { accessed = true; return {}; } });
+  const res = response(); await handler({ method: 'POST', body: { snapshot: {}, participant: { id: 'bad', displayName: 'Sam' } } }, res);
+  assert.equal(res.statusCode, 400); assert.equal(accessed, false);
+});
+
+test('presence registers, lists, renames people and teams, and removes participants without snapshot revisions', async () => {
+  const participantId = '11111111-1111-4111-8111-111111111111'; const calls = [];
+  const repository = {
+    upsertPresence: async (_hash, id, name) => { calls.push(['put', id, name]); return { teamName: 'Ops', self: { id, displayName: name || 'Teammate 1' }, participants: [] }; },
+    listPresence: async () => { calls.push(['get']); return { teamName: 'Ops', participants: [] }; },
+    renameWorkspace: async (_hash, name) => { calls.push(['patch', name]); return { teamName: name, participants: [] }; },
+    removePresence: async (_hash, id) => { calls.push(['delete', id]); return true; }
+  };
+  const handler = presenceHandler({ getRepository: async () => repository }); const authorization = `Bearer ${generateWorkspaceToken()}`;
+  const put = response(); await handler({ method: 'PUT', headers: { authorization }, body: { participantId, displayName: '  Alex  ' } }, put);
+  const get = response(); await handler({ method: 'GET', headers: { authorization } }, get);
+  const patch = response(); await handler({ method: 'PATCH', headers: { authorization }, body: { teamName: '  Recovery   team ' } }, patch);
+  const remove = response(); await handler({ method: 'DELETE', headers: { authorization }, body: { participantId } }, remove);
+  assert.deepEqual(calls, [['put', participantId, 'Alex'], ['get'], ['patch', 'Recovery team'], ['delete', participantId]]);
+  assert.equal(put.body.self.displayName, 'Alex'); assert.equal(get.body.teamName, 'Ops'); assert.equal(patch.body.teamName, 'Recovery team'); assert.deepEqual(remove.body, { removed: true });
+  assert.equal('revision' in put.body, false);
+});
+
+test('presence validates authorization, identity, names, and missing workspaces', async () => {
+  let accessed = 0; const handler = presenceHandler({ getRepository: async () => { accessed += 1; return { upsertPresence: async () => null }; } });
+  const missingAuth = response(); await handler({ method: 'GET', headers: {} }, missingAuth); assert.equal(missingAuth.statusCode, 401);
+  const invalidId = response(); await handler({ method: 'PUT', headers: { authorization: `Bearer ${generateWorkspaceToken()}` }, body: { participantId: 'bad' } }, invalidId); assert.equal(invalidId.statusCode, 400);
+  const missing = response(); await handler({ method: 'PUT', headers: { authorization: `Bearer ${generateWorkspaceToken()}` }, body: { participantId: '11111111-1111-4111-8111-111111111111', displayName: '' } }, missing); assert.equal(missing.statusCode, 404);
+  assert.equal(accessed, 1);
 });
 
 test('load returns a workspace snapshot', async () => {

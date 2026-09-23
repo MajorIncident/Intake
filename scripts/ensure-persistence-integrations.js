@@ -85,6 +85,7 @@ function getInterfaceAdditions() {
 
 const addedInterfaceLines = getInterfaceAdditions();
 const triggerLines = addedInterfaceLines.filter((line) => {
+  if (/data-persistence=["']local-only["']/.test(line)) return false;
   return (
     /<(input|textarea|select|option|button|label)\b/i.test(line) ||
     /class="[^"]*(field|select|picker|dropdown|control)[^"]*"/i.test(line) ||
