@@ -85,6 +85,7 @@ function getInterfaceAdditions() {
 
 const addedInterfaceLines = getInterfaceAdditions();
 const newControlLines = addedInterfaceLines.filter((line) => {
+  if (/data-summary=["']exclude["']/.test(line) || /data-persistence=["']local-only["']/.test(line)) return false;
   return /<(input|textarea|select|option)\b/i.test(line) || /class="[^"]*(field|select|picker|dropdown)[^"]*"/i.test(line);
 });
 

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
-import { createCollaborationController, POLL_DELAY_MS, RECOVERY_STORAGE_KEY, SAVE_DELAY_MS } from '../src/collaboration.js';
+import { createCollaborationController, POLL_DELAY_MS, PRESENCE_DELAY_MS, PROFILE_STORAGE_KEY, RECOVERY_STORAGE_KEY, SAVE_DELAY_MS } from '../src/collaboration.js';
 
 /** Creates a manually resolvable promise. @returns {object} Deferred promise. */
 function deferred() {
@@ -16,7 +16,7 @@ function reply(status, body) {
 }
 /** Builds a deterministic collaboration controller environment. @param {string} url Page URL. @returns {object} Environment. */
 function setup(url = 'https://intake.test/', initial = { local: true }) {
-  const dom = new JSDOM(`<!doctype html><body><div id="collaborationStatus"></div><div id="collaborationSyncDetail"></div><button id="syncCollaborationBtn"></button><button id="startCollaborationBtn"></button><button id="copyCollaborationLinkBtn"></button><button id="leaveCollaborationBtn"></button><div id="collaborationConflictActions"></div><button id="loadSharedVersionBtn"></button><button id="exportRecoveryBtn"></button><input id="field"></body>`, { url });
+  const dom = new JSDOM(`<!doctype html><body><div id="collaborationStatus"></div><div id="collaborationSyncDetail"></div><button id="syncCollaborationBtn"></button><button id="startCollaborationBtn"></button><button id="copyCollaborationLinkBtn"></button><button id="editCollaborationNameBtn"></button><button id="editCollaborationNameBannerBtn"></button><button id="leaveCollaborationBtn"></button><div id="collaborationConflictActions"></div><button id="loadSharedVersionBtn"></button><button id="exportRecoveryBtn"></button><section id="collaborationWorkspace" hidden><strong id="collaborationTeamName"></strong><span id="collaborationPeopleSummary"></span><span id="collaborationPresenceStale" hidden></span><ul id="collaborationParticipants"></ul></section><div id="collaborationDialogBackdrop" hidden></div><section id="collaborationDialog" hidden tabindex="-1"><h4 id="collaborationDialogTitle"></h4><p id="collaborationDialogDescription"></p><form id="collaborationDialogForm"><div id="collaborationTeamNameField"><input id="collaborationTeamNameInput"></div><input id="collaborationDisplayNameInput"><button id="collaborationDialogCancelBtn" type="button"></button><button id="collaborationDialogSubmitBtn" type="submit"></button></form></section><input id="field"></body>`, { url });
   Object.defineProperty(dom.window.document, 'hidden', { configurable: true, value: false });
   const timers = []; const requests = []; const applyCalls = []; const localSaves = [];
   let current = initial;
@@ -43,9 +43,71 @@ const token = 'a'.repeat(43);
 
 /** Joins an environment to a mocked workspace. @param {object} env Environment. @param {number} revision Revision. @param {object} snapshot Snapshot. @returns {Promise<void>} */
 async function join(env, revision = 1, snapshot = { shared: true }) {
-  setup.handler = async () => reply(200, { revision, snapshot });
+  setup.handler = async () => reply(200, { revision, snapshot, teamName: 'Response team' });
   await env.controller.init();
 }
+
+test('starting a session sends team and profile metadata and renders server-assigned presence', async () => {
+  const env = setup(); await env.controller.init();
+  setup.handler = async (_url, options) => {
+    const sent = JSON.parse(options.body);
+    return reply(201, { token, revision: 1, teamName: 'Payments team', self: { id: sent.participant.id, displayName: 'Teammate 1' }, participants: [{ id: sent.participant.id, displayName: 'Teammate 1' }] });
+  };
+  assert.equal(await env.controller.start({ requestedTeamName: 'Payments team', requestedDisplayName: '' }), true);
+  const body = JSON.parse(env.requests[0][1].body);
+  assert.equal(body.teamName, 'Payments team'); assert.equal(body.participant.displayName, '');
+  assert.match(body.participant.id, /^[0-9a-f-]{36}$/i);
+  assert.equal(env.dom.window.document.getElementById('collaborationTeamName').textContent, 'Payments team');
+  assert.equal(env.dom.window.document.getElementById('collaborationParticipants').textContent, 'Teammate 1 (you)');
+  assert.equal(env.dom.window.document.getElementById('collaborationWorkspace').hidden, false);
+  assert.equal(env.timers.some(timer => timer.delay === PRESENCE_DELAY_MS), true);
+  assert.equal(JSON.parse(env.dom.window.localStorage.getItem(PROFILE_STORAGE_KEY)).displayName, 'Teammate 1');
+});
+
+test('joining prompts for a name then registers presence without changing the snapshot revision', async () => {
+  const env = setup(`https://intake.test/?workspace=${token}`); await join(env);
+  assert.equal(env.dom.window.document.getElementById('collaborationDialog').hidden, false);
+  assert.equal(env.dom.window.document.getElementById('collaborationDialogTitle').textContent, 'Join Response team');
+  setup.handler = async (url, options) => url === '/api/workspaces/presence'
+    ? reply(200, { teamName: 'Response team', self: { id: JSON.parse(options.body).participantId, displayName: 'Priya' }, participants: [{ id: JSON.parse(options.body).participantId, displayName: 'Priya' }, { id: 'other', displayName: '<b>Sam</b>' }] })
+    : reply(204, {});
+  const before = env.controller.getState().revision;
+  assert.equal(await env.controller.joinPresence('Priya'), true);
+  assert.equal(env.controller.getState().revision, before);
+  assert.equal(env.dom.window.document.getElementById('collaborationParticipants').textContent, 'Priya (you)<b>Sam</b>');
+  assert.equal(env.dom.window.document.getElementById('collaborationParticipants').querySelector('b'), null, 'names render as text');
+});
+
+test('editing a name heartbeats presence but never queues an intake snapshot', async () => {
+  const env = setup(`https://intake.test/?workspace=${token}`); await join(env);
+  setup.handler = async (_url, options) => reply(200, { teamName: 'Response team', self: { id: JSON.parse(options.body).participantId, displayName: 'Alex' }, participants: [] });
+  await env.controller.joinPresence('Alex');
+  assert.equal(env.controller.getState().pendingSave, null);
+  await env.controller.heartbeat('Jordan');
+  assert.equal(env.requests.filter(([url]) => url === '/api/workspaces/presence').length, 2);
+  assert.equal(env.requests.some(([, options]) => options.method === 'PUT' && JSON.parse(options.body).snapshot), false);
+});
+
+test('presence requests coalesce, continue through snapshot conflicts, and unregister on leave', async () => {
+  const env = setup(); await env.controller.init(); const presence = deferred();
+  setup.handler = async (url, options) => {
+    if (url === '/api/workspaces') { const sent = JSON.parse(options.body); return reply(201, { token, revision: 1, teamName: 'Ops', self: { id: sent.participant.id, displayName: 'Sam' }, participants: [] }); }
+    if (url === '/api/workspaces/presence' && options.method === 'DELETE') return reply(200, { removed: true });
+    return presence.promise;
+  };
+  await env.controller.start({ requestedDisplayName: 'Sam' });
+  const first = env.controller.heartbeat(); const second = env.controller.heartbeat(); await Promise.resolve();
+  assert.equal(env.requests.filter(([url]) => url === '/api/workspaces/presence').length, 1);
+  presence.resolve(reply(200, { teamName: 'Ops', self: env.controller.getState().self, participants: [] })); await Promise.all([first, second]);
+  env.setCurrent({ dirty: true }); env.controller.notifyLocalChange({ dirty: true });
+  setup.handler = async (url, options) => url === '/api/workspaces/presence'
+    ? reply(options.method === 'DELETE' ? 200 : 200, options.method === 'DELETE' ? { removed: true } : { teamName: 'Ops', self: env.controller.getState().self, participants: [] })
+    : reply(200, { revision: 2, snapshot: { remote: true } });
+  await env.controller.loadNewest(); assert.equal(env.controller.getState().conflicted, true);
+  assert.equal(await env.controller.heartbeat(), true, 'presence remains available while snapshot conflict is reviewed');
+  env.controller.leave(); await Promise.resolve();
+  assert.equal(env.requests.some(([url, options]) => url === '/api/workspaces/presence' && options.method === 'DELETE'), true);
+});
 
 test('a fresh shared link omits revision zero, applies the server snapshot, then polls with the adopted revision', async () => {
   const env = setup(`https://intake.test/?workspace=${token}`);

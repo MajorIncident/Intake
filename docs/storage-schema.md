@@ -166,6 +166,12 @@ Refer back to [`docs/storage-schema.md`](storage-schema.md) for the canonical fi
 - **Fields:** `meta.version`, `meta.savedAt`, `meta.intakeMode`, plus the top-level `actions` wrapper object, `ops` object, and `steps` object shells that hold the grouped fields above.
 - **Notes:** `collectAppState()` (in `src/appState.js`) assembles the complete payload, sets the schema version, stamps `meta.savedAt`, and records the active intake mode under `meta.intakeMode`. Any migration logic or new modules should register with `collectAppState()` / `applyAppState()` so the metadata stays accurate.
 
+### Local-only collaboration records (`src/collaboration.js`)
+
+- **Anchors / DOM roots:** `<!-- [feature:collaboration] -->` and `<!-- [feature:collaboration-presence] -->`.
+- **Keys:** `kt-collaboration-profile-v1` stores the browser participant UUID and last display name; `kt-collaboration-recovery-v1` stores a conflict recovery envelope.
+- **Notes:** Neither record belongs to the primary `kt-intake-full-v2` schema. The profile must not enter `collectAppState()`, file exports, summaries, or remote snapshots. Recovery remains a separate local safety copy of a losing snapshot and its capture time.
+
 ### Cross-cutting callouts
 
 - `ops.commLog` is stored under the broader `ops` object but only `src/comms.js` should mutate it—the comms drawer enforces validation and timer side effects tied to each log entry.
