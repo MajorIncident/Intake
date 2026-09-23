@@ -65,9 +65,11 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 Use **View → Notes workspace** or **Alt+N** to open or collapse the persistent notes dock. Add short capture notes, then quickly edit or delete them before placing them into the intake. Drag a note to an editable text field in the main intake form. Keyboard users can focus a field, then focus and activate the note card with **Enter** or **Space**. Successful placement removes the note and saves the intake; invalid targets retain it.
 - `kt-actions-by-analysis-v1`: Dedicated action registry keyed by analysis ID that powers the action list card and owner audit trail.
 
-## Shared collaboration (first version)
+## Shared collaboration
 
-The **Collaboration** menu is available in every intake mode. It can create a shared session from the complete state returned by `collectAppState()`, copy its secret link, show synchronization health, and leave the session. Opening a link containing `?workspace=<secret-token>` loads that workspace through the server API, applies the snapshot with `applyAppState()`, and continues keeping the normal `kt-intake-full-v2` browser copy as recovery. Edits still save locally immediately; remote writes are debounced, and clients poll for newer integer revisions about every 2.5 seconds while the tab is visible.
+The **Collaboration** menu is available in every intake mode. Starting a session opens a short identity form where the creator can set an optional team name and personal display name. A blank team name becomes **Shared intake**; a blank personal name receives a stable, friendly **Teammate N** label. Opening a link containing `?workspace=<secret-token>` loads that workspace through the server API, applies the snapshot with `applyAppState()`, then asks the visitor how they would like to appear before registering them as present. The shared-workspace strip beneath the header shows the team, current participants, the local person marked with “(you),” presence freshness, and an **Edit my name** action.
+
+Display names are stored as a device preference under `kt-collaboration-profile-v1` and can be changed from the workspace strip or Collaboration menu. This profile is deliberately excluded from `collectAppState()`, exported intake files, summaries, and `kt-intake-full-v2`. Names are visible to anyone with the secret link. Team names are fixed for the lifetime of the session in this version because secret-link workspaces do not yet have administrator roles.
 
 ### Secret-link security model
 
@@ -77,7 +79,7 @@ Possession of the full link grants read and edit access in v1. Share it only wit
 
 The existing Vercel project is **`intake`**, with the **`neon-intake`** integration expected to inject a server-side connection string. The API detects `DATABASE_URL` first, then the common integration aliases `POSTGRES_URL` and `NEON_DATABASE_URL`. Set one of those variables for Preview and Production environments; never expose it with a `VITE_`, `NEXT_PUBLIC_`, or other browser-visible prefix. `WORKSPACE_EXPIRY_DAYS` is optional and defaults to `30` when missing or invalid.
 
-`@neondatabase/serverless` is imported lazily by the Vercel Function, so static builds and browser modules never need database credentials. On the first database request, the server idempotently runs `CREATE TABLE IF NOT EXISTS collaboration_workspaces` and creates its expiry index. The table contains a generated ID, token hash, JSONB snapshot, positive integer revision, created/updated timestamps, and expiry timestamp. This automatic initialization means normal deployments do not require a person to edit the production database. A human must still confirm that the Neon integration exposes one supported connection variable to each desired Vercel environment and that the database role can create the table/index on first use.
+`@neondatabase/serverless` is imported lazily by the Vercel Function, so static builds and browser modules never need database credentials. On the first database request, the server idempotently creates or extends `collaboration_workspaces` and creates `collaboration_participants` plus their indexes. The workspace table contains a generated ID, token hash, JSONB snapshot, positive integer revision, team name, next friendly participant number, created/updated timestamps, and expiry timestamp. Participant rows contain the workspace ID, opaque browser participant UUID, display name, stable fallback number, join time, and last-seen time. This automatic initialization means normal deployments do not require a person to edit the production database. A human must still confirm that the Neon integration exposes one supported connection variable to each desired Vercel environment and that the database role can create and alter the tables/indexes on first use.
 
 ### Conflict recovery and two-window testing
 
@@ -85,18 +87,20 @@ Updates use optimistic revision control: each complete snapshot retains the revi
 
 While the page is visible and online, the client checks approximately every 900 ms with `afterRevision`; an unchanged revision produces an empty 204 response. GETs never overlap, and stale session responses are ignored. Network and 5xx failures use exponential backoff (up to 30 seconds) and return to the normal cadence after success. Mobile browsers may suspend timers, so visibility restoration, window focus, `pageshow` (including back-forward-cache restoration), and returning online trigger an immediate revision check and safe pending-save flush. **Sync now** performs the same safe flush and check without bypassing revision protection.
 
+Presence is deliberately independent of snapshot revisions: visible, online clients heartbeat `/api/workspaces/presence` about every 10 seconds, and the server returns participants seen within the last 30 seconds. Heartbeats, joining, leaving, and renaming never increment the intake revision and cannot themselves create snapshot conflicts. Hidden tabs suspend regular heartbeats; focus, visibility restoration, `pageshow`, reconnecting, and **Sync now** refresh them. Explicitly leaving removes the participant immediately when possible, while crashes and closed tabs age out automatically. During offline periods, the last participant list stays visible with a warning that presence may be out of date.
+
 The Collaboration menu reports `Shared · Revision …`, last successful sync age, pending saves, offline recovery, retries, and conflicts. If polling finds a newer revision while local work is queued or in flight, the browser does not apply it silently: it stores the local version under `kt-collaboration-recovery-v1`, shows **Conflict · Review required**, and offers **Load newest shared version** or **Export local recovery**. Loading shared state does not delete that recovery record; neither does leaving the session. Invalid (400/401) and missing or expired (404) sessions stop polling.
 
 To preview manually:
 
 1. Deploy or run an environment with a Neon connection variable and open the intake in window A.
 2. Enter a recognizable value, choose **Collaboration → Start shared session**, then copy the collaboration link.
-3. Open that link in window B and confirm the value loads and both indicators show **Synced**.
+3. Open that link in window B, choose a display name, and confirm the value loads, both indicators show **Synced**, and both names appear beneath the header.
 4. Edit in one window, stop typing, and confirm the other updates after the debounce plus a polling interval.
 5. To exercise a conflict, make edits in both windows before either receives the other's revision. Confirm one browser shows **Conflict**, then export its recovery before choosing whether to load the newest shared copy.
 6. Disconnect the network briefly to confirm **Offline**, reconnect, and verify polling resumes. Leave the session and confirm the local intake remains available.
 
-This is snapshot-based collaboration, not character-level co-editing. Concurrent edits to different fields can still conflict; there is no merge UI, user identity, audit trail, revocation, presence display, end-to-end encryption, or server-side deletion action in v1. Expired rows behave as missing (404); physical cleanup of expired rows can be added later without changing that behavior.
+This is snapshot-based collaboration, not character-level co-editing. Concurrent edits to different fields can still conflict; there is no merge UI, verified identity, audit trail, workspace role model, link revocation, end-to-end encryption, or server-side deletion action. Presence means only that a browser with the secret link has recently sent a heartbeat; it does not prove authorship or identity. Expired rows behave as missing (404); physical cleanup of expired rows can be added later without changing that behavior.
 
 ### Manual collaboration checks
 
@@ -105,8 +109,11 @@ This is snapshot-based collaboration, not character-level co-editing. Concurrent
 3. On a phone, background the page, edit the workspace from the second browser, then return through the app switcher and browser Back/Forward navigation; confirm synchronization resumes without refresh.
 4. Disable networking, make an edit, confirm **Offline · Changes kept locally**, restore networking, and confirm the queued edit either saves at its expected revision or enters conflict.
 5. Select **Sync now** with and without a pending edit and confirm requests remain serialized and the displayed revision advances.
+6. Join with a blank name and confirm a stable **Teammate N** label appears in both windows, then rename it and confirm no snapshot revision is created.
+7. Close a participating tab without leaving and confirm it ages out of the participant list after approximately 30 seconds.
 
 - `kt-collaboration-recovery-v1`: A conflict-only local recovery envelope containing the losing snapshot and capture time; it is intentionally separate from the normal intake key.
+- `kt-collaboration-profile-v1`: A local-only participant UUID and last display name used to prefill future shared-session joins; it is never included in intake snapshots or file exports.
 
 Need to know which module owns a given storage field? Jump to the [Storage-to-Module Responsibility Map](docs/storage-schema.appendix.md#storage-to-module-responsibility-map) for a field-by-field lookup tied to the DOM anchors and runtime files that persist each value.
 

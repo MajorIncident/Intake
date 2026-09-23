@@ -65,3 +65,19 @@ test('collaboration stays available while Major Incident-only UI regions are mar
   assert.ok(document.querySelector('[data-mode-section="incidentProof"]'), 'incident proof field should be mode controlled');
   assert.ok(document.querySelector('[data-mode-section="containment"]'), 'containment controls should be mode controlled');
 });
+
+test('shared collaboration exposes an accessible presence strip and identity dialog', () => {
+  const document = buildIndexDocument();
+  const workspace = document.getElementById('collaborationWorkspace');
+  const dialog = document.getElementById('collaborationDialog');
+
+  assert.ok(workspace?.hasAttribute('hidden'), 'presence strip starts hidden for local-only work');
+  assert.equal(workspace?.getAttribute('aria-label'), 'Shared workspace');
+  assert.equal(dialog?.getAttribute('role'), 'dialog');
+  assert.equal(dialog?.getAttribute('aria-modal'), 'true');
+  assert.ok(document.querySelector('label[for="collaborationTeamNameInput"]'));
+  assert.ok(document.querySelector('label[for="collaborationDisplayNameInput"]'));
+  assert.ok(document.getElementById('editCollaborationNameBtn'));
+  assert.match(INDEX_HTML, /<!-- \[feature:collaboration-presence\] start -->/);
+  assert.match(INDEX_HTML, /<!-- \[feature:collaboration-presence\] end -->/);
+});
