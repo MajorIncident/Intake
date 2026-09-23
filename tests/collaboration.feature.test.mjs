@@ -16,7 +16,7 @@ function reply(status, body) {
 }
 /** Builds a deterministic collaboration controller environment. @param {string} url Page URL. @returns {object} Environment. */
 function setup(url = 'https://intake.test/', initial = { local: true }) {
-  const dom = new JSDOM(`<!doctype html><body><div id="collaborationStatus"></div><div id="collaborationSyncDetail"></div><button id="syncCollaborationBtn"></button><button id="startCollaborationBtn"></button><button id="copyCollaborationLinkBtn"></button><button id="editCollaborationNameBtn"></button><button id="editCollaborationNameBannerBtn"></button><button id="leaveCollaborationBtn"></button><div id="collaborationConflictActions"></div><button id="loadSharedVersionBtn"></button><button id="exportRecoveryBtn"></button><section id="collaborationWorkspace" hidden><strong id="collaborationTeamName"></strong><span id="collaborationPeopleSummary"></span><span id="collaborationPresenceStale" hidden></span><ul id="collaborationParticipants"></ul></section><div id="collaborationDialogBackdrop" hidden></div><section id="collaborationDialog" hidden tabindex="-1"><h4 id="collaborationDialogTitle"></h4><p id="collaborationDialogDescription"></p><form id="collaborationDialogForm"><div id="collaborationTeamNameField"><input id="collaborationTeamNameInput"></div><input id="collaborationDisplayNameInput"><button id="collaborationDialogCancelBtn" type="button"></button><button id="collaborationDialogSubmitBtn" type="submit"></button></form></section><input id="field"></body>`, { url });
+  const dom = new JSDOM(`<!doctype html><head><title>KT Intake</title></head><body><div id="collaborationStatus"></div><div id="collaborationSyncDetail"></div><button id="syncCollaborationBtn"></button><button id="startCollaborationBtn"></button><button id="copyCollaborationLinkBtn"></button><button id="editCollaborationNameBtn"></button><button id="editCollaborationNameBannerBtn"></button><button id="editCollaborationTeamBtn"></button><button id="editCollaborationTeamBannerBtn"></button><button id="leaveCollaborationBtn"></button><div id="collaborationConflictActions"></div><button id="loadSharedVersionBtn"></button><button id="exportRecoveryBtn"></button><section id="collaborationWorkspace" hidden><strong id="collaborationTeamName"></strong><span id="collaborationPeopleSummary"></span><span id="collaborationPresenceStale" hidden></span><ul id="collaborationParticipants"></ul></section><div id="collaborationDialogBackdrop" hidden></div><section id="collaborationDialog" hidden tabindex="-1"><h4 id="collaborationDialogTitle"></h4><p id="collaborationDialogDescription"></p><form id="collaborationDialogForm"><div id="collaborationTeamNameField"><input id="collaborationTeamNameInput"></div><div id="collaborationDisplayNameField"><input id="collaborationDisplayNameInput"></div><button id="collaborationDialogCancelBtn" type="button"></button><button id="collaborationDialogSubmitBtn" type="submit"></button></form></section><input id="field"></body>`, { url });
   Object.defineProperty(dom.window.document, 'hidden', { configurable: true, value: false });
   const timers = []; const requests = []; const applyCalls = []; const localSaves = [];
   let current = initial;
@@ -60,6 +60,7 @@ test('starting a session sends team and profile metadata and renders server-assi
   assert.equal(env.dom.window.document.getElementById('collaborationTeamName').textContent, 'Payments team');
   assert.equal(env.dom.window.document.getElementById('collaborationParticipants').textContent, 'Teammate 1 (you)');
   assert.equal(env.dom.window.document.getElementById('collaborationWorkspace').hidden, false);
+  assert.equal(env.dom.window.document.title, 'Payments team · Teammate 1 · KT Intake');
   assert.equal(env.timers.some(timer => timer.delay === PRESENCE_DELAY_MS), true);
   assert.equal(JSON.parse(env.dom.window.localStorage.getItem(PROFILE_STORAGE_KEY)).displayName, 'Teammate 1');
 });
@@ -86,6 +87,31 @@ test('editing a name heartbeats presence but never queues an intake snapshot', a
   await env.controller.heartbeat('Jordan');
   assert.equal(env.requests.filter(([url]) => url === '/api/workspaces/presence').length, 2);
   assert.equal(env.requests.some(([, options]) => options.method === 'PUT' && JSON.parse(options.body).snapshot), false);
+});
+
+test('every collaborator is shown, the team can be renamed, and the problem statement drives the page title', async () => {
+  const env = setup(); await env.controller.init();
+  const people = Array.from({ length: 11 }, (_, index) => ({ id: `person-${index}`, displayName: `Person ${index + 1}` }));
+  setup.handler = async (url, options) => {
+    if (url === '/api/workspaces') { const sent = JSON.parse(options.body); people[0].id = sent.participant.id; return reply(201, { token, revision: 1, teamName: 'Initial team', self: people[0], participants: people }); }
+    if (url === '/api/workspaces/presence' && options.method === 'PATCH') return reply(200, { teamName: 'Customer recovery', participants: people });
+    return reply(204, {});
+  };
+  await env.controller.start({ requestedDisplayName: 'Person 1' });
+  assert.equal(env.dom.window.document.querySelectorAll('.collaboration-participant').length, 11, 'the strip expands to show every active participant');
+  const revision = env.controller.getState().revision;
+  env.dom.window.document.getElementById('editCollaborationTeamBannerBtn').click();
+  assert.equal(env.dom.window.document.getElementById('collaborationDialogTitle').textContent, 'Edit team name');
+  env.dom.window.document.getElementById('collaborationTeamNameInput').value = 'Customer recovery';
+  env.dom.window.document.getElementById('collaborationDialogForm').dispatchEvent(new env.dom.window.Event('submit', { bubbles: true, cancelable: true }));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(env.controller.getState().revision, revision, 'team metadata does not advance the intake revision');
+  assert.equal(env.dom.window.document.getElementById('collaborationTeamName').textContent, 'Customer recovery');
+  env.setCurrent({ pre: { oneLine: 'Checkout payments are failing' } });
+  env.controller.notifyLocalChange({ pre: { oneLine: 'Checkout payments are failing' } });
+  assert.equal(env.dom.window.document.title, 'Checkout payments are failing · Person 1, Person 2, Person 3, Person 4 +7 · KT Intake');
+  env.controller.leave();
+  assert.equal(env.dom.window.document.title, 'KT Intake');
 });
 
 test('presence requests coalesce, continue through snapshot conflicts, and unregister on leave', async () => {

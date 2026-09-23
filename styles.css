@@ -1910,10 +1910,11 @@ textarea.tableta.tableta--muted:focus{
 .collaboration-workspace__summary{display:flex; align-items:center; flex-wrap:wrap; gap:7px; margin-bottom:8px; color:var(--muted); font-size:12px; font-weight:700;}
 .collaboration-workspace__presence-dot{width:8px; height:8px; border-radius:50%; background:#248a3d; box-shadow:0 0 0 3px rgba(36,138,61,.12);}
 .collaboration-workspace__stale{color:#9a6700; font-weight:600;}
-.collaboration-participants{display:flex; align-items:center; gap:7px; margin:0; padding:0; overflow-x:auto; list-style:none; scrollbar-width:thin;}
+.collaboration-participants{display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin:0; padding:0; list-style:none;}
 .collaboration-participant{flex:0 0 auto; padding:5px 9px; border:1px solid var(--line); border-radius:999px; background:var(--panel-muted); color:var(--ink); font-size:12px; font-weight:700;}
 .collaboration-participant[data-self="true"]{border-color:rgba(0,122,255,.35); background:rgba(0,122,255,.1); color:var(--accent-strong);}
 .collaboration-workspace__edit{white-space:nowrap;}
+.collaboration-workspace__actions{display:flex; flex-direction:column; align-items:stretch; gap:8px;}
 .collaboration-dialog-backdrop{position:fixed; inset:0; z-index:210; background:rgba(12,18,32,.42);}
 .collaboration-dialog{position:fixed; z-index:220; top:50%; left:50%; width:min(460px,calc(100vw - 32px)); transform:translate(-50%,-50%);}
 .collaboration-dialog[hidden],.collaboration-dialog-backdrop[hidden]{display:none;}
@@ -1922,7 +1923,8 @@ textarea.tableta.tableta--muted:focus{
 @media (max-width:720px){
   .collaboration-workspace{margin:12px 12px 20px; padding:16px; grid-template-columns:1fr auto; gap:14px;}
   .collaboration-workspace__people{grid-column:1 / -1; grid-row:2;}
-  .collaboration-workspace__edit{grid-column:2; grid-row:1; padding:7px 10px;}
+  .collaboration-workspace__actions{grid-column:2; grid-row:1;}
+  .collaboration-workspace__edit{padding:7px 10px;}
 }
 .menu-item:disabled{cursor:not-allowed;opacity:.5;}
 .action-dialog-backdrop{

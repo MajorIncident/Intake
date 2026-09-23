@@ -68,6 +68,7 @@ Anchors present:
           <button type="button" class="menu-item" id="startCollaborationBtn" role="menuitem"><span class="menu-item__label">Start shared session</span></button>
           <button type="button" class="menu-item" id="copyCollaborationLinkBtn" role="menuitem" disabled><span class="menu-item__label">Copy collaboration link</span></button>
           <button type="button" class="menu-item" id="editCollaborationNameBtn" role="menuitem" data-persistence="local-only" disabled><span class="menu-item__label">Edit my name</span></button>
+          <button type="button" class="menu-item" id="editCollaborationTeamBtn" role="menuitem" data-persistence="local-only" disabled><span class="menu-item__label">Edit team name</span></button>
           <button type="button" class="menu-item" id="leaveCollaborationBtn" role="menuitem" disabled><span class="menu-item__label">Leave shared session</span></button>
           <div class="collaboration-conflict" id="collaborationConflictActions" hidden>
             <p>A newer shared revision exists. Your local version is preserved for recovery.</p>
@@ -271,7 +272,10 @@ Anchors present:
       </div>
       <ul class="collaboration-participants" id="collaborationParticipants" aria-label="People currently in this workspace"></ul>
     </div>
-    <button type="button" class="btn-secondary collaboration-workspace__edit" id="editCollaborationNameBannerBtn" data-persistence="local-only">Edit my name</button>
+    <div class="collaboration-workspace__actions">
+      <button type="button" class="btn-secondary collaboration-workspace__edit" id="editCollaborationNameBannerBtn" data-persistence="local-only">Edit my name</button>
+      <button type="button" class="btn-secondary collaboration-workspace__edit" id="editCollaborationTeamBannerBtn" data-persistence="local-only">Edit team</button>
+    </div>
   </section>
 
   <div class="collaboration-dialog-backdrop" id="collaborationDialogBackdrop" hidden></div>
@@ -287,7 +291,7 @@ Anchors present:
           <input id="collaborationTeamNameInput" type="text" maxlength="80" placeholder="Payments incident team" autocomplete="organization" data-persistence="local-only" data-summary="exclude" />
           <p class="field-hint" data-persistence="local-only" data-summary="exclude">Shown at the top of the shared workspace. The default is “Shared intake.”</p>
         </div>
-        <div class="field" data-persistence="local-only" data-summary="exclude">
+        <div class="field" id="collaborationDisplayNameField" data-persistence="local-only" data-summary="exclude">
           <label for="collaborationDisplayNameInput" data-persistence="local-only">Your name <span class="subtle">(optional)</span></label>
           <input id="collaborationDisplayNameInput" type="text" maxlength="60" placeholder="Sam" autocomplete="name" data-persistence="local-only" data-summary="exclude" />
           <p class="field-hint" data-persistence="local-only" data-summary="exclude">Visible to anyone with this collaboration link. Leave blank to use a friendly Teammate number.</p>

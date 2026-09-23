@@ -1,6 +1,6 @@
 /**
  * @module collaboration
- * @description Owns the [feature:collaboration] menu, lifecycle-aware whole-snapshot synchronization, diagnostics, and `kt-collaboration-recovery-v1` recovery storage.
+ * @description Owns the [feature:collaboration] menu and presence strip, editable workspace identity, shared tab title, lifecycle-aware whole-snapshot synchronization, diagnostics, and recovery storage.
  */
 
 /** Local-only conflict recovery storage key. @type {string} */
@@ -33,6 +33,7 @@ export function createCollaborationController({
   let lastSnapshot = null; let conflictCount = 0; let terminalStatus = null; let initialized = false; let destroyed = false;
   let teamName = 'Shared intake'; let participants = []; let self = null; let joinedPresence = false;
   let presenceTimer = null; let inFlightPresence = null; let dialogMode = null; let dialogReturnFocus = null; let dialogFocusTimer = null;
+  let baseDocumentTitle = documentRef?.title || 'KT Intake'; let lastCollaborationTitle = '';
   const activeLocation = location || documentRef?.location;
   const activeHistory = history || documentRef?.defaultView?.history;
   const element = id => documentRef?.getElementById(id) || null;
@@ -71,22 +72,36 @@ export function createCollaborationController({
     const detail = element('collaborationSyncDetail'); if (detail) detail.textContent = relativeSync();
     const sync = element('syncCollaborationBtn'); if (sync) sync.disabled = !token || conflicted;
   };
-  const renderPresence = ({ stale = false } = {}) => {
+  /** Reflects the active problem and participant roster in the browser-tab title. @param {object} [snapshot] Current intake snapshot. @returns {void} */
+  const renderDocumentTitle = snapshot => {
+    if (!documentRef) return;
+    if (!token) { documentRef.title = baseDocumentTitle; lastCollaborationTitle = ''; return; }
+    let state = snapshot;
+    if (!state) { try { state = collect(); } catch { state = {}; } }
+    const problem = String(state?.pre?.oneLine || '').trim().replace(/\s+/g, ' ');
+    const subject = (problem || teamName || 'Shared intake').slice(0, 70);
+    const visibleNames = participants.slice(0, 4).map(participant => participant.displayName);
+    const remainder = participants.length - visibleNames.length;
+    const memberLabel = visibleNames.length ? `${visibleNames.join(', ')}${remainder > 0 ? ` +${remainder}` : ''}` : teamName;
+    lastCollaborationTitle = `${subject} · ${memberLabel} · KT Intake`;
+    documentRef.title = lastCollaborationTitle;
+  };
+  const renderPresence = ({ stale = false, snapshot } = {}) => {
     const workspace = element('collaborationWorkspace');
     if (workspace) workspace.hidden = !token;
     const team = element('collaborationTeamName'); if (team) team.textContent = teamName || 'Shared intake';
     const list = element('collaborationParticipants');
     if (list) {
       list.replaceChildren();
-      participants.slice(0, 8).forEach(participant => {
+      participants.forEach(participant => {
         const item = documentRef.createElement('li'); item.className = 'collaboration-participant';
         const isSelf = participant.id === self?.id; item.dataset.self = String(isSelf);
         item.textContent = `${participant.displayName}${isSelf ? ' (you)' : ''}`; list.append(item);
       });
-      if (participants.length > 8) { const more = documentRef.createElement('li'); more.className = 'collaboration-participant'; more.textContent = `+${participants.length - 8} more`; list.append(more); }
     }
     const summary = element('collaborationPeopleSummary'); if (summary) summary.textContent = `${participants.length} ${participants.length === 1 ? 'person' : 'people'} here`;
     const staleLabel = element('collaborationPresenceStale'); if (staleLabel) staleLabel.hidden = !stale;
+    renderDocumentTitle(snapshot);
   };
   const acceptPresence = body => {
     if (!body) return;
@@ -100,6 +115,7 @@ export function createCollaborationController({
     if (element('copyCollaborationLinkBtn')) element('copyCollaborationLinkBtn').disabled = !token;
     if (element('leaveCollaborationBtn')) element('leaveCollaborationBtn').disabled = !token;
     if (element('editCollaborationNameBtn')) element('editCollaborationNameBtn').disabled = !joinedPresence;
+    if (element('editCollaborationTeamBtn')) element('editCollaborationTeamBtn').disabled = !joinedPresence;
     if (element('collaborationConflictActions')) element('collaborationConflictActions').hidden = !conflicted;
     renderStatus(token ? 'Synced' : 'Local only'); renderPresence({ stale: !online() });
   };
@@ -138,6 +154,15 @@ export function createCollaborationController({
     inFlightPresence = operation;
     try { return await operation; } finally { if (inFlightPresence === operation) inFlightPresence = null; }
   }
+  /** Renames the shared team without changing the intake snapshot revision. @param {string} requestedTeamName New team name, or blank for the default. @returns {Promise<boolean>} Whether the team was renamed. */
+  async function renameTeam(requestedTeamName) {
+    if (!token || !joinedPresence || !online()) return false;
+    try {
+      const { response, body } = await request(PRESENCE_ENDPOINT, { method: 'PATCH', headers: authorizationHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ teamName: requestedTeamName }) });
+      if (!response.ok) { if (response.status >= 500) renderPresence({ stale: true }); else unavailable(response.status); return false; }
+      acceptPresence(body); return true;
+    } catch { renderPresence({ stale: true }); return false; }
+  }
 
   const closeDialog = () => {
     cancelTimeout(dialogFocusTimer); dialogFocusTimer = null;
@@ -148,15 +173,17 @@ export function createCollaborationController({
   const openDialog = mode => {
     const dialog = element('collaborationDialog'); if (!dialog) return false;
     dialogMode = mode; dialogReturnFocus = documentRef.activeElement;
-    const title = element('collaborationDialogTitle'); const description = element('collaborationDialogDescription'); const teamField = element('collaborationTeamNameField'); const submit = element('collaborationDialogSubmitBtn');
-    if (title) title.textContent = mode === 'start' ? 'Start a shared session' : mode === 'join' ? `Join ${teamName}` : 'Edit your name';
-    if (description) description.textContent = mode === 'start' ? 'Create a professional space for everyone working on this intake.' : mode === 'join' ? 'Choose how your name will appear to people in this shared workspace.' : 'Update how your name appears in this workspace.';
-    if (teamField) teamField.hidden = mode !== 'start';
-    if (submit) submit.textContent = mode === 'start' ? 'Start shared session' : mode === 'join' ? 'Join workspace' : 'Save name';
+    const title = element('collaborationDialogTitle'); const description = element('collaborationDialogDescription'); const teamField = element('collaborationTeamNameField'); const displayNameField = element('collaborationDisplayNameField'); const submit = element('collaborationDialogSubmitBtn');
+    const editingTeam = mode === 'edit-team';
+    if (title) title.textContent = mode === 'start' ? 'Start a shared session' : mode === 'join' ? `Join ${teamName}` : editingTeam ? 'Edit team name' : 'Edit your name';
+    if (description) description.textContent = mode === 'start' ? 'Create a professional space for everyone working on this intake.' : mode === 'join' ? 'Choose how your name will appear to people in this shared workspace.' : editingTeam ? 'Choose the shared name everyone will see for this workspace.' : 'Update how your name appears in this workspace.';
+    if (teamField) teamField.hidden = !['start', 'edit-team'].includes(mode);
+    if (displayNameField) displayNameField.hidden = editingTeam;
+    if (submit) submit.textContent = mode === 'start' ? 'Start shared session' : mode === 'join' ? 'Join workspace' : editingTeam ? 'Save team name' : 'Save name';
     const teamInput = element('collaborationTeamNameInput'); if (teamInput) teamInput.value = mode === 'start' ? '' : teamName;
     const nameInput = element('collaborationDisplayNameInput'); if (nameInput) nameInput.value = profile.displayName.startsWith('Teammate ') ? '' : profile.displayName;
     dialog.hidden = false; const backdrop = element('collaborationDialogBackdrop'); if (backdrop) backdrop.hidden = false;
-    documentRef?.body?.classList.add('dialog-open'); dialogFocusTimer = scheduleTimeout(() => (mode === 'start' ? teamInput : nameInput)?.focus(), 0); return true;
+    documentRef?.body?.classList.add('dialog-open'); dialogFocusTimer = scheduleTimeout(() => (['start', 'edit-team'].includes(mode) ? teamInput : nameInput)?.focus(), 0); return true;
   };
   const preserveConflict = snapshot => {
     cancelTimeout(saveTimer); pendingSave = null;
@@ -193,7 +220,7 @@ export function createCollaborationController({
         if (response.status === 204) { markSuccess(); return false; }
         if (response.status === 409) preserveConflict(collect());
         else if (!response.ok) unavailable(response.status);
-        else { teamName = body.teamName || body.team_name || teamName; renderPresence(); const applied = applyIncoming(body); if (!conflicted) { revision = Math.max(revision, body.revision); markSuccess(); } return applied; }
+        else { teamName = body.teamName || body.team_name || teamName; const applied = applyIncoming(body); renderPresence({ snapshot: body.snapshot }); if (!conflicted) { revision = Math.max(revision, body.revision); markSuccess(); } return applied; }
       } catch { if (epoch === sessionEpoch && token) markRetry(true); }
       finally { emitDiagnostic('GET', started); }
       return false;
@@ -228,6 +255,7 @@ export function createCollaborationController({
     }
   }
   const notifyLocalChange = (snapshot, { immediate = false } = {}) => {
+    if (token) { if (documentRef?.title !== lastCollaborationTitle) baseDocumentTitle = documentRef.title; renderPresence({ stale: !online(), snapshot }); }
     if (!token || applyingRemote || conflicted || pollingStopped) return;
     pendingSave = { snapshot, expectedRevision: revision, changedSections: changedSections(snapshot) }; cancelTimeout(saveTimer); renderStatus('Saving');
     if (!inFlightSave) saveTimer = scheduleTimeout(flushSave, immediate ? 0 : SAVE_DELAY_MS);
@@ -277,7 +305,7 @@ export function createCollaborationController({
   const init = () => {
     if (initialized || destroyed) return Promise.resolve(false);
     initialized = true;
-    const openStart = () => openDialog('start'); const openEdit = () => openDialog('edit');
+    const openStart = () => openDialog('start'); const openEdit = () => openDialog('edit'); const openTeamEdit = () => openDialog('edit-team');
     const submitDialog = async event => {
       event.preventDefault(); const mode = dialogMode; const requestedTeamName = element('collaborationTeamNameInput')?.value || ''; const requestedDisplayName = element('collaborationDisplayNameInput')?.value || '';
       const submit = element('collaborationDialogSubmitBtn'); if (submit) submit.disabled = true;
@@ -285,8 +313,9 @@ export function createCollaborationController({
       if (mode === 'start') successful = await start({ requestedTeamName, requestedDisplayName });
       else if (mode === 'join') successful = await joinPresence(requestedDisplayName);
       else if (mode === 'edit') successful = await heartbeat(requestedDisplayName);
+      else if (mode === 'edit-team') successful = await renameTeam(requestedTeamName);
       if (submit) submit.disabled = false;
-      if (successful) { closeDialog(); if (mode === 'edit') toast('Your collaboration name was updated.'); }
+      if (successful) { closeDialog(); if (mode === 'edit') toast('Your collaboration name was updated.'); else if (mode === 'edit-team') toast('The team name was updated.'); }
     };
     const cancelDialog = () => { if (dialogMode === 'join') leave(); else closeDialog(); };
     const handleDialogKeydown = event => {
@@ -298,8 +327,8 @@ export function createCollaborationController({
       if (event.shiftKey && documentRef.activeElement === first) { event.preventDefault(); last.focus(); }
       else if (!event.shiftKey && documentRef.activeElement === last) { event.preventDefault(); first.focus(); }
     };
-    element('startCollaborationBtn')?.addEventListener('click', openStart); element('copyCollaborationLinkBtn')?.addEventListener('click', copyLink); element('editCollaborationNameBtn')?.addEventListener('click', openEdit); element('editCollaborationNameBannerBtn')?.addEventListener('click', openEdit); element('leaveCollaborationBtn')?.addEventListener('click', leave); element('syncCollaborationBtn')?.addEventListener('click', syncNow); element('loadSharedVersionBtn')?.addEventListener('click', loadNewest); element('exportRecoveryBtn')?.addEventListener('click', exportRecovery); element('collaborationDialogForm')?.addEventListener('submit', submitDialog); element('collaborationDialogCancelBtn')?.addEventListener('click', cancelDialog); element('collaborationDialogBackdrop')?.addEventListener('click', cancelDialog); element('collaborationDialog')?.addEventListener('keydown', handleDialogKeydown);
-    controllerListeners = { openStart, openEdit, submitDialog, cancelDialog, handleDialogKeydown };
+    element('startCollaborationBtn')?.addEventListener('click', openStart); element('copyCollaborationLinkBtn')?.addEventListener('click', copyLink); element('editCollaborationNameBtn')?.addEventListener('click', openEdit); element('editCollaborationNameBannerBtn')?.addEventListener('click', openEdit); element('editCollaborationTeamBtn')?.addEventListener('click', openTeamEdit); element('editCollaborationTeamBannerBtn')?.addEventListener('click', openTeamEdit); element('leaveCollaborationBtn')?.addEventListener('click', leave); element('syncCollaborationBtn')?.addEventListener('click', syncNow); element('loadSharedVersionBtn')?.addEventListener('click', loadNewest); element('exportRecoveryBtn')?.addEventListener('click', exportRecovery); element('collaborationDialogForm')?.addEventListener('submit', submitDialog); element('collaborationDialogCancelBtn')?.addEventListener('click', cancelDialog); element('collaborationDialogBackdrop')?.addEventListener('click', cancelDialog); element('collaborationDialog')?.addEventListener('keydown', handleDialogKeydown);
+    controllerListeners = { openStart, openEdit, openTeamEdit, submitDialog, cancelDialog, handleDialogKeydown };
     documentRef?.addEventListener('visibilitychange', handleVisibilityChange);
     documentRef?.addEventListener('focusout', handleFocusOut);
     windowRef?.addEventListener('focus', handleFocus); windowRef?.addEventListener('pageshow', handlePageShow); windowRef?.addEventListener('online', handleOnline); windowRef?.addEventListener('offline', handleOffline);
@@ -314,12 +343,12 @@ export function createCollaborationController({
     cancelTimeout(saveTimer); cancelTimeout(pollTimer); cancelTimeout(presenceTimer); cancelTimeout(statusTimer); cancelTimeout(dialogFocusTimer);
     saveTimer = null; pollTimer = null; presenceTimer = null; statusTimer = null; pendingSave = null; inFlightGet = null; inFlightPresence = null;
     resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSave = null; inFlightSavePromise = null;
-    if (controllerListeners) { const { openStart, openEdit, submitDialog, cancelDialog, handleDialogKeydown } = controllerListeners; element('startCollaborationBtn')?.removeEventListener('click', openStart); element('editCollaborationNameBtn')?.removeEventListener('click', openEdit); element('editCollaborationNameBannerBtn')?.removeEventListener('click', openEdit); element('collaborationDialogForm')?.removeEventListener('submit', submitDialog); element('collaborationDialogCancelBtn')?.removeEventListener('click', cancelDialog); element('collaborationDialogBackdrop')?.removeEventListener('click', cancelDialog); element('collaborationDialog')?.removeEventListener('keydown', handleDialogKeydown); }
+    if (controllerListeners) { const { openStart, openEdit, openTeamEdit, submitDialog, cancelDialog, handleDialogKeydown } = controllerListeners; element('startCollaborationBtn')?.removeEventListener('click', openStart); element('editCollaborationNameBtn')?.removeEventListener('click', openEdit); element('editCollaborationNameBannerBtn')?.removeEventListener('click', openEdit); element('editCollaborationTeamBtn')?.removeEventListener('click', openTeamEdit); element('editCollaborationTeamBannerBtn')?.removeEventListener('click', openTeamEdit); element('collaborationDialogForm')?.removeEventListener('submit', submitDialog); element('collaborationDialogCancelBtn')?.removeEventListener('click', cancelDialog); element('collaborationDialogBackdrop')?.removeEventListener('click', cancelDialog); element('collaborationDialog')?.removeEventListener('keydown', handleDialogKeydown); }
     element('copyCollaborationLinkBtn')?.removeEventListener('click', copyLink); element('leaveCollaborationBtn')?.removeEventListener('click', leave); element('syncCollaborationBtn')?.removeEventListener('click', syncNow); element('loadSharedVersionBtn')?.removeEventListener('click', loadNewest); element('exportRecoveryBtn')?.removeEventListener('click', exportRecovery);
     documentRef?.removeEventListener('visibilitychange', handleVisibilityChange); documentRef?.removeEventListener('focusout', handleFocusOut);
     windowRef?.removeEventListener('focus', handleFocus); windowRef?.removeEventListener('pageshow', handlePageShow); windowRef?.removeEventListener('online', handleOnline); windowRef?.removeEventListener('offline', handleOffline);
   };
-  return { init, destroy, start, leave, loadNewest, poll, flushSave, syncNow, heartbeat, joinPresence, notifyLocalChange, copyLink, exportRecovery, getState: () => ({ token, revision, applyingRemote, conflicted, pollingStopped, pendingSave, inFlightSave, inFlightGet, inFlightPresence, sessionEpoch, retryDelay, retrying, lastSuccessfulSync, terminalStatus, destroyed, teamName, participants, self, joinedPresence, profile }) };
+  return { init, destroy, start, leave, loadNewest, poll, flushSave, syncNow, heartbeat, renameTeam, joinPresence, notifyLocalChange, copyLink, exportRecovery, getState: () => ({ token, revision, applyingRemote, conflicted, pollingStopped, pendingSave, inFlightSave, inFlightGet, inFlightPresence, sessionEpoch, retryDelay, retrying, lastSuccessfulSync, terminalStatus, destroyed, teamName, participants, self, joinedPresence, profile }) };
 }
 
 /** Initializes collaboration. @param {object} options Dependencies. @returns {object} Controller. */

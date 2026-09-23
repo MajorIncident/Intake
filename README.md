@@ -67,9 +67,11 @@ Use **View → Notes workspace** or **Alt+N** to open or collapse the persistent
 
 ## Shared collaboration
 
-The **Collaboration** menu is available in every intake mode. Starting a session opens a short identity form where the creator can set an optional team name and personal display name. A blank team name becomes **Shared intake**; a blank personal name receives a stable, friendly **Teammate N** label. Opening a link containing `?workspace=<secret-token>` loads that workspace through the server API, applies the snapshot with `applyAppState()`, then asks the visitor how they would like to appear before registering them as present. The shared-workspace strip beneath the header shows the team, current participants, the local person marked with “(you),” presence freshness, and an **Edit my name** action.
+The **Collaboration** menu is available in every intake mode. Starting a session opens a short identity form where the creator can set an optional team name and personal display name. A blank team name becomes **Shared intake**; a blank personal name receives a stable, friendly **Teammate N** label. Opening a link containing `?workspace=<secret-token>` loads that workspace through the server API, applies the snapshot with `applyAppState()`, then asks the visitor how they would like to appear before registering them as present. The shared-workspace strip beneath the header shows the team, every current participant, the local person marked with “(you),” presence freshness, and actions for editing personal and team names. Participant chips wrap onto additional rows so the workspace grows to fit the active room instead of hiding people in a horizontal scroller.
 
-Display names are stored as a device preference under `kt-collaboration-profile-v1` and can be changed from the workspace strip or Collaboration menu. This profile is deliberately excluded from `collectAppState()`, exported intake files, summaries, and `kt-intake-full-v2`. Names are visible to anyone with the secret link. Team names are fixed for the lifetime of the session in this version because secret-link workspaces do not yet have administrator roles.
+Display names are stored as a device preference under `kt-collaboration-profile-v1` and can be changed from the workspace strip or Collaboration menu. This profile is deliberately excluded from `collectAppState()`, exported intake files, summaries, and `kt-intake-full-v2`. Names are visible to anyone with the secret link. Any active collaborator can also edit the shared team name because secret-link workspaces grant equal edit capability and do not have administrator roles. Team-name changes are workspace metadata and do not advance the intake snapshot revision.
+
+While a shared session is active, the browser-tab title combines the current problem statement with up to four active participant names and a remaining-member count. This makes the relevant incident and room visible when moving between tabs. Leaving the shared session restores the normal intake title.
 
 ### Secret-link security model
 
@@ -111,6 +113,7 @@ This is snapshot-based collaboration, not character-level co-editing. Concurrent
 5. Select **Sync now** with and without a pending edit and confirm requests remain serialized and the displayed revision advances.
 6. Join with a blank name and confirm a stable **Teammate N** label appears in both windows, then rename it and confirm no snapshot revision is created.
 7. Close a participating tab without leaving and confirm it ages out of the participant list after approximately 30 seconds.
+8. Rename the team and confirm all participant chips remain visible, the browser-tab title includes the problem statement and members, and the intake revision does not change.
 
 - `kt-collaboration-recovery-v1`: A conflict-only local recovery envelope containing the losing snapshot and capture time; it is intentionally separate from the normal intake key.
 - `kt-collaboration-profile-v1`: A local-only participant UUID and last display name used to prefill future shared-session joins; it is never included in intake snapshots or file exports.

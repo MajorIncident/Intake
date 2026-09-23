@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
 const INDEX_HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const STYLES = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
 
 /**
  * Builds a static DOM from index.html without executing module scripts.
@@ -78,6 +79,9 @@ test('shared collaboration exposes an accessible presence strip and identity dia
   assert.ok(document.querySelector('label[for="collaborationTeamNameInput"]'));
   assert.ok(document.querySelector('label[for="collaborationDisplayNameInput"]'));
   assert.ok(document.getElementById('editCollaborationNameBtn'));
+  assert.ok(document.getElementById('editCollaborationTeamBtn'));
+  assert.ok(document.getElementById('editCollaborationTeamBannerBtn'));
+  assert.match(STYLES, /\.collaboration-participants\{[^}]*flex-wrap:wrap/);
   assert.match(INDEX_HTML, /<!-- \[feature:collaboration-presence\] start -->/);
   assert.match(INDEX_HTML, /<!-- \[feature:collaboration-presence\] end -->/);
 });

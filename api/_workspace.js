@@ -155,6 +155,19 @@ async function initializeRepository() {
         ORDER BY joined_at, participant_id`;
       return { teamName: workspaces[0].team_name, participants };
     },
+    async renameWorkspace(tokenHash, requestedTeamName) {
+      const workspaces = await sql`UPDATE collaboration_workspaces
+        SET team_name = ${requestedTeamName || 'Shared intake'}, updated_at = NOW()
+        WHERE token_hash = ${tokenHash} AND expires_at > NOW()
+        RETURNING id, COALESCE(team_name, 'Shared intake') AS team_name`;
+      if (!workspaces[0]) return null;
+      const participants = await sql`SELECT participant_id AS id, display_name AS "displayName", last_seen_at AS "lastSeenAt"
+        FROM collaboration_participants
+        WHERE workspace_id = ${workspaces[0].id}
+          AND last_seen_at >= NOW() - (${PRESENCE_WINDOW_SECONDS} * INTERVAL '1 second')
+        ORDER BY joined_at, participant_id`;
+      return { teamName: workspaces[0].team_name, participants };
+    },
     async removePresence(tokenHash, participantId) {
       const rows = await sql`DELETE FROM collaboration_participants p
         USING collaboration_workspaces w
@@ -207,18 +220,22 @@ export function presenceHandler({ getRepository = getWorkspaceRepository } = {})
     if (authorization === undefined) return send(res, 401, { error: 'Authorization required.' });
     const token = parseAuthorizationToken(authorization);
     if (!token) return send(res, 400, { error: 'Invalid authorization.' });
-    if (!['GET', 'PUT', 'DELETE'].includes(req.method)) return methodNotAllowed(res, 'GET, PUT, DELETE');
+    if (!['GET', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return methodNotAllowed(res, 'GET, PUT, PATCH, DELETE');
     const participantId = req.body?.participantId;
-    if (req.method !== 'GET' && !validateParticipantId(participantId)) return send(res, 400, { error: 'Invalid participant.' });
+    if (!['GET', 'PATCH'].includes(req.method) && !validateParticipantId(participantId)) return send(res, 400, { error: 'Invalid participant.' });
     const displayName = req.method === 'PUT' ? normalizeCollaborationName(req.body?.displayName, DISPLAY_NAME_MAX_LENGTH) : '';
+    const teamName = req.method === 'PATCH' ? normalizeCollaborationName(req.body?.teamName, TEAM_NAME_MAX_LENGTH) : '';
     if (displayName === null) return send(res, 400, { error: 'Invalid display name.' });
+    if (teamName === null) return send(res, 400, { error: 'Invalid team name.' });
     try {
       const repository = await getRepository();
       const result = req.method === 'GET'
         ? await repository.listPresence(hashWorkspaceToken(token))
         : req.method === 'PUT'
           ? await repository.upsertPresence(hashWorkspaceToken(token), participantId, displayName)
-          : await repository.removePresence(hashWorkspaceToken(token), participantId);
+          : req.method === 'PATCH'
+            ? await repository.renameWorkspace(hashWorkspaceToken(token), teamName || 'Shared intake')
+            : await repository.removePresence(hashWorkspaceToken(token), participantId);
       if (result === null) return send(res, 404, { error: 'Workspace not found.' });
       return req.method === 'DELETE' ? send(res, 200, { removed: result }) : send(res, 200, result);
     } catch { return send(res, 500, { error: 'Unable to update presence.' }); }

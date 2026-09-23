@@ -54,19 +54,21 @@ test('create rejects malformed profiles before repository access', async () => {
   assert.equal(res.statusCode, 400); assert.equal(accessed, false);
 });
 
-test('presence registers, lists, renames, and removes participants without snapshot revisions', async () => {
+test('presence registers, lists, renames people and teams, and removes participants without snapshot revisions', async () => {
   const participantId = '11111111-1111-4111-8111-111111111111'; const calls = [];
   const repository = {
     upsertPresence: async (_hash, id, name) => { calls.push(['put', id, name]); return { teamName: 'Ops', self: { id, displayName: name || 'Teammate 1' }, participants: [] }; },
     listPresence: async () => { calls.push(['get']); return { teamName: 'Ops', participants: [] }; },
+    renameWorkspace: async (_hash, name) => { calls.push(['patch', name]); return { teamName: name, participants: [] }; },
     removePresence: async (_hash, id) => { calls.push(['delete', id]); return true; }
   };
   const handler = presenceHandler({ getRepository: async () => repository }); const authorization = `Bearer ${generateWorkspaceToken()}`;
   const put = response(); await handler({ method: 'PUT', headers: { authorization }, body: { participantId, displayName: '  Alex  ' } }, put);
   const get = response(); await handler({ method: 'GET', headers: { authorization } }, get);
+  const patch = response(); await handler({ method: 'PATCH', headers: { authorization }, body: { teamName: '  Recovery   team ' } }, patch);
   const remove = response(); await handler({ method: 'DELETE', headers: { authorization }, body: { participantId } }, remove);
-  assert.deepEqual(calls, [['put', participantId, 'Alex'], ['get'], ['delete', participantId]]);
-  assert.equal(put.body.self.displayName, 'Alex'); assert.equal(get.body.teamName, 'Ops'); assert.deepEqual(remove.body, { removed: true });
+  assert.deepEqual(calls, [['put', participantId, 'Alex'], ['get'], ['patch', 'Recovery team'], ['delete', participantId]]);
+  assert.equal(put.body.self.displayName, 'Alex'); assert.equal(get.body.teamName, 'Ops'); assert.equal(patch.body.teamName, 'Recovery team'); assert.deepEqual(remove.body, { removed: true });
   assert.equal('revision' in put.body, false);
 });
 
