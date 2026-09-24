@@ -2003,7 +2003,8 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
       const active = isValidFindingMode(newMode) ? newMode : '';
       const priorMode = findingMode(getCauseFinding(cause, rowKey));
       const priorStarter = CAUSE_FINDING_NOTE_STARTERS[priorMode] || '';
-      const canReplaceNote = !priorMode || noteInput.value === priorStarter;
+      const noteRetainsPriorStarter = Boolean(priorStarter) && noteInput.value.startsWith(priorStarter);
+      const canReplaceNote = !priorMode || noteRetainsPriorStarter;
       options.forEach(option => {
         const isSelected = option.mode === active;
         option.input.checked = isSelected;
@@ -2020,8 +2021,12 @@ function buildCauseTestPanel(cause, progressChip, statusEl, card){
         noteField.hidden = false;
         if(!opts.silent && active !== priorMode && canReplaceNote){
           const starter = CAUSE_FINDING_NOTE_STARTERS[active] || '';
-          noteInput.value = starter;
-          setCauseFindingValue(cause, rowKey, 'note', starter);
+          const userExplanation = noteRetainsPriorStarter
+            ? noteInput.value.slice(priorStarter.length)
+            : '';
+          const updatedNote = `${starter}${userExplanation}`;
+          noteInput.value = updatedNote;
+          setCauseFindingValue(cause, rowKey, 'note', updatedNote);
         }
       }else{
         noteLabel.textContent = '';
