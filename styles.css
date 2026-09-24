@@ -1913,6 +1913,12 @@ textarea.tableta.tableta--muted:focus{
 .collaboration-participants{display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin:0; padding:0; list-style:none;}
 .collaboration-participant{flex:0 0 auto; padding:5px 9px; border:1px solid var(--line); border-radius:999px; background:var(--panel-muted); color:var(--ink); font-size:12px; font-weight:700;}
 .collaboration-participant[data-self="true"]{border-color:rgba(0,122,255,.35); background:rgba(0,122,255,.1); color:var(--accent-strong);}
+.is-collaboration-busy{border-color:var(--collaborator-color)!important; box-shadow:0 0 0 3px color-mix(in srgb,var(--collaborator-color) 18%,transparent)!important; transition:border-color var(--speed),box-shadow var(--speed);}
+.collaboration-editing-badge{position:absolute; z-index:4; top:8px; right:8px; display:inline-flex; align-items:center; gap:6px; max-width:calc(100% - 16px); padding:4px 8px; border:1px solid color-mix(in srgb,var(--collaborator-color) 35%,transparent); border-radius:999px; background:var(--panel-raised); box-shadow:var(--shadow-soft); color:var(--collaborator-color); font-size:11px; font-weight:800; line-height:1; pointer-events:none; white-space:nowrap;}
+.field:has(> .collaboration-editing-badge),td:has(> .collaboration-editing-badge),.cause-card:has(> .collaboration-editing-badge),.card:has(> .collaboration-editing-badge){position:relative;}
+.collaboration-editing-dots{display:inline-block; width:17px; overflow:hidden; letter-spacing:1px; animation:collaboration-dots 1.15s steps(4,end) infinite;}
+@keyframes collaboration-dots{0%{width:0}100%{width:17px}}
+@media (prefers-reduced-motion:reduce){.collaboration-editing-dots{animation:none;}}
 .collaboration-workspace__edit{white-space:nowrap;}
 .collaboration-workspace__actions{display:flex; flex-direction:column; align-items:stretch; gap:8px;}
 .collaboration-dialog-backdrop{position:fixed; inset:0; z-index:210; background:rgba(12,18,32,.42);}

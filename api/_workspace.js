@@ -8,6 +8,7 @@ export const MAX_SNAPSHOT_BYTES = 512 * 1024;
 export const TEAM_NAME_MAX_LENGTH = 80;
 export const DISPLAY_NAME_MAX_LENGTH = 60;
 export const PRESENCE_WINDOW_SECONDS = 30;
+export const EDITING_FIELD_MAX_LENGTH = 120;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const PARTICIPANT_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DEFAULT_EXPIRY_DAYS = 30;
@@ -41,6 +42,12 @@ export function normalizeCollaborationName(value, maximum) {
   if (typeof value !== 'string' || /[\u0000-\u001f\u007f]/.test(value)) return null;
   const normalized = value.trim().replace(/\s+/g, ' ');
   return normalized.length <= maximum ? normalized : null;
+}
+
+/** Normalizes a DOM field identifier used only for ephemeral editing presence. @param {unknown} value Candidate field ID. @returns {string|null} Safe ID, an empty string, or null. */
+export function normalizeEditingField(value) {
+  if (value === undefined || value === null || value === '') return '';
+  return typeof value === 'string' && value.length <= EDITING_FIELD_MAX_LENGTH && /^[A-Za-z][A-Za-z0-9_.:-]*$/.test(value) ? value : null;
 }
 
 /** Validates a browser-generated participant identifier. @param {unknown} value Candidate UUID. @returns {boolean} Whether valid. */
@@ -95,6 +102,8 @@ async function initializeRepository() {
     PRIMARY KEY (workspace_id, participant_id)
   )`;
   await sql`CREATE INDEX IF NOT EXISTS collaboration_participants_active_idx ON collaboration_participants (workspace_id, last_seen_at DESC)`;
+  await sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS editing_field VARCHAR(120)`;
+  await sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS editing_revision INTEGER`;
   return {
     async create(tokenHash, snapshot, expiryDays, teamName) {
       const rows = await sql`INSERT INTO collaboration_workspaces (token_hash, snapshot_json, expires_at, team_name)
@@ -116,7 +125,7 @@ async function initializeRepository() {
       const current = await sql`SELECT revision FROM collaboration_workspaces WHERE token_hash = ${tokenHash} AND expires_at > NOW()`;
       return current[0] ? { status: 'conflict', revision: current[0].revision } : { status: 'missing' };
     },
-    async upsertPresence(tokenHash, participantId, requestedName) {
+    async upsertPresence(tokenHash, participantId, requestedName, activity = {}) {
       const existing = await sql`SELECT w.id AS workspace_id, COALESCE(w.team_name, 'Shared intake') AS team_name,
           p.fallback_number
         FROM collaboration_workspaces w
@@ -137,7 +146,13 @@ async function initializeRepository() {
         VALUES (${existing[0].workspace_id}, ${participantId}::uuid, ${displayName}, ${fallbackNumber})
         ON CONFLICT (workspace_id, participant_id) DO UPDATE
         SET display_name = EXCLUDED.display_name, last_seen_at = NOW()`;
+      if (Object.hasOwn(activity, 'editingField')) {
+        await sql`UPDATE collaboration_participants
+          SET editing_field = ${activity.editingField || null}, editing_revision = ${activity.editingRevision || null}, last_seen_at = NOW()
+          WHERE workspace_id = ${existing[0].workspace_id} AND participant_id = ${participantId}::uuid`;
+      }
       const participants = await sql`SELECT participant_id AS id, display_name AS "displayName", last_seen_at AS "lastSeenAt"
+          , editing_field AS "editingField", editing_revision AS "editingRevision"
         FROM collaboration_participants
         WHERE workspace_id = ${existing[0].workspace_id}
           AND last_seen_at >= NOW() - (${PRESENCE_WINDOW_SECONDS} * INTERVAL '1 second')
@@ -148,7 +163,8 @@ async function initializeRepository() {
       const workspaces = await sql`SELECT id, COALESCE(team_name, 'Shared intake') AS team_name
         FROM collaboration_workspaces WHERE token_hash = ${tokenHash} AND expires_at > NOW()`;
       if (!workspaces[0]) return null;
-      const participants = await sql`SELECT participant_id AS id, display_name AS "displayName", last_seen_at AS "lastSeenAt"
+      const participants = await sql`SELECT participant_id AS id, display_name AS "displayName", last_seen_at AS "lastSeenAt",
+          editing_field AS "editingField", editing_revision AS "editingRevision"
         FROM collaboration_participants
         WHERE workspace_id = ${workspaces[0].id}
           AND last_seen_at >= NOW() - (${PRESENCE_WINDOW_SECONDS} * INTERVAL '1 second')
@@ -161,7 +177,8 @@ async function initializeRepository() {
         WHERE token_hash = ${tokenHash} AND expires_at > NOW()
         RETURNING id, COALESCE(team_name, 'Shared intake') AS team_name`;
       if (!workspaces[0]) return null;
-      const participants = await sql`SELECT participant_id AS id, display_name AS "displayName", last_seen_at AS "lastSeenAt"
+      const participants = await sql`SELECT participant_id AS id, display_name AS "displayName", last_seen_at AS "lastSeenAt",
+          editing_field AS "editingField", editing_revision AS "editingRevision"
         FROM collaboration_participants
         WHERE workspace_id = ${workspaces[0].id}
           AND last_seen_at >= NOW() - (${PRESENCE_WINDOW_SECONDS} * INTERVAL '1 second')
@@ -224,15 +241,22 @@ export function presenceHandler({ getRepository = getWorkspaceRepository } = {})
     const participantId = req.body?.participantId;
     if (!['GET', 'PATCH'].includes(req.method) && !validateParticipantId(participantId)) return send(res, 400, { error: 'Invalid participant.' });
     const displayName = req.method === 'PUT' ? normalizeCollaborationName(req.body?.displayName, DISPLAY_NAME_MAX_LENGTH) : '';
+    const editingField = req.method === 'PUT' && Object.hasOwn(req.body || {}, 'editingField')
+      ? normalizeEditingField(req.body.editingField)
+      : undefined;
+    const editingRevision = req.method === 'PUT' && req.body?.editingRevision !== undefined
+      ? Number(req.body.editingRevision)
+      : undefined;
     const teamName = req.method === 'PATCH' ? normalizeCollaborationName(req.body?.teamName, TEAM_NAME_MAX_LENGTH) : '';
     if (displayName === null) return send(res, 400, { error: 'Invalid display name.' });
+    if (editingField === null || (editingRevision !== undefined && (!Number.isSafeInteger(editingRevision) || editingRevision < 0))) return send(res, 400, { error: 'Invalid editing activity.' });
     if (teamName === null) return send(res, 400, { error: 'Invalid team name.' });
     try {
       const repository = await getRepository();
       const result = req.method === 'GET'
         ? await repository.listPresence(hashWorkspaceToken(token))
         : req.method === 'PUT'
-          ? await repository.upsertPresence(hashWorkspaceToken(token), participantId, displayName)
+          ? await repository.upsertPresence(hashWorkspaceToken(token), participantId, displayName, { ...(editingField !== undefined ? { editingField } : {}), ...(editingRevision !== undefined ? { editingRevision } : {}) })
           : req.method === 'PATCH'
             ? await repository.renameWorkspace(hashWorkspaceToken(token), teamName || 'Shared intake')
             : await repository.removePresence(hashWorkspaceToken(token), participantId);
