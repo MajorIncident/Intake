@@ -89,6 +89,45 @@ test('editing a name heartbeats presence but never queues an intake snapshot', a
   assert.equal(env.requests.some(([, options]) => options.method === 'PUT' && JSON.parse(options.body).snapshot), false);
 });
 
+test('remote editing presence identifies and color-codes a busy field with animated status', async () => {
+  const env = setup(`https://intake.test/?workspace=${token}`); await join(env);
+  const selfId = '11111111-1111-4111-8111-111111111111';
+  setup.handler = async () => reply(200, {
+    teamName: 'Response team', self: { id: selfId, displayName: 'Priya' },
+    participants: [
+      { id: selfId, displayName: 'Priya' },
+      { id: '22222222-2222-4222-8222-222222222222', displayName: 'Sam', editingField: 'field', editingRevision: 1 }
+    ]
+  });
+  assert.equal(await env.controller.joinPresence('Priya'), true);
+  const field = env.dom.window.document.getElementById('field');
+  const badge = env.dom.window.document.querySelector('.collaboration-editing-badge');
+  assert.equal(field.classList.contains('is-collaboration-busy'), true);
+  assert.equal(badge.textContent, 'Sam is editing•••');
+  assert.equal(badge.getAttribute('role'), 'status');
+
+  setup.handler = async () => reply(200, { teamName: 'Response team', self: { id: selfId, displayName: 'Priya' }, participants: [{ id: selfId, displayName: 'Priya' }] });
+  await env.controller.heartbeat();
+  assert.equal(field.classList.contains('is-collaboration-busy'), false);
+  assert.equal(env.dom.window.document.querySelector('.collaboration-editing-badge'), null);
+});
+
+test('local editing activity is published and cleared only after the snapshot save is acknowledged', async () => {
+  const env = setup(`https://intake.test/?workspace=${token}`); await join(env);
+  setup.handler = async (_url, options) => options.method === 'PUT' && JSON.parse(options.body).snapshot
+    ? reply(200, { revision: 2 })
+    : reply(200, { teamName: 'Response team', self: { id: env.controller.getState().profile.participantId, displayName: 'Priya' }, participants: [] });
+  await env.controller.joinPresence('Priya');
+  env.controller.notifyLocalChange({ text: 'working' }, { fieldId: 'field' });
+  await new Promise(resolve => setImmediate(resolve));
+  const activity = env.requests.map(([, options]) => options.body && JSON.parse(options.body)).find(body => body?.editingField === 'field');
+  assert.equal(activity.editingRevision, 1);
+  assert.equal(env.controller.getState().editingField, 'field');
+  await env.controller.flushSave(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(env.controller.getState().editingField, '');
+  assert.equal(env.requests.map(([, options]) => options.body && JSON.parse(options.body)).some(body => body?.editingField === '' && body?.editingRevision === 2), true);
+});
+
 test('every collaborator is shown, the team can be renamed, and the problem statement drives the page title', async () => {
   const env = setup(); await env.controller.init();
   const people = Array.from({ length: 11 }, (_, index) => ({ id: `person-${index}`, displayName: `Person ${index + 1}` }));

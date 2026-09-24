@@ -1,6 +1,6 @@
 /**
  * @module collaboration
- * @description Owns the [feature:collaboration] menu and presence strip, editable workspace identity, shared tab title, lifecycle-aware whole-snapshot synchronization, diagnostics, and recovery storage.
+ * @description Owns the [feature:collaboration] menu, participant presence and field-editing indicators, shared tab title, lifecycle-aware whole-snapshot synchronization, diagnostics, and recovery storage.
  */
 
 /** Local-only conflict recovery storage key. @type {string} */
@@ -10,7 +10,7 @@ export const PROFILE_STORAGE_KEY = 'kt-collaboration-profile-v1';
 export const SYNC_STATES = Object.freeze(['Local only', 'Connecting', 'Saving', 'Synced', 'Offline', 'Retrying', 'Conflict']);
 export const SAVE_DELAY_MS = 300;
 export const POLL_DELAY_MS = 900;
-export const PRESENCE_DELAY_MS = 10000;
+export const PRESENCE_DELAY_MS = 2000;
 const MAX_BACKOFF_MS = 30000;
 const SESSION_ENDPOINT = '/api/workspaces/session';
 const PRESENCE_ENDPOINT = '/api/workspaces/presence';
@@ -32,6 +32,7 @@ export function createCollaborationController({
   let retryDelay = POLL_DELAY_MS; let retrying = false; let lastSuccessfulSync = null; let statusTimer = null;
   let lastSnapshot = null; let conflictCount = 0; let terminalStatus = null; let initialized = false; let destroyed = false;
   let teamName = 'Shared intake'; let participants = []; let self = null; let joinedPresence = false;
+  let editingField = '';
   let presenceTimer = null; let inFlightPresence = null; let dialogMode = null; let dialogReturnFocus = null; let dialogFocusTimer = null;
   let baseDocumentTitle = documentRef?.title || 'KT Intake'; let lastCollaborationTitle = '';
   const activeLocation = location || documentRef?.location;
@@ -101,6 +102,19 @@ export function createCollaborationController({
     }
     const summary = element('collaborationPeopleSummary'); if (summary) summary.textContent = `${participants.length} ${participants.length === 1 ? 'person' : 'people'} here`;
     const staleLabel = element('collaborationPresenceStale'); if (staleLabel) staleLabel.hidden = !stale;
+    documentRef?.querySelectorAll?.('.collaboration-editing-badge').forEach(badge => badge.remove());
+    documentRef?.querySelectorAll?.('.is-collaboration-busy').forEach(control => {
+      control.classList.remove('is-collaboration-busy'); control.style.removeProperty('--collaborator-color');
+    });
+    participants.filter(participant => participant.id !== self?.id && participant.editingField).forEach(participant => {
+      const control = element(participant.editingField); if (!control) return;
+      const hue = [...participant.id].reduce((total, character) => total + character.charCodeAt(0), 0) % 360;
+      const color = `hsl(${hue} 72% 44%)`; control.classList.add('is-collaboration-busy'); control.style.setProperty('--collaborator-color', color);
+      const host = control.closest('.field, td, .cause-card, .card') || control.parentElement; if (!host) return;
+      const badge = documentRef.createElement('span'); badge.className = 'collaboration-editing-badge'; badge.style.setProperty('--collaborator-color', color);
+      badge.setAttribute('role', 'status'); badge.setAttribute('aria-live', 'polite'); badge.textContent = `${participant.displayName} is editing`;
+      const dots = documentRef.createElement('span'); dots.className = 'collaboration-editing-dots'; dots.setAttribute('aria-hidden', 'true'); dots.textContent = '•••'; badge.append(dots); host.append(badge);
+    });
     renderDocumentTitle(snapshot);
   };
   const acceptPresence = body => {
@@ -138,13 +152,13 @@ export function createCollaborationController({
     return { response, body };
   };
   /** Registers or refreshes this browser's participant record without touching snapshot revisions. @param {string} [displayName] Optional replacement name. @returns {Promise<boolean>} Whether presence was refreshed. */
-  async function heartbeat(displayName = profile.displayName) {
+  async function heartbeat(displayName = profile.displayName, activity = editingField) {
     if (!token || !joinedPresence || documentRef?.hidden || !online()) { renderPresence({ stale: !online() }); return false; }
     if (inFlightPresence) return inFlightPresence;
     const epoch = sessionEpoch;
     const operation = (async () => {
       try {
-        const { response, body } = await request(PRESENCE_ENDPOINT, { method: 'PUT', headers: authorizationHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ participantId: profile.participantId, displayName }) });
+        const { response, body } = await request(PRESENCE_ENDPOINT, { method: 'PUT', headers: authorizationHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ participantId: profile.participantId, displayName, editingField: activity, editingRevision: revision }) });
         if (epoch !== sessionEpoch || !token) return false;
         if (!response.ok) { if (response.status >= 500) renderPresence({ stale: true }); else unavailable(response.status); return false; }
         joinedPresence = true; acceptPresence(body); updateActions(); return true;
@@ -242,7 +256,7 @@ export function createCollaborationController({
       if (epoch !== sessionEpoch || !token || conflicted) return;
       if (response.status === 409) preserveConflict(pendingSave?.snapshot || collect());
       else if (!response.ok) { unavailable(response.status); if (!pollingStopped && !pendingSave) pendingSave = saving; }
-      else { revision = Math.max(revision, body.revision); lastSnapshot = saving.snapshot; markSuccess(); if (pendingSave) pendingSave.expectedRevision = revision; }
+      else { revision = Math.max(revision, body.revision); lastSnapshot = saving.snapshot; markSuccess(); if (pendingSave) pendingSave.expectedRevision = revision; else if (editingField) { editingField = ''; heartbeat(profile.displayName, ''); } }
     } catch { if (epoch === sessionEpoch && token) { if (!pendingSave) pendingSave = saving; markRetry(true); } }
     finally {
       emitDiagnostic('PUT', started, sections);
@@ -254,10 +268,11 @@ export function createCollaborationController({
       }
     }
   }
-  const notifyLocalChange = (snapshot, { immediate = false } = {}) => {
+  const notifyLocalChange = (snapshot, { immediate = false, fieldId = '' } = {}) => {
     if (token) { if (documentRef?.title !== lastCollaborationTitle) baseDocumentTitle = documentRef.title; renderPresence({ stale: !online(), snapshot }); }
     if (!token || applyingRemote || conflicted || pollingStopped) return;
     pendingSave = { snapshot, expectedRevision: revision, changedSections: changedSections(snapshot) }; cancelTimeout(saveTimer); renderStatus('Saving');
+    if (fieldId && fieldId !== editingField) { editingField = fieldId; heartbeat(profile.displayName, editingField); }
     if (!inFlightSave) saveTimer = scheduleTimeout(flushSave, immediate ? 0 : SAVE_DELAY_MS);
   };
   const loadNewest = async () => { terminalStatus = null; conflicted = false; pollingStopped = false; updateActions(); return poll(); };
@@ -287,7 +302,7 @@ export function createCollaborationController({
   const leave = () => {
     const leavingToken = token; const leavingParticipant = profile.participantId;
     if (leavingToken && joinedPresence && online()) request(PRESENCE_ENDPOINT, { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${leavingToken}` }, body: JSON.stringify({ participantId: leavingParticipant }) }).catch(() => {});
-    sessionEpoch += 1; cancelTimeout(saveTimer); cancelTimeout(pollTimer); cancelTimeout(presenceTimer); closeDialog(); terminalStatus = null; token = null; revision = 0; pendingSave = null; inFlightSave = null; resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSavePromise = null; inFlightGet = null; inFlightPresence = null; conflicted = false; pollingStopped = true; retrying = false; joinedPresence = false; participants = []; self = null; teamName = 'Shared intake'; const url = new URL(activeLocation.href); url.searchParams.delete('workspace'); activeHistory.replaceState({}, '', url); updateActions(); toast('Left shared session. Local and recovery copies were kept.');
+    sessionEpoch += 1; cancelTimeout(saveTimer); cancelTimeout(pollTimer); cancelTimeout(presenceTimer); closeDialog(); terminalStatus = null; token = null; revision = 0; pendingSave = null; inFlightSave = null; resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSavePromise = null; inFlightGet = null; inFlightPresence = null; conflicted = false; pollingStopped = true; retrying = false; joinedPresence = false; editingField = ''; participants = []; self = null; teamName = 'Shared intake'; const url = new URL(activeLocation.href); url.searchParams.delete('workspace'); activeHistory.replaceState({}, '', url); updateActions(); toast('Left shared session. Local and recovery copies were kept.');
   };
   const copyLink = async () => { if (!token) return false; try { await navigatorRef.clipboard.writeText(activeLocation.href); toast('Collaboration link copied.'); return true; } catch { toast('Copy failed. Copy the current address from your browser.'); return false; } };
   const exportRecovery = () => { const recovery = storage?.getItem(RECOVERY_STORAGE_KEY); if (!recovery) { toast('No local recovery snapshot is available.'); return false; } const blob = new Blob([recovery], { type: 'application/json' }); const href = URL.createObjectURL(blob); const anchor = documentRef.createElement('a'); anchor.href = href; anchor.download = 'intake-collaboration-recovery.json'; anchor.click(); URL.revokeObjectURL(href); return true; };
@@ -348,7 +363,7 @@ export function createCollaborationController({
     documentRef?.removeEventListener('visibilitychange', handleVisibilityChange); documentRef?.removeEventListener('focusout', handleFocusOut);
     windowRef?.removeEventListener('focus', handleFocus); windowRef?.removeEventListener('pageshow', handlePageShow); windowRef?.removeEventListener('online', handleOnline); windowRef?.removeEventListener('offline', handleOffline);
   };
-  return { init, destroy, start, leave, loadNewest, poll, flushSave, syncNow, heartbeat, renameTeam, joinPresence, notifyLocalChange, copyLink, exportRecovery, getState: () => ({ token, revision, applyingRemote, conflicted, pollingStopped, pendingSave, inFlightSave, inFlightGet, inFlightPresence, sessionEpoch, retryDelay, retrying, lastSuccessfulSync, terminalStatus, destroyed, teamName, participants, self, joinedPresence, profile }) };
+  return { init, destroy, start, leave, loadNewest, poll, flushSave, syncNow, heartbeat, renameTeam, joinPresence, notifyLocalChange, copyLink, exportRecovery, getState: () => ({ token, revision, applyingRemote, conflicted, pollingStopped, pendingSave, inFlightSave, inFlightGet, inFlightPresence, sessionEpoch, retryDelay, retrying, lastSuccessfulSync, terminalStatus, destroyed, teamName, participants, self, joinedPresence, editingField, profile }) };
 }
 
 /** Initializes collaboration. @param {object} options Dependencies. @returns {object} Controller. */
