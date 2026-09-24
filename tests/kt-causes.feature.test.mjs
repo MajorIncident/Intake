@@ -278,24 +278,34 @@ test('kt causes: renders compact verdict controls and preserves finding callback
   assert.match(noteLabel.textContent, /Alpha detail/);
   assert.match(noteLabel.textContent, /Beta detail/);
 
+  noteInput.value += 'the timing aligns with the observed region.';
+  noteInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  verdictInputs[1].click();
+  assert.equal(
+    noteInput.value,
+    'This explanation requires assuming that the timing aligns with the observed region.',
+    'changing verdicts updates the generated starter while preserving the appended explanation'
+  );
+  assert.equal(cause.findings[findingKey].note, noteInput.value, 'the updated starter and explanation persist together');
+
   noteInput.value = 'It matches the observed region.';
   noteInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
   assert.equal(cause.findings[findingKey].note, 'It matches the observed region.');
   assert.equal(ktModule.countCompletedEvidence(cause), 1, 'a finding is complete only after its note is supplied');
 
-  verdictInputs[1].click();
+  verdictInputs[2].click();
   assert.equal(
     noteInput.value,
     'It matches the observed region.',
     'changing verdicts preserves user-modified reasoning'
   );
 
-  noteInput.value = 'This explanation requires assuming that ';
+  noteInput.value = 'This cause does not explain the IS / IS NOT relationship because ';
   noteInput.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
-  verdictInputs[2].click();
+  verdictInputs[0].click();
   assert.equal(
     noteInput.value,
-    'This cause does not explain the IS / IS NOT relationship because ',
+    'This cause naturally explains the IS / IS NOT relationship because ',
     'changing a mode replaces only the prior mode starter'
   );
   assert.equal(cause.findings[findingKey].note, noteInput.value, 'the replacement starter persists with the finding');
