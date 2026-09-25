@@ -4,9 +4,9 @@ This document describes the operating model around the KT Intake repository. It 
 
 ## Canonical runtime
 
-Node.js is declared once in `.nvmrc` and mirrored in `package.json#engines`. GitHub Actions reads the same file. Vercel should be configured to the same major version.
+Node.js is declared once in `.nvmrc` and mirrored in `package.json#engines`. GitHub Actions reads `.nvmrc`. Vercel honors `package.json#engines`, which overrides the Node version selected in Vercel project settings, so repository code remains the deploy-time source of truth.
 
-After changing the runtime, update all three surfaces together and run `npm run quality`.
+After changing the runtime, update `.nvmrc` and `package.json#engines` together and run `npm run quality`. The Vercel dashboard setting should also be aligned when practical so its UI does not advertise an obsolete default.
 
 ## Canonical quality gate
 
