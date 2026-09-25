@@ -1,6 +1,6 @@
 # KT Intake – AI-Optimized Incident Analysis Template
 
-KT Intake is a zero-backend Kepner–Tregoe (KT) incident workbook designed for rapid bridge facilitation, AI-assisted summaries, and resilient state restoration. The UI lives entirely in `index.html`, while behaviour is organised into ES modules that mirror each major feature of the app.
+KT Intake is a browser-first Kepner–Tregoe (KT) incident workbook designed for rapid bridge facilitation, AI-assisted summaries, resilient state restoration, and optional shared collaboration. The primary UI is delivered from `index.html` and ES modules; collaboration is backed by Vercel Functions under `api/` with Neon persistence, while normal local intake use remains browser-resident.
 
 ## Quickstart
 - Clone or download this repository.
@@ -14,7 +14,7 @@ AI contributors should run the following commands (or manual preview) whenever t
 
 | Command | When to run it | Notes & references |
 | --- | --- | --- |
-| `npm ci` / `npm install` | Run once after cloning or whenever `package.json` changes. | Installs the pinned toolchain for scripts, tests, and template validation. See the onboarding details in [`docs/AI-ONBOARDING.md`](docs/AI-ONBOARDING.md). |
+| `npm ci` / `npm install` | Run once after cloning or whenever `package.json` changes. | Installs the pinned toolchain for scripts, tests, and template validation. Node 24 is the repository baseline; `.nvmrc` is authoritative. See [`docs/AI-ONBOARDING.md`](docs/AI-ONBOARDING.md). |
 | `npm run dev` | During day-to-day feature work that touches `src/`, `components/`, or `scripts/`. | Starts the watcher so template manifests regenerate automatically; pair it with the guidance in [`docs/commenting-guide.md`](docs/commenting-guide.md) when wiring new anchors. |
 | Open `index.html` directly | For quick manual QA or smoke tests that do not require the watcher. | The static file reflects the latest bundle after any build step, so you can double-check flows without Node running. |
 | `npm run build` | Before opening a pull request or testing deployment changes. | Rebuilds the static bundle and regenerates `src/templates.manifest.js`. Mirrors the Vercel command noted below. |
@@ -22,7 +22,7 @@ AI contributors should run the following commands (or manual preview) whenever t
 | `npm run verify:tests` | Any time you change runtime code under `src/` or `components/`. | Enforces the coverage contract described in [`docs/testing-guidelines.md`](docs/testing-guidelines.md) and scaffolds missing suites. |
 | `npm run verify:summary` | Whenever you add or change form controls/options. | Ensures new inputs are wired into the Copy & Paste Summary, documented, and styled with the Apple-like rhythm. See [`docs/summary-style-checklist.md`](docs/summary-style-checklist.md). |
 | `npm run verify:persistence` | When adding or editing inputs/captions that should survive reloads. | Confirms new controls tie into `src/appState.js` and `src/storage.js`, prompting template/state updates so saves/loads remain lossless. |
-| `npm test` | Before committing or when adding new suites. | Runs the full test matrix (DOM + unit) so CI sees the same state you validated locally. |
+| `npm test` | Before committing or when adding new suites. | Runs the full test matrix (DOM + unit) so CI sees the same state you validated locally. |\n| `npm run quality` | Before marking any pull request ready. | Canonical repository gate: lockfile, repo doctor, domain guards, lint, generated-file freshness, storage docs, and the full test suite. See [`docs/REPOSITORY-OPERATIONS.md`](docs/REPOSITORY-OPERATIONS.md). |
 | `npm run update:storage-docs` / `npm run check:storage-docs` | Run `update` whenever you alter persisted schema, then `check` before pushing. | Keeps [`docs/storage-schema.md`](docs/storage-schema.md) and [`docs/storage-schema.appendix.md`](docs/storage-schema.appendix.md) synced with new keys or shapes. |
 
 ## Entry Point & Boot Logic
