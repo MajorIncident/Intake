@@ -6,51 +6,42 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   tests:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Verification scripts compare the PR head with origin/${GITHUB_BASE_REF}.
+          # Diff-aware guards compare the PR head with origin/${GITHUB_BASE_REF}.
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Ensure tests cover runtime changes
-        run: npm run verify:tests
-
-      - name: Ensure new controls feed the summary
-        run: npm run verify:summary
-
-      - name: Ensure new controls persist state
-        run: npm run verify:persistence
-
-      - name: Run ESLint
-        run: npm run lint
-
-      - name: Run test suite
-        id: run-tests
+      - name: Run repository quality gate
+        id: quality
         timeout-minutes: 10
-        run: |
-          mkdir -p test-results
-          npm test -- --test-reporter=junit --test-reporter-destination=test-results/junit.xml
-
-      - name: Check storage documentation
-        run: npm run check:storage-docs
+        run: npm run quality
 
       - name: Upload test artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: node-test-results
           path: |
