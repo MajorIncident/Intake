@@ -3,6 +3,18 @@
 ## Scope
 This file applies to the entire repository unless a more specific `AGENTS.md` file exists deeper in the directory tree. Follow these guidelines when editing or adding files anywhere in the project.
 
+## Cold Start Protocol
+Before editing code in a new human or AI session:
+
+1. Refresh repository state and confirm the current `main` HEAD, active branch, relevant open PR/issue, and recent commits. Never trust branch or PR state remembered from another chat.
+2. Read this file, then every scoped `AGENTS.md` that governs files you expect to touch.
+3. For architecture, persistence, API, CI, deployment, or security work, also read `docs/AI-ONBOARDING.md` and `docs/REPOSITORY-OPERATIONS.md`.
+4. Run `npm ci` after cloning/dependency changes and use `npm run quality` as the canonical definition of repository health.
+5. Work on a short-lived branch and pull request. Do not modify `main` directly.
+6. Before coding, identify the repository invariants affected. Before handoff, state what changed, what passed, what was manually verified, and any external setting that still needs human action.
+
+If code and documentation disagree, treat the contradiction as part of the task: verify current behaviour and update the stale documentation in the same PR.
+
 ## UI/UX Principles
 - **Apple-like spacing:** Use generous whitespace, especially around sections, cards, and form controls. Maintain consistent padding and margins (e.g., multiples of 8px) to create a calm, breathable layout.
 - **Typography hierarchy:** Favor clean sans-serif fonts with clear size steps. Headings should scale down gradually, and body text should remain highly legible. Use weight, size, and color to signal hierarchy while keeping the palette minimal.
