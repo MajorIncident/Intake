@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   DISPLAY_NAME_MAX_LENGTH, MAX_SNAPSHOT_BYTES, TEAM_NAME_MAX_LENGTH, createWorkspaceHandler, generateWorkspaceToken,
-  hashWorkspaceToken, normalizeCollaborationName, normalizeEditingField, parseAuthorizationToken, presenceHandler, validateParticipantId,
+  hashWorkspaceToken, normalizeActivityState, normalizeCollaborationName, normalizeEditingField, parseAuthorizationToken, presenceHandler, validateParticipantId,
   validateSnapshot, validateToken, workspaceHandler
 } from '../api/_workspace.js';
 
@@ -48,6 +48,8 @@ test('collaboration labels and participant IDs are validated and normalized', ()
   assert.equal(validateParticipantId('not-a-uuid'), false);
   assert.equal(normalizeEditingField('problemSummary'), 'problemSummary');
   assert.equal(normalizeEditingField('bad field'), null);
+  assert.equal(normalizeActivityState('editing'), 'editing');
+  assert.equal(normalizeActivityState('locked'), null);
 });
 
 test('create rejects malformed profiles before repository access', async () => {
@@ -65,11 +67,11 @@ test('presence registers, lists, renames people and teams, and removes participa
     removePresence: async (_hash, id) => { calls.push(['delete', id]); return true; }
   };
   const handler = presenceHandler({ getRepository: async () => repository }); const authorization = `Bearer ${generateWorkspaceToken()}`;
-  const put = response(); await handler({ method: 'PUT', headers: { authorization }, body: { participantId, displayName: '  Alex  ', editingField: 'problemSummary', editingRevision: 3 } }, put);
+  const put = response(); await handler({ method: 'PUT', headers: { authorization }, body: { participantId, displayName: '  Alex  ', editingField: 'problemSummary', editingRevision: 3, activityState: 'editing', activitySequence: 7 } }, put);
   const get = response(); await handler({ method: 'GET', headers: { authorization } }, get);
   const patch = response(); await handler({ method: 'PATCH', headers: { authorization }, body: { teamName: '  Recovery   team ' } }, patch);
   const remove = response(); await handler({ method: 'DELETE', headers: { authorization }, body: { participantId } }, remove);
-  assert.deepEqual(calls, [['put', participantId, 'Alex', { editingField: 'problemSummary', editingRevision: 3 }], ['get'], ['patch', 'Recovery team'], ['delete', participantId]]);
+  assert.deepEqual(calls, [['put', participantId, 'Alex', { editingField: 'problemSummary', editingRevision: 3, activityState: 'editing', activitySequence: 7 }], ['get'], ['patch', 'Recovery team'], ['delete', participantId]]);
   assert.equal(put.body.self.displayName, 'Alex'); assert.equal(get.body.teamName, 'Ops'); assert.equal(patch.body.teamName, 'Recovery team'); assert.deepEqual(remove.body, { removed: true });
   assert.equal('revision' in put.body, false);
 });

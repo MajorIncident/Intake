@@ -11,6 +11,9 @@ export const SYNC_STATES = Object.freeze(['Local only', 'Connecting', 'Saving', 
 export const SAVE_DELAY_MS = 300;
 export const POLL_DELAY_MS = 900;
 export const PRESENCE_DELAY_MS = 2000;
+export const TYPING_IDLE_DELAY_MS = 1500;
+export const PARTICIPANT_IDLE_DELAY_MS = 30000;
+const ROSTER_VISIBLE_LIMIT = 6;
 const MAX_BACKOFF_MS = 30000;
 const SESSION_ENDPOINT = '/api/workspaces/session';
 const PRESENCE_ENDPOINT = '/api/workspaces/presence';
@@ -32,8 +35,9 @@ export function createCollaborationController({
   let retryDelay = POLL_DELAY_MS; let retrying = false; let lastSuccessfulSync = null; let statusTimer = null;
   let lastSnapshot = null; let conflictCount = 0; let terminalStatus = null; let initialized = false; let destroyed = false;
   let teamName = 'Shared intake'; let participants = []; let self = null; let joinedPresence = false;
-  let editingField = '';
-  let presenceTimer = null; let inFlightPresence = null; let dialogMode = null; let dialogReturnFocus = null; let dialogFocusTimer = null;
+  let editingField = ''; let activityState = 'active'; let activitySequence = 0; let desiredPresence = null; let acknowledgedPresenceSequence = -1;
+  let presenceTimer = null; let typingTimer = null; let idleTimer = null; let inFlightPresence = null; let dialogMode = null; let dialogReturnFocus = null; let dialogFocusTimer = null;
+  let rosterExpanded = false; let lastAnnouncedCollision = '';
   let baseDocumentTitle = documentRef?.title || 'KT Intake'; let lastCollaborationTitle = '';
   const activeLocation = location || documentRef?.location;
   const activeHistory = history || documentRef?.defaultView?.history;
@@ -48,6 +52,18 @@ export function createCollaborationController({
     } catch { return { participantId: createParticipantId(), displayName: '' }; }
   };
   let profile = readProfile();
+  const participantColor = id => `hsl(${[...String(id)].reduce((total, character) => total + character.charCodeAt(0), 0) % 360} 68% 42%)`;
+  const fieldLabel = fieldId => {
+    const control = element(fieldId); if (!control) return '';
+    const explicit = documentRef?.querySelector?.(`label[for="${globalThis.CSS?.escape?.(fieldId) || fieldId}"]`)?.textContent;
+    return String(explicit || control.getAttribute?.('aria-label') || control.closest?.('.field, .card')?.querySelector?.('label, h2, h3, h4, summary')?.textContent || fieldId).trim().replace(/\s+/g, ' ').slice(0, 80);
+  };
+  const relativeActivity = participant => {
+    const stamp = Date.parse(participant.lastActiveAt || participant.lastSeenAt || '');
+    if (!Number.isFinite(stamp)) return '';
+    const minutes = Math.max(0, Math.floor((now() - stamp) / 60000));
+    return minutes < 1 ? 'just now' : minutes >= 5 ? '5m+' : `${minutes}m`;
+  };
   /** Persists the local-only collaboration identity preference. @returns {void} */
   const saveProfile = () => storage?.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
   const changedSections = snapshot => Object.keys(snapshot || {}).filter(key => JSON.stringify(snapshot?.[key]) !== JSON.stringify(lastSnapshot?.[key]));
@@ -94,26 +110,37 @@ export function createCollaborationController({
     const list = element('collaborationParticipants');
     if (list) {
       list.replaceChildren();
-      participants.forEach(participant => {
+      participants.forEach((participant, index) => {
         const item = documentRef.createElement('li'); item.className = 'collaboration-participant';
         const isSelf = participant.id === self?.id; item.dataset.self = String(isSelf);
-        item.textContent = `${participant.displayName}${isSelf ? ' (you)' : ''}`; list.append(item);
+        const state = participant.activityState || (participant.editingField ? 'editing' : 'active');
+        item.dataset.state = state; item.style.setProperty('--participant-color', participantColor(participant.id));
+        if (!rosterExpanded && index >= ROSTER_VISIBLE_LIMIT) item.hidden = true;
+        const avatar = documentRef.createElement('span'); avatar.className = 'collaboration-participant__avatar'; avatar.setAttribute('aria-hidden', 'true');
+        avatar.textContent = participant.displayName.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase().slice(0, 2) || '?';
+        const copy = documentRef.createElement('span'); copy.className = 'collaboration-participant__copy';
+        const name = documentRef.createElement('span'); name.className = 'collaboration-participant__name'; name.textContent = `${participant.displayName}${isSelf ? ' (you)' : ''}`;
+        const location = fieldLabel(participant.editingField); const detail = documentRef.createElement('span'); detail.className = 'collaboration-participant__state';
+        detail.textContent = state === 'editing' ? `Editing${location ? ` · ${location}` : ''}` : state === 'focused' ? `Viewing${location ? ` · ${location}` : ''}` : state === 'idle' ? `Idle${relativeActivity(participant) ? ` · ${relativeActivity(participant)}` : ''}${location ? ` · last in ${location}` : ''}` : 'Active';
+        if (state === 'editing') { const dots = documentRef.createElement('span'); dots.className = 'collaboration-editing-dots'; dots.setAttribute('aria-hidden', 'true'); dots.textContent = '•••'; detail.append(dots); }
+        copy.append(name, detail); item.append(avatar, copy); item.setAttribute('aria-label', `${name.textContent}, ${detail.textContent.replace('•••', '')}`); list.append(item);
       });
     }
+    const toggle = element('collaborationRosterToggle'); if (toggle) { const hiddenCount = Math.max(0, participants.length - ROSTER_VISIBLE_LIMIT); toggle.hidden = hiddenCount === 0; toggle.textContent = rosterExpanded ? 'Show fewer' : `+${hiddenCount} more`; toggle.setAttribute('aria-expanded', String(rosterExpanded)); }
     const summary = element('collaborationPeopleSummary'); if (summary) summary.textContent = `${participants.length} ${participants.length === 1 ? 'person' : 'people'} here`;
     const staleLabel = element('collaborationPresenceStale'); if (staleLabel) staleLabel.hidden = !stale;
     documentRef?.querySelectorAll?.('.collaboration-editing-badge').forEach(badge => badge.remove());
     documentRef?.querySelectorAll?.('.is-collaboration-busy').forEach(control => {
       control.classList.remove('is-collaboration-busy'); control.style.removeProperty('--collaborator-color');
     });
-    participants.filter(participant => participant.id !== self?.id && participant.editingField).forEach(participant => {
+    participants.filter(participant => participant.id !== self?.id && participant.editingField && ['editing', 'focused'].includes(participant.activityState || 'editing')).forEach(participant => {
       const control = element(participant.editingField); if (!control) return;
-      const hue = [...participant.id].reduce((total, character) => total + character.charCodeAt(0), 0) % 360;
-      const color = `hsl(${hue} 72% 44%)`; control.classList.add('is-collaboration-busy'); control.style.setProperty('--collaborator-color', color);
+      const color = participantColor(participant.id); control.classList.add('is-collaboration-busy'); control.style.setProperty('--collaborator-color', color);
       const host = control.closest('.field, td, .cause-card, .card') || control.parentElement; if (!host) return;
       const badge = documentRef.createElement('span'); badge.className = 'collaboration-editing-badge'; badge.style.setProperty('--collaborator-color', color);
-      badge.setAttribute('role', 'status'); badge.setAttribute('aria-live', 'polite'); badge.textContent = `${participant.displayName} is editing`;
-      const dots = documentRef.createElement('span'); dots.className = 'collaboration-editing-dots'; dots.setAttribute('aria-hidden', 'true'); dots.textContent = '•••'; badge.append(dots); host.append(badge);
+      const editing = (participant.activityState || 'editing') === 'editing'; badge.textContent = `${participant.displayName} is ${editing ? 'editing' : 'here'}`;
+      if (editing) { const dots = documentRef.createElement('span'); dots.className = 'collaboration-editing-dots'; dots.setAttribute('aria-hidden', 'true'); dots.textContent = '•••'; badge.append(dots); }
+      host.append(badge);
     });
     renderDocumentTitle(snapshot);
   };
@@ -152,21 +179,24 @@ export function createCollaborationController({
     return { response, body };
   };
   /** Registers or refreshes this browser's participant record without touching snapshot revisions. @param {string} [displayName] Optional replacement name. @returns {Promise<boolean>} Whether presence was refreshed. */
-  async function heartbeat(displayName = profile.displayName, activity = editingField) {
+  async function heartbeat(displayName = profile.displayName, activity = editingField, state = activityState) {
     if (!token || !joinedPresence || documentRef?.hidden || !online()) { renderPresence({ stale: !online() }); return false; }
+    desiredPresence = { displayName, editingField: activity, activityState: state, activitySequence: ++activitySequence };
     if (inFlightPresence) return inFlightPresence;
     const epoch = sessionEpoch;
+    let succeeded = false;
     const operation = (async () => {
+      const sending = desiredPresence; desiredPresence = null;
       try {
-        const { response, body } = await request(PRESENCE_ENDPOINT, { method: 'PUT', headers: authorizationHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ participantId: profile.participantId, displayName, editingField: activity, editingRevision: revision }) });
+        const { response, body } = await request(PRESENCE_ENDPOINT, { method: 'PUT', headers: authorizationHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ participantId: profile.participantId, ...sending, editingRevision: revision }) });
         if (epoch !== sessionEpoch || !token) return false;
         if (!response.ok) { if (response.status >= 500) renderPresence({ stale: true }); else unavailable(response.status); return false; }
-        joinedPresence = true; acceptPresence(body); updateActions(); return true;
-      } catch { renderPresence({ stale: true }); return false; }
+        acknowledgedPresenceSequence = Math.max(acknowledgedPresenceSequence, sending.activitySequence); joinedPresence = true; acceptPresence(body); updateActions(); succeeded = true; return true;
+      } catch { if (!desiredPresence) desiredPresence = sending; renderPresence({ stale: true }); return false; }
       finally { if (epoch === sessionEpoch) schedulePresence(); }
     })();
     inFlightPresence = operation;
-    try { return await operation; } finally { if (inFlightPresence === operation) inFlightPresence = null; }
+    try { return await operation; } finally { if (inFlightPresence === operation) inFlightPresence = null; if (desiredPresence && succeeded && epoch === sessionEpoch) heartbeat(desiredPresence.displayName, desiredPresence.editingField, desiredPresence.activityState); }
   }
   /** Renames the shared team without changing the intake snapshot revision. @param {string} requestedTeamName New team name, or blank for the default. @returns {Promise<boolean>} Whether the team was renamed. */
   async function renameTeam(requestedTeamName) {
@@ -256,7 +286,7 @@ export function createCollaborationController({
       if (epoch !== sessionEpoch || !token || conflicted) return;
       if (response.status === 409) preserveConflict(pendingSave?.snapshot || collect());
       else if (!response.ok) { unavailable(response.status); if (!pollingStopped && !pendingSave) pendingSave = saving; }
-      else { revision = Math.max(revision, body.revision); lastSnapshot = saving.snapshot; markSuccess(); if (pendingSave) pendingSave.expectedRevision = revision; else if (editingField) { editingField = ''; heartbeat(profile.displayName, ''); } }
+      else { revision = Math.max(revision, body.revision); lastSnapshot = saving.snapshot; markSuccess(); if (pendingSave) pendingSave.expectedRevision = revision; }
     } catch { if (epoch === sessionEpoch && token) { if (!pendingSave) pendingSave = saving; markRetry(true); } }
     finally {
       emitDiagnostic('PUT', started, sections);
@@ -272,7 +302,7 @@ export function createCollaborationController({
     if (token) { if (documentRef?.title !== lastCollaborationTitle) baseDocumentTitle = documentRef.title; renderPresence({ stale: !online(), snapshot }); }
     if (!token || applyingRemote || conflicted || pollingStopped) return;
     pendingSave = { snapshot, expectedRevision: revision, changedSections: changedSections(snapshot) }; cancelTimeout(saveTimer); renderStatus('Saving');
-    if (fieldId && fieldId !== editingField) { editingField = fieldId; heartbeat(profile.displayName, editingField); }
+    if (fieldId && (fieldId !== editingField || activityState !== 'editing')) { editingField = fieldId; activityState = 'editing'; heartbeat(profile.displayName, editingField, activityState); }
     if (!inFlightSave) saveTimer = scheduleTimeout(flushSave, immediate ? 0 : SAVE_DELAY_MS);
   };
   const loadNewest = async () => { terminalStatus = null; conflicted = false; pollingStopped = false; updateActions(); return poll(); };
@@ -306,8 +336,39 @@ export function createCollaborationController({
   };
   const copyLink = async () => { if (!token) return false; try { await navigatorRef.clipboard.writeText(activeLocation.href); toast('Collaboration link copied.'); return true; } catch { toast('Copy failed. Copy the current address from your browser.'); return false; } };
   const exportRecovery = () => { const recovery = storage?.getItem(RECOVERY_STORAGE_KEY); if (!recovery) { toast('No local recovery snapshot is available.'); return false; } const blob = new Blob([recovery], { type: 'application/json' }); const href = URL.createObjectURL(blob); const anchor = documentRef.createElement('a'); anchor.href = href; anchor.download = 'intake-collaboration-recovery.json'; anchor.click(); URL.revokeObjectURL(href); return true; };
-  const handleVisibilityChange = () => { if (!documentRef.hidden) activate(); else { cancelTimeout(presenceTimer); renderPresence({ stale: true }); } };
+  const handleVisibilityChange = () => {
+    if (!documentRef.hidden) { activate(); return; }
+    cancelTimeout(presenceTimer); cancelTimeout(typingTimer); cancelTimeout(idleTimer); renderPresence({ stale: true });
+    if (token && joinedPresence && online()) {
+      activityState = 'idle'; const payload = JSON.stringify({ participantId: profile.participantId, displayName: profile.displayName, editingField, editingRevision: revision, activityState, activitySequence: ++activitySequence });
+      fetchImpl(PRESENCE_ENDPOINT, { method: 'PUT', headers: authorizationHeaders({ 'Content-Type': 'application/json' }), body: payload, keepalive: true }).catch(() => {});
+    }
+  };
   const handleFocusOut = () => { flushSave(); };
+  const eligibleControl = target => target?.id && target?.matches?.('input:not([type="button"]):not([type="submit"]), textarea, select, [contenteditable="true"]') && !target.closest?.('[data-persistence="local-only"]');
+  const announce = message => { const region = element('collaborationLiveRegion'); if (region && region.textContent !== message) region.textContent = message; };
+  const publishActivity = (field, state) => {
+    if (!token || !joinedPresence) return;
+    editingField = field || ''; activityState = state;
+    cancelTimeout(idleTimer); if (state !== 'idle') idleTimer = scheduleTimeout(() => publishActivity(editingField, 'idle'), PARTICIPANT_IDLE_DELAY_MS);
+    heartbeat(profile.displayName, editingField, activityState);
+  };
+  const handleActivityFocusIn = event => {
+    if (!eligibleControl(event.target)) return;
+    publishActivity(event.target.id, 'focused');
+    const colliders = participants.filter(participant => participant.id !== self?.id && participant.editingField === event.target.id && participant.activityState === 'editing');
+    const collisionKey = `${event.target.id}:${colliders.map(person => person.id).join(',')}`;
+    if (colliders.length && collisionKey !== lastAnnouncedCollision) { lastAnnouncedCollision = collisionKey; announce(`${colliders.map(person => person.displayName).join(' and ')} ${colliders.length === 1 ? 'is' : 'are'} also editing this field. You can continue, but simultaneous saves may require conflict review.`); }
+  };
+  const handleActivityInput = event => {
+    if (!eligibleControl(event.target)) return;
+    editingField = event.target.id; activityState = 'editing'; cancelTimeout(typingTimer); publishActivity(editingField, 'editing');
+    typingTimer = scheduleTimeout(() => publishActivity(editingField, 'focused'), TYPING_IDLE_DELAY_MS);
+  };
+  const handleActivityFocusOut = event => {
+    handleFocusOut(); if (!eligibleControl(event.target)) return;
+    cancelTimeout(typingTimer); editingField = ''; activityState = 'active'; lastAnnouncedCollision = ''; publishActivity('', 'active');
+  };
   const handleFocus = () => { activate(); };
   const handlePageShow = () => { activate(); };
   const handleOnline = () => { activate(); };
@@ -345,7 +406,9 @@ export function createCollaborationController({
     element('startCollaborationBtn')?.addEventListener('click', openStart); element('copyCollaborationLinkBtn')?.addEventListener('click', copyLink); element('editCollaborationNameBtn')?.addEventListener('click', openEdit); element('editCollaborationNameBannerBtn')?.addEventListener('click', openEdit); element('editCollaborationTeamBtn')?.addEventListener('click', openTeamEdit); element('editCollaborationTeamBannerBtn')?.addEventListener('click', openTeamEdit); element('leaveCollaborationBtn')?.addEventListener('click', leave); element('syncCollaborationBtn')?.addEventListener('click', syncNow); element('loadSharedVersionBtn')?.addEventListener('click', loadNewest); element('exportRecoveryBtn')?.addEventListener('click', exportRecovery); element('collaborationDialogForm')?.addEventListener('submit', submitDialog); element('collaborationDialogCancelBtn')?.addEventListener('click', cancelDialog); element('collaborationDialogBackdrop')?.addEventListener('click', cancelDialog); element('collaborationDialog')?.addEventListener('keydown', handleDialogKeydown);
     controllerListeners = { openStart, openEdit, openTeamEdit, submitDialog, cancelDialog, handleDialogKeydown };
     documentRef?.addEventListener('visibilitychange', handleVisibilityChange);
-    documentRef?.addEventListener('focusout', handleFocusOut);
+    documentRef?.addEventListener('focusin', handleActivityFocusIn); documentRef?.addEventListener('input', handleActivityInput);
+    documentRef?.addEventListener('focusout', handleActivityFocusOut);
+    element('collaborationRosterToggle')?.addEventListener('click', handleRosterToggle);
     windowRef?.addEventListener('focus', handleFocus); windowRef?.addEventListener('pageshow', handlePageShow); windowRef?.addEventListener('online', handleOnline); windowRef?.addEventListener('offline', handleOffline);
     statusTimer = scheduleTimeout(refreshStatus, 1000);
     return joinFromUrl();
@@ -355,15 +418,17 @@ export function createCollaborationController({
   const destroy = () => {
     if (destroyed) return;
     destroyed = true; sessionEpoch += 1; pollingStopped = true;
-    cancelTimeout(saveTimer); cancelTimeout(pollTimer); cancelTimeout(presenceTimer); cancelTimeout(statusTimer); cancelTimeout(dialogFocusTimer);
+    cancelTimeout(saveTimer); cancelTimeout(pollTimer); cancelTimeout(presenceTimer); cancelTimeout(typingTimer); cancelTimeout(idleTimer); cancelTimeout(statusTimer); cancelTimeout(dialogFocusTimer);
     saveTimer = null; pollTimer = null; presenceTimer = null; statusTimer = null; pendingSave = null; inFlightGet = null; inFlightPresence = null;
     resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSave = null; inFlightSavePromise = null;
     if (controllerListeners) { const { openStart, openEdit, openTeamEdit, submitDialog, cancelDialog, handleDialogKeydown } = controllerListeners; element('startCollaborationBtn')?.removeEventListener('click', openStart); element('editCollaborationNameBtn')?.removeEventListener('click', openEdit); element('editCollaborationNameBannerBtn')?.removeEventListener('click', openEdit); element('editCollaborationTeamBtn')?.removeEventListener('click', openTeamEdit); element('editCollaborationTeamBannerBtn')?.removeEventListener('click', openTeamEdit); element('collaborationDialogForm')?.removeEventListener('submit', submitDialog); element('collaborationDialogCancelBtn')?.removeEventListener('click', cancelDialog); element('collaborationDialogBackdrop')?.removeEventListener('click', cancelDialog); element('collaborationDialog')?.removeEventListener('keydown', handleDialogKeydown); }
     element('copyCollaborationLinkBtn')?.removeEventListener('click', copyLink); element('leaveCollaborationBtn')?.removeEventListener('click', leave); element('syncCollaborationBtn')?.removeEventListener('click', syncNow); element('loadSharedVersionBtn')?.removeEventListener('click', loadNewest); element('exportRecoveryBtn')?.removeEventListener('click', exportRecovery);
-    documentRef?.removeEventListener('visibilitychange', handleVisibilityChange); documentRef?.removeEventListener('focusout', handleFocusOut);
+    documentRef?.removeEventListener('visibilitychange', handleVisibilityChange); documentRef?.removeEventListener('focusin', handleActivityFocusIn); documentRef?.removeEventListener('input', handleActivityInput); documentRef?.removeEventListener('focusout', handleActivityFocusOut);
+    element('collaborationRosterToggle')?.removeEventListener('click', handleRosterToggle);
     windowRef?.removeEventListener('focus', handleFocus); windowRef?.removeEventListener('pageshow', handlePageShow); windowRef?.removeEventListener('online', handleOnline); windowRef?.removeEventListener('offline', handleOffline);
   };
-  return { init, destroy, start, leave, loadNewest, poll, flushSave, syncNow, heartbeat, renameTeam, joinPresence, notifyLocalChange, copyLink, exportRecovery, getState: () => ({ token, revision, applyingRemote, conflicted, pollingStopped, pendingSave, inFlightSave, inFlightGet, inFlightPresence, sessionEpoch, retryDelay, retrying, lastSuccessfulSync, terminalStatus, destroyed, teamName, participants, self, joinedPresence, editingField, profile }) };
+  function handleRosterToggle() { rosterExpanded = !rosterExpanded; renderPresence(); }
+  return { init, destroy, start, leave, loadNewest, poll, flushSave, syncNow, heartbeat, renameTeam, joinPresence, notifyLocalChange, copyLink, exportRecovery, getState: () => ({ token, revision, applyingRemote, conflicted, pollingStopped, pendingSave, inFlightSave, inFlightGet, inFlightPresence, sessionEpoch, retryDelay, retrying, lastSuccessfulSync, terminalStatus, destroyed, teamName, participants, self, joinedPresence, editingField, activityState, activitySequence, acknowledgedPresenceSequence, desiredPresence, profile }) };
 }
 
 /** Initializes collaboration. @param {object} options Dependencies. @returns {object} Controller. */

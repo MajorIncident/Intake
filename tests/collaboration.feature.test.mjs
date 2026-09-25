@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
-import { createCollaborationController, POLL_DELAY_MS, PRESENCE_DELAY_MS, PROFILE_STORAGE_KEY, RECOVERY_STORAGE_KEY, SAVE_DELAY_MS } from '../src/collaboration.js';
+import { createCollaborationController, PARTICIPANT_IDLE_DELAY_MS, POLL_DELAY_MS, PRESENCE_DELAY_MS, PROFILE_STORAGE_KEY, RECOVERY_STORAGE_KEY, SAVE_DELAY_MS, TYPING_IDLE_DELAY_MS } from '../src/collaboration.js';
 
 /** Creates a manually resolvable promise. @returns {object} Deferred promise. */
 function deferred() {
@@ -16,7 +16,7 @@ function reply(status, body) {
 }
 /** Builds a deterministic collaboration controller environment. @param {string} url Page URL. @returns {object} Environment. */
 function setup(url = 'https://intake.test/', initial = { local: true }) {
-  const dom = new JSDOM(`<!doctype html><head><title>KT Intake</title></head><body><div id="collaborationStatus"></div><div id="collaborationSyncDetail"></div><button id="syncCollaborationBtn"></button><button id="startCollaborationBtn"></button><button id="copyCollaborationLinkBtn"></button><button id="editCollaborationNameBtn"></button><button id="editCollaborationNameBannerBtn"></button><button id="editCollaborationTeamBtn"></button><button id="editCollaborationTeamBannerBtn"></button><button id="leaveCollaborationBtn"></button><div id="collaborationConflictActions"></div><button id="loadSharedVersionBtn"></button><button id="exportRecoveryBtn"></button><section id="collaborationWorkspace" hidden><strong id="collaborationTeamName"></strong><span id="collaborationPeopleSummary"></span><span id="collaborationPresenceStale" hidden></span><ul id="collaborationParticipants"></ul></section><div id="collaborationDialogBackdrop" hidden></div><section id="collaborationDialog" hidden tabindex="-1"><h4 id="collaborationDialogTitle"></h4><p id="collaborationDialogDescription"></p><form id="collaborationDialogForm"><div id="collaborationTeamNameField"><input id="collaborationTeamNameInput"></div><div id="collaborationDisplayNameField"><input id="collaborationDisplayNameInput"></div><button id="collaborationDialogCancelBtn" type="button"></button><button id="collaborationDialogSubmitBtn" type="submit"></button></form></section><input id="field"></body>`, { url });
+  const dom = new JSDOM(`<!doctype html><head><title>KT Intake</title></head><body><div id="collaborationStatus"></div><div id="collaborationSyncDetail"></div><button id="syncCollaborationBtn"></button><button id="startCollaborationBtn"></button><button id="copyCollaborationLinkBtn"></button><button id="editCollaborationNameBtn"></button><button id="editCollaborationNameBannerBtn"></button><button id="editCollaborationTeamBtn"></button><button id="editCollaborationTeamBannerBtn"></button><button id="leaveCollaborationBtn"></button><div id="collaborationConflictActions"></div><button id="loadSharedVersionBtn"></button><button id="exportRecoveryBtn"></button><section id="collaborationWorkspace" hidden><strong id="collaborationTeamName"></strong><span id="collaborationPeopleSummary"></span><span id="collaborationPresenceStale" hidden></span><ul id="collaborationParticipants"></ul><button id="collaborationRosterToggle" hidden></button><p id="collaborationLiveRegion"></p></section><div id="collaborationDialogBackdrop" hidden></div><section id="collaborationDialog" hidden tabindex="-1"><h4 id="collaborationDialogTitle"></h4><p id="collaborationDialogDescription"></p><form id="collaborationDialogForm"><div id="collaborationTeamNameField" data-persistence="local-only"><input id="collaborationTeamNameInput"></div><div id="collaborationDisplayNameField" data-persistence="local-only"><input id="collaborationDisplayNameInput"></div><button id="collaborationDialogCancelBtn" type="button"></button><button id="collaborationDialogSubmitBtn" type="submit"></button></form></section><label for="field">Problem statement</label><input id="field"></body>`, { url });
   Object.defineProperty(dom.window.document, 'hidden', { configurable: true, value: false });
   const timers = []; const requests = []; const applyCalls = []; const localSaves = [];
   let current = initial;
@@ -58,7 +58,7 @@ test('starting a session sends team and profile metadata and renders server-assi
   assert.equal(body.teamName, 'Payments team'); assert.equal(body.participant.displayName, '');
   assert.match(body.participant.id, /^[0-9a-f-]{36}$/i);
   assert.equal(env.dom.window.document.getElementById('collaborationTeamName').textContent, 'Payments team');
-  assert.equal(env.dom.window.document.getElementById('collaborationParticipants').textContent, 'Teammate 1 (you)');
+  assert.equal(env.dom.window.document.querySelector('.collaboration-participant__name').textContent, 'Teammate 1 (you)');
   assert.equal(env.dom.window.document.getElementById('collaborationWorkspace').hidden, false);
   assert.equal(env.dom.window.document.title, 'Payments team · Teammate 1 · KT Intake');
   assert.equal(env.timers.some(timer => timer.delay === PRESENCE_DELAY_MS), true);
@@ -75,7 +75,7 @@ test('joining prompts for a name then registers presence without changing the sn
   const before = env.controller.getState().revision;
   assert.equal(await env.controller.joinPresence('Priya'), true);
   assert.equal(env.controller.getState().revision, before);
-  assert.equal(env.dom.window.document.getElementById('collaborationParticipants').textContent, 'Priya (you)<b>Sam</b>');
+  assert.deepEqual([...env.dom.window.document.querySelectorAll('.collaboration-participant__name')].map(node => node.textContent), ['Priya (you)', '<b>Sam</b>']);
   assert.equal(env.dom.window.document.getElementById('collaborationParticipants').querySelector('b'), null, 'names render as text');
 });
 
@@ -104,7 +104,7 @@ test('remote editing presence identifies and color-codes a busy field with anima
   const badge = env.dom.window.document.querySelector('.collaboration-editing-badge');
   assert.equal(field.classList.contains('is-collaboration-busy'), true);
   assert.equal(badge.textContent, 'Sam is editing•••');
-  assert.equal(badge.getAttribute('role'), 'status');
+  assert.equal(badge.getAttribute('aria-live'), null, 'rapid visual activity is not announced repeatedly');
 
   setup.handler = async () => reply(200, { teamName: 'Response team', self: { id: selfId, displayName: 'Priya' }, participants: [{ id: selfId, displayName: 'Priya' }] });
   await env.controller.heartbeat();
@@ -112,7 +112,7 @@ test('remote editing presence identifies and color-codes a busy field with anima
   assert.equal(env.dom.window.document.querySelector('.collaboration-editing-badge'), null);
 });
 
-test('local editing activity is published and cleared only after the snapshot save is acknowledged', async () => {
+test('local editing activity is published independently from the acknowledged snapshot save', async () => {
   const env = setup(`https://intake.test/?workspace=${token}`); await join(env);
   setup.handler = async (_url, options) => options.method === 'PUT' && JSON.parse(options.body).snapshot
     ? reply(200, { revision: 2 })
@@ -124,8 +124,41 @@ test('local editing activity is published and cleared only after the snapshot sa
   assert.equal(activity.editingRevision, 1);
   assert.equal(env.controller.getState().editingField, 'field');
   await env.controller.flushSave(); await new Promise(resolve => setImmediate(resolve));
-  assert.equal(env.controller.getState().editingField, '');
-  assert.equal(env.requests.map(([, options]) => options.body && JSON.parse(options.body)).some(body => body?.editingField === '' && body?.editingRevision === 2), true);
+  assert.equal(env.controller.getState().editingField, 'field');
+  assert.equal(env.controller.getState().activityState, 'editing', 'snapshot acknowledgement does not prematurely hide active typing');
+});
+
+test('focus, typing, stop-typing, idle, and blur publish prompt advisory activity transitions', async () => {
+  const env = setup(`https://intake.test/?workspace=${token}`); await join(env);
+  const selfId = env.controller.getState().profile.participantId;
+  setup.handler = async (_url, options) => reply(200, { teamName: 'Response team', self: { id: selfId, displayName: 'Priya' }, participants: [] });
+  await env.controller.joinPresence('Priya'); env.requests.length = 0;
+  const field = env.dom.window.document.getElementById('field');
+  field.dispatchEvent(new env.dom.window.FocusEvent('focusin', { bubbles: true })); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(JSON.parse(env.requests.at(-1)[1].body).activityState, 'focused');
+  field.dispatchEvent(new env.dom.window.InputEvent('input', { bubbles: true })); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(JSON.parse(env.requests.at(-1)[1].body).activityState, 'editing');
+  const stopTimer = [...env.timers].reverse().find(timer => timer.delay === TYPING_IDLE_DELAY_MS && !timer.cancelled);
+  await stopTimer.callback(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(JSON.parse(env.requests.at(-1)[1].body).activityState, 'focused');
+  const idleTimer = [...env.timers].reverse().find(timer => timer.delay === PARTICIPANT_IDLE_DELAY_MS && !timer.cancelled);
+  await idleTimer.callback(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(JSON.parse(env.requests.at(-1)[1].body).activityState, 'idle');
+  field.dispatchEvent(new env.dom.window.FocusEvent('focusout', { bubbles: true })); await new Promise(resolve => setImmediate(resolve));
+  const cleared = JSON.parse(env.requests.at(-1)[1].body); assert.equal(cleared.activityState, 'active'); assert.equal(cleared.editingField, '');
+});
+
+test('rich roster chips expose location, idle state, overflow, and non-blocking collision guidance', async () => {
+  const env = setup(`https://intake.test/?workspace=${token}`); await join(env); const selfId = '11111111-1111-4111-8111-111111111111';
+  const participants = [{ id: selfId, displayName: 'Priya', activityState: 'active' }, { id: '22222222-2222-4222-8222-222222222222', displayName: 'Sam Lee', activityState: 'editing', editingField: 'field' }, ...Array.from({ length: 6 }, (_, index) => ({ id: `idle-${index}`, displayName: `Idle ${index}`, activityState: 'idle', editingField: 'field' }))];
+  setup.handler = async () => reply(200, { teamName: 'Response team', self: participants[0], participants }); await env.controller.joinPresence('Priya');
+  const chips = env.dom.window.document.querySelectorAll('.collaboration-participant');
+  assert.equal(chips[1].textContent.includes('Editing · Problem statement'), true);
+  assert.equal(chips[2].textContent.includes('Idle'), true);
+  const toggle = env.dom.window.document.getElementById('collaborationRosterToggle'); assert.equal(toggle.hidden, false); assert.equal(toggle.textContent, '+2 more');
+  toggle.click(); assert.equal([...env.dom.window.document.querySelectorAll('.collaboration-participant')].every(chip => !chip.hidden), true);
+  const field = env.dom.window.document.getElementById('field'); field.dispatchEvent(new env.dom.window.FocusEvent('focusin', { bubbles: true }));
+  assert.equal(field.disabled, false); assert.match(env.dom.window.document.getElementById('collaborationLiveRegion').textContent, /Sam Lee is also editing/);
 });
 
 test('every collaborator is shown, the team can be renamed, and the problem statement drives the page title', async () => {
