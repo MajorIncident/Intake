@@ -6,7 +6,9 @@ on:
   pull_request:
     branches: ["main"]
   schedule:
-    - cron: '0 9 * * 1'
+    # Avoid top-of-hour load and changing the cron reactivates inactivity-disabled schedules.
+    - cron: '17 9 * * 1'
+  workflow_dispatch:
 
 concurrency:
   group: codeql-${{ github.workflow }}-${{ github.ref }}
