@@ -1,6 +1,6 @@
 # AI Onboarding – KT Intake Modular Architecture
 
-This guide summarises the Milestone 2.3 modularisation so AI agents can confidently extend, test, and maintain the KT Intake app.
+This guide describes the current modular architecture so a fresh AI coding session can confidently extend, test, and maintain KT Intake. Do not assume a previous chat's branch, PR, deployment, or repository state; follow the Cold Start Protocol in the root `AGENTS.md` first.
 
 ## Entry Point & Boot Sequence
 1. `index.html` renders the full layout and loads the ES module entry via `<script type="module" src="main.js"></script>`.
@@ -77,7 +77,7 @@ function boot() {
 ## Testing & QA Notes
 - Always run a manual smoke test by opening `index.html` in a modern browser, entering sample data, generating a summary, and refreshing to confirm persistence.
 - Automated suites should rely on `collectAppState()` / `applyAppState()` for deterministic state setup and on `generateSummary()` for output verification.
-- No server is required; the app is fully static. Use a simple `file://` load or a lightweight static host when integrating with tooling that requires HTTP.
+- Core local intake workflows can still run browser-first, but collaboration uses Vercel Functions under `api/` and Neon persistence. Use a deployed/HTTP environment with the required database variable when testing shared sessions; do not infer collaboration health from a `file://` smoke test.
 
 ## Safe Extension Checklist
 1. Identify the owning module for the UI you are touching; update that module instead of `main.js`.
@@ -86,4 +86,4 @@ function boot() {
 4. Add or update tests/scripts to call `collectAppState()` before mutating the DOM and `applyAppState()` afterward.
 5. Verify summary outputs via `generateSummary()` so AI prompt formats remain stable.
 
-Following this guide keeps the Milestone 2.3 modular architecture intact and ready for future automation.
+Following this guide, the scoped `AGENTS.md` files, and `docs/REPOSITORY-OPERATIONS.md` keeps the current architecture explicit and ready for future automation.
