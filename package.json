@@ -13,7 +13,10 @@
     "verify:tests": "node scripts/ensure-tests-cover-changes.js",
     "verify:summary": "node scripts/ensure-summary-integrations.js",
     "verify:persistence": "node scripts/ensure-persistence-integrations.js",
-    "verify:lockfile": "node scripts/verify-lockfile.js"
+    "verify:lockfile": "node scripts/verify-lockfile.js",
+    "check:templates": "npm run build:templates && git diff --exit-code -- src/templates.manifest.js",
+    "repo:doctor": "node scripts/repo-doctor.js",
+    "quality": "npm run verify:lockfile && npm run repo:doctor && npm run verify:tests && npm run verify:summary && npm run verify:persistence && npm run lint && npm run check:templates && npm run check:storage-docs && npm test"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0"
@@ -22,5 +25,8 @@
     "eslint": "^8.57.1",
     "eslint-plugin-jsdoc": "^61.1.12",
     "jsdom": "^27.1.0"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }

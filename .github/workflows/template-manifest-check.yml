@@ -1,8 +1,17 @@
-name: Template Manifest Guard (README template-manifest enforcement)
+name: Template Manifest Guard
 
 on:
-  push:
   pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: template-manifest-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   template-manifest:
@@ -10,25 +19,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Rebuild template manifest
-        run: npm run build:templates
-
-      - name: Verify template manifest has no uncommitted changes
-        run: |
-          STATUS="$(git status --short src/templates.manifest.js)"
-          if [ -n "$STATUS" ]; then
-            echo "$STATUS"
-            echo "src/templates.manifest.js must be regenerated and committed via npm run build:templates."
-            exit 1
-          fi
+      - name: Verify committed template manifest
+        run: npm run check:templates
