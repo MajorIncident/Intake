@@ -271,6 +271,8 @@ Anchors present:
         <span id="collaborationPresenceStale" class="collaboration-workspace__stale" hidden>Presence may be out of date</span>
       </div>
       <ul class="collaboration-participants" id="collaborationParticipants" aria-label="People currently in this workspace"></ul>
+      <button type="button" class="collaboration-roster-toggle" id="collaborationRosterToggle" aria-expanded="false" data-persistence="local-only" data-summary="exclude" hidden>Show everyone</button>
+      <p class="sr-only" id="collaborationLiveRegion" role="status" aria-live="polite" aria-atomic="true"></p>
     </div>
     <div class="collaboration-workspace__actions">
       <button type="button" class="btn-secondary collaboration-workspace__edit" id="editCollaborationNameBannerBtn" data-persistence="local-only">Edit my name</button>
