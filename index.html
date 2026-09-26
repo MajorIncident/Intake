@@ -258,54 +258,6 @@ Anchors present:
   </header>
   <!-- [header] end -->
 
-  <!-- [feature:collaboration-presence] start -->
-  <section class="collaboration-workspace" id="collaborationWorkspace" aria-label="Shared workspace" hidden>
-    <div class="collaboration-workspace__identity">
-      <span class="collaboration-workspace__eyebrow">Shared workspace</span>
-      <strong id="collaborationTeamName">Shared intake</strong>
-    </div>
-    <div class="collaboration-workspace__people">
-      <div class="collaboration-workspace__summary">
-        <span class="collaboration-workspace__presence-dot" aria-hidden="true"></span>
-        <span id="collaborationPeopleSummary">1 person here</span>
-        <span id="collaborationPresenceStale" class="collaboration-workspace__stale" hidden>Presence may be out of date</span>
-      </div>
-      <ul class="collaboration-participants" id="collaborationParticipants" aria-label="People currently in this workspace"></ul>
-      <button type="button" class="collaboration-roster-toggle" id="collaborationRosterToggle" aria-expanded="false" data-persistence="local-only" data-summary="exclude" hidden>Show everyone</button>
-      <p class="sr-only" id="collaborationLiveRegion" role="status" aria-live="polite" aria-atomic="true"></p>
-    </div>
-    <div class="collaboration-workspace__actions">
-      <button type="button" class="btn-secondary collaboration-workspace__edit" id="editCollaborationNameBannerBtn" data-persistence="local-only">Edit my name</button>
-      <button type="button" class="btn-secondary collaboration-workspace__edit" id="editCollaborationTeamBannerBtn" data-persistence="local-only">Edit team</button>
-    </div>
-  </section>
-
-  <div class="collaboration-dialog-backdrop" id="collaborationDialogBackdrop" hidden></div>
-  <section class="action-dialog collaboration-dialog" id="collaborationDialog" role="dialog" aria-modal="true" aria-labelledby="collaborationDialogTitle" aria-describedby="collaborationDialogDescription" hidden tabindex="-1">
-    <header class="action-dialog__header">
-      <h4 id="collaborationDialogTitle">Start a shared session</h4>
-      <p class="action-dialog__description" id="collaborationDialogDescription">Create a professional space for everyone working on this intake.</p>
-    </header>
-    <form id="collaborationDialogForm">
-      <div class="action-dialog__body">
-        <div class="field" id="collaborationTeamNameField" data-persistence="local-only" data-summary="exclude">
-          <label for="collaborationTeamNameInput" data-persistence="local-only">Team name <span class="subtle">(optional)</span></label>
-          <input id="collaborationTeamNameInput" type="text" maxlength="80" placeholder="Payments incident team" autocomplete="organization" data-persistence="local-only" data-summary="exclude" />
-          <p class="field-hint" data-persistence="local-only" data-summary="exclude">Shown at the top of the shared workspace. The default is “Shared intake.”</p>
-        </div>
-        <div class="field" id="collaborationDisplayNameField" data-persistence="local-only" data-summary="exclude">
-          <label for="collaborationDisplayNameInput" data-persistence="local-only">Your name <span class="subtle">(optional)</span></label>
-          <input id="collaborationDisplayNameInput" type="text" maxlength="60" placeholder="Sam" autocomplete="name" data-persistence="local-only" data-summary="exclude" />
-          <p class="field-hint" data-persistence="local-only" data-summary="exclude">Visible to anyone with this collaboration link. Leave blank to use a friendly Teammate number.</p>
-        </div>
-      </div>
-      <footer class="action-dialog__footer">
-        <button type="button" class="btn-secondary" id="collaborationDialogCancelBtn" data-persistence="local-only">Cancel</button>
-        <button type="submit" class="btn-primary" id="collaborationDialogSubmitBtn" data-persistence="local-only">Start shared session</button>
-      </footer>
-    </form>
-  </section>
-  <!-- [feature:collaboration-presence] end -->
 
   <div class="wrap">
     <!-- [feature:major-incident-role-legend] start -->
@@ -570,8 +522,58 @@ Anchors present:
 
   </div>
 
-  <!-- [feature:notes-workspace] start -->
-  <aside class="notes-workspace" id="notesWorkspace" aria-labelledby="notesWorkspaceTitle" aria-hidden="false">
+  <aside class="workspace-dock" aria-label="Team and notes workspace">
+  <!-- [feature:collaboration-presence] start -->
+    <section class="collaboration-workspace" id="collaborationWorkspace" aria-label="Team workspace" hidden>
+      <div class="collaboration-workspace__identity">
+        <span class="collaboration-workspace__eyebrow">Team workspace</span>
+        <strong id="collaborationTeamName">Shared intake</strong>
+      </div>
+      <div class="collaboration-workspace__people">
+        <div class="collaboration-workspace__summary">
+          <span class="collaboration-workspace__presence-dot" aria-hidden="true"></span>
+          <span id="collaborationPeopleSummary">1 person here</span>
+          <span id="collaborationPresenceStale" class="collaboration-workspace__stale" hidden>Presence may be out of date</span>
+        </div>
+        <ul class="collaboration-participants" id="collaborationParticipants" aria-label="People currently in this workspace"></ul>
+        <button type="button" class="collaboration-roster-toggle" id="collaborationRosterToggle" aria-expanded="false" data-persistence="local-only" data-summary="exclude" hidden>Show everyone</button>
+        <p class="sr-only" id="collaborationLiveRegion" role="status" aria-live="polite" aria-atomic="true"></p>
+      </div>
+      <div class="collaboration-workspace__actions">
+        <button type="button" class="btn-secondary collaboration-workspace__edit" id="editCollaborationNameBannerBtn" data-persistence="local-only">Edit my name</button>
+        <button type="button" class="btn-secondary collaboration-workspace__edit" id="editCollaborationTeamBannerBtn" data-persistence="local-only">Edit team</button>
+      </div>
+    </section>
+
+    <div class="collaboration-dialog-backdrop" id="collaborationDialogBackdrop" hidden></div>
+    <section class="action-dialog collaboration-dialog" id="collaborationDialog" role="dialog" aria-modal="true" aria-labelledby="collaborationDialogTitle" aria-describedby="collaborationDialogDescription" hidden tabindex="-1">
+      <header class="action-dialog__header">
+        <h4 id="collaborationDialogTitle">Start a shared session</h4>
+        <p class="action-dialog__description" id="collaborationDialogDescription">Create a professional space for everyone working on this intake.</p>
+      </header>
+      <form id="collaborationDialogForm">
+        <div class="action-dialog__body">
+          <div class="field" id="collaborationTeamNameField" data-persistence="local-only" data-summary="exclude">
+            <label for="collaborationTeamNameInput" data-persistence="local-only">Team name <span class="subtle">(optional)</span></label>
+            <input id="collaborationTeamNameInput" type="text" maxlength="80" placeholder="Payments incident team" autocomplete="organization" data-persistence="local-only" data-summary="exclude" />
+            <p class="field-hint" data-persistence="local-only" data-summary="exclude">Shown at the top of the shared workspace. The default is “Shared intake.”</p>
+          </div>
+          <div class="field" id="collaborationDisplayNameField" data-persistence="local-only" data-summary="exclude">
+            <label for="collaborationDisplayNameInput" data-persistence="local-only">Your name <span class="subtle">(optional)</span></label>
+            <input id="collaborationDisplayNameInput" type="text" maxlength="60" placeholder="Sam" autocomplete="name" data-persistence="local-only" data-summary="exclude" />
+            <p class="field-hint" data-persistence="local-only" data-summary="exclude">Visible to anyone with this collaboration link. Leave blank to use a friendly Teammate number.</p>
+          </div>
+        </div>
+        <footer class="action-dialog__footer">
+          <button type="button" class="btn-secondary" id="collaborationDialogCancelBtn" data-persistence="local-only">Cancel</button>
+          <button type="submit" class="btn-primary" id="collaborationDialogSubmitBtn" data-persistence="local-only">Start shared session</button>
+        </footer>
+      </form>
+    </section>
+    <!-- [feature:collaboration-presence] end -->
+
+    <!-- [feature:notes-workspace] start -->
+    <section class="notes-workspace" id="notesWorkspace" aria-labelledby="notesWorkspaceTitle" aria-hidden="false">
     <header class="notes-workspace__header">
       <div><h2 id="notesWorkspaceTitle">Notes workspace</h2><p>Drag notes to an editable intake field.</p></div>
       <button type="button" class="notes-workspace__toggle" id="notesWorkspaceToggle" aria-controls="notesWorkspaceControls notesWorkspaceList" aria-expanded="true">Collapse notes</button>
@@ -581,8 +583,9 @@ Anchors present:
       <div><input id="notesWorkspaceInput" type="text" placeholder="Capture a detail to place later" /><button type="button" class="btn-mini" id="notesWorkspaceAddBtn">Add note</button></div>
     </div>
     <ul class="notes-workspace__list" id="notesWorkspaceList" aria-label="Captured notes"></ul>
+    </section>
+    <!-- [feature:notes-workspace] end -->
   </aside>
-  <!-- [feature:notes-workspace] end -->
 
   <div class="drawer-backdrop comms-backdrop" id="commsBackdrop" data-mode-section="communications" aria-hidden="true"></div>
   <aside class="drawer comms-drawer" id="commsDrawer" data-mode-section="communications" role="dialog" aria-modal="true" aria-labelledby="commsDrawerTitle" aria-hidden="true" tabindex="-1">

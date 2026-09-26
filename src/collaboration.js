@@ -108,7 +108,9 @@ export function createCollaborationController({
     if (workspace) workspace.hidden = !token;
     const team = element('collaborationTeamName'); if (team) team.textContent = teamName || 'Shared intake';
     const list = element('collaborationParticipants');
-    if (list) {
+    const rosterSignature = JSON.stringify(participants.map(participant => [participant.id, participant.displayName, participant.activityState, participant.editingField, participant.lastActiveAt, participant.lastSeenAt, participant.id === self?.id, rosterExpanded]));
+    if (list && list.dataset.renderSignature !== rosterSignature) {
+      list.dataset.renderSignature = rosterSignature;
       list.replaceChildren();
       participants.forEach((participant, index) => {
         const item = documentRef.createElement('li'); item.className = 'collaboration-participant';
@@ -122,26 +124,35 @@ export function createCollaborationController({
         const name = documentRef.createElement('span'); name.className = 'collaboration-participant__name'; name.textContent = `${participant.displayName}${isSelf ? ' (you)' : ''}`;
         const location = fieldLabel(participant.editingField); const detail = documentRef.createElement('span'); detail.className = 'collaboration-participant__state';
         detail.textContent = state === 'editing' ? `Editing${location ? ` · ${location}` : ''}` : state === 'focused' ? `Viewing${location ? ` · ${location}` : ''}` : state === 'idle' ? `Idle${relativeActivity(participant) ? ` · ${relativeActivity(participant)}` : ''}${location ? ` · last in ${location}` : ''}` : 'Active';
-        if (state === 'editing') { const dots = documentRef.createElement('span'); dots.className = 'collaboration-editing-dots'; dots.setAttribute('aria-hidden', 'true'); dots.textContent = '•••'; detail.append(dots); }
-        copy.append(name, detail); item.append(avatar, copy); item.setAttribute('aria-label', `${name.textContent}, ${detail.textContent.replace('•••', '')}`); list.append(item);
+        copy.append(name, detail); item.append(avatar, copy); item.setAttribute('aria-label', `${name.textContent}, ${detail.textContent}`); list.append(item);
       });
     }
     const toggle = element('collaborationRosterToggle'); if (toggle) { const hiddenCount = Math.max(0, participants.length - ROSTER_VISIBLE_LIMIT); toggle.hidden = hiddenCount === 0; toggle.textContent = rosterExpanded ? 'Show fewer' : `+${hiddenCount} more`; toggle.setAttribute('aria-expanded', String(rosterExpanded)); }
     const summary = element('collaborationPeopleSummary'); if (summary) summary.textContent = `${participants.length} ${participants.length === 1 ? 'person' : 'people'} here`;
     const staleLabel = element('collaborationPresenceStale'); if (staleLabel) staleLabel.hidden = !stale;
-    documentRef?.querySelectorAll?.('.collaboration-editing-badge').forEach(badge => badge.remove());
+    const remoteEditors = participants.filter(participant => participant.id !== self?.id && participant.editingField && ['editing', 'focused'].includes(participant.activityState || 'editing'));
+    const fieldSignature = JSON.stringify(remoteEditors.map(participant => [participant.id, participant.displayName, participant.editingField, participant.activityState]));
+    const currentFieldSignature = documentRef?.body?.dataset.collaborationFieldSignature || '';
+    if (fieldSignature !== currentFieldSignature) documentRef?.querySelectorAll?.('.collaboration-field-presence').forEach(group => group.remove());
     documentRef?.querySelectorAll?.('.is-collaboration-busy').forEach(control => {
       control.classList.remove('is-collaboration-busy'); control.style.removeProperty('--collaborator-color');
     });
-    participants.filter(participant => participant.id !== self?.id && participant.editingField && ['editing', 'focused'].includes(participant.activityState || 'editing')).forEach(participant => {
+    remoteEditors.forEach(participant => {
       const control = element(participant.editingField); if (!control) return;
       const color = participantColor(participant.id); control.classList.add('is-collaboration-busy'); control.style.setProperty('--collaborator-color', color);
       const host = control.closest('.field, td, .cause-card, .card') || control.parentElement; if (!host) return;
+      if (fieldSignature === currentFieldSignature) return;
+      let group = [...host.children].find(child => child.classList?.contains('collaboration-field-presence'));
+      if (!group) {
+        group = documentRef.createElement('div'); group.className = 'collaboration-field-presence'; group.setAttribute('aria-label', 'Collaborators in this field');
+        const heading = [...host.children].find(child => child.matches?.('label, legend, h2, h3, h4, summary'));
+        heading?.after(group); if (!heading) host.prepend(group);
+      }
       const badge = documentRef.createElement('span'); badge.className = 'collaboration-editing-badge'; badge.style.setProperty('--collaborator-color', color);
       const editing = (participant.activityState || 'editing') === 'editing'; badge.textContent = `${participant.displayName} is ${editing ? 'editing' : 'here'}`;
-      if (editing) { const dots = documentRef.createElement('span'); dots.className = 'collaboration-editing-dots'; dots.setAttribute('aria-hidden', 'true'); dots.textContent = '•••'; badge.append(dots); }
-      host.append(badge);
+      group.append(badge);
     });
+    if (documentRef?.body) documentRef.body.dataset.collaborationFieldSignature = fieldSignature;
     renderDocumentTitle(snapshot);
   };
   const acceptPresence = body => {

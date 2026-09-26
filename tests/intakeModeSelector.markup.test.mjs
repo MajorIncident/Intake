@@ -67,13 +67,14 @@ test('collaboration stays available while Major Incident-only UI regions are mar
   assert.ok(document.querySelector('[data-mode-section="containment"]'), 'containment controls should be mode controlled');
 });
 
-test('shared collaboration exposes an accessible presence strip and identity dialog', () => {
+test('shared collaboration exposes an accessible Team workspace beside notes and identity dialog', () => {
   const document = buildIndexDocument();
   const workspace = document.getElementById('collaborationWorkspace');
   const dialog = document.getElementById('collaborationDialog');
 
   assert.ok(workspace?.hasAttribute('hidden'), 'presence strip starts hidden for local-only work');
-  assert.equal(workspace?.getAttribute('aria-label'), 'Shared workspace');
+  assert.equal(workspace?.getAttribute('aria-label'), 'Team workspace');
+  assert.equal(workspace?.closest('.workspace-dock')?.querySelector('#notesWorkspace')?.previousElementSibling, dialog, 'team controls and dialog sit immediately before notes in the shared dock');
   assert.equal(dialog?.getAttribute('role'), 'dialog');
   assert.equal(dialog?.getAttribute('aria-modal'), 'true');
   assert.ok(document.querySelector('label[for="collaborationTeamNameInput"]'));
