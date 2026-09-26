@@ -89,7 +89,7 @@ test('editing a name heartbeats presence but never queues an intake snapshot', a
   assert.equal(env.requests.some(([, options]) => options.method === 'PUT' && JSON.parse(options.body).snapshot), false);
 });
 
-test('remote editing presence identifies and color-codes a busy field with animated status', async () => {
+test('remote editing presence identifies and color-codes a busy field with stable status under its label', async () => {
   const env = setup(`https://intake.test/?workspace=${token}`); await join(env);
   const selfId = '11111111-1111-4111-8111-111111111111';
   setup.handler = async () => reply(200, {
@@ -103,7 +103,12 @@ test('remote editing presence identifies and color-codes a busy field with anima
   const field = env.dom.window.document.getElementById('field');
   const badge = env.dom.window.document.querySelector('.collaboration-editing-badge');
   assert.equal(field.classList.contains('is-collaboration-busy'), true);
-  assert.equal(badge.textContent, 'Sam is editing•••');
+  assert.equal(badge.textContent, 'Sam is editing');
+  assert.equal(badge.parentElement.className, 'collaboration-field-presence');
+  assert.equal(badge.parentElement.previousElementSibling.getAttribute('for'), 'field');
+  const stableBadge = badge;
+  await env.controller.heartbeat();
+  assert.equal(env.dom.window.document.querySelector('.collaboration-editing-badge'), stableBadge, 'unchanged heartbeats do not recreate and blink the tag');
   assert.equal(badge.getAttribute('aria-live'), null, 'rapid visual activity is not announced repeatedly');
 
   setup.handler = async () => reply(200, { teamName: 'Response team', self: { id: selfId, displayName: 'Priya' }, participants: [{ id: selfId, displayName: 'Priya' }] });
