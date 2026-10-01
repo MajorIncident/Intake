@@ -27,13 +27,16 @@ test('experience role metadata exposes stable human labels', () => {
 
 test('role surface policy keeps Standalone and Student in Intake while Instructor uses its shell', () => {
   assert.equal(isExperienceSurfaceVisible(EXPERIENCE_ROLE_IDS.STANDALONE, 'intake'), true);
+  assert.equal(isExperienceSurfaceVisible(EXPERIENCE_ROLE_IDS.STANDALONE, 'student-entry'), false);
   assert.equal(isExperienceSurfaceVisible(EXPERIENCE_ROLE_IDS.STANDALONE, 'student-notice'), false);
 
   assert.equal(isExperienceSurfaceVisible(EXPERIENCE_ROLE_IDS.STUDENT, 'intake'), true);
+  assert.equal(isExperienceSurfaceVisible(EXPERIENCE_ROLE_IDS.STUDENT, 'student-entry'), true);
   assert.equal(isExperienceSurfaceVisible(EXPERIENCE_ROLE_IDS.STUDENT, 'student-notice'), true);
 
   assert.equal(isExperienceSurfaceVisible(EXPERIENCE_ROLE_IDS.INSTRUCTOR, 'intake'), false);
   assert.equal(isExperienceSurfaceVisible(EXPERIENCE_ROLE_IDS.INSTRUCTOR, 'intake-control'), false);
+  assert.equal(isExperienceSurfaceVisible(EXPERIENCE_ROLE_IDS.INSTRUCTOR, 'student-entry'), false);
   assert.equal(isExperienceSurfaceVisible(EXPERIENCE_ROLE_IDS.INSTRUCTOR, 'instructor-shell'), true);
 
   assert.deepEqual(Object.keys(EXPERIENCE_ROLE_SURFACES).sort(), [

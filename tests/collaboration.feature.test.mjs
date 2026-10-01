@@ -405,3 +405,51 @@ test('invalid and missing sessions stop polling while network and server failure
   assert.equal(offline.controller.getState().pollingStopped, false);
   assert.equal(offline.dom.window.document.getElementById('collaborationStatus').textContent, 'Offline · Changes kept locally');
 });
+
+
+test('classroom attach reuses collaboration sync without exposing the workspace capability in the URL', async () => {
+  const env = setup('https://intake.test/?source=classroom');
+  await env.controller.init();
+  const participantId = env.controller.getState().profile.participantId;
+  setup.handler = async (url, options) => {
+    if (url === '/api/workspaces/session') {
+      assert.equal(options.headers.Authorization, `Bearer ${token}`);
+      return reply(200, { revision: 4, snapshot: { classroom: true }, teamName: 'Team Alpha' });
+    }
+    if (url === '/api/workspaces/presence') {
+      const sent = JSON.parse(options.body);
+      return reply(200, {
+        teamName: 'Team Alpha',
+        self: { id: sent.participantId, displayName: sent.displayName },
+        participants: [{ id: sent.participantId, displayName: sent.displayName }]
+      });
+    }
+    return reply(404, {});
+  };
+
+  assert.equal(await env.controller.connect(token, { displayName: 'Alex', classroom: true }), true);
+  assert.deepEqual(env.applyCalls, [{ classroom: true }]);
+  assert.equal(env.controller.getState().revision, 4);
+  assert.equal(env.controller.getState().sessionKind, 'classroom');
+  assert.equal(env.controller.getState().linkSharingEnabled, false);
+  assert.equal(env.controller.getState().legacyLeaveEnabled, false);
+  assert.equal(env.controller.getState().self.id, participantId);
+  assert.equal(env.controller.getState().self.displayName, 'Alex');
+  assert.equal(env.dom.window.location.search, '?source=classroom', 'workspace capability never enters the URL');
+  assert.equal(env.dom.window.document.getElementById('copyCollaborationLinkBtn').disabled, true);
+  assert.equal(env.dom.window.document.getElementById('leaveCollaborationBtn').disabled, true);
+  assert.equal(env.dom.window.document.getElementById('editCollaborationTeamBtn').disabled, true);
+  assert.equal(env.dom.window.document.getElementById('editCollaborationTeamBannerBtn').disabled, true);
+  assert.equal(await env.controller.copyLink(), false);
+});
+
+test('classroom attach rejects malformed workspace capabilities before network access', async () => {
+  const env = setup();
+  await env.controller.init();
+  env.requests.length = 0;
+
+  assert.equal(await env.controller.connect('not-a-capability', { classroom: true }), false);
+  assert.equal(env.requests.length, 0);
+  assert.equal(env.controller.getState().token, null);
+  assert.equal(env.controller.getState().sessionKind, 'local');
+});

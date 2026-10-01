@@ -58,12 +58,16 @@ import { initMajorIncidentRoles } from './src/majorIncidentRoles.js';
 import { initMajorIncidentAnalysis } from './src/majorIncidentAnalysis.js';
 import { initCollaboration } from './src/collaboration.js';
 import { initExperienceRoleController } from './src/experienceRoleController.js';
+import { initStudentClassroom } from './src/classroomStudent.js';
 
 /** Active shared-session controller, initialized during boot. @type {object|null} */
 let collaborationController = null;
+let studentClassroomController = null;
 
 /** Destroys collaboration resources during application or test teardown. @returns {void} */
 export function destroyCollaboration() {
+  studentClassroomController?.destroy?.();
+  studentClassroomController = null;
   collaborationController?.destroy();
   collaborationController = null;
 }
@@ -205,6 +209,13 @@ function boot() {
 
   initMenuBar();
   collaborationController = initCollaboration({
+    collect: collectAppState,
+    apply: applyAppState,
+    saveLocal: saveToStorage,
+    toast: showToast
+  });
+  studentClassroomController = initStudentClassroom({
+    collaboration: collaborationController,
     collect: collectAppState,
     apply: applyAppState,
     saveLocal: saveToStorage,
