@@ -154,6 +154,8 @@ Slice #291 adds:
 - `classroom_workspaces`
 - `classroom_memberships`
 
+The membership table has a composite foreign key to `classroom_workspaces(class_id, workspace_id)`, so class/workspace isolation is enforced by the database as well as by handler authorization.
+
 Existing collaboration tables and secret links remain valid.
 
 No classroom credential is stored in browser Intake state.
