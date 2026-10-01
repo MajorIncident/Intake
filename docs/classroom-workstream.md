@@ -19,7 +19,7 @@ This is the live restart document for the Classroom Experience program (#288).
 | Student join/resume | #292 | Complete | PR #302 / `feature/classroom-student-experience` | 194 tests: 193 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Instructor observer | #293 | Complete | PR #305 merged | 208 tests: 207 pass, 0 fail, 1 skip; repository gates green |
 | Coaching | #294 | Complete | PR #306 merged | 224 tests: 223 pass, 0 fail, 1 skip; all repository gates green; production deployment READY |
-| Protected cases | #295 | In progress | `feature/classroom-protected-cases` | Public manifest leak confirmed; split contract being implemented |
+| Protected cases | #295 | In progress | draft PR #307 / `feature/classroom-protected-cases` | Runtime/security implementation complete; final docs/gates and deployment verification remain |
 | Browser E2E/CI | #296 | Not started | — | Uses #279 infrastructure |
 | Browser test foundation | #279 | Existing open issue | — | Shared Playwright/accessibility foundation |
 
@@ -32,7 +32,7 @@ This is the live restart document for the Classroom Experience program (#288).
 - Coaching is a separate persistence/revision channel.
 - Classroom credentials never belong in exported Intake state.
 - Case Study password is instructional gating, not authentication.
-- Protected Case Study payloads ultimately move out of the public client bundle.
+- Protected Case Study metadata/payloads are server-gated, absent from public browser assets, and authored `templates/*.json` is excluded from Vercel deployment.
 
 See `docs/classroom-architecture.md` for the full contract.
 
@@ -60,11 +60,17 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Last completed action
 
-Merged PR #306 / completed #294 as `4d0ab953fbdde32dde3441fbe2e415f0bf886634`. Production Vercel deployment reached READY and a post-deploy runtime-error scan found no errors.
+Completed the #295 implementation/security/documentation slices through root cold-start and repository-operations guidance. Latest durable docs checkpoint before this update is `47ffd1bf11c813e69f8d7956659902c041c8e908`, followed by README/onboarding/roadmap/commenting/storage/operations synchronization. The public/server manifest split, authorized API/client flow, raw authored-JSON Vercel exclusion, and protected-resource verifier are implemented.
 
 ## Next recommended action
 
-Continue #295 on `feature/classroom-protected-cases`. The confirmed leak is the generated `src/templates.manifest.js`: `scripts/build-templates-manifest.mjs` currently compiles Standard Templates and Case Studies, including full Case Study state, into one public static module. Split the public generated manifest to Standard Templates only; keep validating all authored JSON; then add server-authorized Case Study catalog/payload delivery for Student and Instructor contexts. Do not treat the rotating Case Study password as authentication.
+Continue #295 on draft PR #307 from the current branch head. Runtime/security implementation is complete. Finish only the finalization sequence:
+
+1. verify the current documented head has CI, CodeQL, Dependency Review, and Template Manifest Guard green;
+2. inspect the complete #307 diff for accidental browser imports/identifiers and confirm `npm run verify:protected-cases` remains in `npm run quality`;
+3. perform deployed HTTP verification that protected `/templates/*.json` authoring paths are no longer served and that authorized/unauthorized protected API behavior matches the contract;
+4. update PR #307 and issue #295 with the final SHA/evidence;
+5. mark ready for review only after those checks. Do not merge unless explicitly authorized.
 
 ## Completed #300 implementation
 
@@ -149,32 +155,55 @@ Continue #295 on `feature/classroom-protected-cases`. The confirmed leak is the 
 ## Active #295 implementation
 
 - Branch: `feature/classroom-protected-cases`.
+- Draft PR: #307.
 - Issue: #295.
-- Confirmed current leak: `scripts/build-templates-manifest.mjs` reads every JSON file under `templates/` and writes metadata + full state into public `src/templates.manifest.js`.
-- `src/templates.js` statically imports that manifest and assumes every listed resource has an in-bundle payload; role filtering therefore controls visibility only, not confidentiality.
-- Target architecture:
-  - authoring JSON remains in-repo and all resources stay build-validated;
-  - public generated manifest contains Standard Templates only;
-  - protected Case Study catalog/payload is loaded server-side after Classroom authorization;
-  - existing mode projection/pedagogical unlock behavior is preserved after authorization;
-  - static-bundle regression tests prove protected Case Study content is absent from public generated assets.
-- Delivery-safe parts: generator/runtime split → server authorization/API → Student/Instructor drawer integration → bundle guard/docs/final gates.
-- Public/server manifest split checkpoint: `5d8ecb756de179276164d575cfc4ea1a03ef7115`; Template Manifest Guard green.
-- Authorized server API checkpoint: `5dfd2718a2fefc2357afb22a5a906cd3f045e970`.
-- Authorized client/lifecycle checkpoint: `83e278b87392c7be5eb8ba8ec4f19d84a0b94def`.
-- Drawer integration checkpoint: `35acd62d35a0826e8e350507a16c187ffceafbc1`.
-- Student/Instructor protected catalog is in-memory only; Case Study payload fetch uses authenticated POST after the pedagogical unlock; Standalone has no protected provider context.
-- Exact next action: inspect canonical gates on `35acd62...`, fix findings, then add final import/static-bundle guard + docs/security review.
+- Public/server manifest split:
+  - `src/templates.manifest.js` contains Standard Templates only;
+  - `api/protected-case-studies.manifest.js` contains the four protected Case Studies server-side;
+  - all authored JSON remains validated by `npm run build:templates`.
+- Authorized server delivery:
+  - Instructor `GET/POST /api/classes/case-studies` is class-scoped;
+  - Student `GET/POST /api/classes/case-studies/student` is membership-bound to the issued Classroom workspace capability;
+  - catalog GET omits `state`;
+  - full payload selection is authenticated POST-body data;
+  - protected responses are `no-store` / `no-referrer`;
+  - legacy Standalone collaboration capability does not authorize Student Case Studies.
+- Client delivery:
+  - `src/classroomCaseStudies.js` owns authorized catalog/payload access in memory only;
+  - Student/Instructor lifecycle controllers connect/disconnect that context;
+  - Standalone has no protected provider context;
+  - Student fetches the full Case Study only when applying it after the existing pedagogical mode/password step;
+  - remote payloads reuse canonical `projectTemplateState()` mode projection.
+- Deployment boundary:
+  - current production was verified to expose raw `/templates/Microcomputer%20Cabinets.json` before this PR, confirming a second real leak beyond the old public manifest;
+  - `.vercelignore` now excludes `templates/*.json`;
+  - Vercel production build no longer regenerates manifests from excluded authoring source and instead runs `npm run verify:protected-cases`;
+  - GitHub/local authoring remains responsible for generated-manifest freshness.
+- Guardrails/tests:
+  - public manifest contains only Standard Templates;
+  - every authored resource is emitted to exactly one generated boundary;
+  - protected IDs/names must be absent from public manifest/browser runtime;
+  - browser runtime must not import the server-only protected manifest;
+  - authorization/API/client/drawer regression coverage is included;
+  - `verify:protected-cases` is part of the canonical `npm run quality` gate.
+- Durable implementation checkpoints:
+  - `5d8ecb756de179276164d575cfc4ea1a03ef7115` — public/server manifest split + regression boundary;
+  - `5dfd2718a2fefc2357afb22a5a906cd3f045e970` — authorized protected API;
+  - `83e278b87392c7be5eb8ba8ec4f19d84a0b94def` — authorized client/lifecycle;
+  - `35acd62d35a0826e8e350507a16c187ffceafbc1` — drawer integration;
+  - `b3160264adfac5d500711c22515bf21f27dff75d` — authored-JSON Vercel exclusion + boundary verifier;
+  - later commits fix only test harness and documentation synchronization.
+- Final docs now cover security, API/architecture, README/deployment, scoped/global AGENTS, AI onboarding, roadmap, commenting guide, storage guidance, and repository operations.
+- Exact next action: run/inspect final documented-head gates, then deployed HTTP verification, then update PR #307 / #295. Do not merge without explicit authorization.
 
 ## Known risks / watch items
 
-- Existing Case Study payloads are client-bundled; role-based hiding is not a confidentiality control.
 - Existing collaboration secret links grant equal edit access and have no administrator role; classroom authorization must layer over rather than silently reinterpret those links.
 - There is deliberately no current workspace-list endpoint; student non-enumeration must remain a security property when instructor listing is added.
 - Classroom role/session state must not leak into `kt-intake-full-v2`.
 - Instructor read-only behavior must be server-enforced, not just disabled controls.
 - Class creation remains capability-first and does not yet require account/SSO identity; rate limiting/abuse controls are an operational follow-on if public exposure warrants them.
-- Feature-branch Vercel deployments are skipped, so the additive Neon migration cannot be smoke-tested against a preview database before merge.
+- Feature-branch Vercel deployments are skipped in the normal Git flow. Final #295 handoff therefore needs an explicit deployed HTTP verification path before merge/production promotion, especially for raw `/templates/*.json` exclusion.
 
 ## Handoff template
 
