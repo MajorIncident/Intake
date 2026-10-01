@@ -66,13 +66,14 @@ Completed the #295 implementation/security/documentation slices through root col
 
 Continue #295 on draft PR #307 from the current branch head. Runtime/security implementation is complete. Finish only the finalization sequence:
 
-1. Current #307 head: `a376d7751209eff02a616110a59e52fd45cc1b70`.
+1. Current #307 head after deployment-policy/docs hardening: `0cc4cda5c1aab1d96c1e746dbcb088b49999d94a`. Final runtime/security implementation remains rooted at `a376d7751209eff02a616110a59e52fd45cc1b70`.
 2. GitHub validation on that exact head is complete: **236 tests (235 pass, 0 fail, 1 intentional skip)**; CI, CodeQL, Dependency Review, Template Manifest Guard, and Vercel Preview Comments are green.
 3. A temporary verification branch `verify/protected-cases-preview` over the prior fully documented runtime head added only a branch-scoped Vercel `ignoreCommand`. Deployment `dpl_A3H2rKdJAEGZpBM26iEFSyMicK6f` reached **READY** and the previously exposed protected path `/templates/Microcomputer%20Cabinets.json` returned a genuine HTTP **404**.
 4. #307 was then strengthened at `a376d775...`: when `VERCEL=1`, `verify:protected-cases` now fails if any authored `templates/*.json` file is actually present in the Vercel upload, not merely if the ignore rule is missing.
 5. A second verification branch `verify/protected-cases-preview-v2` attempted to deploy the strengthened head, but Vercel rejected it with `upgradeToPro=build-rate-limit` before creating a deployment. This is tracked in #304.
 6. The connected Vercel fetch tool cannot traverse the READY preview's Vercel Authentication layer consistently, and the local runtime has no Vercel CLI/outbound DNS. Therefore deployed authenticated Student/Instructor API calls cannot be executed from this session without weakening/persisting a preview bypass secret.
-7. Exact next action: once Vercel preview build capacity is available, deploy `a376d775...` (or a descendant with no runtime changes) and run the remaining authenticated/unauthenticated protected API HTTP checks. Keep PR #307 draft and do not merge until that verification is accepted and merge is explicitly authorized.
+7. Vercel Git branch gating is now repository-enforced: ordinary branches are deny-by-default, `main` and `verify/**` are explicitly enabled. Feature commits `4079481...`, `2749743...`, and `0cc4cda...` each triggered GitHub checks but produced no Vercel status/deployment record; #304 tracks post-merge production confirmation.
+8. Exact next action: once Vercel preview build capacity is available, create a fresh `verify/**` branch from the current #307 head and run the remaining authenticated/unauthenticated protected API HTTP checks. Keep PR #307 draft and do not merge until that verification is accepted and merge is explicitly authorized.
 
 ## Completed #300 implementation
 
@@ -196,7 +197,7 @@ Continue #295 on draft PR #307 from the current branch head. Runtime/security im
   - `b3160264adfac5d500711c22515bf21f27dff75d` — authored-JSON Vercel exclusion + boundary verifier;
   - later commits fix only test harness and documentation synchronization.
 - Final docs now cover security, API/architecture, README/deployment, scoped/global AGENTS, AI onboarding, roadmap, commenting guide, storage guidance, and repository operations.
-- Final runtime/security head: `a376d7751209eff02a616110a59e52fd45cc1b70`.
+- Final runtime/security head: `a376d7751209eff02a616110a59e52fd45cc1b70`; current docs/deployment-policy head: `0cc4cda5c1aab1d96c1e746dbcb088b49999d94a`.
 - Validation: 236 tests (235 pass, 0 fail, 1 intentional skip); CI, CodeQL, Dependency Review, Template Manifest Guard, and Vercel Preview Comments green.
 - Deployment evidence: temporary preview `dpl_A3H2rKdJAEGZpBM26iEFSyMicK6f` reached READY and returned 404 for the previously exposed Microcomputer Cabinets authoring JSON path.
 - Stronger Vercel-upload assertion is now part of #307; its follow-up preview was blocked by the Vercel build-rate limit, tracked in #304.
@@ -209,7 +210,7 @@ Continue #295 on draft PR #307 from the current branch head. Runtime/security im
 - Classroom role/session state must not leak into `kt-intake-full-v2`.
 - Instructor read-only behavior must be server-enforced, not just disabled controls.
 - Class creation remains capability-first and does not yet require account/SSO identity; rate limiting/abuse controls are an operational follow-on if public exposure warrants them.
-- Normal feature-branch Vercel deployments are skipped by the project's Ignored Build Step. A temporary branch override can produce a preview, but the second #295 verification attempt hit the team build-rate limit. Preview-authenticated API verification therefore depends on available Vercel build capacity / an automation bypass path; see #304.
+- Normal development branches are now denied at the repository `git.deploymentEnabled` layer before Vercel creates deployment records. `main` and `verify/**` are explicit allow paths. A deliberate verification preview still depends on available Vercel build capacity / preview-auth access; see #304.
 
 ## Handoff template
 
