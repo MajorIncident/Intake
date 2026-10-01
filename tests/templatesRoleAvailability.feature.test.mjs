@@ -13,7 +13,7 @@ import {
 } from '../src/experienceRoleController.js';
 import { EXPERIENCE_ROLE_IDS } from '../src/experienceRoles.js';
 import { initTemplatesDrawer } from '../src/templatesDrawer.js';
-import { collectAppState } from '../src/appState.js';
+import { getTemplatePayload, TEMPLATE_MODE_IDS } from '../src/templates.js';
 import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
 
 const INDEX_HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -40,7 +40,7 @@ const protectedProvider = {
   }],
   getPayload: async caseStudyId => {
     if (caseStudyId !== 'authorized-case') return null;
-    const state = collectAppState();
+    const state = getTemplatePayload('checkout-latency', TEMPLATE_MODE_IDS.FULL);
     state.pre.oneLine = 'Protected Case Study applied';
     return {
       id: 'authorized-case',

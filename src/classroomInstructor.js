@@ -574,7 +574,6 @@ export function createInstructorClassroomController({
         restoreLocal();
       }
       saveSession();
-      onClassConnected(token);
       renderDashboard();
       renderRoster();
       if (!selectedWorkspaceId && workspaces[0]) await selectWorkspace(workspaces[0].id);
@@ -619,6 +618,7 @@ export function createInstructorClassroomController({
         ? preferredWorkspaceId
         : workspaces[0]?.id || '';
       saveSession();
+      onClassConnected(token);
       renderDashboard();
       renderRoster();
       if (element('instructorClassCode')) element('instructorClassCode').value = '';
