@@ -17,7 +17,7 @@ Student class join/resume (#292) is complete in PR #302. The next implementation
 | Templates / Case Studies | #290 | Complete | PR #299 / `feature/classroom-resource-split` | 171 tests: 170 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Class domain/API | #291 | Complete | PR #300 / `feature/classroom-domain-api` | Combined #290+#291 head: 183 tests, 182 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Student join/resume | #292 | Complete | PR #302 / `feature/classroom-student-experience` | 194 tests: 193 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
-| Instructor observer | #293 | Not started | — | Depends on class semantics |
+| Instructor observer | #293 | In progress | `feature/classroom-instructor-observer` | Read-only server observation seam + authorization tests are the first checkpoint |
 | Coaching | #294 | Not started | — | Depends on observer |
 | Protected cases | #295 | Not started | — | Requires #290 + #291 |
 | Browser E2E/CI | #296 | Not started | — | Uses #279 infrastructure |
@@ -56,7 +56,7 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297–#302 are merged to `main`. No classroom implementation PR is currently active.
+#297–#303 are merged to `main`. #293 is active on `feature/classroom-instructor-observer`.
 
 ## Last completed action
 
@@ -64,7 +64,7 @@ Merged #302 / completed #292. Current `main` includes Student class admission, s
 
 ## Next recommended action
 
-Start #293 on a fresh branch from current `main`. Instructor observation must use a separate read-only server authorization path and must not reuse the editable `classroom-student` capability alias.
+Continue #293 on `feature/classroom-instructor-observer`. The first checkpoint establishes `GET /api/classes/observe` as a server-enforced read-only path authorized by the Instructor class capability. Next: build Instructor class resume, workspace rail/search, and the read-only projection of the existing Intake DOM.
 
 ## Completed #300 implementation
 
@@ -98,6 +98,16 @@ Start #293 on a fresh branch from current `main`. Instructor observation must us
 - Student Intake controls stay hidden until a class workspace is connected.
 - Automated coverage is in `tests/classroomStudent.unit.test.mjs`, `tests/classroomStudent.feature.test.mjs`, and collaboration regression tests.
 - Final #302 validation: 194 tests (193 pass, 0 fail, 1 intentional skip), with CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+
+## Active #293 implementation
+
+- Branch: `feature/classroom-instructor-observer`.
+- Read-only endpoint: `GET /api/classes/observe?workspaceId=<public UUID>`.
+- Authorization: Instructor class capability only; the server verifies class/workspace ownership before reading the collaboration workspace.
+- The observer returns snapshot/revision + recent participant activity but **never** a Student workspace capability.
+- The observer is GET-only and does not route through editable `/api/workspaces/session` or `/api/workspaces/presence`.
+- Planned client: persist Instructor capability outside Intake state, list own-class workspaces, search/filter a left rail, poll one selected workspace, apply it into the existing Intake DOM under a read-only projection, and restore pre-observation local Intake when leaving Instructor.
+- Coaching remains out of scope until #294.
 
 ## Known risks / watch items
 

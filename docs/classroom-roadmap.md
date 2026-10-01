@@ -125,7 +125,9 @@ Primary deliverables:
 
 **Issue:** #293
 
-Recommended branch: `feature/classroom-instructor-observer`
+**Active branch:** `feature/classroom-instructor-observer`
+
+Checkpoint 1 establishes the server-enforced read-only observer endpoint before client UI work.
 
 Normally stacks on #292/#291 depending implementation.
 

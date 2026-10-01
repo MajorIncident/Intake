@@ -245,6 +245,44 @@ async function initializeRepository() {
         ORDER BY joined_at, participant_id`;
       return { teamName: workspaces[0].team_name, participants };
     },
+    /**
+     * Read one workspace by internal server ID for an already-authorized observer path.
+     *
+     * This method accepts no capability token and is never exposed directly as an
+     * HTTP handler. Callers must first authorize access in their own domain (for
+     * example, Instructor class authorization) and resolve the internal workspace ID.
+     *
+     * @param {number|string} workspaceId Internal collaboration workspace ID.
+     * @returns {Promise<object|null>} Snapshot, revision, metadata, and recent presence.
+     */
+    async observeById(workspaceId) {
+      if (workspaceId === undefined || workspaceId === null || workspaceId === '') return null;
+      const workspaces = await sql`SELECT
+          id,
+          snapshot_json AS snapshot,
+          revision,
+          expires_at AS "expiresAt",
+          updated_at AS "updatedAt",
+          COALESCE(team_name, 'Shared intake') AS "teamName"
+        FROM collaboration_workspaces
+        WHERE id = ${workspaceId} AND expires_at > NOW()`;
+      if (!workspaces[0]) return null;
+      const participants = await sql`SELECT
+          participant_id AS id,
+          display_name AS "displayName",
+          last_seen_at AS "lastSeenAt",
+          last_active_at AS "lastActiveAt",
+          editing_field AS "editingField",
+          editing_revision AS "editingRevision",
+          CASE WHEN last_seen_at < NOW() - (${PRESENCE_WINDOW_SECONDS} * INTERVAL '1 second')
+            THEN 'idle' ELSE activity_state END AS "activityState",
+          activity_sequence AS "activitySequence"
+        FROM collaboration_participants
+        WHERE workspace_id = ${workspaces[0].id}
+          AND last_seen_at >= NOW() - (${IDLE_PRESENCE_WINDOW_SECONDS} * INTERVAL '1 second')
+        ORDER BY joined_at, participant_id`;
+      return { ...workspaces[0], participants };
+    },
     async renameWorkspace(tokenHash, requestedTeamName) {
       const workspaceId = await resolveWorkspaceId(tokenHash);
       if (!workspaceId) return null;

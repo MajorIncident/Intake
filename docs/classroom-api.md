@@ -25,7 +25,7 @@ The classroom tables contain organization, assignment, retention, and authorizat
 | Assignment capability | Select one individual/group assignment inside the admitted class | **No** | SHA-256 hash |
 | Student workspace capability | Edit/sync the resolved collaboration workspace | N/A | SHA-256 alias hash |
 | Legacy Standalone workspace capability | Existing secret-link collaboration | N/A | SHA-256 hash |
-| Future Instructor observer capability | Read-only observation | Future #293 | Must use a separate read-only path |
+| Instructor class capability | Read-only live observation through the class-scoped observer endpoint | Yes, own class only | SHA-256 hash |
 
 Possession of a capability is authority. Display name is not identity.
 
@@ -126,6 +126,25 @@ That returned capability is accepted by the existing `/api/workspaces/session` a
 The browser sends the Student join capability only in the Authorization header and the assignment capability only in the POST body. On success, both admission codes are discarded. The raw returned `workspaceToken` is retained under `kt-classroom-student-session-v1` solely for same-device resume.
 
 The collaboration client attaches that workspace capability programmatically; classroom workspace capabilities are **not** written into `?workspace=` URLs. Classroom mode disables collaboration-link copying and legacy shared-session leaving so the Student controller remains the owner of resume/Leave-class lifecycle.
+
+### `GET /api/classes/observe?workspaceId=<public-workspace-id>`
+
+Requires the Instructor class capability in `Authorization: Bearer ...`.
+
+The `workspaceId` query value is the non-secret public classroom workspace UUID returned by the instructor-only workspace list. The server first proves that the Instructor capability owns the class and that the requested workspace belongs to that same active class. Only then does it resolve the internal collaboration workspace ID server-side.
+
+The response contains:
+
+- public class metadata;
+- public classroom workspace metadata;
+- current Intake snapshot and revision;
+- collaboration team label;
+- recent participant presence/activity;
+- workspace expiry/update timestamps.
+
+It returns **no Student workspace capability and no editable alias**. The endpoint is GET-only. Student workspace capabilities, Student join capabilities, and Instructor credentials for another class cannot use it.
+
+This is the canonical read-only observation path for #293. The browser polls this endpoint with the Instructor class capability; it must not call editable `/api/workspaces/session` or `/api/workspaces/presence` as an observer.
 
 ## Individual and group semantics
 

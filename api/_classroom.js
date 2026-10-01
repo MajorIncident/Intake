@@ -281,6 +281,23 @@ async function initializeClassroomRepository() {
       return { classroom, workspaces: rows };
     },
 
+    async getWorkspaceForObservation(instructorHash, workspacePublicId) {
+      const classroom = await classByInstructor(instructorHash);
+      if (!classroom) return null;
+      const rows = await sql`SELECT
+          cw.workspace_id AS "internalId",
+          cw.public_id AS id,
+          cw.workspace_kind AS kind,
+          cw.label
+        FROM classroom_workspaces cw
+        JOIN collaboration_workspaces w ON w.id = cw.workspace_id
+        WHERE cw.class_id = ${classroom.internal_id}
+          AND cw.public_id = ${workspacePublicId}::uuid
+          AND cw.revoked_at IS NULL
+          AND w.expires_at > NOW()`;
+      return rows[0] ? { classroom, workspace: rows[0] } : null;
+    },
+
     async rotateWorkspaceClaim(instructorHash, workspacePublicId, nextHash) {
       const classroom = await classByInstructor(instructorHash);
       if (!classroom) return null;
@@ -636,6 +653,76 @@ export function classWorkspacesHandler({
       });
     } catch {
       return send(res, 500, { error: 'Unable to access class workspaces.' });
+    }
+  };
+}
+
+/**
+ * Create the Instructor-only, read-only live observation handler.
+ *
+ * The Instructor class capability authorizes exactly one class. The public
+ * classroom workspace ID selects a workspace inside that class; the handler
+ * then resolves the internal collaboration workspace ID server-side and reads
+ * snapshot/presence without ever minting or accepting an editable Student
+ * workspace capability.
+ *
+ * @param {object} [dependencies] - Injectable dependencies.
+ * @returns {Function} Vercel handler.
+ */
+export function classObserveHandler({
+  getRepository = getClassroomRepository,
+  getWorkspaceRepo = getWorkspaceRepository
+} = {}) {
+  return async (req, res) => {
+    if (req.method !== 'GET') {
+      return methodNotAllowed(res, 'GET');
+    }
+    const authorization = requireBearer(req);
+    if (!authorization.ok) {
+      return send(res, authorization.status, { error: authorization.error });
+    }
+
+    const workspaceId = Array.isArray(req.query?.workspaceId)
+      ? null
+      : req.query?.workspaceId;
+    if (!validateClassroomId(workspaceId)) {
+      return send(res, 400, { error: 'Invalid workspace.' });
+    }
+
+    try {
+      const repository = await getRepository();
+      const instructorHash = hashWorkspaceToken(authorization.token);
+      const target = await repository.getWorkspaceForObservation(instructorHash, workspaceId);
+      if (!target) {
+        return send(res, 404, { error: 'Workspace not found.' });
+      }
+
+      const workspaceRepository = await getWorkspaceRepo();
+      const observation = await workspaceRepository.observeById(target.workspace.internalId);
+      if (!observation) {
+        return send(res, 404, { error: 'Workspace not found.' });
+      }
+
+      return send(res, 200, {
+        class: {
+          id: target.classroom.id,
+          title: target.classroom.title,
+          expiresAt: target.classroom.expiresAt
+        },
+        workspace: {
+          id: target.workspace.id,
+          kind: target.workspace.kind,
+          label: target.workspace.label,
+          teamName: observation.teamName,
+          revision: observation.revision,
+          expiresAt: observation.expiresAt,
+          updatedAt: observation.updatedAt
+        },
+        participants: observation.participants,
+        snapshot: observation.snapshot
+      });
+    } catch {
+      return send(res, 500, { error: 'Unable to observe class workspace.' });
     }
   };
 }

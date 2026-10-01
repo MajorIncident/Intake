@@ -39,6 +39,7 @@ export function createWorkspaceRepository() {
   const workspaces = new Map();
   const primaryByHash = new Map();
   const aliasByHash = new Map();
+  const presenceByWorkspace = new Map();
 
   const resolve = hash => {
     const primaryId = primaryByHash.get(hash);
@@ -109,10 +110,35 @@ export function createWorkspaceRepository() {
       const workspace = resolve(hash);
       if (!workspace) return null;
       const resolvedName = displayName || 'Teammate 1';
+      const participants = presenceByWorkspace.get(workspace.id) || [];
+      const next = participants.filter(item => item.id !== participantId);
+      next.push({
+        id: participantId,
+        displayName: resolvedName,
+        activityState: 'active',
+        editingField: '',
+        editingRevision: workspace.revision,
+        lastSeenAt: 'future',
+        lastActiveAt: 'future',
+        activitySequence: 0
+      });
+      presenceByWorkspace.set(workspace.id, next);
       return {
         teamName: workspace.teamName,
         self: { id: participantId, displayName: resolvedName },
-        participants: [{ id: participantId, displayName: resolvedName }]
+        participants: next
+      };
+    },
+    async observeById(workspaceId) {
+      const workspace = workspaces.get(Number(workspaceId)) || workspaces.get(workspaceId);
+      if (!workspace) return null;
+      return {
+        snapshot: workspace.snapshot,
+        revision: workspace.revision,
+        expiresAt: workspace.expires_at,
+        updatedAt: 'future',
+        teamName: workspace.teamName,
+        participants: presenceByWorkspace.get(workspace.id) || []
       };
     }
   };
@@ -218,6 +244,24 @@ export function createClassroomRepository() {
             )).length
           }))
       };
+    },
+    async getWorkspaceForObservation(instructorHash, workspacePublicId) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      const workspace = workspaces.find(candidate => (
+        candidate.classInternalId === item.internalId
+        && candidate.id === workspacePublicId
+        && !candidate.revoked
+      ));
+      return workspace ? {
+        classroom: publicClass(item),
+        workspace: {
+          internalId: workspace.workspaceId,
+          id: workspace.id,
+          kind: workspace.kind,
+          label: workspace.label
+        }
+      } : null;
     },
     async rotateWorkspaceClaim(instructorHash, workspacePublicId, nextHash) {
       const item = activeByInstructor(instructorHash);
