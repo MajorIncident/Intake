@@ -252,7 +252,16 @@ Continue #295 on draft PR #307 from the current branch head.
   - `e2ec381a39d1819deabb634a0ea3b0e63d9b6c8d` — resource chooser now uses a direct `div[role=listbox] > button[role=option]` pattern;
   - `b1b686aa6b3901db1b4a55f8997c7c4245b92c83` — Apply resource uses the existing darker blue `#1769aa` locally rather than altering the global accent.
 - The same run confirmed the repaired behavioral coverage before axe executed: desktop input → summary → persistence/reload passed; mobile Standalone primary-input + persistence/reload passed.
-- Exact next action: inspect Browser E2E after these accessibility fixes. Do **not** add Classroom API fixtures until the Standalone browser suite is fully green. Then proceed to deterministic Classroom fixtures and Student/Instructor/coaching/protected-case journeys.
+- Browser E2E validation on `65204eb85ee2cbcc4eb6a5159313b944859fbf24`: **7 passed, 3 intentionally project-scoped skips, 0 failed**. Failure artifacts were not uploaded because the run was clean.
+- Confirmed journeys now include:
+  - first-run role chooser + axe on desktop/mobile;
+  - protected public-boundary 404 smoke on desktop/mobile;
+  - desktop Standalone input → summary → persisted reload;
+  - desktop Standalone Templates-only drawer + serious/critical axe scan;
+  - mobile Standalone primary input → persisted reload;
+  - uncaught browser page errors fail the journeys.
+- Normal repository quality gate is also green on the same stack.
+- Exact next action: add the deterministic Classroom API fixture layer to the local browser-test server, then build Student join/resume first. Do not jump directly to Instructor/coaching/protected-case journeys before the Student fixture is green.
 
 ## Known risks / watch items
 
