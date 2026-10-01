@@ -107,6 +107,19 @@ test('existing collaboration links silently enter Standalone for backward compat
   assert.equal(dom.window.document.getElementById('experienceRoleGate').hidden, true);
 });
 
+test('explicit legacy collaboration link overrides a stored Instructor preference', () => {
+  dom.window.close();
+  mount('https://intake.test/?workspace=existing-secret');
+  persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.INSTRUCTOR, dom.window.localStorage);
+
+  const role = initialize();
+
+  assert.equal(role, EXPERIENCE_ROLE_IDS.STANDALONE);
+  assert.equal(dom.window.document.querySelector('.wrap').hidden, false);
+  assert.equal(dom.window.document.getElementById('instructorExperienceShell').hidden, true);
+  assert.equal(JSON.parse(dom.window.localStorage.getItem(EXPERIENCE_ROLE_STORAGE_KEY)).role, EXPERIENCE_ROLE_IDS.STANDALONE);
+});
+
 test('stored Student role resumes the Intake and shows student context without a class dependency', () => {
   persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.STUDENT, dom.window.localStorage);
 
