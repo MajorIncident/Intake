@@ -1,6 +1,6 @@
 # Classroom API and Capability Contract
 
-This document is the canonical server contract for Classroom Experience slice #291. It complements `docs/classroom-architecture.md` so future human or AI sessions can extend Student, Instructor, coaching, and protected Case Study work without reconstructing authorization decisions from code.
+This document is the canonical server contract for Classroom Experience slices #291–#295. It complements `docs/classroom-architecture.md` so future human or AI sessions can extend Student, Instructor, coaching, and protected Case Study work without reconstructing authorization decisions from code.
 
 ## Core model
 
@@ -177,6 +177,43 @@ Requires the Student's issued classroom workspace capability. The server resolve
 The current product has no stable named Instructor account, so class Instructor authority is the reviewer context for #294. A rotating bearer-token hash is not stored as fake human identity.
 
 Each record stores both the Student workspace revision visible when reviewed and a field-specific versioned fingerprint. The fingerprint is the primary evidence for **changed since review**, so unrelated edits elsewhere in the Intake do not stale every feedback record.
+
+## Protected Case Study delivery (#295)
+
+Protected Case Studies do not use the public template manifest and require an active Classroom capability before metadata or payload is returned.
+
+### `GET /api/classes/case-studies`
+
+Requires the Instructor class capability. Returns the protected Case Study catalog for the represented class context. Catalog entries contain only `id`, `name`, `description`, `templateKind`, and `supportedModes`; they do **not** contain `state`.
+
+### `POST /api/classes/case-studies`
+
+Requires the Instructor class capability. Body:
+
+- `caseStudyId`
+
+Returns the full protected Case Study record only after class authorization. Case selection belongs in the JSON body, never a URL/query string.
+
+### `GET /api/classes/case-studies/student`
+
+Requires the Student's issued classroom workspace capability. The server resolves active membership through `getStudentContext()`. It accepts no workspace selector and does not accept a legacy Standalone collaboration capability as substitute authority.
+
+Returns the metadata-only protected catalog.
+
+### `POST /api/classes/case-studies/student`
+
+Uses the same Student membership authorization and accepts `caseStudyId` in the JSON body. On success it returns the full protected record for client-side projection through the canonical mode rules.
+
+All protected Case Study responses use `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
+
+The existing rotating Case Study mode password remains an instructional progression control in the Student drawer; it is not sent to or trusted by the server for authorization. An authorized client can request the raw Case Study payload directly, which is intentional: Classroom capability is the confidentiality boundary.
+
+The build produces two generated resources:
+
+- `src/templates.manifest.js` — public Standard Templates only;
+- `api/protected-case-studies.manifest.js` — server-only Case Study metadata and payloads.
+
+Authored `templates/*.json` files are excluded from Vercel uploads. Production functions consume the committed server-only manifest, while GitHub CI continues to validate all authored JSON and generated-file freshness.
 ## Individual and group semantics
 
 ### Individual
@@ -242,10 +279,13 @@ No classroom credential is stored in browser Intake state.
 - Student workspace capabilities may read coaching only for their resolved membership and never write coaching.
 - Existing Standalone collaboration remains unchanged.
 - Case Study unlock passwords are unrelated to classroom authorization.
+- Protected Case Study catalogs/payloads require Instructor-class or Student-membership authorization and are never returned to Standalone.
+- Protected Case Study IDs/names/payloads must be absent from public browser assets; authored `templates/*.json` files must remain excluded from Vercel deployment.
+- Protected Case Study selection uses authenticated POST bodies rather than query strings.
 
 ## Tests and cold restart
 
-`tests/classroom-api.unit.test.mjs` exercises the authorization matrix using deterministic in-memory repositories from `tests/helpers/classroom-test-repositories.mjs`.
+`tests/classroom-api.unit.test.mjs` exercises the core classroom authorization matrix using deterministic in-memory repositories from `tests/helpers/classroom-test-repositories.mjs`. `tests/protectedCaseStudies.api.test.mjs` covers protected Case Study Instructor/Student authorization, metadata-only catalogs, legacy-token rejection, POST payload delivery, and private response headers.
 
 The repository test-change guard treats `api/` as runtime code, so future server changes require test changes.
 
