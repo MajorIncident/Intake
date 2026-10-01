@@ -67,6 +67,13 @@ async function main() {
     );
   }
 
+  const expectedIgnoreCommand = 'case "$VERCEL_GIT_COMMIT_REF" in main|verify/*) exit 1 ;; *) exit 0 ;; esac';
+  if (vercelConfig.ignoreCommand !== expectedIgnoreCommand) {
+    throw new Error(
+      'Vercel ignoreCommand must allow only main and verify/** branches to continue when the build step is evaluated.'
+    );
+  }
+
   if (process.env.VERCEL === '1') {
     const deployedTemplateEntries = await fs.readdir(templatesDirUrl).catch(error => {
       if (error?.code === 'ENOENT') return [];
