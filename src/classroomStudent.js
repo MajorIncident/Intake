@@ -303,6 +303,10 @@ export function createStudentClassroomController({
 
   const resume = async () => {
     if (destroyed || getActiveExperienceRole() !== EXPERIENCE_ROLE_IDS.STUDENT) return false;
+    const collaborationState = collaboration?.getState?.() || {};
+    if (collaborationState.token && collaborationState.sessionKind !== 'classroom') {
+      collaboration.leave?.({ silent: true });
+    }
     const stored = readStudentSession(storage);
     if (!stored) {
       activeSession = null;
