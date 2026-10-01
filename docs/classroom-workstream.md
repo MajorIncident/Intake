@@ -64,16 +64,19 @@ Completed the #295 implementation/security/documentation slices through root col
 
 ## Next recommended action
 
-Continue #295 on draft PR #307 from the current branch head. Runtime/security implementation is complete. Finish only the finalization sequence:
+Continue #295 on draft PR #307 from the current branch head.
 
-1. Current #307 head after deployment-policy/docs hardening: `0cc4cda5c1aab1d96c1e746dbcb088b49999d94a`. Final runtime/security implementation remains rooted at `a376d7751209eff02a616110a59e52fd45cc1b70`.
-2. GitHub validation on that exact head is complete: **236 tests (235 pass, 0 fail, 1 intentional skip)**; CI, CodeQL, Dependency Review, Template Manifest Guard, and Vercel Preview Comments are green.
-3. A temporary verification branch `verify/protected-cases-preview` over the prior fully documented runtime head added only a branch-scoped Vercel `ignoreCommand`. Deployment `dpl_A3H2rKdJAEGZpBM26iEFSyMicK6f` reached **READY** and the previously exposed protected path `/templates/Microcomputer%20Cabinets.json` returned a genuine HTTP **404**.
-4. #307 was then strengthened at `a376d775...`: when `VERCEL=1`, `verify:protected-cases` now fails if any authored `templates/*.json` file is actually present in the Vercel upload, not merely if the ignore rule is missing.
-5. A second verification branch `verify/protected-cases-preview-v2` attempted to deploy the strengthened head, but Vercel rejected it with `upgradeToPro=build-rate-limit` before creating a deployment. This is tracked in #304.
-6. The connected Vercel fetch tool cannot traverse the READY preview's Vercel Authentication layer consistently, and the local runtime has no Vercel CLI/outbound DNS. Therefore deployed authenticated Student/Instructor API calls cannot be executed from this session without weakening/persisting a preview bypass secret.
-7. Vercel Git branch gating is now repository-enforced: ordinary branches are deny-by-default, `main` and `verify/**` are explicitly enabled. Feature commits `4079481...`, `2749743...`, and `0cc4cda...` each triggered GitHub checks but produced no Vercel status/deployment record; #304 tracks post-merge production confirmation.
-8. Exact next action: once Vercel preview build capacity is available, create a fresh `verify/**` branch from the current #307 head and run the remaining authenticated/unauthenticated protected API HTTP checks. Keep PR #307 draft and do not merge until that verification is accepted and merge is explicitly authorized.
+1. Runtime/security implementation is complete, including public/server manifest split, Classroom-authorized delivery, browser/runtime leak guards, Vercel upload verification, and role-aware client integration.
+2. Vercel Git deployment policy is now repository-owned:
+   - ordinary branches are denied deployment by default;
+   - `main` remains allowed for production;
+   - `verify/**` branches are allowed for deliberate preview verification;
+   - repo `ignoreCommand` explicitly continues only `main` and `verify/**`.
+3. Ordinary feature commits repeatedly triggered GitHub CI/security checks while producing **no Vercel deployment record**.
+4. Verification branch `verify/protected-cases-preview` was moved to guarded PR head `f9f8fc8f22cd71029bb492ad278c4470264153b6`; Vercel deployment `dpl_Ep2q8Y3BMUWGEV7fzZQHnvdwPumA` reached **READY**.
+5. On that exact READY preview, the previously exposed protected authoring path `/templates/Microcomputer%20Cabinets.json` returned a genuine HTTP **404**.
+6. The connected Vercel fetch tool still stops at this project's Vercel Authentication layer for protected API requests after the initial static request. The normal web fetch cannot access the preview, the local runtime has no outbound DNS, and no Vercel CLI/automation bypass secret is available. Do not weaken preview protection or persist a bypass secret simply to satisfy this check.
+7. Exact next action: finalize docs/PR/issue evidence on the latest head, confirm all repository gates are green, then decide whether the deployed API authorization matrix can be accepted based on deterministic server tests + READY preview/static boundary evidence or must wait for an approved Vercel automation-bypass path. Keep PR #307 draft and do not merge without explicit authorization.
 
 ## Completed #300 implementation
 
@@ -197,11 +200,14 @@ Continue #295 on draft PR #307 from the current branch head. Runtime/security im
   - `b3160264adfac5d500711c22515bf21f27dff75d` — authored-JSON Vercel exclusion + boundary verifier;
   - later commits fix only test harness and documentation synchronization.
 - Final docs now cover security, API/architecture, README/deployment, scoped/global AGENTS, AI onboarding, roadmap, commenting guide, storage guidance, and repository operations.
-- Final runtime/security head: `a376d7751209eff02a616110a59e52fd45cc1b70`; current docs/deployment-policy head: `0cc4cda5c1aab1d96c1e746dbcb088b49999d94a`.
-- Validation: 236 tests (235 pass, 0 fail, 1 intentional skip); CI, CodeQL, Dependency Review, Template Manifest Guard, and Vercel Preview Comments green.
-- Deployment evidence: temporary preview `dpl_A3H2rKdJAEGZpBM26iEFSyMicK6f` reached READY and returned 404 for the previously exposed Microcomputer Cabinets authoring JSON path.
-- Stronger Vercel-upload assertion is now part of #307; its follow-up preview was blocked by the Vercel build-rate limit, tracked in #304.
-- Exact next action: re-run a preview of the current head when Vercel capacity permits, then execute the remaining protected API HTTP authorization checks. Do not merge without explicit authorization.
+- Final runtime/security implementation head before deployment-policy hardening: `a376d7751209eff02a616110a59e52fd45cc1b70`.
+- Repository-owned Vercel deployment controls are now part of #307 and guarded by `verify:protected-cases`.
+- Ordinary feature commits create no Vercel deployment records; `verify/**` is the explicit preview path.
+- Deliberate verification head `f9f8fc8f22cd71029bb492ad278c4470264153b6` deployed successfully as `dpl_Ep2q8Y3BMUWGEV7fzZQHnvdwPumA` and reached **READY**.
+- That READY preview returned HTTP **404** for the formerly public Microcomputer Cabinets authored JSON path.
+- Deterministic API tests already cover Instructor authorization, Student membership-bound authorization, metadata-only catalogs, authenticated payload POST, legacy-token rejection, and no-store/no-referrer response headers.
+- Remaining deployed API requests are blocked by the preview-auth tooling boundary, not by application/test failure.
+- Exact next action: finish final metadata/diff review and keep #307 draft until the remaining verification requirement is explicitly accepted or an approved preview automation-bypass path becomes available. Do not merge without explicit authorization.
 
 ## Known risks / watch items
 
