@@ -454,12 +454,11 @@ export function classHandler({
     }
 
     try {
-      const repository = await getRepository();
-
       if (req.method === 'POST') {
         const title = normalizeClassroomLabel(req.body?.title, CLASS_TITLE_MAX_LENGTH);
         if (!title) return send(res, 400, { error: 'Invalid class title.' });
 
+        const repository = await getRepository();
         const instructorToken = tokenFactory();
         const studentJoinToken = tokenFactory();
         const classroom = await repository.createClass({
@@ -477,6 +476,7 @@ export function classHandler({
         return send(res, authorization.status, { error: authorization.error });
       }
       const instructorHash = hashWorkspaceToken(authorization.token);
+      const repository = await getRepository();
 
       if (req.method === 'GET') {
         const classroom = await repository.getClassByInstructor(instructorHash);
