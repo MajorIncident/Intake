@@ -58,6 +58,17 @@ A new AI coding session should not assume prior conversational state. Before edi
 
 At handoff, record what changed, what was tested, any manual checks still required, and any environment/settings changes that cannot live in Git.
 
+### Long-running workstreams and stacked PRs
+
+For multi-PR programs, repository state must carry the plan and progress rather than chat history. The Classroom Experience program (#288) is the reference implementation:
+
+- architecture and invariants live in `docs/classroom-architecture.md`;
+- dependency/merge sequencing lives in `docs/classroom-roadmap.md`;
+- live progress and the exact restart point live in `docs/classroom-workstream.md`;
+- the parent issue links the child implementation issues.
+
+When stacking PRs, each PR must name its exact base branch/PR, dependency, merge order, rollback boundary, and cold-restart next action. Before handoff, update the workstream document so a new session can continue without reconstructing prior conversation context.
+
 ## Scheduled maintenance
 
 At least monthly, or after a period of heavy AI-assisted development:
