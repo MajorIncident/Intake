@@ -80,6 +80,52 @@ test('class admin rejects missing or malformed authorization before repository a
   assert.equal(accessed, false);
 });
 
+test('instructor workspace creation is class-bound and returns only an assignment capability', async () => {
+  const classrooms = createClassroomRepository();
+  const workspaceRepo = createWorkspaceRepository();
+
+  await classrooms.createClass({
+    publicId: CLASS_A_ID,
+    title: 'Class A',
+    instructorHash: testTokenHash('A'),
+    studentJoinHash: testTokenHash('C')
+  });
+
+  const handler = classWorkspacesHandler({
+    getRepository: async () => classrooms,
+    getWorkspaceRepo: async () => workspaceRepo,
+    tokenFactory: tokenFactory(['P', 'X']),
+    idFactory: () => WORKSPACE_A_ID
+  });
+
+  const created = response();
+  await handler({
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    body: {
+      kind: 'group',
+      label: '  Team   Alpha ',
+      snapshot: { pre: { oneLine: 'Seeded case' } }
+    }
+  }, created);
+
+  assert.equal(created.statusCode, 201);
+  assert.equal(created.body.workspace.id, WORKSPACE_A_ID);
+  assert.equal(created.body.workspace.label, 'Team Alpha');
+  assert.equal(created.body.workspace.expiresAt, 'future');
+  assert.equal(created.body.assignmentToken, 'X'.repeat(43));
+  assert.equal('workspaceToken' in created.body, false, 'internal primary collaboration capability is not returned');
+
+  const storedWorkspace = [...workspaceRepo.workspaces.values()][0];
+  assert.equal(storedWorkspace.expires_at, 'future', 'workspace inherits exact class expiry');
+  assert.equal(storedWorkspace.snapshot.pre.oneLine, 'Seeded case');
+
+  const listed = response();
+  await handler({ method: 'GET', headers: { authorization: 'Bearer ' + 'A'.repeat(43) } }, listed);
+  assert.deepEqual(listed.body.workspaces.map(item => item.id), [WORKSPACE_A_ID]);
+  assert.equal('assignmentToken' in listed.body.workspaces[0], false);
+});
+
 test('instructor workspace listing stays inside the authorized class', async () => {
   const classrooms = createClassroomRepository();
   const workspaceRepo = createWorkspaceRepository();
