@@ -18,11 +18,25 @@ After changing the runtime, update `.nvmrc` and `package.json#engines` together 
 - summary integration guard;
 - persistence integration guard;
 - ESLint/JSDoc;
-- generated template-manifest freshness;
+- generated public/server template-manifest freshness;
+- protected Case Study browser/deployment boundary verification;
 - generated storage-documentation freshness;
 - the full Node/jsdom test suite.
 
 Individual commands remain useful while developing, but a PR is not complete until the aggregate gate passes.
+
+## Protected Case Study deployment boundary
+
+Case Study authoring source is intentionally present in Git but intentionally absent from the public Vercel deployment surface.
+
+- `templates/*.json` is repository/build-time source and is excluded by `.vercelignore`.
+- `src/templates.manifest.js` is public and may contain Standard Templates only.
+- `api/protected-case-studies.manifest.js` is server-only generated content and may contain protected Case Study metadata/payloads.
+- Browser runtime files must never import or duplicate the server-only manifest.
+- Production Vercel builds run `npm run verify:protected-cases` rather than regenerating manifests, because the authored JSON files are intentionally excluded from the upload.
+- GitHub CI/local authoring remains responsible for `npm run build:templates` / `npm run check:templates` freshness.
+
+Any change to `vercel.json`, `.vercelignore`, template generation, static output layout, or protected-resource routing must re-run `npm run verify:protected-cases` and include a deployed HTTP check that raw `/templates/*.json` Case Study paths are not served.
 
 ## GitHub branch controls
 
@@ -57,6 +71,12 @@ A new AI coding session should not assume prior conversational state. Before edi
 7. Work on a short-lived branch and PR; never assume a stale branch is still appropriate.
 
 At handoff, record what changed, what was tested, any manual checks still required, and any environment/settings changes that cannot live in Git.
+
+For protected Case Study work, the handoff must also record whether the final deployed preview was checked for:
+- blocked/unavailable raw `/templates/*.json` authoring files;
+- Standalone absence of protected resources;
+- authorized Student/Instructor catalog access;
+- unauthorized protected API rejection.
 
 
 ## Delivery resilience for AI-assisted work
