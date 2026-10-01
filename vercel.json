@@ -1,5 +1,6 @@
 {
   "buildCommand": "npm run verify:protected-cases",
   "outputDirectory": ".",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" = \"main\" ] || [ \"$VERCEL_GIT_COMMIT_REF\" = \"verify/protected-cases-preview-v2\" ]; then exit 1; else exit 0; fi"
 }
