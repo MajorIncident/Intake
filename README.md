@@ -63,6 +63,7 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 - `kt-experience-role-v1`: Local-only Standalone / Student / Instructor preference. It is deliberately excluded from `collectAppState()`, Intake file exports, summaries, templates, and **Start Fresh** clearing.
 - `kt-classroom-student-session-v1`: Student same-device resume envelope containing class/workspace display metadata, participant display identity, and the issued per-participant workspace capability. It never contains the Student join or assignment code and is excluded from Intake exports/summaries/templates.
 - `kt-classroom-student-local-recovery-v1`: Local recovery snapshot captured immediately before joining a class so **Leave class** can restore the prior local Intake. It is separate from the active Intake snapshot and classroom credentials.
+- `kt-classroom-instructor-session-v1`: Local-only Instructor same-device resume envelope containing the Instructor class capability, public class metadata, and the last selected public workspace ID. It is never collected into Intake state, files, summaries, templates, or Student workspace credentials.
 
 ## Experience roles
 
@@ -70,7 +71,7 @@ Experience role is a product-level choice, not an Intake workflow mode. General 
 
 - **Standalone** exposes the normal Intake and current collaboration behavior. Its resource drawer contains **Templates only**.
 - **Student** first joins an instructor-preconfigured class workspace using a class code, assignment code, and display name. The two admission codes are used once and discarded; the returned per-participant workspace capability is retained locally for same-device resume and is attached to the existing collaboration engine without entering the URL. Once connected, the Student sees class/workspace/identity context and can use both **Templates** and **Case Studies**. Switching away from Student pauses the live classroom connection while preserving resume; **Leave class** clears resume and restores the local Intake captured before joining.
-- **Instructor** exposes a non-editing Instructor shell plus **Teaching Case Studies**. Instructors can review the Case Study catalog, but this slice deliberately does not apply those cases into an instructor Intake; class assignment arrives with the classroom layer. Choosing Instructor at this stage is a local UI preference, **not authentication or authorization**.
+- **Instructor** opens an instructor-preconfigured class with the Instructor class capability, gets a searchable individual/team workspace rail, and can rapidly switch a **live read-only** view of each Student/team Intake. Observation uses the normal Intake renderer but the Student-owned controls are projected read-only; the Instructor credential is authorized only through the class-scoped GET observer path and never becomes a Student edit capability. Switching away pauses observation while preserving same-device class resume; **Leave class** clears the Instructor resume and restores the instructor's prior local Intake.
 - Use **View → Experience** to switch roles without changing or deleting Intake data.
 
 ## Notes workspace
@@ -110,7 +111,7 @@ A Student join requires **two independent capabilities**: the class Student-join
 
 The database stores only SHA-256 capability hashes. `CLASS_EXPIRY_DAYS` optionally controls class retention and defaults to 30 days. Classroom collaboration workspaces inherit the class's exact absolute expiry, so they cannot outlive it. Instructor, Student-join, and assignment credentials can be rotated; class/assignment revocation invalidates access server-side.
 
-See `docs/classroom-api.md` for the endpoint/capability matrix and `SECURITY.md` for the security boundary. Instructor observation is **not** implemented by these editable workspace capabilities; #293 requires a separate server-enforced read-only path.
+See `docs/classroom-api.md` for the endpoint/capability matrix and `SECURITY.md` for the security boundary. Instructor observation is implemented through the separate GET-only `/api/classes/observe` path, authorized by the Instructor class capability after class/workspace ownership is proven. It never resolves through the editable workspace-alias path.
 
 ### Conflict recovery and two-window testing
 
