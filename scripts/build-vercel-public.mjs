@@ -20,6 +20,10 @@ const ROOT_RUNTIME_FILES = Object.freeze([
   'styles.css'
 ]);
 
+const PUBLIC_DOCUMENT_FILES = Object.freeze([
+  'docs/eula.md'
+]);
+
 const RUNTIME_DIRECTORIES = Object.freeze([
   'components',
   'src'
@@ -79,6 +83,7 @@ async function verifyOutput() {
   for (const file of files) {
     if (!(
       ROOT_RUNTIME_FILES.includes(file)
+      || PUBLIC_DOCUMENT_FILES.includes(file)
       || file.startsWith('src/')
       || file.startsWith('components/')
     )) {
@@ -86,7 +91,7 @@ async function verifyOutput() {
     }
 
     if (
-      file.endsWith('.md')
+      (file.endsWith('.md') && !PUBLIC_DOCUMENT_FILES.includes(file))
       || file.endsWith('.json')
       || file.endsWith('.mjs')
       || file.includes('AGENTS')
@@ -95,9 +100,9 @@ async function verifyOutput() {
     }
   }
 
-  for (const required of ROOT_RUNTIME_FILES) {
+  for (const required of [...ROOT_RUNTIME_FILES, ...PUBLIC_DOCUMENT_FILES]) {
     if (!files.includes(required)) {
-      throw new Error(`Required browser runtime file missing from public deployment output: ${required}`);
+      throw new Error(`Required public runtime file missing from deployment output: ${required}`);
     }
   }
 
@@ -126,7 +131,7 @@ async function main() {
   await fs.rm(output, { recursive: true, force: true });
   await fs.mkdir(output, { recursive: true });
 
-  for (const file of ROOT_RUNTIME_FILES) {
+  for (const file of [...ROOT_RUNTIME_FILES, ...PUBLIC_DOCUMENT_FILES]) {
     await copyFile(file);
   }
   for (const directory of RUNTIME_DIRECTORIES) {
