@@ -19,6 +19,7 @@ import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-global
 const INDEX_HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
 const globals = installJsdomGlobals(dom.window);
+globalThis.__toastMocks = { showToast: () => {} };
 
 dom.window.requestAnimationFrame = callback => callback();
 globalThis.requestAnimationFrame = dom.window.requestAnimationFrame.bind(dom.window);
@@ -55,6 +56,7 @@ const protectedProvider = {
 initTemplatesDrawer({ protectedCaseStudies: protectedProvider });
 
 after(() => {
+  delete globalThis.__toastMocks;
   restoreJsdomGlobals(globals);
   dom.window.close();
 });
