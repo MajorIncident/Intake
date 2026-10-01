@@ -12,6 +12,7 @@
   --line:#e6eaf2;
   --band:#f6f8fc;
   --accent:#007aff;
+  --accent-text:#1769aa;
   --accent-contrast:#ffffff;
   --backdrop:rgba(12,18,32,.32);
 
@@ -64,6 +65,7 @@ body[data-theme="dark"]{
   --line:#252c38;
   --band:#0f141d;
   --accent:#0a84ff;
+  --accent-text:#66b8ff;
   --accent-contrast:#ffffff;
   --backdrop:rgba(0,0,0,.6);
 
@@ -272,7 +274,7 @@ body.experience-role-gate-open{overflow:hidden;}
 .experience-role-notice__eyebrow{
   display:block;
   margin-bottom:8px;
-  color:var(--accent);
+  color:var(--accent-text);
   font-size:11px;
   font-weight:850;
   letter-spacing:.08em;
@@ -320,7 +322,7 @@ body.experience-role-gate-open{overflow:hidden;}
   padding:4px 8px;
   border-radius:999px;
   background:color-mix(in srgb,var(--accent) 10%,var(--panel));
-  color:var(--accent);
+  color:var(--accent-text);
   font-size:11px;
   font-weight:800;
 }
@@ -882,7 +884,7 @@ body.templates-drawer-open{overflow:hidden;}
   background:linear-gradient(180deg,#ffffff 0%,#f6f8fc 100%);
   display:flex; justify-content:flex-end; flex-wrap:wrap; gap:12px;
 }
-.templates-apply-btn{padding-inline:24px;}
+.templates-apply-btn{padding-inline:24px; background:#1769aa; border-color:#1769aa;}
 @media (max-width:720px){
   .templates-drawer{width:100%;}
   .templates-modes{grid-template-columns:1fr;}
@@ -1048,7 +1050,7 @@ fieldset.field legend{font-weight:700; margin-bottom:6px; font-size:14px; color:
 }
 .field input[type="time"]:focus, .field select:focus{border-color:var(--accent); box-shadow:0 0 0 4px var(--focus-ring); background:var(--panel);}
 .btn-mini{
-  appearance:none; border:1px solid var(--control-border); background:var(--control-hover); color:var(--accent);
+  appearance:none; border:1px solid var(--control-border); background:var(--control-hover); color:var(--accent-text);
   padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:600; font-size:13px;
   transition:transform var(--speed), box-shadow var(--speed), border-color var(--speed), background-color var(--speed);
   box-shadow:var(--accent-shadow);
