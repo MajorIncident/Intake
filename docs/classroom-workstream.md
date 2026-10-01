@@ -56,15 +56,15 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297–#301 are merged to `main`. PR #302 contains the completed Student client slice and is ready to merge after this completion-ledger head passes the same repository gates.
+#297–#302 are merged to `main`. No classroom implementation PR is currently active.
 
 ## Last completed action
 
-Merged #300 / completed #291 after reconciling it with #299. Current `main` includes both role-based resource semantics and the classroom capability/API layer, validated together with 183 tests (182 pass, 0 fail, 1 intentional skip) plus green CI, CodeQL, Dependency Review, and Template Manifest Guard.
+Merged #302 / completed #292. Current `main` includes Student class admission, same-device resume, class context, pre-class recovery, and collaboration-engine reuse. Final #302 validation completed 194 tests (193 pass, 0 fail, 1 intentional skip) with green CI, CodeQL, Dependency Review, and Template Manifest Guard.
 
 ## Next recommended action
 
-Merge #302, close #292, update #288, then start #293 on a fresh branch from current `main`. Instructor observation must use a separate read-only server authorization path and must not reuse the editable `classroom-student` capability alias.
+Start #293 on a fresh branch from current `main`. Instructor observation must use a separate read-only server authorization path and must not reuse the editable `classroom-student` capability alias.
 
 ## Completed #300 implementation
 
@@ -85,7 +85,7 @@ Merge #302, close #292, update #288, then start #293 on a fresh branch from curr
 
 - Final combined #290 + #291 validation completed 183 tests (182 pass, 0 fail, 1 intentional skip); CI, CodeQL, Dependency Review, and Template Manifest Guard are green.
 
-## Active #302 implementation
+## Completed #302 implementation
 
 - Student admission UI uses class join + assignment capabilities and display name; it never enumerates workspaces.
 - `src/classroomStudent.js` owns join, same-device resume, class context, role switching, terminal recovery, and Leave class.
