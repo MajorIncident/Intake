@@ -142,7 +142,9 @@ Inspect PR #306 first. If it is still open, confirm the final documented head ha
 - Focused coaching UI/lifecycle regression checkpoint: `f914a28affc1b7a12a8fc41d34775cf470201968`.
 - Regression coverage now includes note-editor stability, Instructor save payload/review evidence, Student read-only feedback, changed-since-review, stale Instructor fetch rejection, and Student/Instructor coaching lifecycle hooks.
 - Final validated implementation head before documentation consolidation: 224 tests (223 pass, 0 fail, 1 intentional skip).
-- Final documentation/security/module-map consolidation is complete; exact next action is final documented-head gates → diff review → merge #306.
+- Final documentation/security/module-map consolidation is complete.
+- GitHub Advanced Security flagged the original coaching target-ID regex for potential exponential backtracking; it was replaced with a linear-time dot-segment validator in `63bc782d885eb9d57bb74c09389db4c9955e52d7` with grammar regressions in `1e25af79c97a4c60f9a091bd41d9c5b8074c188e`.
+- Exact next action: confirm the post-review-fix head is green, resolve the CodeQL review thread, update PR/issue final SHA, then merge #306.
 
 ## Known risks / watch items
 
