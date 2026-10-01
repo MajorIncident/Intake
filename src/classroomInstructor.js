@@ -231,8 +231,10 @@ export function createInstructorClassroomController({
     });
 
     visible.forEach(workspace => {
-      const button = documentRef.createElement('button');
+      const button = documentRef.createElement('button'); // data-persistence="local-only"
       button.type = 'button';
+      button.setAttribute('data-persistence', 'local-only');
+      button.setAttribute('data-summary', 'exclude');
       button.className = 'instructor-workspace-item';
       button.dataset.workspaceId = workspace.id;
       button.setAttribute('aria-current', workspace.id === selectedWorkspaceId ? 'true' : 'false');
