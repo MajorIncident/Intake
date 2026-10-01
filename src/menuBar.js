@@ -218,8 +218,15 @@ function buildMenuIndex(menuBar, triggers) {
   return map;
 }
 
+function isMenuControlVisible(element) {
+  if (!element || element.hidden || element.getAttribute('aria-hidden') === 'true') {
+    return false;
+  }
+  return !element.closest('[hidden], [aria-hidden="true"]');
+}
+
 function getMenuItems(panel) {
-  return Array.from(panel.querySelectorAll('[role="menuitem"]'));
+  return Array.from(panel.querySelectorAll('[role="menuitem"]')).filter(isMenuControlVisible);
 }
 
 function focusAdjacentMenuItem(panel, currentItem, delta) {
@@ -241,12 +248,13 @@ function focusSiblingTrigger(
   delta,
   { openNext = false, focusFirst = false, openMenuFn } = {}
 ) {
-  const currentIndex = triggers.indexOf(currentTrigger);
-  if (currentIndex === -1) {
+  const availableTriggers = triggers.filter(isMenuControlVisible);
+  const currentIndex = availableTriggers.indexOf(currentTrigger);
+  if (currentIndex === -1 || !availableTriggers.length) {
     return;
   }
-  const nextIndex = (currentIndex + delta + triggers.length) % triggers.length;
-  const nextTrigger = triggers[nextIndex];
+  const nextIndex = (currentIndex + delta + availableTriggers.length) % availableTriggers.length;
+  const nextTrigger = availableTriggers[nextIndex];
   if (nextTrigger) {
     nextTrigger.focus();
     if (openNext && typeof openMenuFn === 'function') {
