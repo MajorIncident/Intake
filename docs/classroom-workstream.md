@@ -6,7 +6,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-Resource split (#290) is active in PR #299 while class domain/API (#291) proceeds independently from the same merged #289 base.
+Resource semantics (#290 / PR #299) are complete and green. Class domain/API (#291 / PR #300) is active independently.
 
 ## Program issues
 
@@ -14,8 +14,8 @@ Resource split (#290) is active in PR #299 while class domain/API (#291) proceed
 | --- | --- | --- | --- | --- |
 | Program | #288 | Open | #297 merged | Architecture/governance foundation is now on `main` |
 | Experience role | #289 | Complete | PR #298 / `feature/classroom-experience-roles` | Runtime/tests/docs complete; canonical CI, dependency review, template guard, and CodeQL green |
-| Templates / Case Studies | #290 | In progress | PR #299 / `feature/classroom-resource-split` | Role-aware UI/policy/tests implemented; CI in progress |
-| Class domain/API | #291 | Not started | — | Can branch from #289 in parallel with #290 |
+| Templates / Case Studies | #290 | Complete | PR #299 / `feature/classroom-resource-split` | 171 tests: 170 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
+| Class domain/API | #291 | In progress | PR #300 / `feature/classroom-domain-api` | Independent sibling PR; server capability implementation under CI |
 | Student join/resume | #292 | Not started | — | Depends on #291 |
 | Instructor observer | #293 | Not started | — | Depends on class semantics |
 | Coaching | #294 | Not started | — | Depends on observer |
@@ -54,7 +54,7 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297 and #298 are merged to `main`. PR #299 is the active #290 resource-semantics slice. #291 may proceed from the same current `main` without stacking on #299.
+#297 and #298 are merged to `main`. PR #299 is ready to merge as completed #290 work. PR #300 is the active #291 server/domain sibling and must be refreshed against `main` after #299 lands.
 
 ## Last completed action
 
@@ -62,7 +62,7 @@ Implemented the #290 role-aware resource policy/drawer and opened draft PR #299.
 
 ## Next recommended action
 
-Finish PR #299 CI while starting #291 on `feature/classroom-domain-api` from current `main`. Keep #291 server/domain work independent from #299 so either PR can merge first.
+Merge green PR #299, then refresh PR #300 against the new `main` and reconcile the shared classroom roadmap/workstream docs before its final validation.
 
 ## Active #299 implementation
 
@@ -73,6 +73,7 @@ Finish PR #299 CI while starting #291 on `feature/classroom-domain-api` from cur
 - The shared template registry and projection logic remain in `src/templates.js`; there is no duplicate resource registry.
 - Static placeholder Case Study markup was removed from `index.html`; resources are rendered by the role-aware controller.
 - Security boundary remains transitional: Case Study payloads are still present in the public manifest until #295.
+- Canonical CI completed with 171 tests (170 pass, 0 fail, 1 intentional skip); CodeQL, dependency review, and template-manifest guard are green.
 
 ## Known risks / watch items
 
