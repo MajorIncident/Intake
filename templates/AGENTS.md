@@ -16,8 +16,10 @@ Applies to all files inside `templates/`.
   }
   ```
 - `supportedModes` may omit entries that do not make sense for a given template, but it must never be empty.
-- `templateKind` controls authentication: `case-study` templates keep the rotating password flow while `standard` templates skip
-  password prompts and always load in `full` mode.
+- `templateKind` is a resource-kind axis, not an experience role. `standard` records are reusable Templates; `case-study` records are Case Studies.
+- `src/templateAvailability.js` controls normal-UI visibility by experience role without duplicating this registry: Standalone = standard only, Student = both, Instructor = case-study teaching resources only.
+- For Student application, `case-study` resources keep the rotating mode password while `standard` Templates skip password prompts and always load in `full` mode.
+- **Security:** Case Study JSON is still compiled into the public static manifest until #295. Role hiding and the rotating password are not confidentiality or authentication controls.
 - `state` must satisfy the `SerializedAppState` contract documented in `src/storage.js`.
 
 ## Editing Workflow
