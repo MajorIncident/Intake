@@ -109,11 +109,7 @@ export function getActiveExperienceRole() {
 }
 
 /**
- * Identify a legacy context that must continue directly into Standalone.
- *
- * Existing Intake snapshots and existing secret-link collaboration URLs predate
- * the role chooser. Auto-adopting Standalone keeps those users and links from
- * being interrupted by a new first-run gate.
+ * Detect an Intake snapshot created before experience-role preferences existed.
  *
  * @returns {boolean} Whether backward-compatible Standalone migration is required.
  */
