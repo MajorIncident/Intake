@@ -38,6 +38,21 @@ Case Study authoring source is intentionally present in Git but intentionally ab
 
 Any change to `vercel.json`, `.vercelignore`, template generation, static output layout, or protected-resource routing must re-run `npm run verify:protected-cases` and include a deployed HTTP check that raw `/templates/*.json` Case Study paths are not served.
 
+
+### Vercel Git deployment policy
+
+Repository configuration deliberately separates ordinary development branches from intentional deployment verification:
+
+- `main` is allowed to deploy automatically to Vercel;
+- `verify/**` branches are allowed to create deliberate preview deployments for security/E2E verification;
+- all other Git branches are denied Vercel Git deployment by default.
+
+This is enforced in `vercel.json` with minimatch-based `git.deploymentEnabled` rules. The default deny is important for AI-assisted work: small checkpoint commits must continue to trigger GitHub quality/security checks **without** consuming Vercel build capacity.
+
+Do not replace this with the older project-level Ignored Build Step as the primary feature-branch control. Ignored builds still created canceled deployment records during the Classroom program and contributed to build-rate exhaustion tracked in #304.
+
+When a preview is genuinely needed, create a short-lived `verify/**` branch from the exact PR head. Do not add a temporary allow rule to a normal `feature/**` branch.
+
 ## GitHub branch controls
 
 The intended `main` policy is:
