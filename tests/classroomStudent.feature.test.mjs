@@ -250,3 +250,19 @@ test('entering Student disconnects an existing Standalone collaboration before s
   assert.equal(dom.window.document.body.dataset.studentClassStatus, 'disconnected');
   assert.equal(dom.window.document.querySelector('.wrap').hidden, true);
 });
+
+
+test('switching away from Student restores the pre-class local Intake without clearing resume', async () => {
+  const recovery = { pre: { oneLine: 'Before class' } };
+  const env = mount({ storedSession: session(), recovery });
+  await settle();
+
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.INSTRUCTOR);
+  await settle();
+
+  assert.deepEqual(env.calls.leave.at(-1), { silent: true });
+  assert.deepEqual(env.calls.apply.at(-1), recovery);
+  assert.deepEqual(env.calls.save.at(-1), recovery);
+  assert.ok(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY), 'Student resume remains available');
+  assert.ok(dom.window.localStorage.getItem(STUDENT_RECOVERY_STORAGE_KEY), 'pre-class recovery remains for future role switches');
+});

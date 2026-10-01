@@ -241,7 +241,10 @@ export function createClassroomRepository() {
             createdAt: workspace.createdAt,
             participantCount: [...memberships.values()].filter(member => (
               member.classInternalId === item.internalId && member.workspaceId === workspace.workspaceId
-            )).length
+            )).length,
+            activeParticipantCount: 0,
+            editingParticipantCount: 0,
+            lastSeenAt: null
           }))
       };
     },

@@ -17,7 +17,7 @@ Student class join/resume (#292) is complete in PR #302. The next implementation
 | Templates / Case Studies | #290 | Complete | PR #299 / `feature/classroom-resource-split` | 171 tests: 170 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Class domain/API | #291 | Complete | PR #300 / `feature/classroom-domain-api` | Combined #290+#291 head: 183 tests, 182 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Student join/resume | #292 | Complete | PR #302 / `feature/classroom-student-experience` | 194 tests: 193 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
-| Instructor observer | #293 | In progress | `feature/classroom-instructor-observer` | Read-only server observation seam + authorization tests are the first checkpoint |
+| Instructor observer | #293 | In progress | PR #305 / `feature/classroom-instructor-observer` | Server read-only seam + Instructor roster/observer client implemented; validation in progress |
 | Coaching | #294 | Not started | — | Depends on observer |
 | Protected cases | #295 | Not started | — | Requires #290 + #291 |
 | Browser E2E/CI | #296 | Not started | — | Uses #279 infrastructure |
@@ -64,7 +64,7 @@ Merged #302 / completed #292. Current `main` includes Student class admission, s
 
 ## Next recommended action
 
-Continue #293 on `feature/classroom-instructor-observer`. The first checkpoint establishes `GET /api/classes/observe` as a server-enforced read-only path authorized by the Instructor class capability. Next: build Instructor class resume, workspace rail/search, and the read-only projection of the existing Intake DOM.
+Continue PR #305 on `feature/classroom-instructor-observer`. Server observation plus the Instructor client are implemented. Next: run/fix canonical quality gates, finish docs/security/anchor guidance, review the full diff, then merge #293 and hand off #294.
 
 ## Completed #300 implementation
 
@@ -108,6 +108,16 @@ Continue #293 on `feature/classroom-instructor-observer`. The first checkpoint e
 - The observer is GET-only and does not route through editable `/api/workspaces/session` or `/api/workspaces/presence`.
 - Planned client: persist Instructor capability outside Intake state, list own-class workspaces, search/filter a left rail, poll one selected workspace, apply it into the existing Intake DOM under a read-only projection, and restore pre-observation local Intake when leaving Instructor.
 - Coaching remains out of scope until #294.
+- Client checkpoint:
+  - `src/classroomInstructor.js` owns Instructor same-device resume, class roster polling, search/filter, selection, and observer polling;
+  - the Instructor capability is retained only in `kt-classroom-instructor-session-v1`, outside Intake state;
+  - selected Student snapshots render through the existing Intake DOM, never a cloned renderer;
+  - observation is applied inside a localStorage preservation boundary because normal `applyAppState()` legitimately updates feature caches during restore/import;
+  - the observed DOM is projected read-only/disabled after each snapshot render;
+  - rapid switching aborts/stales the prior observer before the next workspace can render;
+  - leaving Instructor restores the pre-observation local DOM; explicit Leave class also clears the Instructor resume capability;
+  - Student → non-Student role changes now restore the Student pre-class local recovery without clearing Student resume.
+
 
 ## Known risks / watch items
 
