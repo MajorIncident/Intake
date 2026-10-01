@@ -14,7 +14,7 @@ After changing the runtime, update `.nvmrc` and `package.json#engines` together 
 
 - lockfile consistency;
 - repository contract checks (`repo:doctor`);
-- changed-runtime test coverage guard;
+- changed-runtime test coverage guard for `src/`, `components/`, and server `api/` code;
 - summary integration guard;
 - persistence integration guard;
 - ESLint/JSDoc;
@@ -63,6 +63,7 @@ At handoff, record what changed, what was tested, any manual checks still requir
 For multi-PR programs, repository state must carry the plan and progress rather than chat history. The Classroom Experience program (#288) is the reference implementation:
 
 - architecture and invariants live in `docs/classroom-architecture.md`;
+- server capability/API contracts live in `docs/classroom-api.md`;
 - dependency/merge sequencing lives in `docs/classroom-roadmap.md`;
 - live progress and the exact restart point live in `docs/classroom-workstream.md`;
 - the parent issue links the child implementation issues.
