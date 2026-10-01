@@ -83,7 +83,7 @@ Do not yet claim protected cases are secure.
 
 **Issue:** #291
 
-Recommended branch: `feature/classroom-domain-api`
+Branch: `feature/classroom-domain-api`
 
 Can proceed from #289 in parallel with #290.
 
