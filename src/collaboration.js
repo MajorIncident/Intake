@@ -35,6 +35,7 @@ export function createCollaborationController({
   let retryDelay = POLL_DELAY_MS; let retrying = false; let lastSuccessfulSync = null; let statusTimer = null;
   let lastSnapshot = null; let conflictCount = 0; let terminalStatus = null; let initialized = false; let destroyed = false;
   let teamName = 'Shared intake'; let participants = []; let self = null; let joinedPresence = false;
+  let sessionKind = 'local'; let linkSharingEnabled = true; let legacyLeaveEnabled = true;
   let editingField = ''; let activityState = 'active'; let activitySequence = 0; let desiredPresence = null; let acknowledgedPresenceSequence = -1;
   let presenceTimer = null; let typingTimer = null; let idleTimer = null; let inFlightPresence = null; let dialogMode = null; let dialogReturnFocus = null; let dialogFocusTimer = null;
   let rosterExpanded = false; let lastAnnouncedCollision = '';
@@ -164,8 +165,8 @@ export function createCollaborationController({
   };
   const updateActions = () => {
     if (element('startCollaborationBtn')) element('startCollaborationBtn').disabled = Boolean(token);
-    if (element('copyCollaborationLinkBtn')) element('copyCollaborationLinkBtn').disabled = !token;
-    if (element('leaveCollaborationBtn')) element('leaveCollaborationBtn').disabled = !token;
+    if (element('copyCollaborationLinkBtn')) element('copyCollaborationLinkBtn').disabled = !token || !linkSharingEnabled;
+    if (element('leaveCollaborationBtn')) element('leaveCollaborationBtn').disabled = !token || !legacyLeaveEnabled;
     if (element('editCollaborationNameBtn')) element('editCollaborationNameBtn').disabled = !joinedPresence;
     if (element('editCollaborationTeamBtn')) element('editCollaborationTeamBtn').disabled = !joinedPresence;
     if (element('collaborationConflictActions')) element('collaborationConflictActions').hidden = !conflicted;
@@ -320,7 +321,7 @@ export function createCollaborationController({
   const activate = async () => { if (!token) return false; const checked = await poll(); await flushSave(); if (joinedPresence) await heartbeat(); schedulePoll(); return checked; };
   const syncNow = async () => { await flushSave(); const checked = await poll(); if (joinedPresence) await heartbeat(); return checked; };
   const start = async ({ requestedTeamName = '', requestedDisplayName = profile.displayName } = {}) => {
-    const epoch = ++sessionEpoch; terminalStatus = null; renderStatus('Connecting'); const snapshot = collect(); const started = now();
+    const epoch = ++sessionEpoch; terminalStatus = null; sessionKind = 'standalone'; linkSharingEnabled = true; legacyLeaveEnabled = true; renderStatus('Connecting'); const snapshot = collect(); const started = now();
     try {
       saveProfile();
       const { response, body } = await request('/api/workspaces', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ snapshot, teamName: requestedTeamName, participant: { id: profile.participantId, displayName: requestedDisplayName } }) });
@@ -333,9 +334,43 @@ export function createCollaborationController({
     finally { emitDiagnostic('POST', started); }
   };
   const joinPresence = async displayName => { joinedPresence = true; const refreshed = await heartbeat(displayName); if (!refreshed) joinedPresence = false; return refreshed; };
+  /**
+   * Attach an already-authorized workspace capability without putting it in the URL.
+   *
+   * Classroom Student sessions use this path after the class API resolves one
+   * assignment and returns a per-participant workspace capability. The same
+   * snapshot/presence engine is reused, while direct-link sharing and the legacy
+   * leave button remain disabled so classroom lifecycle stays owned by the
+   * Student controller.
+   *
+   * @param {string} workspaceToken - Existing editable workspace capability.
+   * @param {object} [options] - Session behavior.
+   * @param {string} [options.displayName] - Participant display name to refresh in presence.
+   * @param {boolean} [options.classroom=false] - Whether classroom restrictions apply.
+   * @returns {Promise<boolean>} Whether the workspace loaded and presence connected.
+   */
+  const connect = async (workspaceToken, { displayName = profile.displayName, classroom = false } = {}) => {
+    if (typeof workspaceToken !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(workspaceToken)) {
+      return false;
+    }
+    sessionEpoch += 1; terminalStatus = null; token = workspaceToken; revision = 0; lastSnapshot = null;
+    conflicted = false; pollingStopped = false; retrying = false; joinedPresence = false;
+    sessionKind = classroom ? 'classroom' : 'standalone';
+    linkSharingEnabled = !classroom; legacyLeaveEnabled = !classroom;
+    const url = new URL(activeLocation.href); url.searchParams.delete('workspace'); activeHistory.replaceState({}, '', url);
+    updateActions(); renderStatus('Connecting');
+    await poll();
+    if (!token || pollingStopped) return false;
+    joinedPresence = true;
+    const present = await heartbeat(displayName);
+    if (!present) { joinedPresence = false; return false; }
+    updateActions(); return true;
+  };
+
   const joinFromUrl = async () => {
     const candidate = new URL(activeLocation.href).searchParams.get('workspace'); if (!candidate) { updateActions(); return false; }
-    sessionEpoch += 1; terminalStatus = null; token = candidate; pollingStopped = false; updateActions();
+    sessionEpoch += 1; terminalStatus = null; token = candidate; pollingStopped = false;
+    sessionKind = 'standalone'; linkSharingEnabled = true; legacyLeaveEnabled = true; updateActions();
     const loaded = await poll();
     if (token && !pollingStopped) openDialog('join');
     return loaded;
@@ -343,9 +378,9 @@ export function createCollaborationController({
   const leave = () => {
     const leavingToken = token; const leavingParticipant = profile.participantId;
     if (leavingToken && joinedPresence && online()) request(PRESENCE_ENDPOINT, { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${leavingToken}` }, body: JSON.stringify({ participantId: leavingParticipant }) }).catch(() => {});
-    sessionEpoch += 1; cancelTimeout(saveTimer); cancelTimeout(pollTimer); cancelTimeout(presenceTimer); closeDialog(); terminalStatus = null; token = null; revision = 0; pendingSave = null; inFlightSave = null; resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSavePromise = null; inFlightGet = null; inFlightPresence = null; conflicted = false; pollingStopped = true; retrying = false; joinedPresence = false; editingField = ''; participants = []; self = null; teamName = 'Shared intake'; const url = new URL(activeLocation.href); url.searchParams.delete('workspace'); activeHistory.replaceState({}, '', url); updateActions(); toast('Left shared session. Local and recovery copies were kept.');
+    sessionEpoch += 1; cancelTimeout(saveTimer); cancelTimeout(pollTimer); cancelTimeout(presenceTimer); closeDialog(); terminalStatus = null; token = null; revision = 0; pendingSave = null; inFlightSave = null; resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSavePromise = null; inFlightGet = null; inFlightPresence = null; conflicted = false; pollingStopped = true; retrying = false; joinedPresence = false; editingField = ''; participants = []; self = null; teamName = 'Shared intake'; sessionKind = 'local'; linkSharingEnabled = true; legacyLeaveEnabled = true; const url = new URL(activeLocation.href); url.searchParams.delete('workspace'); activeHistory.replaceState({}, '', url); updateActions(); toast('Left shared session. Local and recovery copies were kept.');
   };
-  const copyLink = async () => { if (!token) return false; try { await navigatorRef.clipboard.writeText(activeLocation.href); toast('Collaboration link copied.'); return true; } catch { toast('Copy failed. Copy the current address from your browser.'); return false; } };
+  const copyLink = async () => { if (!token || !linkSharingEnabled) return false; try { await navigatorRef.clipboard.writeText(activeLocation.href); toast('Collaboration link copied.'); return true; } catch { toast('Copy failed. Copy the current address from your browser.'); return false; } };
   const exportRecovery = () => { const recovery = storage?.getItem(RECOVERY_STORAGE_KEY); if (!recovery) { toast('No local recovery snapshot is available.'); return false; } const blob = new Blob([recovery], { type: 'application/json' }); const href = URL.createObjectURL(blob); const anchor = documentRef.createElement('a'); anchor.href = href; anchor.download = 'intake-collaboration-recovery.json'; anchor.click(); URL.revokeObjectURL(href); return true; };
   const handleVisibilityChange = () => {
     if (!documentRef.hidden) { activate(); return; }
@@ -439,7 +474,7 @@ export function createCollaborationController({
     windowRef?.removeEventListener('focus', handleFocus); windowRef?.removeEventListener('pageshow', handlePageShow); windowRef?.removeEventListener('online', handleOnline); windowRef?.removeEventListener('offline', handleOffline);
   };
   function handleRosterToggle() { rosterExpanded = !rosterExpanded; renderPresence(); }
-  return { init, destroy, start, leave, loadNewest, poll, flushSave, syncNow, heartbeat, renameTeam, joinPresence, notifyLocalChange, copyLink, exportRecovery, getState: () => ({ token, revision, applyingRemote, conflicted, pollingStopped, pendingSave, inFlightSave, inFlightGet, inFlightPresence, sessionEpoch, retryDelay, retrying, lastSuccessfulSync, terminalStatus, destroyed, teamName, participants, self, joinedPresence, editingField, activityState, activitySequence, acknowledgedPresenceSequence, desiredPresence, profile }) };
+  return { init, destroy, start, connect, leave, loadNewest, poll, flushSave, syncNow, heartbeat, renameTeam, joinPresence, notifyLocalChange, copyLink, exportRecovery, getState: () => ({ token, revision, applyingRemote, conflicted, pollingStopped, pendingSave, inFlightSave, inFlightGet, inFlightPresence, sessionEpoch, retryDelay, retrying, lastSuccessfulSync, terminalStatus, destroyed, teamName, participants, self, joinedPresence, editingField, activityState, activitySequence, acknowledgedPresenceSequence, desiredPresence, profile, sessionKind, linkSharingEnabled, legacyLeaveEnabled }) };
 }
 
 /** Initializes collaboration. @param {object} options Dependencies. @returns {object} Controller. */
