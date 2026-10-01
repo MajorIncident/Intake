@@ -599,7 +599,13 @@ test('Instructor observation validates the public workspace selector before repo
 
 test('coaching identifiers, status, note, and fingerprints validate independently from Intake state', () => {
   assert.equal(normalizeCoachingTargetId(' Problem.One-Line '), 'problem.one-line');
+  assert.equal(normalizeCoachingTargetId('kt.where-location'), 'kt.where-location');
   assert.equal(normalizeCoachingTargetId('bad target'), null);
+  assert.equal(normalizeCoachingTargetId('.problem'), null);
+  assert.equal(normalizeCoachingTargetId('problem.'), null);
+  assert.equal(normalizeCoachingTargetId('problem..one-line'), null);
+  assert.equal(normalizeCoachingTargetId('problem.-one-line'), null);
+  assert.equal(normalizeCoachingTargetId('problem.one-line-'), null);
   assert.equal(normalizeCoachingStatus('meets-standard'), 'meets-standard');
   assert.equal(normalizeCoachingStatus('needs-improvement'), 'needs-improvement');
   assert.equal(normalizeCoachingStatus('great'), null);
