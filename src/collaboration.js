@@ -168,7 +168,7 @@ export function createCollaborationController({
     if (element('copyCollaborationLinkBtn')) element('copyCollaborationLinkBtn').disabled = !token || !linkSharingEnabled;
     if (element('leaveCollaborationBtn')) element('leaveCollaborationBtn').disabled = !token || !legacyLeaveEnabled;
     if (element('editCollaborationNameBtn')) element('editCollaborationNameBtn').disabled = !joinedPresence;
-    if (element('editCollaborationTeamBtn')) element('editCollaborationTeamBtn').disabled = !joinedPresence;
+    if (element('editCollaborationTeamBtn')) element('editCollaborationTeamBtn').disabled = !joinedPresence || sessionKind === 'classroom';
     if (element('collaborationConflictActions')) element('collaborationConflictActions').hidden = !conflicted;
     renderStatus(token ? 'Synced' : 'Local only'); renderPresence({ stale: !online() });
   };
@@ -375,10 +375,11 @@ export function createCollaborationController({
     if (token && !pollingStopped) openDialog('join');
     return loaded;
   };
-  const leave = () => {
+  const leave = (options = {}) => {
+    const silent = options?.silent === true;
     const leavingToken = token; const leavingParticipant = profile.participantId;
     if (leavingToken && joinedPresence && online()) request(PRESENCE_ENDPOINT, { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${leavingToken}` }, body: JSON.stringify({ participantId: leavingParticipant }) }).catch(() => {});
-    sessionEpoch += 1; cancelTimeout(saveTimer); cancelTimeout(pollTimer); cancelTimeout(presenceTimer); closeDialog(); terminalStatus = null; token = null; revision = 0; pendingSave = null; inFlightSave = null; resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSavePromise = null; inFlightGet = null; inFlightPresence = null; conflicted = false; pollingStopped = true; retrying = false; joinedPresence = false; editingField = ''; participants = []; self = null; teamName = 'Shared intake'; sessionKind = 'local'; linkSharingEnabled = true; legacyLeaveEnabled = true; const url = new URL(activeLocation.href); url.searchParams.delete('workspace'); activeHistory.replaceState({}, '', url); updateActions(); toast('Left shared session. Local and recovery copies were kept.');
+    sessionEpoch += 1; cancelTimeout(saveTimer); cancelTimeout(pollTimer); cancelTimeout(presenceTimer); closeDialog(); terminalStatus = null; token = null; revision = 0; pendingSave = null; inFlightSave = null; resolveInFlightSave?.(); resolveInFlightSave = null; inFlightSavePromise = null; inFlightGet = null; inFlightPresence = null; conflicted = false; pollingStopped = true; retrying = false; joinedPresence = false; editingField = ''; participants = []; self = null; teamName = 'Shared intake'; sessionKind = 'local'; linkSharingEnabled = true; legacyLeaveEnabled = true; const url = new URL(activeLocation.href); url.searchParams.delete('workspace'); activeHistory.replaceState({}, '', url); updateActions(); if (!silent) toast('Left shared session. Local and recovery copies were kept.');
   };
   const copyLink = async () => { if (!token || !linkSharingEnabled) return false; try { await navigatorRef.clipboard.writeText(activeLocation.href); toast('Collaboration link copied.'); return true; } catch { toast('Copy failed. Copy the current address from your browser.'); return false; } };
   const exportRecovery = () => { const recovery = storage?.getItem(RECOVERY_STORAGE_KEY); if (!recovery) { toast('No local recovery snapshot is available.'); return false; } const blob = new Blob([recovery], { type: 'application/json' }); const href = URL.createObjectURL(blob); const anchor = documentRef.createElement('a'); anchor.href = href; anchor.download = 'intake-collaboration-recovery.json'; anchor.click(); URL.revokeObjectURL(href); return true; };
