@@ -137,7 +137,7 @@ test('role switching can be dismissed with Escape and restores focus when it is 
   initialize();
 
   const switcher = dom.window.document.getElementById('experienceRoleMenuBtn');
-  switcher.focus();
+  const viewTrigger = dom.window.document.querySelector('[data-menu-target="viewMenu"]');
   switcher.click();
 
   const gate = dom.window.document.getElementById('experienceRoleGate');
@@ -150,7 +150,7 @@ test('role switching can be dismissed with Escape and restores focus when it is 
   }));
 
   assert.equal(gate.hidden, true);
-  assert.equal(dom.window.document.activeElement, switcher);
+  assert.equal(dom.window.document.activeElement, viewTrigger);
   assert.equal(getActiveExperienceRole(), EXPERIENCE_ROLE_IDS.STANDALONE);
 });
 
