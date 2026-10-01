@@ -129,7 +129,12 @@ Continue #294 on `feature/classroom-coaching-feedback`. Server contract: Instruc
 - Review evidence stores both Student workspace revision and a versioned field fingerprint.
 - Instructor authority is class-scoped; no fake named reviewer identity is inferred from a rotating capability.
 - Student read authorization resolves the existing classroom membership from its issued workspace capability; there is no workspace selector and no Student write method.
-- Exact next step: implement `src/coachableFields.js` with stable IDs and deterministic fingerprints, then mount Instructor/Student UI without entering Intake persistence.
+- Stable registry implemented in `src/coachableFields.js`: 22 substantive static fields + 10 KT question rows.
+- Target identity is domain-based (`problem.one-line`, `impact.current`, `kt.where-location`, etc.); DOM IDs/KT bindings are placement hooks only.
+- Fingerprints use normalized target evidence and a versioned deterministic 64-bit hash (`v1-...`).
+- KT feedback reviews the full reasoning row (IS, IS NOT, distinctions, changes) as one target.
+- Ephemeral Possible Cause IDs are intentionally excluded from the first durable coaching contract.
+- Exact next step: mount Instructor review controls and Student feedback UI against the shared registry; poll coaching independently from collaboration state.
 
 ## Known risks / watch items
 
