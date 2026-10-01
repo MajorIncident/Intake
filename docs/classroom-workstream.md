@@ -210,7 +210,13 @@ Continue #295 on draft PR #307 from the current branch head.
 - Remaining deployed API requests are blocked by the preview-auth tooling boundary, not by application/test failure.
 - Additional static-output hardening: production's old repository-root output was confirmed to expose internal `docs/*` and `scripts/*` files. #307 now generates/serves only `dist/`; canonical CI built 45 public files with no internal docs or protected identifiers.
 - Current deployed `dist/` verification is blocked only by Vercel's build-rate limit; #304 contains the infrastructure evidence.
-- Exact next action: synchronize final PR/issue metadata, review the complete diff, and run one deliberate `verify/**` preview of the latest head when Vercel capacity permits. Do not merge without explicit authorization.
+- Final documented head before this update: `1238b82b0d6f880a49e83bedd31d8ebe5f0d967d`; all required GitHub checks green and PR #307 has no unresolved review threads.
+- Complete `main → #307` diff review: 54 commits ahead, 0 behind; changed files remain confined to protected Case Study delivery, Vercel/public-output hardening, tests, and documentation.
+- Deliberate final-head preview: `verify/protected-cases-preview` was moved to `1238b82...`; Vercel deployment `dpl_GqbgkkwKLJ7Z1Ekiw4oZ1eMYwgXz` reached **READY**.
+- On that READY preview, `/docs/classroom-workstream.md` returned a genuine HTTP **404**.
+- Vercel Preview Authentication then intercepted subsequent HTTP probes. A deliberately nonexistent path also returned the same HTTP 302 authentication response, proving those 302s are auth-layer behavior and cannot be interpreted as file-existence results.
+- Therefore the deployed evidence is: exact final-head preview READY + build-time protected/public-boundary checks passed + one formerly exposed internal document returned 404. Remaining protected API HTTP matrix cannot be executed from the current connector without an approved preview-auth bypass path.
+- Exact next action: synchronize PR #307 / issue #295 with this final preview evidence, then keep the PR draft until the user explicitly accepts the remaining preview-auth limitation or provides/approves a bypass path. Do not merge without explicit authorization.
 
 ## Known risks / watch items
 
