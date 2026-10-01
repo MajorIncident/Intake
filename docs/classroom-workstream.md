@@ -12,8 +12,8 @@ Experience-role foundation (#289) stacked on the architecture/governance bootstr
 
 | Slice | Issue | Status | PR / branch | Notes |
 | --- | --- | --- | --- | --- |
-| Program | #288 | Open | PR #297 | Parent architecture/roadmap |
-| Experience role | #289 | In progress | PR #298 / `feature/classroom-experience-roles` | Stacked on #297; runtime + tests implemented, validation in progress |
+| Program | #288 | Open | #297 merged | Architecture/governance foundation is now on `main` |
+| Experience role | #289 | In progress | PR #298 / `feature/classroom-experience-roles` | Based on `main`; runtime/tests/docs implemented; final validation in progress |
 | Templates / Case Studies | #290 | Not started | — | Can stack on #289 |
 | Class domain/API | #291 | Not started | — | Can branch from #289 in parallel with #290 |
 | Student join/resume | #292 | Not started | — | Depends on #291 |
@@ -54,7 +54,7 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-PR #297 remains the architecture/governance base. Draft PR #298 is the active runtime stack for #289 on `feature/classroom-experience-roles`.
+#297 is merged to `main`. Draft PR #298 is the active #289 implementation on `feature/classroom-experience-roles`, now retargeted directly to `main`.
 
 ## Last completed action
 
@@ -62,7 +62,7 @@ Implemented the #289 experience-role foundation on top of #297 and opened draft 
 
 ## Next recommended action
 
-Finish CI and visual/manual verification for PR #298. After #297 lands, retarget/rebase #298 to current `main`; after #298 lands, #290 (resource split) and #291 (class domain/API) may proceed in parallel.
+Finish final CI/CodeQL for PR #298. Vercel's Git integration currently skips this feature-branch deployment, so browser-level preview verification remains explicitly pending. After #298 lands, #290 (resource split) and #291 (class domain/API) may proceed in parallel.
 
 ## Active #298 implementation
 
@@ -76,6 +76,9 @@ Finish CI and visual/manual verification for PR #298. After #297 lands, retarget
 - **View → Experience** safely switches roles without clearing Intake.
 - Experience role is excluded from SerializedAppState, file/template/summary flows, and Start Fresh clearing.
 - Menubar keyboard navigation skips hidden role-controlled controls.
+- Legacy `?workspace=` collaboration links explicitly override a stored Student/Instructor preference and enter Standalone, preventing hidden background collaboration.
+- Summary/persistence guards now distinguish presentation-only `data-experience-surface` containers from new data-bearing controls while retaining enforcement for actual form controls.
+- Canonical CI, dependency review, and template-manifest guard passed on the refreshed main-based branch; final head validation follows this documentation update.
 
 ## Known risks / watch items
 
