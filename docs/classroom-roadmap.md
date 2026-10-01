@@ -105,7 +105,7 @@ Preserve old ad-hoc collaboration APIs.
 ## Slice 4 — Student join/resume
 
 **Issue:** #292  
-**Implementation:** draft PR #302
+**Implementation:** PR #302 — implementation complete; final completion-ledger checks pending merge
 
 Branch: `feature/classroom-student-experience`
 
