@@ -55,6 +55,18 @@ async function main() {
     throw new Error('Vercel buildCommand must not regenerate manifests after authored template JSON is excluded.');
   }
 
+  const deploymentEnabled = vercelConfig.git?.deploymentEnabled;
+  if (
+    !deploymentEnabled
+    || deploymentEnabled['**'] !== false
+    || deploymentEnabled.main !== true
+    || deploymentEnabled['verify/**'] !== true
+  ) {
+    throw new Error(
+      'Vercel Git deployments must be disabled by default, enabled for main, and enabled explicitly for verify/** branches.'
+    );
+  }
+
   if (process.env.VERCEL === '1') {
     const deployedTemplateEntries = await fs.readdir(templatesDirUrl).catch(error => {
       if (error?.code === 'ENOENT') return [];
