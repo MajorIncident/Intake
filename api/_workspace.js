@@ -166,6 +166,12 @@ async function initializeRepository() {
         RETURNING id, revision, expires_at, COALESCE(team_name, 'Shared intake') AS team_name`;
       return rows[0];
     },
+    async createUntil(tokenHash, snapshot, expiresAt, teamName) {
+      const rows = await sql`INSERT INTO collaboration_workspaces (token_hash, snapshot_json, expires_at, team_name)
+        VALUES (${tokenHash}, ${JSON.stringify(snapshot)}::jsonb, ${expiresAt}::timestamptz, ${teamName || null})
+        RETURNING id, revision, expires_at, COALESCE(team_name, 'Shared intake') AS team_name`;
+      return rows[0];
+    },
     async load(tokenHash) {
       const workspaceId = await resolveWorkspaceId(tokenHash);
       if (!workspaceId) return null;
