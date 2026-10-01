@@ -54,18 +54,21 @@ export const EXPERIENCE_ROLE_SURFACES = Object.freeze({
   [EXPERIENCE_ROLE_IDS.STANDALONE]: Object.freeze({
     intake: true,
     'intake-control': true,
+    'student-entry': false,
     'student-notice': false,
     'instructor-shell': false
   }),
   [EXPERIENCE_ROLE_IDS.STUDENT]: Object.freeze({
     intake: true,
     'intake-control': true,
+    'student-entry': true,
     'student-notice': true,
     'instructor-shell': false
   }),
   [EXPERIENCE_ROLE_IDS.INSTRUCTOR]: Object.freeze({
     intake: false,
     'intake-control': false,
+    'student-entry': false,
     'student-notice': false,
     'instructor-shell': true
   })
