@@ -8,5 +8,6 @@
       "main": true,
       "verify/**": true
     }
-  }
+  },
+  "ignoreCommand": "case \"$VERCEL_GIT_COMMIT_REF\" in main|verify/*) exit 1 ;; *) exit 0 ;; esac"
 }
