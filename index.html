@@ -37,17 +37,21 @@ Anchors present:
 <!-- [styles] extracted to styles.css -->
 <!-- [styles] end -->
 </head>
-<body data-app-version="dev" data-build-label="">
+<body data-app-version="dev" data-build-label="" data-experience-role="unselected">
   <!-- Header: global controls for steps drawer and summary generation. -->
   <!-- [header] start -->
   <header>
     <div class="header-title">
       <h1 id="docTitle">KT Intake</h1>
       <p class="header-subtitle">Capture incident context, sync updates, and export crisp summaries without leaving the bridge.</p>
+      <div class="experience-role-status" data-persistence="local-only" data-summary="exclude" aria-label="Current Intake experience">
+        <span>Experience</span>
+        <strong data-experience-role-label>Choose experience</strong>
+      </div>
     </div>
     <nav class="menu-bar" aria-label="Primary menu" role="menubar">
       <!-- [feature:intake-mode-selector] start -->
-      <div class="intake-mode-selector field">
+      <div class="intake-mode-selector field" data-experience-surface="intake-control">
         <label for="intakeModeSelect">Intake mode</label>
         <select id="intakeModeSelect" name="intakeMode" aria-describedby="intakeModeHelp">
           <option value="general">General</option>
@@ -58,7 +62,7 @@ Anchors present:
         <small id="intakeModeHelp">Choose the workflow lens before capturing details.</small>
       </div>
       <!-- [feature:intake-mode-selector] end -->
-      <div class="menu-group">
+      <div class="menu-group" data-experience-surface="intake-control">
         <button type="button" class="menu-trigger" data-menu-target="collaborationMenu" aria-haspopup="true" aria-expanded="false">Collaboration</button>
         <div class="menu-panel" id="collaborationMenu" role="menu" aria-label="Collaboration" hidden>
           <!-- [feature:collaboration] start -->
@@ -107,7 +111,7 @@ Anchors present:
           </button>
         </div>
       </div>
-      <div class="menu-group">
+      <div class="menu-group" data-experience-surface="intake-control">
         <button type="button" class="menu-trigger" data-menu-target="fileMenu" aria-haspopup="true" aria-expanded="false">File</button>
         <div class="menu-panel" id="fileMenu" role="menu" aria-label="File" hidden>
           <button type="button" class="menu-item" id="startFreshBtn" role="menuitem" aria-label="Start a new intake">
@@ -125,7 +129,13 @@ Anchors present:
       <div class="menu-group">
         <button type="button" class="menu-trigger" data-menu-target="viewMenu" aria-haspopup="true" aria-expanded="false">View</button>
         <div class="menu-panel" id="viewMenu" role="menu" aria-label="View" hidden>
-          <button type="button" class="menu-item" id="notesWorkspaceMenuBtn" role="menuitem" aria-controls="notesWorkspace" aria-expanded="true">
+          <!-- [feature:experience-role-switch] start -->
+          <button type="button" class="menu-item" id="experienceRoleMenuBtn" role="menuitem" data-open-experience-role-chooser data-persistence="local-only" data-summary="exclude">
+            <span class="menu-item__label">Experience</span>
+            <span class="menu-shortcut" data-experience-role-label>Choose experience</span>
+          </button>
+          <!-- [feature:experience-role-switch] end -->
+          <button type="button" class="menu-item" id="notesWorkspaceMenuBtn" data-experience-surface="intake-control" data-persistence="local-only" data-summary="exclude" role="menuitem" aria-controls="notesWorkspace" aria-expanded="true">
             <span class="menu-item__label">Notes workspace</span><span class="menu-shortcut">Alt+N</span>
           </button>
           <button type="button" class="menu-item theme-toggle" id="themeToggle" role="menuitem" aria-pressed="false">
@@ -139,7 +149,7 @@ Anchors present:
           </button>
         </div>
       </div>
-      <div class="menu-group">
+      <div class="menu-group" data-experience-surface="intake-control">
         <button type="button" class="menu-trigger" data-menu-target="actionsMenu" aria-haspopup="true" aria-expanded="false">Actions</button>
         <div class="menu-panel" id="actionsMenu" role="menu" aria-label="Actions" hidden>
           <!-- [feature:templates-drawer] start -->
@@ -258,8 +268,72 @@ Anchors present:
   </header>
   <!-- [header] end -->
 
+  <!-- [feature:experience-role] start -->
+  <div class="experience-role-gate" id="experienceRoleGate" aria-hidden="true" data-persistence="local-only" data-summary="exclude" hidden>
+    <section
+      class="experience-role-dialog"
+      id="experienceRoleDialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="experienceRoleTitle"
+      aria-describedby="experienceRoleDescription"
+      tabindex="-1"
+    >
+      <div class="experience-role-dialog__intro">
+        <span class="experience-role-dialog__eyebrow">KT Intake</span>
+        <h2 id="experienceRoleTitle">How are you using Intake?</h2>
+        <p id="experienceRoleDescription">Choose the experience that fits this work. You can change it later from the View menu without changing your Intake data.</p>
+      </div>
+      <div class="experience-role-options" role="group" aria-label="Intake experiences">
+        <button type="button" class="experience-role-option" data-experience-role-choice="standalone" data-persistence="local-only" data-summary="exclude">
+          <span class="experience-role-option__title">Work independently</span>
+          <span class="experience-role-option__role">Standalone</span>
+          <span class="experience-role-option__description">Use Intake on your own, with local saves and optional shared collaboration.</span>
+        </button>
+        <button type="button" class="experience-role-option" data-experience-role-choice="student" data-persistence="local-only" data-summary="exclude">
+          <span class="experience-role-option__title">Join a class</span>
+          <span class="experience-role-option__role">Student</span>
+          <span class="experience-role-option__description">Use Intake for guided class work, individually or with a team.</span>
+        </button>
+        <button type="button" class="experience-role-option" data-experience-role-choice="instructor" data-persistence="local-only" data-summary="exclude">
+          <span class="experience-role-option__title">Teach a class</span>
+          <span class="experience-role-option__role">Instructor</span>
+          <span class="experience-role-option__description">Open the instructor workspace for class supervision and coaching.</span>
+        </button>
+      </div>
+      <div class="experience-role-dialog__footer">
+        <p>Your experience choice is stored separately from Intake case data and exports.</p>
+        <button type="button" class="btn-secondary" id="experienceRoleCancelBtn" data-persistence="local-only" data-summary="exclude">Keep current experience</button>
+      </div>
+    </section>
+  </div>
+  <!-- [feature:experience-role] end -->
 
-  <div class="wrap">
+  <!-- [feature:instructor-shell] start -->
+  <main class="experience-shell instructor-shell" id="instructorExperienceShell" data-experience-surface="instructor-shell" aria-labelledby="instructorExperienceTitle" hidden>
+    <div class="experience-shell__card">
+      <span class="experience-shell__eyebrow">Instructor</span>
+      <h2 id="instructorExperienceTitle">Instructor workspace</h2>
+      <p>The instructor experience is ready for its class layer. Class setup, the student/team roster, live observation, and coaching will connect here without changing the underlying student Intake.</p>
+      <div class="experience-shell__status" role="status">
+        <strong>No class connected yet</strong>
+        <span>Your existing Intake data is still available when you switch back to Standalone or Student.</span>
+      </div>
+      <button type="button" class="btn-secondary" data-open-experience-role-chooser data-persistence="local-only" data-summary="exclude">Change experience</button>
+    </div>
+  </main>
+  <!-- [feature:instructor-shell] end -->
+
+  <div class="wrap" data-experience-surface="intake">
+    <!-- [feature:student-experience-notice] start -->
+    <section class="experience-role-notice" id="studentExperienceNotice" data-experience-surface="student-notice" aria-labelledby="studentExperienceNoticeTitle" hidden>
+      <div>
+        <span class="experience-role-notice__eyebrow">Student</span>
+        <strong id="studentExperienceNoticeTitle">Student experience is active</strong>
+      </div>
+      <p>Class joining is not connected in this foundation step yet. Until it is, this Intake remains local unless you deliberately start a normal shared session.</p>
+    </section>
+    <!-- [feature:student-experience-notice] end -->
     <!-- [feature:major-incident-role-legend] start -->
     <section
       class="major-incident-role-legend"
@@ -522,7 +596,7 @@ Anchors present:
 
   </div>
 
-  <aside class="workspace-dock" aria-label="Team and notes workspace">
+  <aside class="workspace-dock" data-experience-surface="intake" aria-label="Team and notes workspace">
   <!-- [feature:collaboration-presence] start -->
     <section class="collaboration-workspace" id="collaborationWorkspace" aria-label="Team workspace" hidden>
       <div class="collaboration-workspace__identity">

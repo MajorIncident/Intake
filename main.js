@@ -57,6 +57,7 @@ import { initNotesWorkspace, toggleNotesWorkspace } from './src/notesWorkspace.j
 import { initMajorIncidentRoles } from './src/majorIncidentRoles.js';
 import { initMajorIncidentAnalysis } from './src/majorIncidentAnalysis.js';
 import { initCollaboration } from './src/collaboration.js';
+import { initExperienceRoleController } from './src/experienceRoleController.js';
 
 /** Active shared-session controller, initialized during boot. @type {object|null} */
 let collaborationController = null;
@@ -163,6 +164,7 @@ function boot() {
   window.showToast = showToast;
 
   initThemeFromStorage();
+  initExperienceRoleController();
 
   configureKT({
     autoResize,

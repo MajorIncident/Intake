@@ -4,8 +4,9 @@ KT Intake is a browser-first Kepner–Tregoe (KT) incident workbook designed for
 
 ## Quickstart
 - Clone or download this repository.
-- Open `index.html` in any modern browser. No build step or server is required.
-- The page will load previous work from `localStorage` (keys: `kt-intake-full-v2` for the intake form and `kt-actions-by-analysis-v1` for action plans) and is immediately ready for edits, summary generation, or AI prompt creation.
+- Open `index.html` in any modern browser. Standalone use remains local-first and does not depend on the classroom backend.
+- A genuinely new browser asks whether to **Work independently**, **Join a class**, or **Teach a class**. Existing saved Intakes and existing `?workspace=` collaboration links migrate silently to **Standalone** so the new chooser does not interrupt established workflows.
+- The selected experience resumes from the separate `kt-experience-role-v1` preference. Intake work itself still loads from `kt-intake-full-v2`, with action plans under `kt-actions-by-analysis-v1`.
 - Use the header controls to **Save to File** (exports a JSON snapshot) or **Load from File** (imports a previously saved snapshot) when you need to move an intake between browsers or machines.
 - Open the **Templates** drawer and click **Save current notes as template** to download the in-progress intake as curated template JSON. The prompt lets you choose between a **Case Study** template (password protected, multi-mode) or a **Standard** template (no password, always loads Full mode).
 
@@ -59,6 +60,16 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 ### Storage keys
 
 - `kt-intake-full-v2`: Primary snapshot containing the intake form, table, steps, communications log, possible causes, and `notesWorkspace` notes/open preference. Save to File and Load from File include this full snapshot automatically.
+- `kt-experience-role-v1`: Local-only Standalone / Student / Instructor preference. It is deliberately excluded from `collectAppState()`, Intake file exports, summaries, templates, and **Start Fresh** clearing.
+
+## Experience roles
+
+Experience role is a product-level choice, not an Intake workflow mode. General / IT / Pharma / Major Incident remain controlled by `meta.intakeMode`; Standalone / Student / Instructor are controlled separately by `src/experienceRoles.js` and `src/experienceRoleController.js`.
+
+- **Standalone** exposes the normal Intake and current collaboration behavior.
+- **Student** currently exposes the normal Intake plus an explicit Student context notice; class admission/workspace assignment arrives in the later classroom slices.
+- **Instructor** currently exposes a non-editing Instructor shell while class/roster/observer capability is built. Choosing Instructor at this stage is a local UI preference, **not authentication or authorization**.
+- Use **View → Experience** to switch roles without changing or deleting Intake data.
 
 ## Notes workspace
 

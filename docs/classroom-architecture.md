@@ -69,15 +69,18 @@ The **Classroom Workspace** should reference or extend the existing collaboratio
 
 ## Experience role lifecycle
 
-A first-run role chooser may offer:
+Slice #289 implements the role foundation with:
 
-- Work independently
-- Join a class
-- Teach a class
+- canonical `standalone`, `student`, and `instructor` roles in `src/experienceRoles.js`;
+- a versioned local-only `kt-experience-role-v1` preference owned by `src/experienceRoleController.js`;
+- a required first-run chooser for a genuinely new browser;
+- silent Standalone migration when an existing `kt-intake-full-v2` snapshot or existing `?workspace=` collaboration URL is present;
+- **View → Experience** as the durable route back to role selection;
+- declarative `data-experience-surface` projection rather than Intake-mode conditionals.
 
-Returning users should resume the last appropriate experience when safe.
+Returning users resume the stored role. **Start Fresh** deliberately clears Intake state without clearing the role preference.
 
-Role/session preferences must use a dedicated storage contract. They must not alter Intake serialization. The app must always provide a route back to role selection and a safe Standalone path.
+The local experience preference is **not authentication or authorization**. Student class admission and Instructor privileges remain future server-enforced capabilities (#291 onward). Role/session preferences must never alter Intake serialization.
 
 ### Standalone
 
@@ -104,7 +107,9 @@ Student workspace editing must continue through the existing collaboration synch
 
 Instructor mode is supervisory.
 
-The instructor sees a class roster/workspace navigator and can rapidly switch the main observer among authorized individual/team workspaces.
+In slice #289, Instructor renders only a non-editing shell and hides the normal editable Intake surfaces. That shell carries no class data and grants no privilege. The class roster/workspace navigator and server-enforced observer authorization arrive in later slices.
+
+The eventual instructor sees a class roster/workspace navigator and can rapidly switch the main observer among authorized individual/team workspaces.
 
 The observed Intake should reuse the normal rendering model where practical, but all student-owned Intake controls must be non-editable in instructor observation.
 

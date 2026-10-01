@@ -7,7 +7,8 @@ For any work in the Standalone / Student / Instructor program (#288), also read 
 ## Entry Point & Boot Sequence
 1. `index.html` renders the full layout and loads the ES module entry via `<script type="module" src="main.js"></script>`.
 2. `main.js` registers a `DOMContentLoaded` listener that calls `boot()`.
-3. `boot()` performs the following in order:
+3. `boot()` restores the independent product experience through `initExperienceRoleController()` before configuring the Intake feature modules. Existing saved Intakes / collaboration links become Standalone; genuinely new browsers receive the required chooser.
+4. `boot()` then performs the Intake initialization:
    - Wires the KT helpers by calling `configureKT({ autoResize, updatePrefaceTitles, showToast, getObjectFull, getDeviationFull })`.
    - Initialises each feature module: `initPreface`, `initializeCommunications`, `initStepsFeature`, `initTable`, `ensurePossibleCausesUI`, and `renderCauses`.
    - Restores any saved snapshot from `localStorage` through `restoreFromStorage()` and `applyAppState()`.
@@ -18,6 +19,8 @@ For any work in the Standalone / Student / Instructor program (#288), also read 
 | Module | Key Exports |
 | ------ | ----------- |
 | `src/appState.js` | `collectAppState()`, `applyAppState()`, `getSummaryState()` for round-trip UI testing and summary hydration. |
+| `src/experienceRoles.js` | Canonical Standalone / Student / Instructor IDs, labels, and declarative product-surface policy. |
+| `src/experienceRoleController.js` | First-run chooser, role resume/switching, backward-compatible Standalone migration, and local-only `kt-experience-role-v1` preference. |
 | `src/comms.js` | `initializeCommunications()`, `logCommunication()`, `toggleLogVisibility()`, `setCadence()`, `setManualNextUpdate()`, `getCommunicationElements()`. |
 | `src/constants.js` | `ROWS`, `STEP_DEFINITIONS`, `CAUSE_FINDING_MODES`, and other deep-frozen config. Never mutate these directly. |
 | `src/kt.js` | `configureKT()`, `initTable()`, `ensurePossibleCausesUI()`, `renderCauses()` for the IS/IS NOT workflow. |
@@ -35,7 +38,7 @@ For any work in the Standalone / Student / Instructor program (#288), also read 
 - **Keep anchors intact:** The comments in `index.html` (`[section:*]`, `[script:*]`, etc.) act as automation anchors. Never remove or rename them.
 - **Document as you go:** Follow the patterns in [`docs/commenting-guide.md`](./commenting-guide.md) to add module docblocks, update the anchor catalogue, and refresh README/`AGENTS.md` anchors before merging.
 - **Reuse constants:** Extend `src/constants.js` if new enumerations or immutable lists are required. Deep-freeze ensures downstream modules receive read-only copies.
-- **Preserve storage compatibility:** When saving extra data, extend the shape emitted by `collectAppState()` and persisted by `saveToStorage()`. Always update `applyAppState()` so round-trip tests pass.
+- **Preserve storage compatibility:** When saving extra Intake data, extend the shape emitted by `collectAppState()` and persisted by `saveToStorage()`. Experience/class/session context is different: experience role is explicitly stored outside SerializedAppState under `kt-experience-role-v1` and must remain excluded from Intake exports/templates/summaries. Always update `applyAppState()` so round-trip tests pass.
   - Review [`docs/storage-schema.md`](./storage-schema.md) whenever you change persisted shapes, run `npm run update:storage-docs` afterward, and run `npm run check:storage-docs` (or rely on the CI workflow) before submitting. Update any tests under `tests/` that assert on persisted state so they reflect the new schema.
 
 ## Example Workflows

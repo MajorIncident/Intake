@@ -44,9 +44,10 @@ No runtime behavior should change.
 
 ## Slice 1 — Experience-role foundation
 
-**Issue:** #289
+**Issue:** #289  
+**Implementation:** draft PR #298, stacked on #297
 
-Recommended branch: `feature/classroom-experience-roles`
+Branch: `feature/classroom-experience-roles`
 
 Primary deliverables:
 
