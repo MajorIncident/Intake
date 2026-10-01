@@ -47,11 +47,18 @@ Repository configuration deliberately separates ordinary development branches fr
 - `verify/**` branches are allowed to create deliberate preview deployments for security/E2E verification;
 - all other Git branches are denied Vercel Git deployment by default.
 
-This is enforced in `vercel.json` with minimatch-based `git.deploymentEnabled` rules. The default deny is important for AI-assisted work: small checkpoint commits must continue to trigger GitHub quality/security checks **without** consuming Vercel build capacity.
+Two repository-owned controls enforce this in `vercel.json`:
 
-Do not replace this with the older project-level Ignored Build Step as the primary feature-branch control. Ignored builds still created canceled deployment records during the Classroom program and contributed to build-rate exhaustion tracked in #304.
+1. `git.deploymentEnabled` denies all branches by default, then explicitly allows `main` and `verify/**`. This prevents ordinary feature/checkpoint commits from creating Vercel deployment records at all.
+2. `ignoreCommand` returns “continue” only for `main` and `verify/**`. This overrides the older project-level Ignored Build Step for the branches we intentionally allow to reach Vercel.
 
-When a preview is genuinely needed, create a short-lived `verify/**` branch from the exact PR head. Do not add a temporary allow rule to a normal `feature/**` branch.
+Both rules are checked by `npm run verify:protected-cases`.
+
+The default deny is important for AI-assisted work: small checkpoint commits continue to trigger GitHub quality/security checks **without** consuming Vercel build capacity. The Classroom program confirmed this behavior repeatedly: ordinary `feature/classroom-protected-cases` commits produced no Vercel deployment record, while `verify/protected-cases-preview` produced a READY preview from the exact PR head.
+
+Do not rely on the project-level Ignored Build Step as the primary feature-branch control. Before this repo-owned policy, ignored builds still created canceled deployment records and contributed to build-rate exhaustion tracked in #304.
+
+When a preview is genuinely needed, move or create a short-lived `verify/**` branch at the exact PR head. Do not add a temporary allow rule to a normal `feature/**` branch.
 
 ## GitHub branch controls
 
