@@ -23,6 +23,10 @@ export const CLASS_TITLE_MAX_LENGTH = 120;
 export const CLASS_WORKSPACE_LABEL_MAX_LENGTH = 120;
 export const CLASS_WORKSPACE_KINDS = Object.freeze(['individual', 'group']);
 export const DEFAULT_CLASS_EXPIRY_DAYS = 30;
+export const COACHING_STATUSES = Object.freeze(['meets-standard', 'needs-improvement']);
+export const COACHING_NOTE_MAX_LENGTH = 2000;
+export const COACHING_TARGET_ID_MAX_LENGTH = 160;
+const COACHING_FINGERPRINT_PATTERN = /^v1-[0-9a-f]{16}$/u;
 const CLASSROOM_STUDENT_CAPABILITY_KIND = 'classroom-student';
 
 let classroomRepositoryPromise;
@@ -80,6 +84,79 @@ export function validateClassroomId(value) {
   return validateParticipantId(value);
 }
 
+/**
+ * Normalize a stable coaching target identifier.
+ *
+ * @param {unknown} value Candidate target identifier.
+ * @returns {string|null} Canonical identifier or null.
+ */
+function isLowerAlphaNumeric(character) {
+  if (!character || character.length !== 1) return false;
+  const code = character.charCodeAt(0);
+  return (code >= 48 && code <= 57) || (code >= 97 && code <= 122);
+}
+
+/**
+ * Validate one dot-delimited coaching target segment in linear time.
+ *
+ * @param {string} segment Candidate segment.
+ * @returns {boolean} Whether the segment uses the stable target grammar.
+ */
+function isCoachingTargetSegment(segment) {
+  if (!segment || !isLowerAlphaNumeric(segment[0]) || !isLowerAlphaNumeric(segment.at(-1))) {
+    return false;
+  }
+  for (let index = 1; index < segment.length - 1; index += 1) {
+    const character = segment[index];
+    if (character !== '-' && !isLowerAlphaNumeric(character)) return false;
+  }
+  return true;
+}
+
+export function normalizeCoachingTargetId(value) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized || normalized.length > COACHING_TARGET_ID_MAX_LENGTH) return null;
+  const segments = normalized.split('.');
+  return segments.every(isCoachingTargetSegment) ? normalized : null;
+}
+
+/**
+ * Normalize an Instructor coaching status.
+ *
+ * @param {unknown} value Candidate status.
+ * @returns {'meets-standard'|'needs-improvement'|null} Canonical status or null.
+ */
+export function normalizeCoachingStatus(value) {
+  return typeof value === 'string' && COACHING_STATUSES.includes(value)
+    ? /** @type {'meets-standard'|'needs-improvement'} */ (value)
+    : null;
+}
+
+/**
+ * Normalize an optional Instructor coaching note while preserving line breaks.
+ *
+ * @param {unknown} value Candidate note.
+ * @returns {string|null} Trimmed note or null when invalid.
+ */
+export function normalizeCoachingNote(value) {
+  if (value === undefined || value === null) return '';
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized.length <= COACHING_NOTE_MAX_LENGTH ? normalized : null;
+}
+
+/**
+ * Validate a client-computed field-evidence fingerprint.
+ *
+ * Fingerprints are change-detection evidence, not authentication material.
+ *
+ * @param {unknown} value Candidate fingerprint.
+ * @returns {boolean} Whether the fingerprint matches the current versioned format.
+ */
+export function validateCoachingFingerprint(value) {
+  return typeof value === 'string' && COACHING_FINGERPRINT_PATTERN.test(value);
+}
 /**
  * Lazily initialize the classroom repository and its additive Neon schema.
  *
@@ -153,6 +230,25 @@ async function initializeClassroomRepository() {
   )`;
   await sql`CREATE INDEX IF NOT EXISTS classroom_memberships_workspace_idx
     ON classroom_memberships (workspace_id)`;
+
+  await sql`CREATE TABLE IF NOT EXISTS classroom_coaching_feedback (
+    class_id BIGINT NOT NULL,
+    workspace_id BIGINT NOT NULL,
+    target_id VARCHAR(160) NOT NULL,
+    status VARCHAR(32) NOT NULL CHECK (status IN ('meets-standard', 'needs-improvement')),
+    note VARCHAR(2000) NOT NULL DEFAULT '',
+    reviewed_workspace_revision INTEGER NOT NULL CHECK (reviewed_workspace_revision > 0),
+    reviewed_field_fingerprint VARCHAR(32) NOT NULL,
+    feedback_revision INTEGER NOT NULL DEFAULT 1 CHECK (feedback_revision > 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (class_id, workspace_id, target_id),
+    FOREIGN KEY (class_id, workspace_id)
+      REFERENCES classroom_workspaces(class_id, workspace_id)
+      ON DELETE CASCADE
+  )`;
+  await sql`CREATE INDEX IF NOT EXISTS classroom_coaching_feedback_workspace_idx
+    ON classroom_coaching_feedback (workspace_id, updated_at)`;
 
   async function classByInstructor(tokenHash) {
     const rows = await sql`SELECT id AS internal_id, public_id AS id, title,
@@ -307,6 +403,129 @@ async function initializeClassroomRepository() {
       return rows[0] ? { classroom, workspace: rows[0] } : null;
     },
 
+    async listFeedbackForInstructor(instructorHash, workspacePublicId) {
+      const classroom = await classByInstructor(instructorHash);
+      if (!classroom) return null;
+      const workspaces = await sql`SELECT
+          workspace_id AS "internalId",
+          public_id AS id,
+          workspace_kind AS kind,
+          label
+        FROM classroom_workspaces
+        WHERE class_id = ${classroom.internal_id}
+          AND public_id = ${workspacePublicId}::uuid
+          AND revoked_at IS NULL`;
+      const workspace = workspaces[0];
+      if (!workspace) return null;
+      const feedback = await sql`SELECT
+          target_id AS "targetId",
+          status,
+          note,
+          reviewed_workspace_revision AS "reviewedWorkspaceRevision",
+          reviewed_field_fingerprint AS "reviewedFieldFingerprint",
+          feedback_revision AS "feedbackRevision",
+          created_at AS "createdAt",
+          updated_at AS "updatedAt"
+        FROM classroom_coaching_feedback
+        WHERE class_id = ${classroom.internal_id}
+          AND workspace_id = ${workspace.internalId}
+        ORDER BY target_id`;
+      return { classroom, workspace, feedback };
+    },
+
+    async upsertFeedback(instructorHash, workspacePublicId, feedbackInput) {
+      const target = await this.getWorkspaceForObservation(instructorHash, workspacePublicId);
+      if (!target) return null;
+      const rows = await sql`INSERT INTO classroom_coaching_feedback
+        (
+          class_id, workspace_id, target_id, status, note,
+          reviewed_workspace_revision, reviewed_field_fingerprint
+        )
+        VALUES (
+          ${target.classroom.internal_id},
+          ${target.workspace.internalId},
+          ${feedbackInput.targetId},
+          ${feedbackInput.status},
+          ${feedbackInput.note},
+          ${feedbackInput.reviewedWorkspaceRevision},
+          ${feedbackInput.reviewedFieldFingerprint}
+        )
+        ON CONFLICT (class_id, workspace_id, target_id) DO UPDATE
+        SET status = EXCLUDED.status,
+            note = EXCLUDED.note,
+            reviewed_workspace_revision = EXCLUDED.reviewed_workspace_revision,
+            reviewed_field_fingerprint = EXCLUDED.reviewed_field_fingerprint,
+            feedback_revision = classroom_coaching_feedback.feedback_revision + 1,
+            updated_at = NOW()
+        RETURNING
+          target_id AS "targetId",
+          status,
+          note,
+          reviewed_workspace_revision AS "reviewedWorkspaceRevision",
+          reviewed_field_fingerprint AS "reviewedFieldFingerprint",
+          feedback_revision AS "feedbackRevision",
+          created_at AS "createdAt",
+          updated_at AS "updatedAt"`;
+      return { classroom: target.classroom, workspace: target.workspace, feedback: rows[0] };
+    },
+
+    async deleteFeedback(instructorHash, workspacePublicId, targetId) {
+      const target = await this.getWorkspaceForObservation(instructorHash, workspacePublicId);
+      if (!target) return null;
+      const rows = await sql`DELETE FROM classroom_coaching_feedback
+        WHERE class_id = ${target.classroom.internal_id}
+          AND workspace_id = ${target.workspace.internalId}
+          AND target_id = ${targetId}
+        RETURNING target_id AS "targetId"`;
+      return {
+        classroom: target.classroom,
+        workspace: target.workspace,
+        cleared: Boolean(rows[0]),
+        targetId
+      };
+    },
+
+    async listFeedbackForStudent(accessHash) {
+      const rows = await sql`SELECT
+          c.id AS "classInternalId",
+          c.public_id AS "classId",
+          c.title AS "classTitle",
+          c.expires_at AS "classExpiresAt",
+          cw.workspace_id AS "workspaceInternalId",
+          cw.public_id AS "workspaceId",
+          cw.workspace_kind AS "workspaceKind",
+          cw.label AS "workspaceLabel"
+        FROM classroom_memberships cm
+        JOIN classroom_classes c ON c.id = cm.class_id
+        JOIN classroom_workspaces cw
+          ON cw.class_id = cm.class_id AND cw.workspace_id = cm.workspace_id
+        JOIN collaboration_workspaces w ON w.id = cw.workspace_id
+        WHERE cm.access_token_hash = ${accessHash}
+          AND c.revoked_at IS NULL
+          AND c.expires_at > NOW()
+          AND cw.revoked_at IS NULL
+          AND w.expires_at > NOW()`;
+      const scope = rows[0];
+      if (!scope) return null;
+      const feedback = await sql`SELECT
+          target_id AS "targetId",
+          status,
+          note,
+          reviewed_workspace_revision AS "reviewedWorkspaceRevision",
+          reviewed_field_fingerprint AS "reviewedFieldFingerprint",
+          feedback_revision AS "feedbackRevision",
+          created_at AS "createdAt",
+          updated_at AS "updatedAt"
+        FROM classroom_coaching_feedback
+        WHERE class_id = ${scope.classInternalId}
+          AND workspace_id = ${scope.workspaceInternalId}
+        ORDER BY target_id`;
+      return {
+        classroom: { id: scope.classId, title: scope.classTitle, expiresAt: scope.classExpiresAt },
+        workspace: { id: scope.workspaceId, kind: scope.workspaceKind, label: scope.workspaceLabel },
+        feedback
+      };
+    },
     async rotateWorkspaceClaim(instructorHash, workspacePublicId, nextHash) {
       const classroom = await classByInstructor(instructorHash);
       if (!classroom) return null;
@@ -736,6 +955,94 @@ export function classObserveHandler({
   };
 }
 
+/**
+ * Create the Instructor coaching handler.
+ *
+ * @param {object} [dependencies] Injectable dependencies.
+ * @returns {Function} Vercel handler.
+ */
+export function classCoachingHandler({ getRepository = getClassroomRepository } = {}) {
+  return async (req, res) => {
+    if (!['GET', 'PUT', 'DELETE'].includes(req.method)) return methodNotAllowed(res, 'GET, PUT, DELETE');
+    const authorization = requireBearer(req);
+    if (!authorization.ok) return send(res, authorization.status, { error: authorization.error });
+
+    const workspaceId = Array.isArray(req.query?.workspaceId)
+      ? null
+      : (req.query?.workspaceId || req.body?.workspaceId);
+    if (!validateClassroomId(workspaceId)) return send(res, 400, { error: 'Invalid workspace.' });
+
+    const instructorHash = hashWorkspaceToken(authorization.token);
+    try {
+      const repository = await getRepository();
+      if (req.method === 'GET') {
+        const result = await repository.listFeedbackForInstructor(instructorHash, workspaceId);
+        return result
+          ? send(res, 200, {
+              class: { id: result.classroom.id, title: result.classroom.title, expiresAt: result.classroom.expiresAt },
+              workspace: { id: result.workspace.id, kind: result.workspace.kind, label: result.workspace.label },
+              feedback: result.feedback
+            })
+          : send(res, 404, { error: 'Workspace not found.' });
+      }
+
+      const targetId = normalizeCoachingTargetId(req.body?.targetId);
+      if (!targetId) return send(res, 400, { error: 'Invalid coaching target.' });
+
+      if (req.method === 'DELETE') {
+        const result = await repository.deleteFeedback(instructorHash, workspaceId, targetId);
+        return result
+          ? send(res, 200, { cleared: result.cleared, targetId: result.targetId })
+          : send(res, 404, { error: 'Workspace not found.' });
+      }
+
+      const status = normalizeCoachingStatus(req.body?.status);
+      const note = normalizeCoachingNote(req.body?.note);
+      const reviewedWorkspaceRevision = Number(req.body?.reviewedWorkspaceRevision);
+      const reviewedFieldFingerprint = req.body?.reviewedFieldFingerprint;
+      if (!status || note === null || !Number.isInteger(reviewedWorkspaceRevision) || reviewedWorkspaceRevision < 1
+        || !validateCoachingFingerprint(reviewedFieldFingerprint)) {
+        return send(res, 400, { error: 'Invalid coaching feedback.' });
+      }
+
+      const result = await repository.upsertFeedback(instructorHash, workspaceId, {
+        targetId, status, note, reviewedWorkspaceRevision, reviewedFieldFingerprint
+      });
+      return result
+        ? send(res, 200, {
+            class: { id: result.classroom.id, title: result.classroom.title, expiresAt: result.classroom.expiresAt },
+            workspace: { id: result.workspace.id, kind: result.workspace.kind, label: result.workspace.label },
+            feedback: result.feedback
+          })
+        : send(res, 404, { error: 'Workspace not found.' });
+    } catch {
+      return send(res, 500, { error: 'Unable to update coaching feedback.' });
+    }
+  };
+}
+
+/**
+ * Create the Student read-only coaching handler.
+ *
+ * @param {object} [dependencies] Injectable dependencies.
+ * @returns {Function} Vercel handler.
+ */
+export function classStudentCoachingHandler({ getRepository = getClassroomRepository } = {}) {
+  return async (req, res) => {
+    if (req.method !== 'GET') return methodNotAllowed(res, 'GET');
+    const authorization = requireBearer(req);
+    if (!authorization.ok) return send(res, authorization.status, { error: authorization.error });
+    try {
+      const repository = await getRepository();
+      const result = await repository.listFeedbackForStudent(hashWorkspaceToken(authorization.token));
+      return result
+        ? send(res, 200, { class: result.classroom, workspace: result.workspace, feedback: result.feedback })
+        : send(res, 404, { error: 'Class feedback not found.' });
+    } catch {
+      return send(res, 500, { error: 'Unable to load coaching feedback.' });
+    }
+  };
+}
 /**
  * Create the student class-join handler.
  *

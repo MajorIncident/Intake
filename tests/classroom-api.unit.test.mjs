@@ -7,13 +7,20 @@ import { test } from 'node:test';
 import {
   CLASS_TITLE_MAX_LENGTH,
   CLASS_WORKSPACE_LABEL_MAX_LENGTH,
+  COACHING_NOTE_MAX_LENGTH,
+  classCoachingHandler,
   classHandler,
   classJoinHandler,
   classObserveHandler,
+  classStudentCoachingHandler,
   classWorkspacesHandler,
   normalizeClassroomLabel,
+  normalizeCoachingNote,
+  normalizeCoachingStatus,
+  normalizeCoachingTargetId,
   normalizeClassroomWorkspaceKind,
-  validateClassroomId
+  validateClassroomId,
+  validateCoachingFingerprint
 } from '../api/_classroom.js';
 import { workspaceHandler } from '../api/_workspace.js';
 import {
@@ -588,4 +595,184 @@ test('Instructor observation validates the public workspace selector before repo
 
   assert.equal(invalid.statusCode, 400);
   assert.equal(repositoryReads, 0);
+});
+
+test('coaching identifiers, status, note, and fingerprints validate independently from Intake state', () => {
+  assert.equal(normalizeCoachingTargetId(' Problem.One-Line '), 'problem.one-line');
+  assert.equal(normalizeCoachingTargetId('kt.where-location'), 'kt.where-location');
+  assert.equal(normalizeCoachingTargetId('bad target'), null);
+  assert.equal(normalizeCoachingTargetId('.problem'), null);
+  assert.equal(normalizeCoachingTargetId('problem.'), null);
+  assert.equal(normalizeCoachingTargetId('problem..one-line'), null);
+  assert.equal(normalizeCoachingTargetId('problem.-one-line'), null);
+  assert.equal(normalizeCoachingTargetId('problem.one-line-'), null);
+  assert.equal(normalizeCoachingStatus('meets-standard'), 'meets-standard');
+  assert.equal(normalizeCoachingStatus('needs-improvement'), 'needs-improvement');
+  assert.equal(normalizeCoachingStatus('great'), null);
+  assert.equal(normalizeCoachingNote('  Helpful note\nwith detail  '), 'Helpful note\nwith detail');
+  assert.equal(normalizeCoachingNote('x'.repeat(COACHING_NOTE_MAX_LENGTH + 1)), null);
+  assert.equal(validateCoachingFingerprint('v1-0123456789abcdef'), true);
+  assert.equal(validateCoachingFingerprint('0123456789abcdef'), false);
+});
+
+test('Instructor coaching is class-scoped, independently revisioned, and does not mutate Student Intake revision', async () => {
+  const classrooms = createClassroomRepository();
+  const workspaceRepo = createWorkspaceRepository();
+  await classrooms.createClass({
+    publicId: CLASS_A_ID, title: 'Class A', instructorHash: testTokenHash('A'), studentJoinHash: testTokenHash('C')
+  });
+  const workspace = await workspaceRepo.create(testTokenHash('P'), { pre: { oneLine: 'Student work' } }, 30, 'Team A');
+  await classrooms.addWorkspace(testTokenHash('A'), {
+    publicId: WORKSPACE_A_ID, workspaceId: workspace.id, kind: 'group', label: 'Team A', claimHash: testTokenHash('X')
+  });
+
+  const handler = classCoachingHandler({ getRepository: async () => classrooms });
+  const first = response();
+  await handler({
+    method: 'PUT',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    query: { workspaceId: WORKSPACE_A_ID },
+    body: {
+      targetId: 'problem.one-line',
+      status: 'needs-improvement',
+      note: 'Make the deviation measurable.',
+      reviewedWorkspaceRevision: 1,
+      reviewedFieldFingerprint: 'v1-0123456789abcdef'
+    }
+  }, first);
+  assert.equal(first.statusCode, 200);
+  assert.equal(first.body.feedback.feedbackRevision, 1);
+  assert.equal(workspace.revision, 1);
+
+  const second = response();
+  await handler({
+    method: 'PUT',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    query: { workspaceId: WORKSPACE_A_ID },
+    body: {
+      targetId: 'problem.one-line',
+      status: 'meets-standard',
+      note: '',
+      reviewedWorkspaceRevision: 1,
+      reviewedFieldFingerprint: 'v1-fedcba9876543210'
+    }
+  }, second);
+  assert.equal(second.statusCode, 200);
+  assert.equal(second.body.feedback.feedbackRevision, 2);
+  assert.equal(second.body.feedback.status, 'meets-standard');
+  assert.equal(workspace.revision, 1);
+
+  const listed = response();
+  await handler({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    query: { workspaceId: WORKSPACE_A_ID }
+  }, listed);
+  assert.deepEqual(listed.body.feedback.map(item => item.targetId), ['problem.one-line']);
+});
+
+test('Instructor coaching cannot cross class boundaries and clearing is coaching-only', async () => {
+  const classrooms = createClassroomRepository();
+  const workspaceRepo = createWorkspaceRepository();
+  await classrooms.createClass({
+    publicId: CLASS_A_ID, title: 'Class A', instructorHash: testTokenHash('A'), studentJoinHash: testTokenHash('C')
+  });
+  await classrooms.createClass({
+    publicId: CLASS_B_ID, title: 'Class B', instructorHash: testTokenHash('B'), studentJoinHash: testTokenHash('D')
+  });
+  const workspace = await workspaceRepo.create(testTokenHash('P'), { marker: 'A' }, 30, 'Team A');
+  await classrooms.addWorkspace(testTokenHash('A'), {
+    publicId: WORKSPACE_A_ID, workspaceId: workspace.id, kind: 'group', label: 'Team A', claimHash: testTokenHash('X')
+  });
+  const handler = classCoachingHandler({ getRepository: async () => classrooms });
+
+  const denied = response();
+  await handler({
+    method: 'GET', headers: { authorization: 'Bearer ' + 'B'.repeat(43) }, query: { workspaceId: WORKSPACE_A_ID }
+  }, denied);
+  assert.equal(denied.statusCode, 404);
+
+  await classrooms.upsertFeedback(testTokenHash('A'), WORKSPACE_A_ID, {
+    targetId: 'problem.one-line', status: 'needs-improvement', note: 'Clarify',
+    reviewedWorkspaceRevision: 1, reviewedFieldFingerprint: 'v1-0123456789abcdef'
+  });
+  const cleared = response();
+  await handler({
+    method: 'DELETE',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    query: { workspaceId: WORKSPACE_A_ID },
+    body: { targetId: 'problem.one-line' }
+  }, cleared);
+  assert.equal(cleared.statusCode, 200);
+  assert.equal(cleared.body.cleared, true);
+  assert.equal(workspace.revision, 1);
+});
+
+test('Student coaching GET resolves only the membership behind its workspace capability and is read-only', async () => {
+  const classrooms = createClassroomRepository();
+  const workspaceRepo = createWorkspaceRepository();
+  await classrooms.createClass({
+    publicId: CLASS_A_ID, title: 'Class A', instructorHash: testTokenHash('A'), studentJoinHash: testTokenHash('C')
+  });
+  const a = await workspaceRepo.create(testTokenHash('P'), {}, 30, 'Team A');
+  const b = await workspaceRepo.create(testTokenHash('Q'), {}, 30, 'Team B');
+  await classrooms.addWorkspace(testTokenHash('A'), {
+    publicId: WORKSPACE_A_ID, workspaceId: a.id, kind: 'group', label: 'Team A', claimHash: testTokenHash('X')
+  });
+  await classrooms.addWorkspace(testTokenHash('A'), {
+    publicId: WORKSPACE_B_ID, workspaceId: b.id, kind: 'group', label: 'Team B', claimHash: testTokenHash('Y')
+  });
+  await classrooms.joinWorkspace({
+    studentJoinHash: testTokenHash('C'), claimHash: testTokenHash('X'), participantId: PARTICIPANT_A,
+    accessHash: testTokenHash('S'), workspaceRepository: workspaceRepo
+  });
+  await classrooms.joinWorkspace({
+    studentJoinHash: testTokenHash('C'), claimHash: testTokenHash('Y'), participantId: PARTICIPANT_B,
+    accessHash: testTokenHash('T'), workspaceRepository: workspaceRepo
+  });
+  await classrooms.upsertFeedback(testTokenHash('A'), WORKSPACE_A_ID, {
+    targetId: 'problem.one-line', status: 'meets-standard', note: 'Clear',
+    reviewedWorkspaceRevision: 3, reviewedFieldFingerprint: 'v1-0123456789abcdef'
+  });
+  await classrooms.upsertFeedback(testTokenHash('A'), WORKSPACE_B_ID, {
+    targetId: 'impact.current', status: 'needs-improvement', note: 'Quantify',
+    reviewedWorkspaceRevision: 2, reviewedFieldFingerprint: 'v1-fedcba9876543210'
+  });
+
+  const handler = classStudentCoachingHandler({ getRepository: async () => classrooms });
+  const studentA = response();
+  await handler({ method: 'GET', headers: { authorization: 'Bearer ' + 'S'.repeat(43) } }, studentA);
+  assert.equal(studentA.statusCode, 200);
+  assert.equal(studentA.body.workspace.id, WORKSPACE_A_ID);
+  assert.deepEqual(studentA.body.feedback.map(item => item.targetId), ['problem.one-line']);
+
+  const write = response();
+  await handler({ method: 'PUT', headers: { authorization: 'Bearer ' + 'S'.repeat(43) } }, write);
+  assert.equal(write.statusCode, 405);
+
+  const legacy = response();
+  await handler({ method: 'GET', headers: { authorization: 'Bearer ' + 'P'.repeat(43) } }, legacy);
+  assert.equal(legacy.statusCode, 404);
+});
+
+test('coaching API rejects malformed feedback before any write', async () => {
+  let writes = 0;
+  const handler = classCoachingHandler({
+    getRepository: async () => ({
+      upsertFeedback: async () => { writes += 1; return null; },
+      listFeedbackForInstructor: async () => null,
+      deleteFeedback: async () => null
+    })
+  });
+  const invalid = response();
+  await handler({
+    method: 'PUT',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    query: { workspaceId: WORKSPACE_A_ID },
+    body: {
+      targetId: 'bad target', status: 'great', reviewedWorkspaceRevision: 0, reviewedFieldFingerprint: 'bad'
+    }
+  }, invalid);
+  assert.equal(invalid.statusCode, 400);
+  assert.equal(writes, 0);
 });

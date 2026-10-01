@@ -61,7 +61,9 @@ Class
             coachable target id
             status
             note
-            reviewed snapshot revision / evidence
+            reviewed workspace revision
+            reviewed field fingerprint
+            independent feedback revision
             created/updated metadata
 ```
 
@@ -121,6 +123,16 @@ The Instructor gets a searchable/filterable individual/team workspace rail and c
 Observed Student state reuses the normal Intake DOM rather than maintaining a second renderer. Because normal `applyAppState()` is intentionally allowed to update feature caches during import/restore, the observer applies Student state inside a localStorage preservation boundary and then projects every Student-owned control read-only/disabled. The Instructor's pre-observation local Intake is restored when leaving the role/class.
 
 Instructor coaching writes still go through the separate coaching channel in #294, not the Student snapshot channel.
+
+### Coaching channel
+
+Coaching records are keyed by class + workspace + stable coaching target ID. They carry `meets-standard` / `needs-improvement`, an optional note, the reviewed Student workspace revision, a versioned field fingerprint, and their own per-target feedback revision.
+
+The capability model has no stable named Instructor account, so the represented class Instructor authority is the reviewer context for this slice. Do not persist rotating Instructor capability hashes as if they were human identity.
+
+Student feedback reads are authorized by the already-issued Student workspace capability and resolve membership server-side. Students never send a workspace selector and have no coaching write method.
+
+Field-specific fingerprints, not whole-workspace revision comparisons, determine whether the target changed after review. The workspace revision remains useful context/audit evidence.
 
 ## Authentication and capability model
 
@@ -232,7 +244,7 @@ Slice #291 adds these domain tables:
 - `classroom_workspaces` for individual/group assignment metadata and assignment capability hashes;
 - `classroom_memberships` for participant-to-workspace membership and per-participant workspace capability hashes.
 
-Later slices may add coaching feedback and protected Case Study assignment/access metadata.
+Slice #294 adds `classroom_coaching_feedback` as a separate class/workspace/target channel. Protected Case Study assignment/access metadata remains future work.
 
 Schema initialization/migration must be idempotent and documented. Avoid making browser boot depend on schema creation for Standalone.
 

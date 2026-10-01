@@ -2,11 +2,11 @@
 
 This is the live restart document for the Classroom Experience program (#288).
 
-**Rule:** update this file in every classroom-related PR before handoff. It should answer “where are we, what is safe, and what should a cold AI do next?” without requiring chat history.
+**Rule:** update this file at every durable classroom checkpoint, not only final handoff. It should answer “where are we, what is safe, and what should a cold AI do next?” without requiring chat history. Follow the delivery-resilience protocol in `docs/REPOSITORY-OPERATIONS.md` so message timeouts or conversation limits cannot erase the continuation point.
 
 ## Current phase
 
-Instructor class dashboard/read-only observer (#293) is implemented in PR #305. If #305 is still open, finish its final checks/review and merge it; if #305 is merged, #294 coaching feedback is the next slice.
+#294 coaching feedback is implemented in draft PR #306 on `feature/classroom-coaching-feedback`. Runtime and focused regression validation are green; final documented-head gates and merge are the remaining work.
 
 ## Program issues
 
@@ -17,8 +17,8 @@ Instructor class dashboard/read-only observer (#293) is implemented in PR #305. 
 | Templates / Case Studies | #290 | Complete | PR #299 / `feature/classroom-resource-split` | 171 tests: 170 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Class domain/API | #291 | Complete | PR #300 / `feature/classroom-domain-api` | Combined #290+#291 head: 183 tests, 182 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Student join/resume | #292 | Complete | PR #302 / `feature/classroom-student-experience` | 194 tests: 193 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
-| Instructor observer | #293 | Implementation complete | PR #305 / `feature/classroom-instructor-observer` | Validated implementation head: 208 tests, 207 pass, 0 fail, 1 skip; final documentation/checks pending merge |
-| Coaching | #294 | Not started | — | Depends on observer |
+| Instructor observer | #293 | Complete | PR #305 merged | 208 tests: 207 pass, 0 fail, 1 skip; repository gates green |
+| Coaching | #294 | Implementation complete | PR #306 / `feature/classroom-coaching-feedback` | Validated implementation head: 224 tests, 223 pass, 0 fail, 1 skip; final docs/head checks pending merge |
 | Protected cases | #295 | Not started | — | Requires #290 + #291 |
 | Browser E2E/CI | #296 | Not started | — | Uses #279 infrastructure |
 | Browser test foundation | #279 | Existing open issue | — | Shared Playwright/accessibility foundation |
@@ -56,15 +56,15 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297–#303 are merged to `main`. #293 is active on `feature/classroom-instructor-observer`.
+#297–#305 are merged to `main`. #294 is active on `feature/classroom-coaching-feedback`.
 
 ## Last completed action
 
-Merged #302 / completed #292. Current `main` includes Student class admission, same-device resume, class context, pre-class recovery, and collaboration-engine reuse. Final #302 validation completed 194 tests (193 pass, 0 fail, 1 intentional skip) with green CI, CodeQL, Dependency Review, and Template Manifest Guard.
+Completed #294 runtime/API/registry/UI implementation and focused regression coverage on PR #306. The validated implementation head completed 224 tests (223 pass, 0 fail, 1 intentional skip) with the canonical quality gate green; Dependency Review and Template Manifest Guard are green on the current documented head.
 
 ## Next recommended action
 
-Cold restart: inspect PR #305 first. If it is open, confirm the final head is green, review the diff, and merge/close #293. If it is already merged, update #288 if needed and start #294 coaching from current `main`. Do not reopen the Student snapshot channel for coaching.
+Inspect PR #306 first. If it is still open, confirm the final documented head has CI, CodeQL, Dependency Review, and Template Manifest Guard green; review the complete diff; then mark ready, squash-merge, close #294, and update #288. If #306 is already merged, start #295 Protected Case Study delivery from current `main`. Do not broaden #294 to ephemeral Possible Cause cards.
 
 ## Completed #300 implementation
 
@@ -99,7 +99,7 @@ Cold restart: inspect PR #305 first. If it is open, confirm the final head is gr
 - Automated coverage is in `tests/classroomStudent.unit.test.mjs`, `tests/classroomStudent.feature.test.mjs`, and collaboration regression tests.
 - Final #302 validation: 194 tests (193 pass, 0 fail, 1 intentional skip), with CI, CodeQL, Dependency Review, and Template Manifest Guard green.
 
-## Active #293 implementation
+## Completed #293 implementation
 
 - Branch: `feature/classroom-instructor-observer`.
 - Read-only endpoint: `GET /api/classes/observe?workspaceId=<public UUID>`.
@@ -119,6 +119,32 @@ Cold restart: inspect PR #305 first. If it is open, confirm the final head is gr
   - leaving Instructor restores the pre-observation local DOM; explicit Leave class also clears the Instructor resume capability;
   - Student → non-Student role changes now restore the Student pre-class local recovery without clearing Student resume.
 
+
+## Active #294 implementation
+
+- Coaching persistence is separate from `collaboration_workspaces.snapshot_json` and its revision.
+- Table: `classroom_coaching_feedback`, keyed by class/workspace/target.
+- Status: `meets-standard` or `needs-improvement`; optional note.
+- Each target has its own `feedbackRevision`.
+- Review evidence stores both Student workspace revision and a versioned field fingerprint.
+- Instructor authority is class-scoped; no fake named reviewer identity is inferred from a rotating capability.
+- Student read authorization resolves the existing classroom membership from its issued workspace capability; there is no workspace selector and no Student write method.
+- Stable registry implemented in `src/coachableFields.js`: 22 substantive static fields + 10 KT question rows.
+- Target identity is domain-based (`problem.one-line`, `impact.current`, `kt.where-location`, etc.); DOM IDs/KT bindings are placement hooks only.
+- Fingerprints use normalized target evidence and a versioned deterministic 64-bit hash (`v1-...`).
+- KT feedback reviews the full reasoning row (IS, IS NOT, distinctions, changes) as one target.
+- Ephemeral Possible Cause IDs are intentionally excluded from the first durable coaching contract.
+- First UI checkpoint implemented in `src/classroomCoaching.js` and wired through `main.js`, `src/classroomInstructor.js`, and `src/classroomStudent.js`.
+- Instructor gets per-target Meets standard / Needs improvement controls, optional note, clear action, feedback revision, and changed-since-review signal.
+- Student gets read-only in-context status/note and changed-since-review signal; coaching polling is independent of collaboration snapshot polling.
+- Instructor observer controls are excluded from the read-only projection so coaching can remain interactive while Student Intake controls stay locked.
+- UI runtime checkpoint: `f6daf4c810ccf2f037df96ec6aed294298263b74`.
+- Focused coaching UI/lifecycle regression checkpoint: `f914a28affc1b7a12a8fc41d34775cf470201968`.
+- Regression coverage now includes note-editor stability, Instructor save payload/review evidence, Student read-only feedback, changed-since-review, stale Instructor fetch rejection, and Student/Instructor coaching lifecycle hooks.
+- Final validated implementation head before documentation consolidation: 224 tests (223 pass, 0 fail, 1 intentional skip).
+- Final documentation/security/module-map consolidation is complete.
+- GitHub Advanced Security flagged the original coaching target-ID regex for potential exponential backtracking; it was replaced with a linear-time dot-segment validator in `63bc782d885eb9d57bb74c09389db4c9955e52d7` with grammar regressions in `1e25af79c97a4c60f9a091bd41d9c5b8074c188e`.
+- Exact next action: confirm the post-review-fix head is green, resolve the CodeQL review thread, update PR/issue final SHA, then merge #306.
 
 ## Known risks / watch items
 

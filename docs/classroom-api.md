@@ -25,7 +25,7 @@ The classroom tables contain organization, assignment, retention, and authorizat
 | Assignment capability | Select one individual/group assignment inside the admitted class | **No** | SHA-256 hash |
 | Student workspace capability | Edit/sync the resolved collaboration workspace | N/A | SHA-256 alias hash |
 | Legacy Standalone workspace capability | Existing secret-link collaboration | N/A | SHA-256 hash |
-| Instructor class capability | Read-only live observation through the class-scoped observer endpoint | Yes, own class only | SHA-256 hash |
+| Instructor class capability | Read-only live observation and coaching administration for its class | Yes, own class only | SHA-256 hash |
 
 Possession of a capability is authority. Display name is not identity.
 
@@ -146,6 +146,37 @@ It returns **no Student workspace capability and no editable alias**. The endpoi
 
 This is the canonical read-only observation path for #293. The browser polls this endpoint with the Instructor class capability; it must not call editable `/api/workspaces/session` or `/api/workspaces/presence` as an observer.
 
+## Coaching feedback channel (#294)
+
+Coaching is independent from the collaboration snapshot/revision stream.
+
+### `GET /api/classes/coaching?workspaceId=<public-workspace-id>`
+
+Requires the Instructor class capability. Returns coaching records for exactly one workspace in the represented class.
+
+### `PUT /api/classes/coaching?workspaceId=<public-workspace-id>`
+
+Requires the Instructor class capability. Body:
+
+- `targetId` — stable target ID from the client coaching registry;
+- `status` — `meets-standard` or `needs-improvement`;
+- optional `note` (maximum 2000 characters);
+- positive `reviewedWorkspaceRevision`;
+- versioned `reviewedFieldFingerprint` such as `v1-0123456789abcdef`.
+
+Creating a target starts `feedbackRevision` at 1. Updating the same class/workspace/target increments only that feedback record's revision.
+
+### `DELETE /api/classes/coaching?workspaceId=<public-workspace-id>`
+
+Requires the Instructor class capability and `targetId` in the body. Clearing feedback deletes only the coaching record.
+
+### `GET /api/classes/coaching/student`
+
+Requires the Student's issued classroom workspace capability. The server resolves membership from that capability hash; there is no workspace selector or enumeration operation. Students have no coaching write method.
+
+The current product has no stable named Instructor account, so class Instructor authority is the reviewer context for #294. A rotating bearer-token hash is not stored as fake human identity.
+
+Each record stores both the Student workspace revision visible when reviewed and a field-specific versioned fingerprint. The fingerprint is the primary evidence for **changed since review**, so unrelated edits elsewhere in the Intake do not stale every feedback record.
 ## Individual and group semantics
 
 ### Individual
@@ -178,6 +209,7 @@ Slice #291 adds:
 - `classroom_classes`
 - `classroom_workspaces`
 - `classroom_memberships`
+- `classroom_coaching_feedback`
 
 The membership table has a composite foreign key to `classroom_workspaces(class_id, workspace_id)`, so class/workspace isolation is enforced by the database as well as by handler authorization.
 
@@ -206,6 +238,8 @@ No classroom credential is stored in browser Intake state.
 - Capability-bearing/private responses are `no-store` and `no-referrer`.
 - Classroom workspaces cannot outlive class retention.
 - Read-only Instructor observation must not use editable workspace aliases.
+- Coaching writes must not call the collaboration snapshot update path or increment Student Intake revisions.
+- Student workspace capabilities may read coaching only for their resolved membership and never write coaching.
 - Existing Standalone collaboration remains unchanged.
 - Case Study unlock passwords are unrelated to classroom authorization.
 

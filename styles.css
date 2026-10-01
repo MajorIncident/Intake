@@ -3177,3 +3177,29 @@ body[data-experience-role="instructor"].instructor-class-connected .wrap{max-wid
   .instructor-roster-controls{grid-template-columns:1fr;}
   .instructor-observation-participants{justify-content:flex-start;max-width:none;}
 }
+
+
+/* Classroom coaching feedback */
+.classroom-coaching{margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel-muted);font-size:12px;line-height:1.45;}
+.classroom-coaching__heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;}
+.classroom-coaching__eyebrow{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+.classroom-coaching__revision{font-size:10px;color:var(--muted);}
+.classroom-coaching__actions{display:flex;gap:6px;flex-wrap:wrap;}
+.classroom-coaching__status{appearance:none;border:1px solid var(--control-border);border-radius:999px;background:var(--panel);color:var(--ink);padding:5px 9px;font:inherit;font-size:11px;font-weight:700;cursor:pointer;}
+.classroom-coaching__status:hover{border-color:var(--accent);}
+.classroom-coaching__status[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 11%,var(--panel));color:var(--ink-strong);}
+.classroom-coaching__status:focus-visible{outline:none;box-shadow:0 0 0 3px var(--focus-ring);}
+.classroom-coaching__note-editor{margin-top:7px;}
+.classroom-coaching__note-editor summary{cursor:pointer;color:var(--muted);font-weight:700;font-size:11px;}
+.classroom-coaching__note-editor textarea{width:100%;margin-top:7px;min-height:58px;}
+.classroom-coaching__note-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.classroom-coaching__meta{display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.classroom-coaching__current{font-weight:750;color:var(--ink-strong);}
+.classroom-coaching__note-preview,.classroom-coaching__student-note{margin:0;color:var(--ink);white-space:pre-wrap;}
+.classroom-coaching__stale{display:inline-flex;align-items:center;padding:3px 6px;border-radius:999px;background:var(--panel);border:1px solid var(--line);color:var(--muted);font-size:10px;font-weight:750;}
+.classroom-coaching--student{border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--panel));}
+.classroom-coaching--student.classroom-coaching--meets-standard{border-left-color:var(--accent);}
+.classroom-coaching--student.classroom-coaching--needs-improvement{border-left-color:var(--danger);}
+.classroom-coaching--student .classroom-coaching__heading{margin-bottom:4px;}
+.classroom-coaching--student .classroom-coaching__heading strong{font-size:11px;color:var(--ink-strong);}
+th .classroom-coaching{margin-top:8px;text-align:left;font-weight:400;}

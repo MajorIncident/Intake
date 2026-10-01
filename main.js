@@ -16,7 +16,8 @@ import {
   configureKT,
   initTable,
   ensurePossibleCausesUI,
-  renderCauses
+  renderCauses,
+  getRowsBuilt
 } from './src/kt.js';
 import { generateSummary, setSummaryStateProvider } from './src/summary.js';
 import { mountActionListCard, refreshActionList } from './components/actions/ActionListCard.js';
@@ -60,14 +61,18 @@ import { initCollaboration } from './src/collaboration.js';
 import { initExperienceRoleController } from './src/experienceRoleController.js';
 import { initStudentClassroom } from './src/classroomStudent.js';
 import { initInstructorClassroom } from './src/classroomInstructor.js';
+import { initClassroomCoaching } from './src/classroomCoaching.js';
 
 /** Active shared-session controller, initialized during boot. @type {object|null} */
 let collaborationController = null;
 let studentClassroomController = null;
 let instructorClassroomController = null;
+let classroomCoachingController = null;
 
 /** Destroys collaboration resources during application or test teardown. @returns {void} */
 export function destroyCollaboration() {
+  classroomCoachingController?.destroy?.();
+  classroomCoachingController = null;
   instructorClassroomController?.destroy?.();
   instructorClassroomController = null;
   studentClassroomController?.destroy?.();
@@ -218,18 +223,26 @@ function boot() {
     saveLocal: saveToStorage,
     toast: showToast
   });
+  classroomCoachingController = initClassroomCoaching({
+    getRows: getRowsBuilt,
+    toast: showToast
+  });
   studentClassroomController = initStudentClassroom({
     collaboration: collaborationController,
     collect: collectAppState,
     apply: applyAppState,
     saveLocal: saveToStorage,
-    toast: showToast
+    toast: showToast,
+    onClassConnected: token => classroomCoachingController?.connectStudent?.(token),
+    onClassDisconnected: () => classroomCoachingController?.disconnectStudent?.()
   });
   instructorClassroomController = initInstructorClassroom({
     collaboration: collaborationController,
     collect: collectAppState,
     apply: applyAppState,
-    toast: showToast
+    toast: showToast,
+    onObservation: context => classroomCoachingController?.showInstructorWorkspace?.(context),
+    onObservationEnd: () => classroomCoachingController?.hideInstructorWorkspace?.()
   });
   wireThemeToggle();
   wireSummaryEvents();

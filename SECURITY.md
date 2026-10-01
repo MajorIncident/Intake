@@ -27,6 +27,8 @@ A Student join capability alone must never enumerate class workspaces. Cross-cla
 
 `collaboration_workspace_capabilities` is an editable-alias path. Only explicitly allowed edit kinds may resolve through the existing collaboration PUT/PATCH handlers. Instructor observation therefore uses the separate GET-only `/api/classes/observe` authorization path and the Instructor class capability is never inserted as a workspace alias. Moving Instructor observation into the editable alias table would be a privilege escalation. See `docs/classroom-api.md`.
 
+Coaching authorization follows the same separation. Instructor GET/PUT/DELETE `/api/classes/coaching` is class-scoped by the Instructor capability and writes only `classroom_coaching_feedback`; it must never call the Student snapshot update path or increment a Student Intake revision. Student `GET /api/classes/coaching/student` resolves exactly one membership from the issued Student workspace capability, accepts no workspace selector, and has no write method. Coaching notes may contain instructional context about incident work and must not be logged or copied into analytics/error telemetry. Field fingerprints are change-detection evidence only, not credentials.
+
 ## Supported code
 
 Security fixes target the current `main` branch. Dependency Review, CodeQL, Dependabot, repository quality checks, and GitHub branch rules are intended to prevent known regressions from entering `main`.
