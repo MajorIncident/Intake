@@ -2,6 +2,8 @@
 
 This guide describes the current modular architecture so a fresh AI coding session can confidently extend, test, and maintain KT Intake. Do not assume a previous chat's branch, PR, deployment, or repository state; follow the Cold Start Protocol in the root `AGENTS.md` first.
 
+For any work in the Standalone / Student / Instructor program (#288), also read `docs/classroom-architecture.md`, `docs/classroom-roadmap.md`, and `docs/classroom-workstream.md` before editing. Those files are the durable source for program invariants, dependency order, and the exact continuation point.
+
 ## Entry Point & Boot Sequence
 1. `index.html` renders the full layout and loads the ES module entry via `<script type="module" src="main.js"></script>`.
 2. `main.js` registers a `DOMContentLoaded` listener that calls `boot()`.
