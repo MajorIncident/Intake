@@ -10,6 +10,8 @@ This file applies to `index.html`. Follow these instructions when editing any po
 - `[header]` & `[section:*]` – Visual cards for each workflow stage (bridge activation, problem summary, evidence, baseline/current, impact, communications, KT table, possible causes, steps, summary export).
 - `[subtitle]` – Single `h2` below the preface stack used by `src/preface.js` / `src/summary.js` to mirror the narrative subtitle stored with `kt-intake-full-v2`.
 - `[feature:templates-drawer]` – Templates launcher/backdrop/drawer cluster owned by `src/templatesDrawer.js`; keep button IDs aligned with the state helpers so prefills can be applied safely.
+- `[feature:experience-role]` / `[feature:experience-role-switch]` – First-run role chooser and View-menu switch owned by `src/experienceRoleController.js`.
+- `[feature:student-experience-notice]` / `[feature:instructor-shell]` – Role-projected context surfaces. Keep their visibility under `data-experience-surface`; do not wire them into Intake mode or Intake persistence.
 - `[section:summary]` – Container for the latest generated summary text. Keep IDs intact for persistence and testing hooks.
 - `[script]` – Reference block for the external ES module entry point.
   - `[rows]`, `[script:table-build]`, `[script:preface-refs]`, `[script:tokens]`, `[script:init]`, `[script:export]`, `[script:storage]`, `[script:toast]` – Historical anchors preserved for traceability. They now correspond to modules imported by `main.js`; do not remove them even though the code resides in `src/`.
@@ -27,6 +29,7 @@ Preserve the order of these anchors. If you need a new section, duplicate the ex
 - Immutable data such as `ROWS`, `CAUSE_FINDING_MODES`, and `STEP_DEFINITIONS` live in `src/constants.js`. Update them cautiously and ensure each change flows through summary generation and persistence.
 - `collectAppState()` and `applyAppState()` coordinate the round-trip of UI state. When you add new fields, hook them into those helpers plus the serialization logic in `src/storage.js`.
 - Local storage uses the key `kt-intake-full-v2`. Keep this identifier consistent so legacy data migrates correctly.
+- Experience role is the explicit exception to Intake persistence: `kt-experience-role-v1` is owned by `src/experienceRoleController.js` and must never be collected into `kt-intake-full-v2`, file exports, summaries, or templates.
 
 ## Extending Behaviour
 - New UI fields should include descriptive labels, helper text, and keyboard/focus affordances. Maintain semantic grouping with `<section>`, `<fieldset>`, and accessible legends.
