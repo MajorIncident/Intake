@@ -59,6 +59,9 @@ Instructor observation for #293 must **not** be inserted as a workspace alias. `
 - Student-facing endpoints return only the resolved class/workspace after successful authorization; never return a class roster or workspace catalog.
 - Cross-class join/assignment mismatches use a generic not-found response rather than revealing which secret was valid.
 - Instructor APIs may enumerate only their own class.
+- Coaching endpoints are a separate channel: Instructor capability may read/write feedback only in its class; Student workspace capability may read feedback only for its resolved membership and never write it.
+- Coaching PUT/DELETE must never route through collaboration snapshot mutation or advance `collaboration_workspaces.revision`.
+- Stable `targetId` values come from the client coaching registry; server validation must reject malformed IDs/status/note/fingerprint evidence.
 
 ## Testing
 
@@ -74,3 +77,4 @@ Classroom API changes must preserve automated coverage for:
 - classroom workspace token reuse through the existing collaboration session API;
 - edit-capability kind restrictions;
 - legacy Standalone collaboration behavior.
+- coaching class scoping, independent feedback revisions, Student read-only access, and zero Student snapshot-revision changes.
