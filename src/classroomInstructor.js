@@ -99,6 +99,8 @@ export function createInstructorClassroomController({
   windowRef = globalThis.window,
   now = () => Date.now(),
   toast = () => {},
+  onObservation = () => {},
+  onObservationEnd = () => {},
   setTimeoutImpl = globalThis.setTimeout?.bind(globalThis),
   clearTimeoutImpl = globalThis.clearTimeout?.bind(globalThis),
   AbortControllerImpl = globalThis.AbortController
@@ -346,7 +348,7 @@ export function createInstructorClassroomController({
       'input, textarea, select, button, [contenteditable], [role="button"], [role="checkbox"], [role="switch"], [draggable="true"]'
     );
     controls.forEach(control => {
-      if (control.closest?.('#instructorObservationNotice')) return;
+      if (control.closest?.('#instructorObservationNotice, [data-instructor-coaching-control]')) return;
       if (!readonlyRecords.has(control)) {
         readonlyRecords.set(control, {
           disabled: 'disabled' in control ? control.disabled : undefined,
@@ -392,6 +394,7 @@ export function createInstructorClassroomController({
   };
 
   const restoreLocal = () => {
+    onObservationEnd();
     restoreReadonlyProjection();
     if (localRecovery) {
       const snapshot = localRecovery;
@@ -421,6 +424,11 @@ export function createInstructorClassroomController({
     setStatus('observing');
     renderObservation(body);
     renderRoster();
+    onObservation({
+      instructorToken: activeSession?.instructorToken || '',
+      workspaceId: body.workspace?.id || '',
+      workspaceRevision: body.workspace?.revision || 0
+    });
   };
 
   const responseJson = async response => response.json().catch(() => ({}));
@@ -525,6 +533,7 @@ export function createInstructorClassroomController({
   async function selectWorkspace(workspaceId) {
     if (!activeSession || !workspaces.some(item => item.id === workspaceId)) return false;
     selectedWorkspaceId = workspaceId;
+    onObservationEnd();
     saveSession();
     observerEpoch += 1;
     const epoch = observerEpoch;
@@ -716,6 +725,7 @@ export function createInstructorClassroomController({
     if (destroyed) return;
     destroyed = true;
     stopLive();
+    onObservationEnd();
     restoreReadonlyProjection();
     element('instructorClassForm')?.removeEventListener('submit', handleSubmit);
     element('instructorClassRetryBtn')?.removeEventListener('click', handleRetry);

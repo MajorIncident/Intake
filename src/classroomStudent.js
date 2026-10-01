@@ -133,7 +133,9 @@ export function createStudentClassroomController({
   documentRef = globalThis.document,
   windowRef = globalThis.window,
   now = () => Date.now(),
-  toast = () => {}
+  toast = () => {},
+  onClassConnected = () => {},
+  onClassDisconnected = () => {}
 }) {
   let activeSession = null;
   let connecting = false;
@@ -285,10 +287,12 @@ export function createStudentClassroomController({
     setBusy(false);
     if (connected) {
       renderConnected(session);
+      onClassConnected(session.workspaceToken);
       return true;
     }
     if (isTerminalCollaborationFailure()) {
       collaboration?.leave?.({ silent: true });
+      onClassDisconnected();
       clearStudentSession(storage);
       activeSession = null;
       restoreLocalRecovery();
@@ -401,6 +405,7 @@ export function createStudentClassroomController({
   };
 
   const leaveClass = ({ restore = true } = {}) => {
+    onClassDisconnected();
     collaboration?.leave?.({ silent: true });
     clearStudentSession(storage);
     activeSession = null;
@@ -432,6 +437,7 @@ export function createStudentClassroomController({
       return;
     }
     if (collaboration?.getState?.().sessionKind === 'classroom') {
+      onClassDisconnected();
       collaboration.leave({ silent: true });
     }
     restoreLocalRecovery({ clear: false });
@@ -449,6 +455,7 @@ export function createStudentClassroomController({
   const destroy = () => {
     if (destroyed) return;
     destroyed = true;
+    onClassDisconnected();
     element('studentClassJoinForm')?.removeEventListener('submit', handleJoinSubmit);
     element('studentClassRetryBtn')?.removeEventListener('click', handleRetry);
     element('studentClassLeaveBtn')?.removeEventListener('click', handleLeave);
