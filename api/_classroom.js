@@ -605,10 +605,10 @@ export function classWorkspacesHandler({
       const workspaceRepository = await getWorkspaceRepo();
       const workspaceToken = tokenFactory();
       const assignmentToken = tokenFactory();
-      const workspace = await workspaceRepository.create(
+      const workspace = await workspaceRepository.createUntil(
         hashWorkspaceToken(workspaceToken),
         snapshot,
-        getClassExpiryDays(),
+        classroom.expiresAt,
         label
       );
       const result = await repository.addWorkspace(instructorHash, {
