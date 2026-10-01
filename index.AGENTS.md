@@ -9,7 +9,7 @@ This file applies to `index.html`. Follow these instructions when editing any po
 - `[styles]` / `[vars]` – Anchor references for global CSS. The actual styles live in `styles.css` but the comments must remain.
 - `[header]` & `[section:*]` – Visual cards for each workflow stage (bridge activation, problem summary, evidence, baseline/current, impact, communications, KT table, possible causes, steps, summary export).
 - `[subtitle]` – Single `h2` below the preface stack used by `src/preface.js` / `src/summary.js` to mirror the narrative subtitle stored with `kt-intake-full-v2`.
-- `[feature:templates-drawer]` – Templates launcher/backdrop/drawer cluster owned by `src/templatesDrawer.js`; keep button IDs aligned with the state helpers so prefills can be applied safely.
+- `[feature:templates-drawer]` – Shared Templates / Case Studies drawer owned by `src/templatesDrawer.js` and `src/templateAvailability.js`. Preserve the role policy: Standalone = Templates only, Student = Templates + Case Studies, Instructor = teaching-only Case Studies. Do not infer confidentiality from hidden UI; #295 owns server-gated Case Study delivery.
 - `[feature:experience-role]` / `[feature:experience-role-switch]` – First-run role chooser and View-menu switch owned by `src/experienceRoleController.js`.
 - `[feature:student-experience-notice]` / `[feature:instructor-shell]` – Role-projected context surfaces. Keep their visibility under `data-experience-surface`; do not wire them into Intake mode or Intake persistence.
 - `[section:summary]` – Container for the latest generated summary text. Keep IDs intact for persistence and testing hooks.
