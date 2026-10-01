@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   DISPLAY_NAME_MAX_LENGTH, MAX_SNAPSHOT_BYTES, TEAM_NAME_MAX_LENGTH, createWorkspaceHandler, generateWorkspaceToken,
-  hashWorkspaceToken, normalizeActivityState, normalizeCollaborationName, normalizeEditingField, parseAuthorizationToken, presenceHandler, validateParticipantId,
+  hashWorkspaceToken, isWorkspaceEditCapabilityKind, normalizeActivityState, normalizeCollaborationName, normalizeEditingField, parseAuthorizationToken, presenceHandler, validateParticipantId,
   validateSnapshot, validateToken, workspaceHandler
 } from '../api/_workspace.js';
 
@@ -19,6 +19,12 @@ test('workspace tokens are secure URL-safe values and hash deterministically', (
   assert.equal(validateToken('short'), false);
   assert.equal(parseAuthorizationToken(`Bearer ${first}`), first);
   assert.equal(parseAuthorizationToken(`Basic ${first}`), null);
+});
+
+test('only explicit edit-capability kinds can enter collaboration read/write endpoints', () => {
+  assert.equal(isWorkspaceEditCapabilityKind('classroom-student'), true);
+  assert.equal(isWorkspaceEditCapabilityKind('classroom-observer'), false);
+  assert.equal(isWorkspaceEditCapabilityKind('instructor'), false);
 });
 
 test('snapshot validation rejects invalid and oversized JSON', () => {
