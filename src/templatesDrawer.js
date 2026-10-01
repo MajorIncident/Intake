@@ -20,6 +20,12 @@ import {
   TEMPLATE_KINDS
 } from './templates.js';
 import { applyAppState, collectAppState } from './appState.js';
+import { getActiveExperienceRole } from './experienceRoleController.js';
+import {
+  canApplyTemplateForExperience,
+  filterTemplatesForExperience,
+  getTemplateResourcePolicy
+} from './templateAvailability.js';
 import { showToast } from './toast.js';
 
 const templateRecords = listTemplates();
@@ -38,6 +44,14 @@ let templatesPasswordInput = null;
 let templatesApplyBtn = null;
 let templatesAuthSection = null;
 let templatesTypeHint = null;
+let templatesDrawerTitle = null;
+let templatesDrawerSubtitle = null;
+let templatesResourceHeading = null;
+let templatesResourceHelp = null;
+let templatesModeSection = null;
+let templatesTeachingNotice = null;
+let templatesDrawerFooter = null;
+let templatesSaveBtn = null;
 let passwordErrorEl = null;
 
 let templatesDrawerOpen = false;
@@ -56,6 +70,36 @@ function getSelectedTemplateMeta() {
     return null;
   }
   return templateIndex.get(selectedTemplateId) || null;
+}
+
+/**
+ * Return the active resource policy for the current experience.
+ *
+ * @returns {ReturnType<typeof getTemplateResourcePolicy>} Role/resource policy.
+ */
+function getResourcePolicy() {
+  return getTemplateResourcePolicy(getActiveExperienceRole());
+}
+
+/**
+ * Return only resources available through normal UI for the current role.
+ *
+ * @returns {Array<object>} Available template metadata records.
+ */
+function getAvailableTemplateRecords() {
+  return filterTemplatesForExperience(getActiveExperienceRole(), templateRecords);
+}
+
+/**
+ * Ensure selection never points at a resource hidden by the current role.
+ *
+ * @returns {void}
+ */
+function ensureAvailableSelection() {
+  const available = getAvailableTemplateRecords();
+  if (!available.some(template => template.id === selectedTemplateId)) {
+    selectedTemplateId = available.length ? available[0].id : null;
+  }
 }
 
 function isStandardTemplate(templateMeta = getSelectedTemplateMeta()) {
@@ -163,7 +207,11 @@ function clearPasswordError() {
 
 function updateApplyButtonState() {
   if (!templatesApplyBtn) return;
-  const disabled = !selectedTemplateId || !selectedModeId;
+  const template = getSelectedTemplateMeta();
+  const canApply = template
+    ? canApplyTemplateForExperience(getActiveExperienceRole(), template.templateKind)
+    : false;
+  const disabled = !canApply || !selectedTemplateId || !selectedModeId;
   templatesApplyBtn.disabled = disabled;
 }
 
@@ -185,7 +233,8 @@ function updateTemplateTypeHint() {
 }
 
 function updatePasswordRequirement() {
-  const needsPassword = !isStandardTemplate();
+  const policy = getResourcePolicy();
+  const needsPassword = policy.canApply && !isStandardTemplate();
   if (templatesAuthSection) {
     templatesAuthSection.hidden = !needsPassword;
   }
@@ -198,7 +247,11 @@ function updatePasswordRequirement() {
 }
 
 function updateModeLockState() {
+  const policy = getResourcePolicy();
   const lockModes = isStandardTemplate();
+  if (templatesModeSection) {
+    templatesModeSection.hidden = !policy.canApply;
+  }
   if (lockModes) {
     selectedModeId = TEMPLATE_MODE_IDS.FULL;
   }
@@ -316,41 +369,45 @@ function buildTemplatesGroup(title, subtitle, templates) {
 function renderTemplatesList() {
   if (!templatesListEl) return;
   templatesListEl.innerHTML = '';
-  if (!templateRecords.length) {
+  const policy = getResourcePolicy();
+  const availableTemplates = getAvailableTemplateRecords();
+  ensureAvailableSelection();
+
+  if (!availableTemplates.length) {
     const empty = document.createElement('p');
     empty.className = 'templates-list__empty';
-    empty.textContent = 'No templates available yet.';
+    empty.textContent = policy.teachingOnly
+      ? 'No teaching Case Studies are available yet.'
+      : 'No resources are available yet.';
     templatesListEl.appendChild(empty);
     selectedTemplateId = null;
     updateApplyButtonState();
     refreshTemplateDetails();
     return;
   }
-  const standardTemplates = templateRecords.filter(template => template.templateKind === TEMPLATE_KINDS.STANDARD);
-  const caseTemplates = templateRecords.filter(template => template.templateKind === TEMPLATE_KINDS.CASE_STUDY);
+
+  const standardTemplates = availableTemplates.filter(template => template.templateKind === TEMPLATE_KINDS.STANDARD);
+  const caseTemplates = availableTemplates.filter(template => template.templateKind === TEMPLATE_KINDS.CASE_STUDY);
   const fragment = document.createDocumentFragment();
+
   const standardGroup = buildTemplatesGroup(
     'Templates',
-    'Standard prefills that apply instantly.',
+    policy.standardSubtitle,
     standardTemplates
   );
   if (standardGroup) {
     fragment.appendChild(standardGroup);
   }
+
   const caseGroup = buildTemplatesGroup(
     'Case Studies',
-    'Instructor-led walkthroughs that unlock with a password.',
+    policy.caseStudySubtitle,
     caseTemplates
   );
   if (caseGroup) {
     fragment.appendChild(caseGroup);
   }
-  if (!fragment.childNodes.length) {
-    const fallbackGroup = buildTemplatesGroup('Templates', '', templateRecords);
-    if (fallbackGroup) {
-      fragment.appendChild(fallbackGroup);
-    }
-  }
+
   templatesListEl.appendChild(fragment);
   updateTemplateSelection();
   refreshTemplateDetails();
@@ -459,6 +516,9 @@ function applySelectedTemplate() {
     return;
   }
   const templateMeta = getSelectedTemplateMeta();
+  if (!templateMeta || !canApplyTemplateForExperience(getActiveExperienceRole(), templateMeta.templateKind)) {
+    return;
+  }
   const requiresPassword = !isStandardTemplate(templateMeta);
   const modeToApply = requiresPassword ? selectedModeId : TEMPLATE_MODE_IDS.FULL;
   if (!modeToApply) {
@@ -552,6 +612,31 @@ function handleGlobalKeydown(event) {
   }
 }
 
+/**
+ * Synchronize drawer copy, controls, and available resources with the current experience.
+ *
+ * @returns {void}
+ */
+function refreshResourcePresentation() {
+  if (!templatesDrawerReady) return;
+  const policy = getResourcePolicy();
+
+  document.querySelectorAll('[data-template-resource-launcher-label]').forEach(element => {
+    element.textContent = policy.launcherLabel;
+  });
+  if (templatesDrawerTitle) templatesDrawerTitle.textContent = policy.drawerTitle;
+  if (templatesDrawerSubtitle) templatesDrawerSubtitle.textContent = policy.drawerSubtitle;
+  if (templatesResourceHeading) templatesResourceHeading.textContent = policy.resourceHeading;
+  if (templatesResourceHelp) templatesResourceHelp.textContent = policy.resourceHelp;
+  if (templatesTeachingNotice) templatesTeachingNotice.hidden = !policy.teachingOnly;
+  if (templatesDrawerFooter) templatesDrawerFooter.hidden = !policy.canApply;
+  if (templatesSaveBtn) templatesSaveBtn.hidden = !policy.canSaveCurrent;
+
+  renderTemplatesList();
+  updatePasswordRequirement();
+  updateModeLockState();
+}
+
 function wireDrawerInternalEvents() {
   if (!templatesDrawerReady) return;
   if (templatesListEl) {
@@ -575,6 +660,10 @@ function wireDrawerInternalEvents() {
     templatesDrawer.addEventListener('keydown', handleDrawerKeydown);
   }
   document.addEventListener('keydown', handleGlobalKeydown);
+  window.addEventListener('intake:experience-role-changed', () => {
+    closeTemplatesDrawer({ skipFocus: true });
+    refreshResourcePresentation();
+  });
 }
 
 /**
@@ -593,8 +682,16 @@ export function initTemplatesDrawer() {
   templatesModeGroup = document.getElementById('templatesModeGroup');
   templatesPasswordInput = document.getElementById('templatesPassword');
   templatesApplyBtn = document.getElementById('templatesApplyBtn');
-  templatesAuthSection = document.querySelector('.templates-auth');
+  templatesAuthSection = document.getElementById('templatesAuthSection') || document.querySelector('.templates-auth');
   templatesTypeHint = document.getElementById('templatesTypeHint');
+  templatesDrawerTitle = document.getElementById('templatesDrawerTitle');
+  templatesDrawerSubtitle = document.querySelector('.templates-drawer__subtitle');
+  templatesResourceHeading = document.getElementById('templatesResourceHeading');
+  templatesResourceHelp = document.getElementById('templatesResourceHelp');
+  templatesModeSection = document.getElementById('templatesModeSection');
+  templatesTeachingNotice = document.getElementById('templatesTeachingNotice');
+  templatesDrawerFooter = document.getElementById('templatesDrawerFooter');
+  templatesSaveBtn = document.getElementById('templatesSaveBtn');
 
   templatesDrawerReady = Boolean(
     templatesDrawer
@@ -615,9 +712,9 @@ export function initTemplatesDrawer() {
   templatesDrawer.setAttribute('aria-hidden', 'true');
   templatesBackdrop.setAttribute('aria-hidden', 'true');
 
-  renderTemplatesList();
   renderModes();
   wireDrawerInternalEvents();
+  refreshResourcePresentation();
 }
 
 /**
