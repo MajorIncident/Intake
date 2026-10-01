@@ -124,10 +124,11 @@ Primary deliverables:
 ## Slice 5 — Instructor observer
 
 **Issue:** #293
+**Implementation:** PR #305 — server read-only observer + Instructor roster/client implemented; validation head: 208 tests (207 pass, 0 fail, 1 intentional skip)
 
 **Active branch:** `feature/classroom-instructor-observer`
 
-Checkpoint 1 establishes the server-enforced read-only observer endpoint before client UI work.
+Checkpoint 1 established the server-enforced read-only observer endpoint. The current implementation also includes Instructor same-device class resume, roster/search/filter, rapid workspace switching, presence/activity context, and read-only projection of the existing Intake renderer.
 
 Normally stacks on #292/#291 depending implementation.
 

@@ -6,7 +6,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-Student class join/resume (#292) is complete in PR #302. The next implementation slice is #293: Instructor class dashboard and read-only live workspace observer.
+Instructor class dashboard/read-only observer (#293) is implemented in PR #305. If #305 is still open, finish its final checks/review and merge it; if #305 is merged, #294 coaching feedback is the next slice.
 
 ## Program issues
 
@@ -17,7 +17,7 @@ Student class join/resume (#292) is complete in PR #302. The next implementation
 | Templates / Case Studies | #290 | Complete | PR #299 / `feature/classroom-resource-split` | 171 tests: 170 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Class domain/API | #291 | Complete | PR #300 / `feature/classroom-domain-api` | Combined #290+#291 head: 183 tests, 182 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Student join/resume | #292 | Complete | PR #302 / `feature/classroom-student-experience` | 194 tests: 193 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
-| Instructor observer | #293 | In progress | PR #305 / `feature/classroom-instructor-observer` | Server read-only seam + Instructor roster/observer client implemented; validation in progress |
+| Instructor observer | #293 | Implementation complete | PR #305 / `feature/classroom-instructor-observer` | Validated implementation head: 208 tests, 207 pass, 0 fail, 1 skip; final documentation/checks pending merge |
 | Coaching | #294 | Not started | — | Depends on observer |
 | Protected cases | #295 | Not started | — | Requires #290 + #291 |
 | Browser E2E/CI | #296 | Not started | — | Uses #279 infrastructure |
@@ -64,7 +64,7 @@ Merged #302 / completed #292. Current `main` includes Student class admission, s
 
 ## Next recommended action
 
-Continue PR #305 on `feature/classroom-instructor-observer`. Server observation plus the Instructor client are implemented. Next: run/fix canonical quality gates, finish docs/security/anchor guidance, review the full diff, then merge #293 and hand off #294.
+Cold restart: inspect PR #305 first. If it is open, confirm the final head is green, review the diff, and merge/close #293. If it is already merged, update #288 if needed and start #294 coaching from current `main`. Do not reopen the Student snapshot channel for coaching.
 
 ## Completed #300 implementation
 
@@ -108,6 +108,7 @@ Continue PR #305 on `feature/classroom-instructor-observer`. Server observation 
 - The observer is GET-only and does not route through editable `/api/workspaces/session` or `/api/workspaces/presence`.
 - Planned client: persist Instructor capability outside Intake state, list own-class workspaces, search/filter a left rail, poll one selected workspace, apply it into the existing Intake DOM under a read-only projection, and restore pre-observation local Intake when leaving Instructor.
 - Coaching remains out of scope until #294.
+- Final validated #293 implementation head before documentation consolidation: 208 tests (207 pass, 0 fail, 1 intentional skip); CI, Dependency Review, and Template Manifest Guard green, with CodeQL completing independently.
 - Client checkpoint:
   - `src/classroomInstructor.js` owns Instructor same-device resume, class roster polling, search/filter, selection, and observer polling;
   - the Instructor capability is retained only in `kt-classroom-instructor-session-v1`, outside Intake state;

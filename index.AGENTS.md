@@ -12,7 +12,7 @@ This file applies to `index.html`. Follow these instructions when editing any po
 - `[feature:templates-drawer]` – Shared Templates / Case Studies drawer owned by `src/templatesDrawer.js` and `src/templateAvailability.js`. Preserve the role policy: Standalone = Templates only, Student = Templates + Case Studies, Instructor = teaching-only Case Studies. Do not infer confidentiality from hidden UI; #295 owns server-gated Case Study delivery.
 - `[feature:experience-role]` / `[feature:experience-role-switch]` – First-run role chooser and View-menu switch owned by `src/experienceRoleController.js`.
 - `[feature:student-class-entry]` / `[feature:student-experience-notice]` – Student join/reconnect gate and connected class context owned by `src/classroomStudent.js`. All classroom inputs/context are local-only and summary-excluded; class codes and workspace capabilities must never enter Intake state.
-- `[feature:instructor-shell]` – Instructor role-projected context surface. Keep its visibility under `data-experience-surface`; do not wire it into Intake mode or Intake persistence.
+- `[feature:instructor-shell]` / `[feature:instructor-observer]` – Instructor class entry/roster and live read-only observation owned by `src/classroomInstructor.js`. Instructor class/session controls are local-only. Observed Student snapshots may render through the existing Intake DOM, but the observer must preserve local storage around rehydration and re-project Student-owned controls read-only; never save observed Student state as the Instructor's Intake.
 - `[section:summary]` – Container for the latest generated summary text. Keep IDs intact for persistence and testing hooks.
 - `[script]` – Reference block for the external ES module entry point.
   - `[rows]`, `[script:table-build]`, `[script:preface-refs]`, `[script:tokens]`, `[script:init]`, `[script:export]`, `[script:storage]`, `[script:toast]` – Historical anchors preserved for traceability. They now correspond to modules imported by `main.js`; do not remove them even though the code resides in `src/`.
@@ -32,6 +32,7 @@ Preserve the order of these anchors. If you need a new section, duplicate the ex
 - Local storage uses the key `kt-intake-full-v2`. Keep this identifier consistent so legacy data migrates correctly.
 - Experience role is an explicit exception to Intake persistence: `kt-experience-role-v1` is owned by `src/experienceRoleController.js`.
 - Student classroom session/recovery are also outside Intake persistence: `kt-classroom-student-session-v1` and `kt-classroom-student-local-recovery-v1` are owned by `src/classroomStudent.js`. Never collect these keys or any classroom capability into `kt-intake-full-v2`, file exports, summaries, or templates.
+- Instructor classroom resume is outside Intake persistence: `kt-classroom-instructor-session-v1` is owned by `src/classroomInstructor.js`. It may contain the raw Instructor class capability for same-device resume, so it must never enter `kt-intake-full-v2`, file exports, summaries, templates, URLs, or editable collaboration aliases.
 
 ## Extending Behaviour
 - New UI fields should include descriptive labels, helper text, and keyboard/focus affordances. Maintain semantic grouping with `<section>`, `<fieldset>`, and accessible legends.
