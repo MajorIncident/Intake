@@ -8,10 +8,12 @@ import { expect, test } from '@playwright/test';
 const INTAKE_STORAGE_KEY = 'kt-intake-full-v2';
 
 async function startFresh(page) {
-  await page.addInitScript(() => {
+  await page.goto('/');
+  await page.evaluate(() => {
     window.localStorage.clear();
     window.sessionStorage.clear();
   });
+  await page.reload();
 }
 
 function watchPageErrors(page) {
@@ -21,7 +23,6 @@ function watchPageErrors(page) {
 }
 
 async function enterStandalone(page) {
-  await page.goto('/');
   await page.getByRole('button', { name: /Work independently/ }).click();
   await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'standalone');
   await expect(page.locator('.wrap')).toBeVisible();
@@ -35,7 +36,8 @@ async function expectNoBlockingA11yViolations(page) {
   expect(blockingViolations, JSON.stringify(blockingViolations, null, 2)).toEqual([]);
 }
 
-test('Standalone input generates a summary and survives a real browser reload', async ({ page }) => {
+test('Standalone input generates a summary and survives a real browser reload', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop Actions menu journey; mobile has a separate primary-input smoke.');
   const pageErrors = watchPageErrors(page);
   await startFresh(page);
   await enterStandalone(page);
@@ -63,7 +65,8 @@ test('Standalone input generates a summary and survives a real browser reload', 
   expect(pageErrors).toEqual([]);
 });
 
-test('Standalone resource drawer exposes public Templates only and remains accessible', async ({ page }) => {
+test('Standalone resource drawer exposes public Templates only and remains accessible', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop resource-menu journey; mobile navigation is covered separately.');
   const pageErrors = watchPageErrors(page);
   await startFresh(page);
   await enterStandalone(page);
@@ -71,13 +74,38 @@ test('Standalone resource drawer exposes public Templates only and remains acces
   await page.getByRole('button', { name: 'Actions' }).click();
   await page.getByRole('menuitem', { name: /^Templates/ }).click();
 
-  const drawer = page.getByRole('dialog', { name: 'Templates Library' });
+  const drawer = page.locator('#templatesDrawer');
   await expect(drawer).toBeVisible();
+  await expect(drawer.locator('#templatesDrawerTitle')).toHaveText('Templates');
   await expect(drawer.getByRole('group', { name: 'Templates' })).toBeVisible();
   await expect(drawer.getByText('Checkout Latency Spike', { exact: true })).toBeVisible();
   await expect(drawer.getByRole('group', { name: 'Case Studies' })).toHaveCount(0);
   await expect(page.locator('#templatesAuthSection')).toBeHidden();
 
   await expectNoBlockingA11yViolations(page);
+  expect(pageErrors).toEqual([]);
+});
+
+
+test('mobile Standalone accepts primary Intake input and persists it', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-mobile', 'Mobile-only primary interaction smoke.');
+  const pageErrors = watchPageErrors(page);
+  await startFresh(page);
+  await enterStandalone(page);
+
+  const problem = 'Mobile checkout latency regression.';
+  await page.locator('#oneLine').fill(problem);
+  await page.locator('#oneLine').blur();
+
+  await expect(page.locator('#oneLine')).toHaveValue(problem);
+  await expect.poll(async () => page.evaluate(key => {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw)?.pre?.oneLine || '' : '';
+  }, INTAKE_STORAGE_KEY)).toBe(problem);
+
+  await page.reload();
+
+  await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'standalone');
+  await expect(page.locator('#oneLine')).toHaveValue(problem);
   expect(pageErrors).toEqual([]);
 });
