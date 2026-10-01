@@ -33,9 +33,9 @@ Case Study authoring source is intentionally present in Git but intentionally ab
 - `src/templates.manifest.js` is public and may contain Standard Templates only.
 - `api/protected-case-studies.manifest.js` is server-only generated content and may contain protected Case Study metadata/payloads.
 - Browser runtime files must never import or duplicate the server-only manifest.
-- `scripts/build-vercel-public.mjs` generates the **only** public static surface under `dist/`: `index.html`, `main.js`, `styles.css`, and browser JavaScript under `src/` and `components/`.
+- `scripts/build-vercel-public.mjs` generates the **only** public static surface under `dist/`: `index.html`, `main.js`, `styles.css`, browser JavaScript under `src/` and `components/`, plus the explicitly public `docs/eula.md` linked from the app footer.
 - Vercel `outputDirectory` must remain `dist`. Serving `.` is prohibited because production previously exposed internal files such as `docs/classroom-workstream.md` and `scripts/build-templates-manifest.mjs`.
-- The public-bundle builder rejects internal Markdown/JSON/MJS/AGENTS files and scans all emitted text for protected Case Study IDs/names.
+- The public-bundle builder rejects all other Markdown plus JSON/MJS/AGENTS/internal files and scans all emitted text—including the EULA—for protected Case Study IDs/names.
 - Production Vercel builds run `npm run verify:protected-cases && npm run build:vercel-public`; they do not regenerate manifests because authored template JSON is intentionally excluded from the upload.
 - GitHub CI/local authoring remains responsible for `npm run build:templates` / `npm run check:templates` freshness, and `npm run quality` also builds/verifies the same minimal `dist/` surface.
 
