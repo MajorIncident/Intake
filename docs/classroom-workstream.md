@@ -245,7 +245,14 @@ Continue #295 on draft PR #307 from the current branch head.
   - mobile gets a separate Standalone primary-input + persistence/reload smoke;
   - uncaught page errors remain fatal assertions.
 - Normal repository quality gate is green on the refreshed stack.
-- Exact next action: wait for/inspect Browser E2E on this checkpoint. Do **not** add Classroom API fixtures until the Standalone browser suite is green on both intended projects. Then proceed to deterministic Classroom fixtures and Student/Instructor/coaching/protected-case journeys.
+- Browser E2E on the stabilized Standalone test checkpoint then exposed real accessibility defects in the Templates drawer:
+  - `aria-required-children` / `aria-required-parent` / `listitem`: native `ul/li` markup was mixed with listbox/option roles;
+  - `color-contrast`: the Apply resource button's white-on-`#007aff` contrast measured 4.01:1.
+- Product fixes:
+  - `e2ec381a39d1819deabb634a0ea3b0e63d9b6c8d` — resource chooser now uses a direct `div[role=listbox] > button[role=option]` pattern;
+  - `b1b686aa6b3901db1b4a55f8997c7c4245b92c83` — Apply resource uses the existing darker blue `#1769aa` locally rather than altering the global accent.
+- The same run confirmed the repaired behavioral coverage before axe executed: desktop input → summary → persistence/reload passed; mobile Standalone primary-input + persistence/reload passed.
+- Exact next action: inspect Browser E2E after these accessibility fixes. Do **not** add Classroom API fixtures until the Standalone browser suite is fully green. Then proceed to deterministic Classroom fixtures and Student/Instructor/coaching/protected-case journeys.
 
 ## Known risks / watch items
 
