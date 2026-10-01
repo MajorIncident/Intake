@@ -1,0 +1,4 @@
+# Authored template JSON is build-time source only.
+# Generated Standard Templates are committed under src/; protected Case Studies
+# are committed only into the server-side api manifest.
+templates/*.json

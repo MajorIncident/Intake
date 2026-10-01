@@ -47,7 +47,8 @@ Classroom invariants:
 - coaching uses separate persistence/revision semantics;
 - student credentials never provide class/workspace enumeration;
 - Case Study unlock passwords are pedagogy, not authentication;
-- protected Case Study payloads must ultimately be server-gated and absent from public Standalone assets.
+- protected Case Study metadata/payloads are server-gated, absent from public browser/static assets, and authored `templates/*.json` remains excluded from Vercel deployment; `src/templates.manifest.js` is Standard-only and browser code must never import `api/protected-case-studies.manifest.js`.
+- public Vercel static output comes only from generated `dist/`; never set `outputDirectory` back to `.` or otherwise expose repository docs/tests/scripts/AGENTS/authoring files. `scripts/build-vercel-public.mjs` owns the allowlisted browser bundle and is part of the canonical quality gate.
 
 Every classroom PR must update `docs/classroom-workstream.md` before handoff with its issue, PR/base dependency, current HEAD, completed/incomplete work, validation, risks, and exact next action. For stacked PRs, state the merge order and never describe an unmerged dependent PR as independently mergeable.
 

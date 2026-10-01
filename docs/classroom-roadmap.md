@@ -146,7 +146,7 @@ Primary deliverables:
 
 **Issue:** #294
 
-**Implementation:** draft PR #306 on `feature/classroom-coaching-feedback`; implementation/coverage complete pending final documented-head gates and merge.
+**Implementation:** PR #306 merged; #294 complete.
 
 Stacks on instructor observer.
 
@@ -164,18 +164,38 @@ Primary deliverables:
 
 **Issue:** #295
 
-Recommended branch: `feature/classroom-protected-cases`
+**Implementation:** draft PR #307 on `feature/classroom-protected-cases`; implementation, repository validation, and documentation are complete. Final deployed `dist/` verification remains blocked only by Vercel build capacity / preview-auth tooling.
 
-Requires #290 semantics and #291 authorization.
+Requires #290 semantics and #291 authorization; both prerequisites are merged.
 
-Primary deliverables:
+Implemented deliverables:
 
-- split public template build from protected cases;
-- authenticated case catalog/payload API;
-- static-bundle guard;
-- authorized Student/Instructor flows;
-- unauthorized request tests;
-- deployment/docs migration.
+- public generated manifest contains Standard Templates only;
+- server-only generated manifest contains protected Case Study metadata/payloads;
+- Instructor class-scoped and Student membership-bound protected catalog/payload APIs;
+- metadata-only GET catalog and authenticated POST payload delivery;
+- in-memory Student/Instructor protected-resource client integrated with the shared drawer;
+- Standalone remains protected-resource free and backend-optional;
+- authored `templates/*.json` source excluded from Vercel source upload;
+- protected Case Study public-runtime/deployment verifier in the canonical quality gate;
+- minimal generated `dist/` public bundle replaces repository-root static output so internal docs/tests/scripts/authoring files are not public assets;
+- Vercel Git deployments are deny-by-default, with `main` and deliberate `verify/**` branches explicitly allowed;
+- authorization, bundle-boundary, role/drawer, and public-output regression coverage;
+- security/architecture/cold-start/deployment documentation migration.
+
+Validation evidence:
+
+- full suite: 236 tests, 235 pass, 0 fail, 1 intentional skip;
+- exact minimal-output implementation head `7f998f96...`: CI, CodeQL, Dependency Review, and Template Manifest Guard green;
+- canonical CI built 45 public `dist/` files with no internal docs or protected Case Study identifiers;
+- prior deliberate READY preview returned HTTP 404 for the formerly public Microcomputer Cabinets authored JSON path.
+
+Remaining before merge:
+
+- obtain one deliberate `verify/**` preview of the latest `dist/` head when Vercel build capacity permits;
+- confirm app root loads and internal `/docs/*`, `/scripts/*`, and protected `/templates/*.json` paths return 404;
+- execute the deployed protected-API matrix only if an approved Preview Authentication bypass path is available; do not weaken preview protection to manufacture this evidence;
+- explicit merge authorization.
 
 ## Slice 8 — Browser/E2E and required CI
 

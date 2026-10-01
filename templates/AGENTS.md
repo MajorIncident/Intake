@@ -1,7 +1,7 @@
 # Templates Directory Guidelines
 
 ## Scope
-Applies to all files inside `templates/`.
+Applies to all authored JSON files inside `templates/`.
 
 ## JSON Template Structure
 - Each file must export a single JSON object with the shape:
@@ -15,13 +15,35 @@ Applies to all files inside `templates/`.
     "state": { /* SerializedAppState payload */ }
   }
   ```
-- `supportedModes` may omit entries that do not make sense for a given template, but it must never be empty.
-- `templateKind` is a resource-kind axis, not an experience role. `standard` records are reusable Templates; `case-study` records are Case Studies.
-- `src/templateAvailability.js` controls normal-UI visibility by experience role without duplicating this registry: Standalone = standard only, Student = both, Instructor = case-study teaching resources only.
-- For Student application, `case-study` resources keep the rotating mode password while `standard` Templates skip password prompts and always load in `full` mode.
-- **Security:** Case Study JSON is still compiled into the public static manifest until #295. Role hiding and the rotating password are not confidentiality or authentication controls.
+- `supportedModes` may omit entries that do not make sense for a resource, but it must never be empty.
+- `templateKind` is a resource-kind axis, not an experience role. `standard` records are reusable Templates; `case-study` records are protected teaching resources.
 - `state` must satisfy the `SerializedAppState` contract documented in `src/storage.js`.
 
+## Security boundary
+
+Authored JSON is build-time source, not a production static asset.
+
+`npm run build:templates` validates **all** authored JSON and generates two explicit boundaries:
+
+- `src/templates.manifest.js` — public browser manifest containing Standard Templates only;
+- `api/protected-case-studies.manifest.js` — server-only Case Study metadata + payloads.
+
+Never copy a Case Study into `src/templates.manifest.js`, `src/`, `main.js`, `components/`, or another browser-delivered file. Never import the server-only manifest from browser code.
+
+`.vercelignore` excludes `templates/*.json` from deployment, and production uses the committed generated manifests. `npm run verify:protected-cases` checks that authored JSON stays excluded and protected Case Study IDs/names do not leak into public browser runtime assets.
+
+Role policy remains separate from confidentiality:
+- Standalone: public Standard Templates only;
+- Student: public Standard Templates plus authorized protected Case Studies;
+- Instructor: authorized protected Case Studies as teaching resources.
+
+The rotating Case Study mode password is pedagogy only. Authorization comes from the active classroom capability.
+
 ## Editing Workflow
-- After adding or updating JSON files, run `npm run build:templates` to regenerate `src/templates.manifest.js`.
-- Keep metadata strings concise; the drawer truncates overly long labels.
+1. Edit/add the authored JSON under `templates/`.
+2. Run `npm run build:templates`.
+3. Run `npm run verify:protected-cases`.
+4. Run `npm run quality` before PR handoff.
+5. Commit the authored JSON **and both generated manifests** together.
+
+Keep metadata strings concise; the drawer truncates overly long labels.

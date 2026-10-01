@@ -6,7 +6,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-#294 coaching feedback is implemented in draft PR #306 on `feature/classroom-coaching-feedback`. Runtime and focused regression validation are green; final documented-head gates and merge are the remaining work.
+#294 is merged and production READY. #295 Protected Case Study delivery is active on `feature/classroom-protected-cases`.
 
 ## Program issues
 
@@ -18,8 +18,8 @@ This is the live restart document for the Classroom Experience program (#288).
 | Class domain/API | #291 | Complete | PR #300 / `feature/classroom-domain-api` | Combined #290+#291 head: 183 tests, 182 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Student join/resume | #292 | Complete | PR #302 / `feature/classroom-student-experience` | 194 tests: 193 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Instructor observer | #293 | Complete | PR #305 merged | 208 tests: 207 pass, 0 fail, 1 skip; repository gates green |
-| Coaching | #294 | Implementation complete | PR #306 / `feature/classroom-coaching-feedback` | Validated implementation head: 224 tests, 223 pass, 0 fail, 1 skip; final docs/head checks pending merge |
-| Protected cases | #295 | Not started | — | Requires #290 + #291 |
+| Coaching | #294 | Complete | PR #306 merged | 224 tests: 223 pass, 0 fail, 1 skip; all repository gates green; production deployment READY |
+| Protected cases | #295 | In progress | draft PR #307 / `feature/classroom-protected-cases` | Runtime/security implementation complete; final docs/gates and deployment verification remain |
 | Browser E2E/CI | #296 | Not started | — | Uses #279 infrastructure |
 | Browser test foundation | #279 | Existing open issue | — | Shared Playwright/accessibility foundation |
 
@@ -32,7 +32,7 @@ This is the live restart document for the Classroom Experience program (#288).
 - Coaching is a separate persistence/revision channel.
 - Classroom credentials never belong in exported Intake state.
 - Case Study password is instructional gating, not authentication.
-- Protected Case Study payloads ultimately move out of the public client bundle.
+- Protected Case Study metadata/payloads are server-gated, absent from public browser assets, and authored `templates/*.json` is excluded from Vercel deployment.
 
 See `docs/classroom-architecture.md` for the full contract.
 
@@ -56,15 +56,28 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297–#305 are merged to `main`. #294 is active on `feature/classroom-coaching-feedback`.
+#297–#306 are merged to `main`. #295 is active on `feature/classroom-protected-cases`.
 
 ## Last completed action
 
-Completed #294 runtime/API/registry/UI implementation and focused regression coverage on PR #306. The validated implementation head completed 224 tests (223 pass, 0 fail, 1 intentional skip) with the canonical quality gate green; Dependency Review and Template Manifest Guard are green on the current documented head.
+Completed the #295 implementation/security/documentation slices through root cold-start and repository-operations guidance. Latest durable docs checkpoint before this update is `47ffd1bf11c813e69f8d7956659902c041c8e908`, followed by README/onboarding/roadmap/commenting/storage/operations synchronization. The public/server manifest split, authorized API/client flow, raw authored-JSON Vercel exclusion, and protected-resource verifier are implemented.
 
 ## Next recommended action
 
-Inspect PR #306 first. If it is still open, confirm the final documented head has CI, CodeQL, Dependency Review, and Template Manifest Guard green; review the complete diff; then mark ready, squash-merge, close #294, and update #288. If #306 is already merged, start #295 Protected Case Study delivery from current `main`. Do not broaden #294 to ephemeral Possible Cause cards.
+Continue #295 on draft PR #307 from the current branch head.
+
+1. Protected Case Study runtime/security implementation is complete: public/server manifest split, Classroom authorization, role-aware client delivery, static/runtime leak guards, and deterministic API/client coverage.
+2. A second-order production exposure was discovered during deployed verification: with the old `outputDirectory: "."`, production returned internal repository files such as `/docs/classroom-workstream.md` and `/scripts/build-templates-manifest.mjs` with HTTP 200.
+3. #307 now builds a minimal public `dist/` surface via `scripts/build-vercel-public.mjs`. It copies only `index.html`, `main.js`, `styles.css`, and browser JavaScript under `src/` + `components/`; it rejects internal file types and protected Case Study identifiers.
+4. `vercel.json` now uses `outputDirectory: "dist"` and `npm run verify:protected-cases && npm run build:vercel-public`. The verifier rejects any return to repository-root static output.
+5. Exact GitHub CI evidence on `7f998f96b92a6760d5437a8fd8ffc36ea0a97f4c`:
+   - `[verify:protected-cases] Protected 4 Case Study payload(s); public manifest/runtime and Vercel deployment boundary verified.`
+   - `[build:vercel-public] Built 45 public file(s) in dist/ with no internal docs or protected Case Study identifiers.`
+   - CI, CodeQL, Dependency Review, and Template Manifest Guard all green.
+6. Vercel Git deployment policy remains repository-owned: ordinary branches create no Vercel deployment; `main` and `verify/**` are the only allowed classes, and repo `ignoreCommand` explicitly continues those branches.
+7. A deliberate preview of the new `dist/` head was requested through `verify/protected-cases-preview`, but Vercel returned `upgradeToPro=build-rate-limit` before creating the deployment. This remains tracked in #304.
+8. The earlier guarded preview `dpl_Ep2q8Y3BMUWGEV7fzZQHnvdwPumA` reached READY and returned HTTP 404 for the formerly public Microcomputer Cabinets authored JSON path, proving the protected authoring-source boundary before the `dist/` broadening.
+9. Exact next action: finish PR/issue/diff synchronization on the latest documented head, then obtain one deliberate `verify/**` preview when Vercel capacity permits and confirm `/docs/classroom-workstream.md`, `/scripts/build-templates-manifest.mjs`, and protected `/templates/*.json` paths return 404. The deployed protected API matrix still requires an approved preview-auth bypass path; deterministic server tests are already green. Keep #307 draft and do not merge without explicit authorization.
 
 ## Completed #300 implementation
 
@@ -120,7 +133,7 @@ Inspect PR #306 first. If it is still open, confirm the final documented head ha
   - Student → non-Student role changes now restore the Student pre-class local recovery without clearing Student resume.
 
 
-## Active #294 implementation
+## Completed #294 implementation
 
 - Coaching persistence is separate from `collaboration_workspaces.snapshot_json` and its revision.
 - Table: `classroom_coaching_feedback`, keyed by class/workspace/target.
@@ -146,15 +159,73 @@ Inspect PR #306 first. If it is still open, confirm the final documented head ha
 - GitHub Advanced Security flagged the original coaching target-ID regex for potential exponential backtracking; it was replaced with a linear-time dot-segment validator in `63bc782d885eb9d57bb74c09389db4c9955e52d7` with grammar regressions in `1e25af79c97a4c60f9a091bd41d9c5b8074c188e`.
 - Exact next action: confirm the post-review-fix head is green, resolve the CodeQL review thread, update PR/issue final SHA, then merge #306.
 
+## Active #295 implementation
+
+- Branch: `feature/classroom-protected-cases`.
+- Draft PR: #307.
+- Issue: #295.
+- Public/server manifest split:
+  - `src/templates.manifest.js` contains Standard Templates only;
+  - `api/protected-case-studies.manifest.js` contains the four protected Case Studies server-side;
+  - all authored JSON remains validated by `npm run build:templates`.
+- Authorized server delivery:
+  - Instructor `GET/POST /api/classes/case-studies` is class-scoped;
+  - Student `GET/POST /api/classes/case-studies/student` is membership-bound to the issued Classroom workspace capability;
+  - catalog GET omits `state`;
+  - full payload selection is authenticated POST-body data;
+  - protected responses are `no-store` / `no-referrer`;
+  - legacy Standalone collaboration capability does not authorize Student Case Studies.
+- Client delivery:
+  - `src/classroomCaseStudies.js` owns authorized catalog/payload access in memory only;
+  - Student/Instructor lifecycle controllers connect/disconnect that context;
+  - Standalone has no protected provider context;
+  - Student fetches the full Case Study only when applying it after the existing pedagogical mode/password step;
+  - remote payloads reuse canonical `projectTemplateState()` mode projection.
+- Deployment boundary:
+  - current production was verified to expose raw `/templates/Microcomputer%20Cabinets.json` before this PR, confirming a second real leak beyond the old public manifest;
+  - `.vercelignore` now excludes `templates/*.json`;
+  - Vercel production build no longer regenerates manifests from excluded authoring source and instead runs `npm run verify:protected-cases`;
+  - GitHub/local authoring remains responsible for generated-manifest freshness.
+- Guardrails/tests:
+  - public manifest contains only Standard Templates;
+  - every authored resource is emitted to exactly one generated boundary;
+  - protected IDs/names must be absent from public manifest/browser runtime;
+  - browser runtime must not import the server-only protected manifest;
+  - authorization/API/client/drawer regression coverage is included;
+  - `verify:protected-cases` is part of the canonical `npm run quality` gate.
+- Durable implementation checkpoints:
+  - `5d8ecb756de179276164d575cfc4ea1a03ef7115` — public/server manifest split + regression boundary;
+  - `5dfd2718a2fefc2357afb22a5a906cd3f045e970` — authorized protected API;
+  - `83e278b87392c7be5eb8ba8ec4f19d84a0b94def` — authorized client/lifecycle;
+  - `35acd62d35a0826e8e350507a16c187ffceafbc1` — drawer integration;
+  - `b3160264adfac5d500711c22515bf21f27dff75d` — authored-JSON Vercel exclusion + boundary verifier;
+  - later commits fix only test harness and documentation synchronization.
+- Final docs now cover security, API/architecture, README/deployment, scoped/global AGENTS, AI onboarding, roadmap, commenting guide, storage guidance, and repository operations.
+- Final runtime/security implementation head before deployment-policy hardening: `a376d7751209eff02a616110a59e52fd45cc1b70`.
+- Repository-owned Vercel deployment controls are now part of #307 and guarded by `verify:protected-cases`.
+- Ordinary feature commits create no Vercel deployment records; `verify/**` is the explicit preview path.
+- Deliberate verification head `f9f8fc8f22cd71029bb492ad278c4470264153b6` deployed successfully as `dpl_Ep2q8Y3BMUWGEV7fzZQHnvdwPumA` and reached **READY**.
+- That READY preview returned HTTP **404** for the formerly public Microcomputer Cabinets authored JSON path.
+- Deterministic API tests already cover Instructor authorization, Student membership-bound authorization, metadata-only catalogs, authenticated payload POST, legacy-token rejection, and no-store/no-referrer response headers.
+- Remaining deployed API requests are blocked by the preview-auth tooling boundary, not by application/test failure.
+- Additional static-output hardening: production's old repository-root output was confirmed to expose internal `docs/*` and `scripts/*` files. #307 now generates/serves only `dist/`; canonical CI built 45 public files with no internal docs or protected identifiers.
+- Current deployed `dist/` verification is blocked only by Vercel's build-rate limit; #304 contains the infrastructure evidence.
+- Final documented head before this update: `1238b82b0d6f880a49e83bedd31d8ebe5f0d967d`; all required GitHub checks green and PR #307 has no unresolved review threads.
+- Complete `main → #307` diff review: 54 commits ahead, 0 behind; changed files remain confined to protected Case Study delivery, Vercel/public-output hardening, tests, and documentation.
+- Deliberate final-head preview: `verify/protected-cases-preview` was moved to `1238b82...`; Vercel deployment `dpl_GqbgkkwKLJ7Z1Ekiw4oZ1eMYwgXz` reached **READY**.
+- On that READY preview, `/docs/classroom-workstream.md` returned a genuine HTTP **404**.
+- Vercel Preview Authentication then intercepted subsequent HTTP probes. A deliberately nonexistent path also returned the same HTTP 302 authentication response, proving those 302s are auth-layer behavior and cannot be interpreted as file-existence results.
+- Therefore the deployed evidence is: exact final-head preview READY + build-time protected/public-boundary checks passed + one formerly exposed internal document returned 404. Remaining protected API HTTP matrix cannot be executed from the current connector without an approved preview-auth bypass path.
+- Exact next action: synchronize PR #307 / issue #295 with this final preview evidence, then keep the PR draft until the user explicitly accepts the remaining preview-auth limitation or provides/approves a bypass path. Do not merge without explicit authorization.
+
 ## Known risks / watch items
 
-- Existing Case Study payloads are client-bundled; role-based hiding is not a confidentiality control.
 - Existing collaboration secret links grant equal edit access and have no administrator role; classroom authorization must layer over rather than silently reinterpret those links.
 - There is deliberately no current workspace-list endpoint; student non-enumeration must remain a security property when instructor listing is added.
 - Classroom role/session state must not leak into `kt-intake-full-v2`.
 - Instructor read-only behavior must be server-enforced, not just disabled controls.
 - Class creation remains capability-first and does not yet require account/SSO identity; rate limiting/abuse controls are an operational follow-on if public exposure warrants them.
-- Feature-branch Vercel deployments are skipped, so the additive Neon migration cannot be smoke-tested against a preview database before merge.
+- Normal development branches are now denied at the repository `git.deploymentEnabled` layer before Vercel creates deployment records. `main` and `verify/**` are explicit allow paths. A deliberate verification preview still depends on available Vercel build capacity / preview-auth access; see #304.
 
 ## Handoff template
 

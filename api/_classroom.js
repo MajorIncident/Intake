@@ -485,7 +485,7 @@ async function initializeClassroomRepository() {
       };
     },
 
-    async listFeedbackForStudent(accessHash) {
+    async getStudentContext(accessHash) {
       const rows = await sql`SELECT
           c.id AS "classInternalId",
           c.public_id AS "classId",
@@ -507,6 +507,16 @@ async function initializeClassroomRepository() {
           AND w.expires_at > NOW()`;
       const scope = rows[0];
       if (!scope) return null;
+      return {
+        classroom: { id: scope.classId, title: scope.classTitle, expiresAt: scope.classExpiresAt },
+        workspace: { id: scope.workspaceId, kind: scope.workspaceKind, label: scope.workspaceLabel },
+        internal: { classId: scope.classInternalId, workspaceId: scope.workspaceInternalId }
+      };
+    },
+
+    async listFeedbackForStudent(accessHash) {
+      const scope = await this.getStudentContext(accessHash);
+      if (!scope) return null;
       const feedback = await sql`SELECT
           target_id AS "targetId",
           status,
@@ -517,12 +527,12 @@ async function initializeClassroomRepository() {
           created_at AS "createdAt",
           updated_at AS "updatedAt"
         FROM classroom_coaching_feedback
-        WHERE class_id = ${scope.classInternalId}
-          AND workspace_id = ${scope.workspaceInternalId}
+        WHERE class_id = ${scope.internal.classId}
+          AND workspace_id = ${scope.internal.workspaceId}
         ORDER BY target_id`;
       return {
-        classroom: { id: scope.classId, title: scope.classTitle, expiresAt: scope.classExpiresAt },
-        workspace: { id: scope.workspaceId, kind: scope.workspaceKind, label: scope.workspaceLabel },
+        classroom: scope.classroom,
+        workspace: scope.workspace,
         feedback
       };
     },

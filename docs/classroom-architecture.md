@@ -32,7 +32,7 @@ Do not collapse these concepts into one mode.
 6. Coaching cannot share the Intake snapshot revision channel.
 7. Student credentials cannot enumerate classmates or other workspaces.
 8. Instructor access, student class admission, and Case Study unlock passwords are separate credential concepts.
-9. Hiding Case Studies from Standalone is not a confidentiality boundary; protected Case Study payloads must ultimately be removed from the public bundle.
+9. Protected Case Study metadata/payloads must remain outside public browser/static assets and require Classroom authorization before server delivery.
 10. Existing ad-hoc collaboration remains supported for Standalone unless a later explicitly approved migration replaces it.
 
 ## Target domain model
@@ -217,21 +217,17 @@ Changing a target ID is a data migration.
 
 The existing `templateKind` distinction remains useful.
 
-Transitional state (#290):
+Implemented state (#295):
 
-- Standard Template content remains client-bundled and is available in Standalone and Student.
-- Case Study content remains client-bundled, but `src/templateAvailability.js` makes normal UI availability role-aware: Standalone hides it, Student can apply it through the existing mode/password flow, and Instructor sees it as a teaching resource rather than starter content for an instructor Intake.
-- Instructor teaching resources deliberately have no apply action until class assignment exists.
-- The existing rotating Case Study password remains pedagogy only.
-- **This is visibility, not confidentiality.** A technically capable user can still inspect the current public bundle until #295 removes protected Case Study payloads from static assets.
-
-Target state:
-
-- public manifest contains Standard Templates only;
-- protected Case Study metadata/payloads are delivered by authorized server endpoints;
-- Standalone production assets contain no protected case payloads;
-- Student/Instructor authorization is evaluated before case content is returned;
-- rotating Case Study passwords may remain as instructional progression controls if useful.
+- `src/templates.manifest.js` is the public browser manifest and contains Standard Templates only.
+- `api/protected-case-studies.manifest.js` is server-only generated content containing protected Case Study metadata + full payloads.
+- All authored JSON remains under `templates/` for maintainers and is validated by `npm run build:templates`, but `.vercelignore` excludes `templates/*.json` from deployment so raw authoring files cannot be fetched as static assets.
+- Student and Instructor clients receive protected catalog metadata only after Classroom authorization. Full Case Study state is fetched on demand with an authenticated POST and then projected through the same `MODE_RULES` path used by public Templates.
+- `src/classroomCaseStudies.js` keeps authorized catalog/context in memory only and clears it when Classroom context disconnects.
+- Standalone has no protected provider context and can operate with the Classroom backend unavailable.
+- The rotating Case Study password remains pedagogy only; the Classroom capability is the confidentiality boundary.
+- Instructor class capability currently authorizes the class teaching catalog. There is no separate case-assignment table yet; a future case-level assignment model can narrow teaching availability without changing the public/private bundle boundary.
+- Once an authorized Student applies a Case Study, the projected content becomes that Student/team Intake and follows normal Intake/collaboration persistence. The boundary prevents unauthorized source retrieval; it is not DRM against an authorized learner.
 
 ## Server persistence
 
@@ -244,7 +240,7 @@ Slice #291 adds these domain tables:
 - `classroom_workspaces` for individual/group assignment metadata and assignment capability hashes;
 - `classroom_memberships` for participant-to-workspace membership and per-participant workspace capability hashes.
 
-Slice #294 adds `classroom_coaching_feedback` as a separate class/workspace/target channel. Protected Case Study assignment/access metadata remains future work.
+Slice #294 adds `classroom_coaching_feedback` as a separate class/workspace/target channel. Slice #295 adds no new database table: protected Case Study access reuses the existing Instructor class capability and Student classroom membership capability. Case-level assignment metadata remains a possible future narrowing layer.
 
 Schema initialization/migration must be idempotent and documented. Avoid making browser boot depend on schema creation for Standalone.
 

@@ -63,6 +63,17 @@ Instructor observation for #293 must **not** be inserted as a workspace alias. `
 - Coaching PUT/DELETE must never route through collaboration snapshot mutation or advance `collaboration_workspaces.revision`.
 - Stable `targetId` values come from the client coaching registry; server validation must reject malformed IDs/status/note/fingerprint evidence.
 
+## Protected Case Study delivery
+
+- `api/protected-case-studies.manifest.js` is server-only generated content. Never import it from browser runtime modules.
+- Instructor `/api/classes/case-studies` access is scoped by `getClassByInstructor()`.
+- Student `/api/classes/case-studies/student` access is scoped by `getStudentContext()` using the already-issued classroom workspace capability; do not accept a Student workspace selector or legacy collaboration token as a substitute.
+- GET returns metadata catalog only. POST accepts `caseStudyId` in the JSON body and may return the full protected payload after authorization.
+- Protected content and identifiers must not be added to URL query strings, logs, analytics, or error telemetry.
+- Protected responses are always `no-store` / `no-referrer`.
+- The Case Study mode password is pedagogical only; server authorization must never depend on it.
+- The four authored Case Study JSON files remain repository source for maintainers but are excluded from Vercel deployment by `.vercelignore`. Production functions consume the committed server-only generated manifest.
+
 ## Testing
 
 Any runtime change under `api/` is included in the repository test-change guard.
@@ -78,3 +89,4 @@ Classroom API changes must preserve automated coverage for:
 - edit-capability kind restrictions;
 - legacy Standalone collaboration behavior.
 - coaching class scoping, independent feedback revisions, Student read-only access, and zero Student snapshot-revision changes.
+- protected Case Study Instructor class scoping, Student membership-bound access, rejection of legacy collaboration capabilities, metadata-only catalogs, POST-only payload selection, and private response headers.
