@@ -47,12 +47,14 @@ async function main() {
   }
 
   const vercelConfig = JSON.parse(vercelConfigRaw);
-  const buildCommand = typeof vercelConfig.buildCommand === 'string' ? vercelConfig.buildCommand : '';
-  if (!buildCommand.includes('npm run verify:protected-cases')) {
-    throw new Error('Vercel buildCommand must run verify:protected-cases.');
+  const expectedBuildCommand = 'npm run verify:protected-cases && npm run build:vercel-public';
+  if (vercelConfig.buildCommand !== expectedBuildCommand) {
+    throw new Error(
+      'Vercel buildCommand must verify protected cases and then build the minimal public dist/ bundle.'
+    );
   }
-  if (/build:templates|npm\s+run\s+build(?:\s|$)/u.test(buildCommand)) {
-    throw new Error('Vercel buildCommand must not regenerate manifests after authored template JSON is excluded.');
+  if (vercelConfig.outputDirectory !== 'dist') {
+    throw new Error('Vercel outputDirectory must be dist; serving the repository root exposes internal files.');
   }
 
   const deploymentEnabled = vercelConfig.git?.deploymentEnabled;
