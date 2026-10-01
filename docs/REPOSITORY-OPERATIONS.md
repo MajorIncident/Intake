@@ -58,6 +58,76 @@ A new AI coding session should not assume prior conversational state. Before edi
 
 At handoff, record what changed, what was tested, any manual checks still required, and any environment/settings changes that cannot live in Git.
 
+
+## Delivery resilience for AI-assisted work
+
+Chat delivery, connector calls, or long-running conversations can fail even when repository writes have already succeeded. Treat that as a normal failure mode and design the workflow so no important state depends on one response reaching the user.
+
+### Checkpoint-first execution
+
+For substantial tasks, use a sequence such as:
+
+1. **Refresh and plan** — verify `main`, branch, PR, issue, dependencies, and invariants.
+2. **Create the branch/PR early** — make GitHub the durable work surface before the implementation becomes large.
+3. **Implement one architectural concern** — e.g. schema/API, domain registry, client integration, UI, or tests.
+4. **Commit the checkpoint** — the commit should be coherent enough that a cold session can inspect it in isolation.
+5. **Update the restart ledger** — record HEAD SHA, completed work, incomplete work, validation state, risks, and exact next action.
+6. **Validate that checkpoint** — inspect CI or focused tests before layering another risky concern.
+7. Repeat until the feature is complete, then do the final docs/security/diff review and merge.
+
+Do not make "one big final message" the first place where the true architecture or progress is written down.
+
+### Recommended split boundaries
+
+Split work whenever a batch crosses a meaningful boundary, especially:
+
+- schema/API authorization vs client UI;
+- pure domain/registry logic vs DOM integration;
+- implementation vs regression tests;
+- behavior vs documentation/security contracts;
+- implementation checkpoints vs final CI/log review;
+- unrelated fixes discovered while working.
+
+A single batch may touch several files when they form one coherent concern. Avoid giant tool scripts that combine unrelated code, tests, docs, metadata, and PR administration in one operation.
+
+### Chat/message-size discipline
+
+- Send short progress updates after durable checkpoints rather than holding all results until the end.
+- Summarize results; do not paste full CI logs or large diffs into chat unless specifically needed.
+- Store detailed evidence in commits, PR descriptions, issues, and workstream documents.
+- When a response could become large, split it into named parts and finish each part with a durable repository checkpoint.
+- Prefer "Part 1 committed at <SHA>; next is Part 2" over a long narrative describing uncommitted work.
+
+### Timeout/recovery protocol
+
+If delivery or execution times out:
+
+1. Inspect the current branch HEAD and compare it with the last documented SHA.
+2. Inspect the active PR and issue before creating another branch/PR or repeating work.
+3. Read the restart/workstream document and the last few commits.
+4. Determine whether the failed operation:
+   - wrote nothing;
+   - partially wrote repository state;
+   - fully wrote repository state but only the user-visible message failed.
+5. Resume only the missing portion.
+6. If the failure came from an oversized mutation/orchestration call, split the retry into smaller independent commits.
+7. Update the restart ledger immediately after recovery so the next interruption is cheaper.
+
+Never assume a timeout means "nothing happened."
+
+### Long-conversation protection
+
+For programs likely to span many turns:
+
+- the parent issue owns the program scope and child issue sequence;
+- the PR owns the implementation record for the active slice;
+- a workstream/restart document owns the live continuation point;
+- architecture/API/security docs own durable decisions;
+- commits own completed checkpoints;
+- chat is only a control surface, never the source of truth.
+
+This structure protects against both message-delivery failures and maximum-conversation-length limits.
+
 ### Long-running workstreams and stacked PRs
 
 For multi-PR programs, repository state must carry the plan and progress rather than chat history. The Classroom Experience program (#288) is the reference implementation:

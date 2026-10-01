@@ -2,7 +2,7 @@
 
 This is the live restart document for the Classroom Experience program (#288).
 
-**Rule:** update this file in every classroom-related PR before handoff. It should answer “where are we, what is safe, and what should a cold AI do next?” without requiring chat history.
+**Rule:** update this file at every durable classroom checkpoint, not only final handoff. It should answer “where are we, what is safe, and what should a cold AI do next?” without requiring chat history. Follow the delivery-resilience protocol in `docs/REPOSITORY-OPERATIONS.md` so message timeouts or conversation limits cannot erase the continuation point.
 
 ## Current phase
 
@@ -18,7 +18,7 @@ This is the live restart document for the Classroom Experience program (#288).
 | Class domain/API | #291 | Complete | PR #300 / `feature/classroom-domain-api` | Combined #290+#291 head: 183 tests, 182 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Student join/resume | #292 | Complete | PR #302 / `feature/classroom-student-experience` | 194 tests: 193 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Instructor observer | #293 | Complete | PR #305 merged | 208 tests: 207 pass, 0 fail, 1 skip; repository gates green |
-| Coaching | #294 | In progress | `feature/classroom-coaching-feedback` | Separate feedback table/revisions + Instructor write/Student read authorization implemented |
+| Coaching | #294 | In progress | PR #306 / `feature/classroom-coaching-feedback` | Server/API + stable target registry + first Instructor/Student UI checkpoint implemented |
 | Protected cases | #295 | Not started | — | Requires #290 + #291 |
 | Browser E2E/CI | #296 | Not started | — | Uses #279 infrastructure |
 | Browser test foundation | #279 | Existing open issue | — | Shared Playwright/accessibility foundation |
@@ -64,7 +64,7 @@ Merged #302 / completed #292. Current `main` includes Student class admission, s
 
 ## Next recommended action
 
-Continue #294 on `feature/classroom-coaching-feedback`. Server contract: Instructor GET/PUT/DELETE `/api/classes/coaching?workspaceId=...`; Student GET-only `/api/classes/coaching/student` authorized by the issued Student workspace capability. Next: stable coachable-target registry + fingerprints, then Instructor controls and Student in-context feedback UI.
+Continue PR #306 on `feature/classroom-coaching-feedback`. Server/API and stable coachable-target registry are durable. First Instructor/Student coaching UI integration is committed at `f6daf4c810ccf2f037df96ec6aed294298263b74`. Next: add focused UI/controller regression tests, fix canonical quality-gate findings, then finish docs/security/PR review. Do not broaden target scope to ephemeral Possible Cause cards in this slice.
 
 ## Completed #300 implementation
 
@@ -134,7 +134,12 @@ Continue #294 on `feature/classroom-coaching-feedback`. Server contract: Instruc
 - Fingerprints use normalized target evidence and a versioned deterministic 64-bit hash (`v1-...`).
 - KT feedback reviews the full reasoning row (IS, IS NOT, distinctions, changes) as one target.
 - Ephemeral Possible Cause IDs are intentionally excluded from the first durable coaching contract.
-- Exact next step: mount Instructor review controls and Student feedback UI against the shared registry; poll coaching independently from collaboration state.
+- First UI checkpoint implemented in `src/classroomCoaching.js` and wired through `main.js`, `src/classroomInstructor.js`, and `src/classroomStudent.js`.
+- Instructor gets per-target Meets standard / Needs improvement controls, optional note, clear action, feedback revision, and changed-since-review signal.
+- Student gets read-only in-context status/note and changed-since-review signal; coaching polling is independent of collaboration snapshot polling.
+- Instructor observer controls are excluded from the read-only projection so coaching can remain interactive while Student Intake controls stay locked.
+- Current durable implementation checkpoint before UI regression tests: `f6daf4c810ccf2f037df96ec6aed294298263b74`.
+- Exact next step: write focused `classroomCoaching` UI/controller tests and integration regression tests, then inspect/fix `npm run quality`.
 
 ## Known risks / watch items
 

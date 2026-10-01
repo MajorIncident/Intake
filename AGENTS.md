@@ -15,6 +15,24 @@ Before editing code in a new human or AI session:
 
 If code and documentation disagree, treat the contradiction as part of the task: verify current behaviour and update the stale documentation in the same PR.
 
+
+## Delivery-Resilient AI Work
+
+Long AI sessions must assume that a tool call, response delivery, or conversation can end unexpectedly. Repository state must therefore be the recovery mechanism.
+
+- Split broad implementation into **durable checkpoints** that can be understood and validated independently: for example server/API, domain registry, client UI, tests, documentation, and final CI/review.
+- Commit each meaningful checkpoint before beginning the next risky or wide change. Do not accumulate a large multi-concern change only in chat/tool state.
+- Prefer several small repository mutations over one very large orchestration call that rewrites many unrelated files at once.
+- After every meaningful checkpoint, update the relevant workstream/restart document with the branch, HEAD SHA, what is complete, what is intentionally incomplete, and the exact next action.
+- Open or update the implementation PR early. The PR body should explain architecture, invariants, checkpoints, validation, rollback, and cold-restart instructions while work is still in progress.
+- Keep user-facing progress messages concise. Large logs, diffs, test output, and detailed implementation state belong in the repository/PR rather than one giant chat response.
+- Before a potentially long validation/review phase, ensure the latest implementation is already committed and restart documentation is current.
+- If message delivery or a tool call times out, **do not reconstruct from memory or blindly repeat mutations**. First inspect the branch HEAD, PR, issue, and restart ledger; determine what actually persisted; continue from that verified state.
+- If a batch fails before writing, explicitly verify that the branch HEAD is unchanged before retrying in a smaller batch.
+- A cold AI should be able to resume from GitHub without needing prior chat history. If it cannot, documentation/checkpointing is incomplete.
+
+See `docs/REPOSITORY-OPERATIONS.md#delivery-resilience-for-ai-assisted-work` for the full operating playbook.
+
 ## Long-running Classroom Program
 
 The Standalone / Student / Instructor program is tracked by #288. Any work touching experience roles, classes, classroom workspaces, instructor observation, coaching, or protected Case Studies must read `docs/classroom-architecture.md`, `docs/classroom-roadmap.md`, and `docs/classroom-workstream.md` before editing. Class/API authorization work must additionally read `docs/classroom-api.md` and `api/AGENTS.md`.
