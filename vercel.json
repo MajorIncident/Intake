@@ -1,5 +1,12 @@
 {
   "buildCommand": "npm run verify:protected-cases",
   "outputDirectory": ".",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "git": {
+    "deploymentEnabled": {
+      "**": false,
+      "main": true,
+      "verify/**": true
+    }
+  }
 }
