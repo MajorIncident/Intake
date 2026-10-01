@@ -94,6 +94,22 @@ The existing Vercel project is **`intake`**, with the **`neon-intake`** integrat
 
 `@neondatabase/serverless` is imported lazily by the Vercel Function, so static builds and browser modules never need database credentials. On the first database request, the server idempotently creates or extends `collaboration_workspaces` and creates or extends `collaboration_participants` plus their indexes. The workspace table contains a generated ID, token hash, JSONB snapshot, positive integer revision, team name, next friendly participant number, created/updated timestamps, and expiry timestamp. Participant rows contain the workspace ID, opaque browser participant UUID, display name, stable fallback number, join time, last-seen time, and ephemeral editing field/revision. This automatic initialization means normal deployments do not require a person to edit the production database. A human must still confirm that the Neon integration exposes one supported connection variable to each desired Vercel environment and that the database role can create and alter the tables/indexes on first use.
 
+### Classroom class API
+
+Classroom slice #291 layers class organization and authorization over the existing collaboration engine; it does **not** create a second Intake synchronization system.
+
+The server adds three class routes:
+
+- `/api/classes` — create/administer one class with an Instructor bearer capability;
+- `/api/classes/workspaces` — Instructor-only creation/listing and assignment lifecycle for individual/group workspaces;
+- `/api/classes/join` — Student admission into exactly one assigned workspace.
+
+A Student join requires **two independent capabilities**: the class Student-join capability and an assignment capability for one individual/group workspace. The Student join capability by itself cannot list assignments or classmates. A successful join returns a newly minted per-participant workspace capability that works with the existing `/api/workspaces/session` and `/api/workspaces/presence` endpoints.
+
+The database stores only SHA-256 capability hashes. `CLASS_EXPIRY_DAYS` optionally controls class retention and defaults to 30 days. Classroom collaboration workspaces inherit the class's exact absolute expiry, so they cannot outlive it. Instructor, Student-join, and assignment credentials can be rotated; class/assignment revocation invalidates access server-side.
+
+See `docs/classroom-api.md` for the endpoint/capability matrix and `SECURITY.md` for the security boundary. Instructor observation is **not** implemented by these editable workspace capabilities; #293 requires a separate server-enforced read-only path.
+
 ### Conflict recovery and two-window testing
 
 Updates use optimistic revision control: each complete snapshot retains the revision observed when it was captured. Text edits wait about 300 ms so typing is responsive, blur flushes pending text, and completed select, checkbox, radio, and button-driven changes save immediately where the owning control is identifiable. Only one PUT is sent at a time; edits made during that request collapse to the latest snapshot and follow the successful response at its returned revision. A stale write receives HTTP 409 and cannot overwrite the newer row.
