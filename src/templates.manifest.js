@@ -18,13 +18,13 @@ const manifest = [
     "id": "checkout-latency",
     "name": "Checkout Latency Spike",
     "description": "EU checkout slowdown triggered by a CDN header rewrite.",
-    "templateKind": "standard",
     "supportedModes": [
       "intake",
       "is-is-not",
       "dc",
       "full"
     ],
+    "templateKind": "standard",
     "state": {
       "meta": {
         "version": 1,

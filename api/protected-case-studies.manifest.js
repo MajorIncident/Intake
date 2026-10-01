@@ -18,13 +18,13 @@ const manifest = [
     "id": "microcomputer-cabinets",
     "name": "Microcomputer Cabinets",
     "description": "Final Inspection Reports that cabinets are being rejected periodically",
-    "templateKind": "case-study",
     "supportedModes": [
       "intake",
       "is-is-not",
       "dc",
       "full"
     ],
+    "templateKind": "case-study",
     "state": {
       "meta": {
         "version": 1,
@@ -455,13 +455,13 @@ const manifest = [
     "id": "paytrix",
     "name": "Paytrix",
     "description": "Chaos at Paytrix",
-    "templateKind": "case-study",
     "supportedModes": [
       "intake",
       "is-is-not",
       "dc",
       "full"
     ],
+    "templateKind": "case-study",
     "state": {
       "meta": {
         "version": 1,
@@ -1263,13 +1263,13 @@ const manifest = [
     "id": "mrs-walthers-sugar-donuts",
     "name": "Mrs Walthers Sugar Donuts",
     "description": "Quality control has reported bad donuts at their inspection station",
-    "templateKind": "case-study",
     "supportedModes": [
       "intake",
       "is-is-not",
       "dc",
       "full"
     ],
+    "templateKind": "case-study",
     "state": {
       "meta": {
         "version": 1,
@@ -1868,13 +1868,13 @@ const manifest = [
     "id": "tamworth-petrochemical",
     "name": "Tamworth Petrochemical",
     "description": "Customers are reporting an even faint fog across our sheet film products. \n\nWe have reproduced this with X-Ray successfully",
-    "templateKind": "case-study",
     "supportedModes": [
       "intake",
       "is-is-not",
       "dc",
       "full"
     ],
+    "templateKind": "case-study",
     "state": {
       "meta": {
         "version": 1,
