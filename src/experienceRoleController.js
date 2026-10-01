@@ -11,7 +11,6 @@
 import { STORAGE_KEY as INTAKE_STORAGE_KEY } from './storage.js';
 import {
   EXPERIENCE_ROLE_IDS,
-  EXPERIENCE_ROLES,
   LEGACY_DEFAULT_EXPERIENCE_ROLE,
   getExperienceRoleDefinition,
   isExperienceSurfaceVisible,
@@ -442,11 +441,6 @@ export function initExperienceRoleController({
   activeExperienceRole = null;
   documentRef.body.dataset.experienceRole = 'unselected';
   renderRoleLabels(null);
-  EXPERIENCE_ROLES.forEach((role) => {
-    if (!documentRef.querySelector(`[data-experience-role-choice="${role.id}"]`)) {
-      return;
-    }
-  });
   openExperienceRoleChooser({ required: true });
   return null;
 }
