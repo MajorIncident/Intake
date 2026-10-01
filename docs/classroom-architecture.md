@@ -97,11 +97,18 @@ Standalone is the compatibility anchor.
 
 Student mode adds class context around the normal Intake.
 
-A student joins a class and is resolved to exactly one authorized classroom workspace. That workspace may represent the student alone or a team.
+Slice #292 implements a join gate before the Student Intake becomes editable. A Student supplies a **class join capability + assignment capability + display name**. The client never lists classes/workspaces; the server resolves exactly one authorized individual/team workspace.
 
-Student UI may display class, team/workspace, instructor, and participant context, but none of that belongs in the Intake snapshot.
+After successful admission:
+- the class join and assignment capabilities are discarded;
+- the returned per-participant workspace capability is persisted under `kt-classroom-student-session-v1` for same-device resume;
+- that capability is attached programmatically to the existing collaboration controller and never placed in `?workspace=`;
+- class/workspace/participant context is rendered as local-only Student chrome;
+- a pre-class local snapshot is retained separately under `kt-classroom-student-local-recovery-v1` so **Leave class** can restore prior local work.
 
-Student workspace editing must continue through the existing collaboration synchronization engine.
+Switching away from Student disconnects live classroom presence/sync but keeps the resume envelope. Switching back resumes the same authorized workspace. Terminal invalid/expired/revoked workspace access clears the resume capability and restores the pre-class local recovery.
+
+Student workspace editing continues through the existing collaboration synchronization engine. No classroom metadata or capability belongs in the Intake snapshot.
 
 ### Instructor
 
@@ -146,7 +153,7 @@ The class join endpoint has no list operation. A Student receives workspace meta
 
 Display name remains presentation metadata, not identity. This is still a capability system: deliberately sharing an already-issued workspace capability delegates that capability.
 
-Resume data on a device should contain only what is necessary to reconnect; it must not leak Instructor, assignment, or cross-workspace secrets into exported Intake JSON.
+Slice #292 makes that resume contract concrete: the browser retains only the issued Student workspace capability plus public class/workspace context and participant display metadata. Student join and assignment capabilities are not retained after success. Resume/recovery keys stay outside `kt-intake-full-v2`, file export, templates, and summaries.
 
 ## Instructor observation
 
