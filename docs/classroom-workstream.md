@@ -20,8 +20,8 @@ This is the live restart document for the Classroom Experience program (#288).
 | Instructor observer | #293 | Complete | PR #305 merged | 208 tests: 207 pass, 0 fail, 1 skip; repository gates green |
 | Coaching | #294 | Complete | PR #306 merged | 224 tests: 223 pass, 0 fail, 1 skip; all repository gates green; production deployment READY |
 | Protected cases | #295 | In progress | draft PR #307 / `feature/classroom-protected-cases` | Runtime/security implementation complete; final docs/gates and deployment verification remain |
-| Browser E2E/CI | #296 | Not started | — | Uses #279 infrastructure |
-| Browser test foundation | #279 | Existing open issue | — | Shared Playwright/accessibility foundation |
+| Browser E2E/CI | #296 | In progress (stacked) | draft PR #308 / `feature/classroom-browser-e2e` | Playwright/axe foundation green; Standalone browser journeys under stabilization |
+| Browser test foundation | #279 | In progress via #296 | draft PR #308 | Shared Playwright/accessibility foundation; deterministic local HTTP CI |
 
 ## Current architecture decisions
 
@@ -56,7 +56,7 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297–#306 are merged to `main`. #295 is active on `feature/classroom-protected-cases`.
+#297–#306 are merged to `main`. #295 is active in draft PR #307 on `feature/classroom-protected-cases`. #296 / #279 is active in stacked draft PR #308 on `feature/classroom-browser-e2e`.
 
 ## Last completed action
 
@@ -217,6 +217,35 @@ Continue #295 on draft PR #307 from the current branch head.
 - Vercel Preview Authentication then intercepted subsequent HTTP probes. A deliberately nonexistent path also returned the same HTTP 302 authentication response, proving those 302s are auth-layer behavior and cannot be interpreted as file-existence results.
 - Therefore the deployed evidence is: exact final-head preview READY + build-time protected/public-boundary checks passed + one formerly exposed internal document returned 404. Remaining protected API HTTP matrix cannot be executed from the current connector without an approved preview-auth bypass path.
 - Exact next action: synchronize PR #307 / issue #295 with this final preview evidence, then keep the PR draft until the user explicitly accepts the remaining preview-auth limitation or provides/approves a bypass path. Do not merge without explicit authorization.
+
+## Active #296 / #279 implementation
+
+- Branch: `feature/classroom-browser-e2e`.
+- Draft PR: #308.
+- Stack base: draft PR #307 / `feature/classroom-protected-cases`.
+- The branch was refreshed onto current #307 because the old stack had diverged (8 ahead / 21 behind) and GitHub could no longer create the PR merge ref; subsequent pull-request workflows were not launching.
+- Refreshed stack checkpoint: `593b9766d3a993c4834f475a90a362cfaf1aa6f0` — one commit ahead / zero behind #307 at refresh time, carrying only the browser/E2E surface.
+- Browser foundation is real and running in GitHub Actions:
+  - `@playwright/test@1.63.0`;
+  - `@axe-core/playwright@4.13.0`;
+  - desktop Chromium + Pixel 7 projects;
+  - deterministic local HTTP server;
+  - traces retained on failure, screenshots only on failure;
+  - serious/critical axe violations fail covered journeys.
+- Existing smoke coverage is green for first-run role chooser/accessibility and for absence of authored template JSON/server-source files from the browser fixture.
+- First Standalone E2E checkpoint added real-browser input → summary → persistence/reload and Templates-only resource coverage.
+- The first run correctly exposed test-assumption failures:
+  - the test's init script cleared localStorage again during reload, invalidating persistence verification;
+  - Standalone renames the drawer title to `Templates`, so `Templates Library` was a stale accessible-name assertion;
+  - mobile menu-item clicks were not a stable primary-interaction contract.
+- Test-only stabilization checkpoint: `ac8ab6311d1c3f24d0f0418a650de9973c168e8b`:
+  - storage is cleared once before the journey rather than on every navigation;
+  - drawer assertion uses stable `#templatesDrawer` and verifies title `Templates`;
+  - desktop-only menu journeys stay desktop;
+  - mobile gets a separate Standalone primary-input + persistence/reload smoke;
+  - uncaught page errors remain fatal assertions.
+- Normal repository quality gate is green on the refreshed stack.
+- Exact next action: wait for/inspect Browser E2E on this checkpoint. Do **not** add Classroom API fixtures until the Standalone browser suite is green on both intended projects. Then proceed to deterministic Classroom fixtures and Student/Instructor/coaching/protected-case journeys.
 
 ## Known risks / watch items
 
