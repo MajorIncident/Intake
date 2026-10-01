@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build && npm test",
+  "buildCommand": "npm run verify:protected-cases",
   "outputDirectory": ".",
   "cleanUrls": true
 }

@@ -16,7 +16,8 @@
     "verify:lockfile": "node scripts/verify-lockfile.js",
     "check:templates": "npm run build:templates && git diff --exit-code -- src/templates.manifest.js api/protected-case-studies.manifest.js",
     "repo:doctor": "node scripts/repo-doctor.js",
-    "quality": "npm run verify:lockfile && npm run repo:doctor && npm run verify:tests && npm run verify:summary && npm run verify:persistence && npm run lint && npm run check:templates && npm run check:storage-docs && npm test"
+    "quality": "npm run verify:lockfile && npm run repo:doctor && npm run verify:tests && npm run verify:summary && npm run verify:persistence && npm run lint && npm run check:templates && npm run verify:protected-cases && npm run check:storage-docs && npm test",
+    "verify:protected-cases": "node scripts/verify-protected-case-boundary.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0"
