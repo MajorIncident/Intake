@@ -121,6 +121,12 @@ On success the server:
 
 That returned capability is accepted by the existing `/api/workspaces/session` and `/api/workspaces/presence` handlers.
 
+### Student client consumption (#292)
+
+The browser sends the Student join capability only in the Authorization header and the assignment capability only in the POST body. On success, both admission codes are discarded. The raw returned `workspaceToken` is retained under `kt-classroom-student-session-v1` solely for same-device resume.
+
+The collaboration client attaches that workspace capability programmatically; classroom workspace capabilities are **not** written into `?workspace=` URLs. Classroom mode disables collaboration-link copying and legacy shared-session leaving so the Student controller remains the owner of resume/Leave-class lifecycle.
+
 ## Individual and group semantics
 
 ### Individual
