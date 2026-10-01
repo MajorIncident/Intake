@@ -456,6 +456,7 @@ body.experience-role-gate-open{overflow:hidden;}
 .student-class-context small{display:block;margin-top:9px;color:var(--muted);font-size:11px;}
 body[data-experience-role="student"][data-student-class-status="connected"] #studentClassEntryShell{display:none;}
 body[data-experience-role="student"]:not([data-student-class-status="connected"]) .wrap[data-experience-surface="intake"]{display:none;}
+body[data-experience-role="student"]:not([data-student-class-status="connected"]) [data-experience-surface="intake-control"]{display:none;}
 @media(max-width:820px){
   .student-class-form__grid{grid-template-columns:1fr;}
   .student-class-entry{margin:20px auto 32px;padding:0 12px;}
