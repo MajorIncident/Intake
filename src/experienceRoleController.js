@@ -414,6 +414,8 @@ export function initExperienceRoleController({
   windowRef = nextWindow;
   storageRef = storage;
   locationRef = location;
+  chooserRequired = false;
+  chooserReturnFocus = null;
 
   if (!documentRef?.body) {
     return null;
