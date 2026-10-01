@@ -101,6 +101,8 @@ export function createInstructorClassroomController({
   toast = () => {},
   onObservation = () => {},
   onObservationEnd = () => {},
+  onClassConnected = () => {},
+  onClassDisconnected = () => {},
   setTimeoutImpl = globalThis.setTimeout?.bind(globalThis),
   clearTimeoutImpl = globalThis.clearTimeout?.bind(globalThis),
   AbortControllerImpl = globalThis.AbortController
@@ -480,6 +482,7 @@ export function createInstructorClassroomController({
   };
 
   const terminalClass = message => {
+    onClassDisconnected();
     stopLive();
     clearInstructorSession(storage);
     activeSession = null;
@@ -571,6 +574,7 @@ export function createInstructorClassroomController({
         restoreLocal();
       }
       saveSession();
+      onClassConnected(token);
       renderDashboard();
       renderRoster();
       if (!selectedWorkspaceId && workspaces[0]) await selectWorkspace(workspaces[0].id);
@@ -589,6 +593,7 @@ export function createInstructorClassroomController({
   };
 
   const activateClass = async (token, preferredWorkspaceId = '') => {
+    onClassDisconnected();
     disconnectStandaloneCollaboration();
     setBusy(true);
     setStatus('connecting');
@@ -662,6 +667,7 @@ export function createInstructorClassroomController({
   };
 
   const leaveClass = () => {
+    onClassDisconnected();
     stopLive();
     clearInstructorSession(storage);
     activeSession = null;
@@ -675,6 +681,7 @@ export function createInstructorClassroomController({
   };
 
   const pause = () => {
+    onClassDisconnected();
     stopLive();
     restoreLocal();
     setConnectedLayout(false);
@@ -724,6 +731,7 @@ export function createInstructorClassroomController({
   const destroy = () => {
     if (destroyed) return;
     destroyed = true;
+    onClassDisconnected();
     stopLive();
     onObservationEnd();
     restoreReadonlyProjection();

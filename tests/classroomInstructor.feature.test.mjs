@@ -56,7 +56,7 @@ function observeBody(id, statement) {
   };
 }
 
-function setup(fetchImpl, { onObservation = () => {}, onObservationEnd = () => {} } = {}) {
+function setup(fetchImpl, { onObservation = () => {}, onObservationEnd = () => {}, onClassConnected = () => {}, onClassDisconnected = () => {} } = {}) {
   dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
   persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.INSTRUCTOR, dom.window.localStorage);
   initExperienceRoleController({
@@ -95,6 +95,8 @@ function setup(fetchImpl, { onObservation = () => {}, onObservationEnd = () => {
     toast: () => {},
     onObservation,
     onObservationEnd,
+    onClassConnected,
+    onClassDisconnected,
     setTimeoutImpl: fn => {
       calls.timers.push(fn);
       return calls.timers.length;
@@ -257,4 +259,25 @@ test('Instructor observer lifecycle emits coaching integration hooks without gra
   applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
   await settle();
   assert.ok(ended >= 1, 'leaving Instructor ends the coaching observation context');
+});
+
+
+test('Instructor class lifecycle exposes protected-resource capability hooks', async () => {
+  const connected = [];
+  let disconnected = 0;
+  const env = setup(async url => {
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  }, {
+    onClassConnected: token => connected.push(token),
+    onClassDisconnected: () => { disconnected += 1; }
+  });
+
+  await env.controller.openClass(TOKEN);
+  assert.deepEqual(connected, [TOKEN]);
+
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
+  await settle();
+  assert.ok(disconnected >= 2, 'activation reset and role pause both clear protected-resource context');
 });
