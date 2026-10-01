@@ -6,14 +6,14 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-Experience-role foundation (#289) stacked on the architecture/governance bootstrap.
+Experience-role foundation (#289) complete. Next program work can split into #290 and #291.
 
 ## Program issues
 
 | Slice | Issue | Status | PR / branch | Notes |
 | --- | --- | --- | --- | --- |
 | Program | #288 | Open | #297 merged | Architecture/governance foundation is now on `main` |
-| Experience role | #289 | In progress | PR #298 / `feature/classroom-experience-roles` | Based on `main`; runtime/tests/docs implemented; final validation in progress |
+| Experience role | #289 | Complete | PR #298 / `feature/classroom-experience-roles` | Runtime/tests/docs complete; canonical CI, dependency review, template guard, and CodeQL green |
 | Templates / Case Studies | #290 | Not started | — | Can stack on #289 |
 | Class domain/API | #291 | Not started | — | Can branch from #289 in parallel with #290 |
 | Student join/resume | #292 | Not started | — | Depends on #291 |
@@ -54,7 +54,7 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297 is merged to `main`. Draft PR #298 is the active #289 implementation on `feature/classroom-experience-roles`, now retargeted directly to `main`.
+#297 is merged to `main`. #298 contains the completed #289 implementation and is ready to squash-merge to `main`.
 
 ## Last completed action
 
@@ -62,7 +62,7 @@ Implemented the #289 experience-role foundation on top of #297 and opened draft 
 
 ## Next recommended action
 
-Finish final CI/CodeQL for PR #298. Vercel's Git integration currently skips this feature-branch deployment, so browser-level preview verification remains explicitly pending. After #298 lands, #290 (resource split) and #291 (class domain/API) may proceed in parallel.
+Start #290 (resource split) and #291 (class domain/API) as separate short-lived branches from current `main`; they may proceed in parallel. Vercel's Git integration currently skips feature-branch deployments, so #296 must establish a deterministic browser-test target rather than assuming an auto-preview URL.
 
 ## Active #298 implementation
 
@@ -78,7 +78,7 @@ Finish final CI/CodeQL for PR #298. Vercel's Git integration currently skips thi
 - Menubar keyboard navigation skips hidden role-controlled controls.
 - Legacy `?workspace=` collaboration links explicitly override a stored Student/Instructor preference and enter Standalone, preventing hidden background collaboration.
 - Summary/persistence guards now distinguish presentation-only `data-experience-surface` containers from new data-bearing controls while retaining enforcement for actual form controls.
-- Canonical CI, dependency review, and template-manifest guard passed on the refreshed main-based branch; final head validation follows this documentation update.
+- Canonical CI passed with 166 tests (165 pass, 0 fail, 1 intentional skip); dependency review, template-manifest guard, and CodeQL are green. Browser preview was unavailable because Vercel intentionally skipped the feature-branch deployment.
 
 ## Known risks / watch items
 
