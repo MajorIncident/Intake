@@ -242,6 +242,29 @@ function chooserFocusables() {
     .filter((element) => !element.hidden && !element.hasAttribute('disabled'));
 }
 
+function resolveReturnFocus(requested) {
+  const hiddenBySelf = Boolean(requested?.hidden) || requested?.getAttribute?.('aria-hidden') === 'true';
+  const hiddenByAncestor = Boolean(requested?.closest?.('[hidden], [aria-hidden="true"]'));
+  if (requested && !hiddenBySelf && !hiddenByAncestor && typeof requested.focus === 'function') {
+    return requested;
+  }
+  const viewTrigger = documentRef?.querySelector('[data-menu-target="viewMenu"]');
+  return viewTrigger && typeof viewTrigger.focus === 'function' ? viewTrigger : null;
+}
+
+/**
+ * Resolve a visible menubar trigger when the launcher lives inside a menu panel.
+ *
+ * @param {HTMLElement} button - Experience chooser launcher.
+ * @returns {HTMLElement} Preferred focus origin.
+ */
+function getRoleSwitcherFocusOrigin(button) {
+  const panel = button.closest?.('.menu-panel');
+  const selector = panel?.id ? '[data-menu-target="' + panel.id + '"]' : '';
+  const trigger = selector ? documentRef?.querySelector(selector) : null;
+  return trigger || button;
+}
+
 /**
  * Focus the first role choice after the chooser becomes visible.
  *
@@ -302,9 +325,9 @@ export function closeExperienceRoleChooser({ force = false } = {}) {
   documentRef.body.classList.remove('experience-role-gate-open');
   chooserRequired = false;
 
-  const target = chooserReturnFocus;
+  const target = resolveReturnFocus(chooserReturnFocus);
   chooserReturnFocus = null;
-  if (target && typeof target.focus === 'function') {
+  if (target) {
     target.focus();
   }
   return true;
@@ -375,7 +398,10 @@ function bindRoleControls() {
     }
     button.dataset.experienceRoleBound = 'true';
     button.addEventListener('click', () => {
-      openExperienceRoleChooser({ required: false, returnFocus: button });
+      openExperienceRoleChooser({
+        required: false,
+        returnFocus: getRoleSwitcherFocusOrigin(button)
+      });
     });
   });
 
