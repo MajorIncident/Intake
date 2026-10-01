@@ -12,12 +12,17 @@ import { readFile } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { TEMPLATE_MANIFEST } from '../src/templates.manifest.js';
+
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const HOST = process.env.BROWSER_TEST_HOST || '127.0.0.1';
 const PORT = Number.parseInt(process.env.BROWSER_TEST_PORT || '4173', 10);
 const ROOT_FILES = new Set(['index.html', 'main.js', 'styles.css']);
 const PUBLIC_DIRECTORIES = new Set(['src', 'components']);
 const PUBLIC_DOCS = new Set(['docs/eula.md']);
+const CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+const CLASSROOM_EXPIRY = '2099-12-31T23:59:59.000Z';
+const classroomWorkspaces = new Map();
 
 const CONTENT_TYPES = Object.freeze({
   '.css': 'text/css; charset=utf-8',
@@ -27,6 +32,248 @@ const CONTENT_TYPES = Object.freeze({
   '.md': 'text/markdown; charset=utf-8',
   '.svg': 'image/svg+xml'
 });
+
+
+function validCapability(value) {
+  return typeof value === 'string' && CAPABILITY_PATTERN.test(value);
+}
+
+function bearerToken(request) {
+  const header = String(request.headers.authorization || '');
+  const match = /^Bearer\s+([A-Za-z0-9_-]{43})$/u.exec(header);
+  return match ? match[1] : '';
+}
+
+function workspaceTokenForAssignment(assignmentToken) {
+  return `w${assignmentToken.slice(1)}`;
+}
+
+function freshClassroomSnapshot() {
+  const template = TEMPLATE_MANIFEST.find(entry => entry.id === 'checkout-latency');
+  return structuredClone(template?.state || {});
+}
+
+function getWorkspace(workspaceToken) {
+  return classroomWorkspaces.get(workspaceToken) || null;
+}
+
+function ensureWorkspace(workspaceToken) {
+  let workspace = getWorkspace(workspaceToken);
+  if (!workspace) {
+    workspace = {
+      snapshot: freshClassroomSnapshot(),
+      revision: 1,
+      teamName: 'Browser Test Workspace',
+      participants: new Map()
+    };
+    classroomWorkspaces.set(workspaceToken, workspace);
+  }
+  return workspace;
+}
+
+async function readJson(request) {
+  const chunks = [];
+  let total = 0;
+  for await (const chunk of request) {
+    total += chunk.length;
+    if (total > 1_000_000) throw new Error('Request body too large');
+    chunks.push(chunk);
+  }
+  if (!chunks.length) return {};
+  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
+
+function sendJson(response, status, body) {
+  response.writeHead(status, {
+    'Cache-Control': 'no-store',
+    'Content-Type': 'application/json; charset=utf-8'
+  });
+  response.end(status === 204 ? undefined : JSON.stringify(body));
+}
+
+function classroomContext(workspaceToken) {
+  const suffix = workspaceToken.slice(-8);
+  return {
+    class: {
+      id: `class-${suffix}`,
+      title: 'Browser Test Classroom',
+      expiresAt: CLASSROOM_EXPIRY
+    },
+    workspace: {
+      id: `workspace-${suffix}`,
+      kind: 'individual',
+      label: 'Browser Test Workspace',
+      expiresAt: CLASSROOM_EXPIRY
+    }
+  };
+}
+
+async function handleClassroomApi(request, response, url) {
+  if (url.pathname === '/api/classes/join') {
+    if (request.method !== 'POST') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const classToken = bearerToken(request);
+    if (!validCapability(classToken)) {
+      sendJson(response, 401, { error: 'Missing or invalid authorization.' });
+      return true;
+    }
+    let body;
+    try {
+      body = await readJson(request);
+    } catch {
+      sendJson(response, 400, { error: 'Invalid request body.' });
+      return true;
+    }
+    const assignmentToken = body?.assignmentToken;
+    const participantId = typeof body?.participantId === 'string' ? body.participantId : '';
+    const displayName = typeof body?.displayName === 'string' ? body.displayName.trim() : '';
+    if (!validCapability(assignmentToken) || !participantId || !displayName) {
+      sendJson(response, 400, { error: 'Invalid classroom admission.' });
+      return true;
+    }
+
+    const workspaceToken = workspaceTokenForAssignment(assignmentToken);
+    ensureWorkspace(workspaceToken);
+    const context = classroomContext(workspaceToken);
+    sendJson(response, 200, {
+      ...context,
+      self: { id: participantId, displayName },
+      workspaceToken
+    });
+    return true;
+  }
+
+  if (url.pathname === '/api/workspaces/session') {
+    const workspaceToken = bearerToken(request);
+    const workspace = getWorkspace(workspaceToken);
+    if (!workspace) {
+      sendJson(response, 404, { error: 'Workspace not found.' });
+      return true;
+    }
+
+    if (request.method === 'GET') {
+      const afterRevision = Number.parseInt(url.searchParams.get('afterRevision') || '0', 10);
+      if (Number.isFinite(afterRevision) && afterRevision >= workspace.revision) {
+        response.writeHead(204, { 'Cache-Control': 'no-store' });
+        response.end();
+        return true;
+      }
+      sendJson(response, 200, {
+        snapshot: structuredClone(workspace.snapshot),
+        revision: workspace.revision,
+        teamName: workspace.teamName
+      });
+      return true;
+    }
+
+    if (request.method === 'PUT') {
+      let body;
+      try {
+        body = await readJson(request);
+      } catch {
+        sendJson(response, 400, { error: 'Invalid request body.' });
+        return true;
+      }
+      if (!body?.snapshot || body.revision !== workspace.revision) {
+        sendJson(response, 409, {
+          snapshot: structuredClone(workspace.snapshot),
+          revision: workspace.revision,
+          teamName: workspace.teamName
+        });
+        return true;
+      }
+      workspace.snapshot = structuredClone(body.snapshot);
+      workspace.revision += 1;
+      sendJson(response, 200, { revision: workspace.revision });
+      return true;
+    }
+
+    sendJson(response, 405, { error: 'Method not allowed.' });
+    return true;
+  }
+
+  if (url.pathname === '/api/workspaces/presence') {
+    const workspaceToken = bearerToken(request);
+    const workspace = getWorkspace(workspaceToken);
+    if (!workspace) {
+      sendJson(response, 404, { error: 'Workspace not found.' });
+      return true;
+    }
+
+    if (request.method === 'DELETE') {
+      const body = await readJson(request).catch(() => ({}));
+      if (body?.participantId) workspace.participants.delete(body.participantId);
+      response.writeHead(204, { 'Cache-Control': 'no-store' });
+      response.end();
+      return true;
+    }
+
+    if (request.method === 'PATCH') {
+      const body = await readJson(request).catch(() => ({}));
+      workspace.teamName = typeof body?.teamName === 'string' && body.teamName.trim()
+        ? body.teamName.trim()
+        : 'Browser Test Workspace';
+    } else if (request.method === 'PUT') {
+      const body = await readJson(request).catch(() => ({}));
+      const id = typeof body?.participantId === 'string' ? body.participantId : '';
+      if (!id) {
+        sendJson(response, 400, { error: 'Invalid participant.' });
+        return true;
+      }
+      const participant = {
+        id,
+        displayName: typeof body?.displayName === 'string' && body.displayName.trim()
+          ? body.displayName.trim()
+          : 'Student',
+        editingField: typeof body?.editingField === 'string' ? body.editingField : '',
+        editingRevision: Number.isInteger(body?.editingRevision) ? body.editingRevision : workspace.revision,
+        activityState: typeof body?.activityState === 'string' ? body.activityState : 'active',
+        activitySequence: Number.isInteger(body?.activitySequence) ? body.activitySequence : 0,
+        lastSeenAt: new Date().toISOString(),
+        lastActiveAt: new Date().toISOString()
+      };
+      workspace.participants.set(id, participant);
+    } else {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+
+    const participants = [...workspace.participants.values()];
+    const requestBody = request.method === 'PUT' ? participants.at(-1) : null;
+    sendJson(response, 200, {
+      teamName: workspace.teamName,
+      self: requestBody,
+      participants
+    });
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/coaching/student' && request.method === 'GET') {
+    const workspaceToken = bearerToken(request);
+    if (!getWorkspace(workspaceToken)) {
+      sendJson(response, 404, { error: 'Class feedback not found.' });
+      return true;
+    }
+    const context = classroomContext(workspaceToken);
+    sendJson(response, 200, { ...context, feedback: [] });
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/case-studies/student' && request.method === 'GET') {
+    const workspaceToken = bearerToken(request);
+    if (!getWorkspace(workspaceToken)) {
+      sendJson(response, 404, { error: 'Class resources not found.' });
+      return true;
+    }
+    const context = classroomContext(workspaceToken);
+    sendJson(response, 200, { class: context.class, caseStudies: [] });
+    return true;
+  }
+
+  return false;
+}
 
 /**
  * Resolve one request path against the intentional public test surface.
@@ -81,14 +328,20 @@ function sendText(response, status, body) {
  * @returns {Promise<void>} Resolves after the response is sent.
  */
 async function handleRequest(request, response) {
-  if (!['GET', 'HEAD'].includes(request.method || '')) {
-    sendText(response, 405, 'Method not allowed');
-    return;
-  }
-
   const url = new URL(request.url || '/', `http://${HOST}:${PORT}`);
   if (url.pathname === '/healthz') {
     sendText(response, 200, 'ok');
+    return;
+  }
+
+  if (url.pathname.startsWith('/api/')) {
+    if (await handleClassroomApi(request, response, url)) return;
+    sendJson(response, 404, { error: 'Not found.' });
+    return;
+  }
+
+  if (!['GET', 'HEAD'].includes(request.method || '')) {
+    sendText(response, 405, 'Method not allowed');
     return;
   }
 
