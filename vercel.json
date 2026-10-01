@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run verify:protected-cases",
-  "outputDirectory": ".",
+  "buildCommand": "npm run verify:protected-cases && npm run build:vercel-public",
+  "outputDirectory": "dist",
   "cleanUrls": true,
   "git": {
     "deploymentEnabled": {
