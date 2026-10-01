@@ -11,6 +11,7 @@ export const PRESENCE_WINDOW_SECONDS = 30;
 export const IDLE_PRESENCE_WINDOW_SECONDS = 300;
 export const EDITING_FIELD_MAX_LENGTH = 120;
 export const ACTIVITY_STATES = Object.freeze(['active', 'focused', 'editing', 'idle']);
+export const WORKSPACE_EDIT_CAPABILITY_KINDS = Object.freeze(['classroom-student']);
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const PARTICIPANT_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DEFAULT_EXPIRY_DAYS = 30;
@@ -138,6 +139,7 @@ async function initializeRepository() {
             WHERE c.workspace_id = w.id
               AND c.token_hash = ${tokenHash}
               AND c.revoked_at IS NULL
+              AND c.capability_kind = 'classroom-student'
               AND (c.expires_at IS NULL OR c.expires_at > NOW())
           )
         )`;
@@ -251,6 +253,9 @@ async function initializeRepository() {
       return rows.length > 0;
     },
     async createCapability(workspaceId, tokenHash, capabilityKind, expiresAt = null) {
+      if (!WORKSPACE_EDIT_CAPABILITY_KINDS.includes(capabilityKind)) {
+        return false;
+      }
       const rows = await sql`INSERT INTO collaboration_workspace_capabilities
         (token_hash, workspace_id, capability_kind, expires_at)
         SELECT ${tokenHash}, id, ${capabilityKind}, ${expiresAt}
