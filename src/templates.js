@@ -279,6 +279,22 @@ export function listTemplateModes() {
 }
 
 /**
+ * Project an authorized external template/Case Study state through the canonical mode rules.
+ *
+ * @param {import('./storage.js').SerializedAppState} fullState Full authorized state.
+ * @param {keyof typeof MODE_RULES|string} modeId Requested presentation mode.
+ * @param {string[]} [supportedModes] Modes authorized by the resource metadata.
+ * @returns {import('./storage.js').SerializedAppState|null} Projected payload or null.
+ */
+export function projectTemplateState(fullState, modeId, supportedModes = Array.from(MODE_INDEX.keys())) {
+  if (!fullState || typeof fullState !== 'object' || typeof modeId !== 'string') return null;
+  const normalizedMode = MODE_INDEX.has(modeId.trim()) ? modeId.trim() : null;
+  const normalizedSupported = sanitizeSupportedModes(supportedModes);
+  if (!normalizedMode || !normalizedSupported.includes(normalizedMode)) return null;
+  return projectState(normalizeManifestState(fullState), /** @type {keyof typeof MODE_RULES} */ (normalizedMode));
+}
+
+/**
  * Retrieve the serialized payload for a given template and mode.
  * @param {string} templateId - Template identifier from {@link listTemplates}.
  * @param {keyof typeof MODE_RULES} modeId - Mode identifier from {@link listTemplateModes}.

@@ -16,6 +16,7 @@ import {
   listTemplates,
   listTemplateModes,
   getTemplatePayload,
+  projectTemplateState,
   TEMPLATE_MODE_IDS,
   TEMPLATE_KINDS
 } from './templates.js';
@@ -28,8 +29,17 @@ import {
 } from './templateAvailability.js';
 import { showToast } from './toast.js';
 
-const templateRecords = listTemplates();
-const templateIndex = new Map(templateRecords.map(template => [template.id, template]));
+const publicTemplateRecords = listTemplates();
+let protectedCaseStudiesProvider = null;
+
+function getTemplateRecords() {
+  const protectedRecords = protectedCaseStudiesProvider?.getCatalog?.() || [];
+  const seen = new Set(publicTemplateRecords.map(record => record.id));
+  return [
+    ...publicTemplateRecords,
+    ...protectedRecords.filter(record => record && !seen.has(record.id))
+  ];
+}
 
 const modeRecords = listTemplateModes();
 const modeIndex = new Map(modeRecords.map(mode => [mode.id, mode]));
@@ -58,7 +68,7 @@ let templatesDrawerOpen = false;
 let templatesDrawerReady = false;
 let templatesReturnFocus = null;
 
-let selectedTemplateId = templateRecords.length ? templateRecords[0].id : null;
+let selectedTemplateId = publicTemplateRecords.length ? publicTemplateRecords[0].id : null;
 let selectedModeId = modeIndex.has(TEMPLATE_MODE_IDS.FULL)
   ? TEMPLATE_MODE_IDS.FULL
   : modeRecords.length
@@ -69,7 +79,7 @@ function getSelectedTemplateMeta() {
   if (!selectedTemplateId) {
     return null;
   }
-  return templateIndex.get(selectedTemplateId) || null;
+  return getTemplateRecords().find(template => template.id === selectedTemplateId) || null;
 }
 
 /**
@@ -87,7 +97,7 @@ function getResourcePolicy() {
  * @returns {Array<object>} Available template metadata records.
  */
 function getAvailableTemplateRecords() {
-  return filterTemplatesForExperience(getActiveExperienceRole(), templateRecords);
+  return filterTemplatesForExperience(getActiveExperienceRole(), getTemplateRecords());
 }
 
 /**
@@ -449,7 +459,7 @@ function handleTemplateClick(event) {
   }
   event.preventDefault();
   const id = target.dataset.templateId;
-  if (!id || id === selectedTemplateId || !templateIndex.has(id)) {
+  if (!id || id === selectedTemplateId || !getTemplateRecords().some(template => template.id === id)) {
     return;
   }
   selectedTemplateId = id;
@@ -511,7 +521,7 @@ function validatePassword() {
   return true;
 }
 
-function applySelectedTemplate() {
+async function applySelectedTemplate() {
   if (!templatesDrawerReady || !selectedTemplateId) {
     return;
   }
@@ -527,11 +537,36 @@ function applySelectedTemplate() {
   if (requiresPassword && !validatePassword()) {
     return;
   }
-  const payload = getTemplatePayload(selectedTemplateId, modeToApply);
+
+  let payload = null;
+  if (isStandardTemplate(templateMeta)) {
+    payload = getTemplatePayload(selectedTemplateId, modeToApply);
+  } else {
+    if (!protectedCaseStudiesProvider?.getPayload) {
+      setPasswordError('This Case Study is not available in the current class.');
+      return;
+    }
+    if (templatesApplyBtn) templatesApplyBtn.disabled = true;
+    const protectedRecord = await protectedCaseStudiesProvider.getPayload(selectedTemplateId);
+    if (protectedRecord) {
+      payload = projectTemplateState(
+        protectedRecord.state,
+        modeToApply,
+        protectedRecord.supportedModes
+      );
+    }
+  }
+
   if (!payload) {
-    setPasswordError('That mode is not available for the selected template.');
+    setPasswordError(
+      requiresPassword
+        ? 'This Case Study could not be loaded for the selected mode.'
+        : 'That mode is not available for the selected template.'
+    );
+    updateApplyButtonState();
     return;
   }
+
   const rollbackSnapshot = collectAppState();
   try {
     applyAppState(payload);
@@ -545,12 +580,14 @@ function applySelectedTemplate() {
       }
     }
     setPasswordError('Unable to apply the template. Please try again.');
+    updateApplyButtonState();
     return;
   }
   if (templatesPasswordInput) {
     templatesPasswordInput.value = '';
   }
   clearPasswordError();
+  updateApplyButtonState();
   closeTemplatesDrawer();
   const modeMeta = modeIndex.get(modeToApply);
   const templateName = templateMeta ? templateMeta.name : 'Template';
@@ -646,7 +683,7 @@ function wireDrawerInternalEvents() {
     templatesModeGroup.addEventListener('click', handleModeClick);
   }
   if (templatesApplyBtn) {
-    templatesApplyBtn.addEventListener('click', applySelectedTemplate);
+    templatesApplyBtn.addEventListener('click', () => { void applySelectedTemplate(); });
   }
   if (templatesPasswordInput) {
     templatesPasswordInput.addEventListener('input', () => {
@@ -664,6 +701,9 @@ function wireDrawerInternalEvents() {
     closeTemplatesDrawer({ skipFocus: true });
     refreshResourcePresentation();
   });
+  window.addEventListener('intake:protected-case-studies-changed', () => {
+    refreshResourcePresentation();
+  });
 }
 
 /**
@@ -672,8 +712,14 @@ function wireDrawerInternalEvents() {
  *
  * @returns {void}
  */
-export function initTemplatesDrawer() {
-  if (templatesDrawerReady) return;
+export function initTemplatesDrawer({ protectedCaseStudies = null } = {}) {
+  if (protectedCaseStudies) {
+    protectedCaseStudiesProvider = protectedCaseStudies;
+  }
+  if (templatesDrawerReady) {
+    refreshResourcePresentation();
+    return;
+  }
   templatesBtn = document.getElementById('templatesBtn');
   templatesDrawer = document.getElementById('templatesDrawer');
   templatesBackdrop = document.getElementById('templatesBackdrop');
