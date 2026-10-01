@@ -135,7 +135,7 @@ Anchors present:
             <span class="menu-shortcut" data-experience-role-label>Choose experience</span>
           </button>
           <!-- [feature:experience-role-switch] end -->
-          <button type="button" class="menu-item" id="notesWorkspaceMenuBtn" data-experience-surface="intake-control" role="menuitem" aria-controls="notesWorkspace" aria-expanded="true">
+          <button type="button" class="menu-item" id="notesWorkspaceMenuBtn" data-experience-surface="intake-control" data-persistence="local-only" data-summary="exclude" role="menuitem" aria-controls="notesWorkspace" aria-expanded="true">
             <span class="menu-item__label">Notes workspace</span><span class="menu-shortcut">Alt+N</span>
           </button>
           <button type="button" class="menu-item theme-toggle" id="themeToggle" role="menuitem" aria-pressed="false">
@@ -285,17 +285,17 @@ Anchors present:
         <p id="experienceRoleDescription">Choose the experience that fits this work. You can change it later from the View menu without changing your Intake data.</p>
       </div>
       <div class="experience-role-options" role="group" aria-label="Intake experiences">
-        <button type="button" class="experience-role-option" data-experience-role-choice="standalone">
+        <button type="button" class="experience-role-option" data-experience-role-choice="standalone" data-persistence="local-only" data-summary="exclude">
           <span class="experience-role-option__title">Work independently</span>
           <span class="experience-role-option__role">Standalone</span>
           <span class="experience-role-option__description">Use Intake on your own, with local saves and optional shared collaboration.</span>
         </button>
-        <button type="button" class="experience-role-option" data-experience-role-choice="student">
+        <button type="button" class="experience-role-option" data-experience-role-choice="student" data-persistence="local-only" data-summary="exclude">
           <span class="experience-role-option__title">Join a class</span>
           <span class="experience-role-option__role">Student</span>
           <span class="experience-role-option__description">Use Intake for guided class work, individually or with a team.</span>
         </button>
-        <button type="button" class="experience-role-option" data-experience-role-choice="instructor">
+        <button type="button" class="experience-role-option" data-experience-role-choice="instructor" data-persistence="local-only" data-summary="exclude">
           <span class="experience-role-option__title">Teach a class</span>
           <span class="experience-role-option__role">Instructor</span>
           <span class="experience-role-option__description">Open the instructor workspace for class supervision and coaching.</span>
@@ -303,7 +303,7 @@ Anchors present:
       </div>
       <div class="experience-role-dialog__footer">
         <p>Your experience choice is stored separately from Intake case data and exports.</p>
-        <button type="button" class="btn-secondary" id="experienceRoleCancelBtn">Keep current experience</button>
+        <button type="button" class="btn-secondary" id="experienceRoleCancelBtn" data-persistence="local-only" data-summary="exclude">Keep current experience</button>
       </div>
     </section>
   </div>
@@ -319,7 +319,7 @@ Anchors present:
         <strong>No class connected yet</strong>
         <span>Your existing Intake data is still available when you switch back to Standalone or Student.</span>
       </div>
-      <button type="button" class="btn-secondary" data-open-experience-role-chooser>Change experience</button>
+      <button type="button" class="btn-secondary" data-open-experience-role-chooser data-persistence="local-only" data-summary="exclude">Change experience</button>
     </div>
   </main>
   <!-- [feature:instructor-shell] end -->
