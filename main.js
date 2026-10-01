@@ -284,11 +284,12 @@ function wireCommsEvents() {
  * @returns {void}
  */
 function wireTemplatesEvents() {
-  const templatesBtn = $('#templatesBtn');
   const templatesCloseBtn = $('#templatesCloseBtn');
   const templatesBackdrop = $('#templatesBackdrop');
   const templatesSaveBtn = $('#templatesSaveBtn');
-  on(templatesBtn, 'click', toggleTemplatesDrawer);
+  document.querySelectorAll('[data-open-templates-drawer]').forEach(launcher => {
+    on(launcher, 'click', toggleTemplatesDrawer);
+  });
   on(templatesCloseBtn, 'click', closeTemplatesDrawer);
   on(templatesBackdrop, 'click', closeTemplatesDrawer);
   on(templatesSaveBtn, 'click', handleTemplateExportClick);
