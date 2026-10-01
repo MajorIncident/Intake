@@ -12,7 +12,7 @@ Architecture and governance bootstrap.
 
 | Slice | Issue | Status | PR / branch | Notes |
 | --- | --- | --- | --- | --- |
-| Program | #288 | Open | — | Parent architecture/roadmap |
+| Program | #288 | Open | PR #297 | Parent architecture/roadmap |
 | Experience role | #289 | Not started | — | First runtime slice |
 | Templates / Case Studies | #290 | Not started | — | Can stack on #289 |
 | Class domain/API | #291 | Not started | — | Can branch from #289 in parallel with #290 |
@@ -54,15 +54,15 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-Architecture/governance bootstrap branch only.
+Architecture/governance bootstrap is active in draft PR #297 on `docs/classroom-program-architecture`.
 
 ## Last completed action
 
-Created #288–#296 and established the durable architecture/roadmap/workstream documentation.
+Created #288–#296, established the durable architecture/roadmap/workstream documentation, and opened draft PR #297.
 
 ## Next recommended action
 
-After the architecture/governance PR is reviewed/merged, start #289 on a short-lived branch from current `main`. Implement only the experience-role foundation and entry/resume layer; do not begin class persistence in that PR.
+After PR #297 is reviewed/merged, start #289 on a short-lived branch from current `main`. Implement only the experience-role foundation and entry/resume layer; do not begin class persistence in that PR.
 
 ## Known risks / watch items
 
