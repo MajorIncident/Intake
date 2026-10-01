@@ -6,7 +6,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-Experience-role foundation (#289) complete. Next program work can split into #290 and #291.
+Resource semantics (#290 / PR #299) and class domain/API (#291 / PR #300) are active in parallel from the merged #289 foundation.
 
 ## Program issues
 
@@ -14,8 +14,8 @@ Experience-role foundation (#289) complete. Next program work can split into #29
 | --- | --- | --- | --- | --- |
 | Program | #288 | Open | #297 merged | Architecture/governance foundation is now on `main` |
 | Experience role | #289 | Complete | PR #298 / `feature/classroom-experience-roles` | Runtime/tests/docs complete; canonical CI, dependency review, template guard, and CodeQL green |
-| Templates / Case Studies | #290 | Not started | — | Can stack on #289 |
-| Class domain/API | #291 | Not started | — | Can branch from #289 in parallel with #290 |
+| Templates / Case Studies | #290 | In progress | PR #299 / `feature/classroom-resource-split` | Independent sibling PR; CI/final validation in progress |
+| Class domain/API | #291 | In progress | PR #300 / `feature/classroom-domain-api` | Capability model/schema/tests/docs implemented; CI in progress |
 | Student join/resume | #292 | Not started | — | Depends on #291 |
 | Instructor observer | #293 | Not started | — | Depends on class semantics |
 | Coaching | #294 | Not started | — | Depends on observer |
@@ -54,31 +54,37 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297 is merged to `main`. #298 contains the completed #289 implementation and is ready to squash-merge to `main`.
+#297 and #298 are merged to `main`.
+
+- PR #299: #290 role-aware Templates / Case Studies resource semantics.
+- PR #300: #291 Class → Workspace → Participant server domain and capability APIs.
+
+The two PRs are independent siblings. Either can merge first; after the first merge, refresh the other branch and reconcile shared roadmap/workstream documentation before merging.
 
 ## Last completed action
 
-Implemented the #289 experience-role foundation on top of #297 and opened draft PR #298.
+Opened draft PR #300 after implementing the #291 schema, capability authorization, collaboration alias integration, automated security matrix, and durable API/security documentation.
 
 ## Next recommended action
 
-Start #290 (resource split) and #291 (class domain/API) as separate short-lived branches from current `main`; they may proceed in parallel. Vercel's Git integration currently skips feature-branch deployments, so #296 must establish a deterministic browser-test target rather than assuming an auto-preview URL.
+Finish CI on #299 and #300. Merge each only after its own canonical quality/security checks are green. After #300 lands, #292 can begin the Student join/resume UI against the documented `/api/classes/*` contract.
 
-## Active #298 implementation
+## Active #300 implementation
 
-- Canonical role IDs/config: `src/experienceRoles.js`.
-- Role controller / preference: `src/experienceRoleController.js`, key `kt-experience-role-v1`.
-- New browser: required role chooser.
-- Existing Intake or `?workspace=` link without preference: silent Standalone migration.
-- Standalone: normal Intake.
-- Student: normal Intake + transitional Student notice; no class admission yet.
-- Instructor: non-editing placeholder shell; no class data or authorization yet.
-- **View → Experience** safely switches roles without clearing Intake.
-- Experience role is excluded from SerializedAppState, file/template/summary flows, and Start Fresh clearing.
-- Menubar keyboard navigation skips hidden role-controlled controls.
-- Legacy `?workspace=` collaboration links explicitly override a stored Student/Instructor preference and enter Standalone, preventing hidden background collaboration.
-- Summary/persistence guards now distinguish presentation-only `data-experience-surface` containers from new data-bearing controls while retaining enforcement for actual form controls.
-- Canonical CI passed with 166 tests (165 pass, 0 fail, 1 intentional skip); dependency review, template-manifest guard, and CodeQL are green. Browser preview was unavailable because Vercel intentionally skipped the feature-branch deployment.
+- Canonical server contract: `docs/classroom-api.md`.
+- Server rules: `api/AGENTS.md`.
+- Class/admin/join logic: `api/_classroom.js` and `api/classes/*`.
+- Additive Neon tables: `classroom_classes`, `classroom_workspaces`, `classroom_memberships`, plus `collaboration_workspace_capabilities`.
+- Student admission requires class-join + assignment capability; Student join has no list operation.
+- Instructor workspace listing is class-scoped.
+- Individual assignments bind the first participant UUID; group assignments permit multiple participants.
+- Successful Student join mints a per-participant `classroom-student` edit alias accepted by the existing collaboration session/presence engine.
+- Editable alias resolution is restricted to explicit edit kinds; future Instructor observer tokens must use a separate read-only server path.
+- Classroom workspaces inherit the class's absolute expiry.
+- Membership has a DB-level composite class/workspace foreign key.
+- Instructor/Student-join/assignment capabilities support rotation; class/assignment revocation is server-side.
+- `api/` now participates in the changed-runtime test coverage guard.
+- Authorization coverage lives in `tests/classroom-api.unit.test.mjs` with deterministic in-memory repositories.
 
 ## Known risks / watch items
 
@@ -87,6 +93,8 @@ Start #290 (resource split) and #291 (class domain/API) as separate short-lived 
 - There is deliberately no current workspace-list endpoint; student non-enumeration must remain a security property when instructor listing is added.
 - Classroom role/session state must not leak into `kt-intake-full-v2`.
 - Instructor read-only behavior must be server-enforced, not just disabled controls.
+- Class creation remains capability-first and does not yet require an account/SSO identity, matching the existing open workspace-creation posture. Abuse/rate-limit controls are operational follow-on work if public exposure warrants them.
+- Feature-branch Vercel deployments are currently skipped, so #300 cannot exercise its additive Neon migration against a preview database before merge.
 
 ## Handoff template
 
