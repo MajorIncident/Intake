@@ -26,7 +26,6 @@ export const DEFAULT_CLASS_EXPIRY_DAYS = 30;
 export const COACHING_STATUSES = Object.freeze(['meets-standard', 'needs-improvement']);
 export const COACHING_NOTE_MAX_LENGTH = 2000;
 export const COACHING_TARGET_ID_MAX_LENGTH = 160;
-const COACHING_TARGET_ID_PATTERN = /^[a-z0-9]+(?:[.-][a-z0-9-]+)*$/u;
 const COACHING_FINGERPRINT_PATTERN = /^v1-[0-9a-f]{16}$/u;
 const CLASSROOM_STUDENT_CAPABILITY_KIND = 'classroom-student';
 
@@ -91,13 +90,35 @@ export function validateClassroomId(value) {
  * @param {unknown} value Candidate target identifier.
  * @returns {string|null} Canonical identifier or null.
  */
+function isLowerAlphaNumeric(character) {
+  if (!character || character.length !== 1) return false;
+  const code = character.charCodeAt(0);
+  return (code >= 48 && code <= 57) || (code >= 97 && code <= 122);
+}
+
+/**
+ * Validate one dot-delimited coaching target segment in linear time.
+ *
+ * @param {string} segment Candidate segment.
+ * @returns {boolean} Whether the segment uses the stable target grammar.
+ */
+function isCoachingTargetSegment(segment) {
+  if (!segment || !isLowerAlphaNumeric(segment[0]) || !isLowerAlphaNumeric(segment.at(-1))) {
+    return false;
+  }
+  for (let index = 1; index < segment.length - 1; index += 1) {
+    const character = segment[index];
+    if (character !== '-' && !isLowerAlphaNumeric(character)) return false;
+  }
+  return true;
+}
+
 export function normalizeCoachingTargetId(value) {
   if (typeof value !== 'string') return null;
   const normalized = value.trim().toLowerCase();
-  if (!normalized || normalized.length > COACHING_TARGET_ID_MAX_LENGTH || !COACHING_TARGET_ID_PATTERN.test(normalized)) {
-    return null;
-  }
-  return normalized;
+  if (!normalized || normalized.length > COACHING_TARGET_ID_MAX_LENGTH) return null;
+  const segments = normalized.split('.');
+  return segments.every(isCoachingTargetSegment) ? normalized : null;
 }
 
 /**
