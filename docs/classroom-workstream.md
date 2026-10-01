@@ -138,8 +138,10 @@ Continue PR #306 on `feature/classroom-coaching-feedback`. Server/API and stable
 - Instructor gets per-target Meets standard / Needs improvement controls, optional note, clear action, feedback revision, and changed-since-review signal.
 - Student gets read-only in-context status/note and changed-since-review signal; coaching polling is independent of collaboration snapshot polling.
 - Instructor observer controls are excluded from the read-only projection so coaching can remain interactive while Student Intake controls stay locked.
-- Current durable implementation checkpoint before UI regression tests: `f6daf4c810ccf2f037df96ec6aed294298263b74`.
-- Exact next step: write focused `classroomCoaching` UI/controller tests and integration regression tests, then inspect/fix `npm run quality`.
+- UI runtime checkpoint: `f6daf4c810ccf2f037df96ec6aed294298263b74`.
+- Focused coaching UI/lifecycle regression checkpoint: `f914a28affc1b7a12a8fc41d34775cf470201968`.
+- Regression coverage now includes note-editor stability, Instructor save payload/review evidence, Student read-only feedback, changed-since-review, stale Instructor fetch rejection, and Student/Instructor coaching lifecycle hooks.
+- Exact next step: inspect/fix canonical `npm run quality`, then finish security/architecture/module docs and PR review.
 
 ## Known risks / watch items
 
