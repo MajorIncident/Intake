@@ -6,7 +6,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-#293 is merged. #294 coaching feedback is active on `feature/classroom-coaching-feedback`. The first checkpoint establishes a separate coaching revision channel and Student read-only feedback authorization.
+#294 coaching feedback is implemented in draft PR #306 on `feature/classroom-coaching-feedback`. Runtime and focused regression validation are green; final documented-head gates and merge are the remaining work.
 
 ## Program issues
 
@@ -18,7 +18,7 @@ This is the live restart document for the Classroom Experience program (#288).
 | Class domain/API | #291 | Complete | PR #300 / `feature/classroom-domain-api` | Combined #290+#291 head: 183 tests, 182 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Student join/resume | #292 | Complete | PR #302 / `feature/classroom-student-experience` | 194 tests: 193 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Instructor observer | #293 | Complete | PR #305 merged | 208 tests: 207 pass, 0 fail, 1 skip; repository gates green |
-| Coaching | #294 | In progress | PR #306 / `feature/classroom-coaching-feedback` | Server/API + stable target registry + first Instructor/Student UI checkpoint implemented |
+| Coaching | #294 | Implementation complete | PR #306 / `feature/classroom-coaching-feedback` | Validated implementation head: 224 tests, 223 pass, 0 fail, 1 skip; final docs/head checks pending merge |
 | Protected cases | #295 | Not started | — | Requires #290 + #291 |
 | Browser E2E/CI | #296 | Not started | — | Uses #279 infrastructure |
 | Browser test foundation | #279 | Existing open issue | — | Shared Playwright/accessibility foundation |
@@ -60,11 +60,11 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Last completed action
 
-Merged #302 / completed #292. Current `main` includes Student class admission, same-device resume, class context, pre-class recovery, and collaboration-engine reuse. Final #302 validation completed 194 tests (193 pass, 0 fail, 1 intentional skip) with green CI, CodeQL, Dependency Review, and Template Manifest Guard.
+Completed #294 runtime/API/registry/UI implementation and focused regression coverage on PR #306. The validated implementation head completed 224 tests (223 pass, 0 fail, 1 intentional skip) with the canonical quality gate green; Dependency Review and Template Manifest Guard are green on the current documented head.
 
 ## Next recommended action
 
-Continue PR #306 on `feature/classroom-coaching-feedback`. Server/API and stable coachable-target registry are durable. First Instructor/Student coaching UI integration is committed at `f6daf4c810ccf2f037df96ec6aed294298263b74`. Next: add focused UI/controller regression tests, fix canonical quality-gate findings, then finish docs/security/PR review. Do not broaden target scope to ephemeral Possible Cause cards in this slice.
+Inspect PR #306 first. If it is still open, confirm the final documented head has CI, CodeQL, Dependency Review, and Template Manifest Guard green; review the complete diff; then mark ready, squash-merge, close #294, and update #288. If #306 is already merged, start #295 Protected Case Study delivery from current `main`. Do not broaden #294 to ephemeral Possible Cause cards.
 
 ## Completed #300 implementation
 
@@ -99,7 +99,7 @@ Continue PR #306 on `feature/classroom-coaching-feedback`. Server/API and stable
 - Automated coverage is in `tests/classroomStudent.unit.test.mjs`, `tests/classroomStudent.feature.test.mjs`, and collaboration regression tests.
 - Final #302 validation: 194 tests (193 pass, 0 fail, 1 intentional skip), with CI, CodeQL, Dependency Review, and Template Manifest Guard green.
 
-## Active #293 implementation
+## Completed #293 implementation
 
 - Branch: `feature/classroom-instructor-observer`.
 - Read-only endpoint: `GET /api/classes/observe?workspaceId=<public UUID>`.
@@ -141,7 +141,8 @@ Continue PR #306 on `feature/classroom-coaching-feedback`. Server/API and stable
 - UI runtime checkpoint: `f6daf4c810ccf2f037df96ec6aed294298263b74`.
 - Focused coaching UI/lifecycle regression checkpoint: `f914a28affc1b7a12a8fc41d34775cf470201968`.
 - Regression coverage now includes note-editor stability, Instructor save payload/review evidence, Student read-only feedback, changed-since-review, stale Instructor fetch rejection, and Student/Instructor coaching lifecycle hooks.
-- Exact next step: inspect/fix canonical `npm run quality`, then finish security/architecture/module docs and PR review.
+- Final validated implementation head before documentation consolidation: 224 tests (223 pass, 0 fail, 1 intentional skip).
+- Final documentation/security/module-map consolidation is complete; exact next action is final documented-head gates → diff review → merge #306.
 
 ## Known risks / watch items
 

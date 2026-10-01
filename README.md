@@ -55,6 +55,8 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 | `src/fileTransfer.js` | Bridges `collectAppState()` / `applyAppState()` with Blob/FileReader APIs for Save/Load workflows. |
 | `components/actions/ActionListCard.js` | Renders the action list card UI, wires inline editing, and notifies listeners when actions change. |
 | `src/actionsStore.js` | Persists actions by analysis ID under `kt-actions-by-analysis-v1`, providing CRUD and sorting helpers for the card UI. |
+| `src/coachableFields.js` | Stable domain coaching-target registry and deterministic versioned field fingerprints; DOM IDs are placement hooks, not persistence identity. |
+| `src/classroomCoaching.js` | Instructor coaching controls and Student read-only feedback UI backed by the separate Classroom coaching API. |
 | `main.js` | Entry point that imports every module, wires shared events, and runs `boot()`. |
 
 ### Storage keys
@@ -65,13 +67,15 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 - `kt-classroom-student-local-recovery-v1`: Local recovery snapshot captured immediately before joining a class so **Leave class** can restore the prior local Intake. It is separate from the active Intake snapshot and classroom credentials.
 - `kt-classroom-instructor-session-v1`: Local-only Instructor same-device resume envelope containing the Instructor class capability, public class metadata, and the last selected public workspace ID. It is never collected into Intake state, files, summaries, templates, or Student workspace credentials.
 
+Coaching feedback is server-side Classroom data, not a local Intake storage key. It lives in `classroom_coaching_feedback` and is deliberately excluded from `kt-intake-full-v2`, Save/Load, templates, summaries, and collaboration snapshot revisions.
+
 ## Experience roles
 
 Experience role is a product-level choice, not an Intake workflow mode. General / IT / Pharma / Major Incident remain controlled by `meta.intakeMode`; Standalone / Student / Instructor are controlled separately by `src/experienceRoles.js` and `src/experienceRoleController.js`.
 
 - **Standalone** exposes the normal Intake and current collaboration behavior. Its resource drawer contains **Templates only**.
-- **Student** first joins an instructor-preconfigured class workspace using a class code, assignment code, and display name. The two admission codes are used once and discarded; the returned per-participant workspace capability is retained locally for same-device resume and is attached to the existing collaboration engine without entering the URL. Once connected, the Student sees class/workspace/identity context and can use both **Templates** and **Case Studies**. Switching away from Student pauses the live classroom connection while preserving resume; **Leave class** clears resume and restores the local Intake captured before joining.
-- **Instructor** opens an instructor-preconfigured class with the Instructor class capability, gets a searchable individual/team workspace rail, and can rapidly switch a **live read-only** view of each Student/team Intake. Observation uses the normal Intake renderer but the Student-owned controls are projected read-only; the Instructor credential is authorized only through the class-scoped GET observer path and never becomes a Student edit capability. Switching away pauses observation while preserving same-device class resume; **Leave class** clears the Instructor resume and restores the instructor's prior local Intake.
+- **Student** first joins an instructor-preconfigured class workspace using a class code, assignment code, and display name. The two admission codes are used once and discarded; the returned per-participant workspace capability is retained locally for same-device resume and is attached to the existing collaboration engine without entering the URL. Once connected, the Student sees class/workspace/identity context and can use both **Templates** and **Case Studies**. Switching away from Student pauses the live classroom connection while preserving resume; **Leave class** clears resume and restores the local Intake captured before joining. Students also receive Instructor coaching beside the reviewed field, read-only, including optional notes and a **Changed since review** indicator when that field's current evidence no longer matches the reviewed fingerprint.
+- **Instructor** opens an instructor-preconfigured class with the Instructor class capability, gets a searchable individual/team workspace rail, and can rapidly switch a **live read-only** view of each Student/team Intake. Observation uses the normal Intake renderer but the Student-owned controls are projected read-only; the Instructor credential is authorized only through the class-scoped GET observer path and never becomes a Student edit capability. Switching away pauses observation while preserving same-device class resume; **Leave class** clears the Instructor resume and restores the instructor's prior local Intake. In that read-only view, instructors can mark registered fields **Meets standard** or **Needs improvement**, add an optional note, revise/clear feedback, and see when the reviewed field has changed.
 - Use **View → Experience** to switch roles without changing or deleting Intake data.
 
 ## Notes workspace

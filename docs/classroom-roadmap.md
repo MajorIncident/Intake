@@ -146,19 +146,19 @@ Primary deliverables:
 
 **Issue:** #294
 
-Recommended branch: `feature/classroom-coaching`
+**Implementation:** draft PR #306 on `feature/classroom-coaching-feedback`; implementation/coverage complete pending final documented-head gates and merge.
 
 Stacks on instructor observer.
 
 Primary deliverables:
 
-- coachable target registry;
-- meets-standard / needs-improvement;
-- optional note;
-- separate persistence and revisioning;
-- student feedback rendering;
-- reviewed revision / changed-since-review groundwork;
-- authorization tests.
+- stable coachable target registry (22 static fields + 10 KT rows);
+- meets-standard / needs-improvement with optional note and clear/update;
+- separate server persistence and per-target feedback revisioning;
+- Student read-only in-context feedback rendering;
+- reviewed workspace revision plus field fingerprint / Changed since review;
+- Instructor class scoping and Student membership-bound authorization tests;
+- dynamic Possible Cause cards intentionally deferred until they have stable lifecycle identity.
 
 ## Slice 7 — Protected Case Study delivery
 
