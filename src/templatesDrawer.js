@@ -573,9 +573,9 @@ function setTemplatesDrawer(open, { skipFocus = false } = {}) {
     templatesBackdrop.classList.toggle('is-open', shouldOpen);
     templatesBackdrop.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
   }
-  if (templatesBtn) {
-    templatesBtn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
-  }
+  document.querySelectorAll('[data-open-templates-drawer]').forEach(launcher => {
+    launcher.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+  });
   document.body.classList.toggle('templates-drawer-open', shouldOpen);
   if (shouldOpen) {
     if (!skipFocus) {
@@ -706,9 +706,9 @@ export function initTemplatesDrawer() {
     return;
   }
 
-  if (templatesBtn) {
-    templatesBtn.setAttribute('aria-expanded', 'false');
-  }
+  document.querySelectorAll('[data-open-templates-drawer]').forEach(launcher => {
+    launcher.setAttribute('aria-expanded', 'false');
+  });
   templatesDrawer.setAttribute('aria-hidden', 'true');
   templatesBackdrop.setAttribute('aria-hidden', 'true');
 
