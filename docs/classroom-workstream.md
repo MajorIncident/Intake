@@ -6,7 +6,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-Resource semantics (#290 / PR #299) and class domain/API (#291 / PR #300) are active in parallel from the merged #289 foundation.
+Resource semantics (#290 / PR #299) are merged. Class domain/API (#291 / PR #300) is reconciled with that new `main` and in final validation.
 
 ## Program issues
 
@@ -14,8 +14,8 @@ Resource semantics (#290 / PR #299) and class domain/API (#291 / PR #300) are ac
 | --- | --- | --- | --- | --- |
 | Program | #288 | Open | #297 merged | Architecture/governance foundation is now on `main` |
 | Experience role | #289 | Complete | PR #298 / `feature/classroom-experience-roles` | Runtime/tests/docs complete; canonical CI, dependency review, template guard, and CodeQL green |
-| Templates / Case Studies | #290 | In progress | PR #299 / `feature/classroom-resource-split` | Independent sibling PR; CI/final validation in progress |
-| Class domain/API | #291 | In progress | PR #300 / `feature/classroom-domain-api` | Capability model/schema/tests/docs implemented; CI in progress |
+| Templates / Case Studies | #290 | Complete | PR #299 / `feature/classroom-resource-split` | 171 tests: 170 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
+| Class domain/API | #291 | In progress | PR #300 / `feature/classroom-domain-api` | Reconciled with merged #299; implementation-head gates green, final combined validation running |
 | Student join/resume | #292 | Not started | — | Depends on #291 |
 | Instructor observer | #293 | Not started | — | Depends on class semantics |
 | Coaching | #294 | Not started | — | Depends on observer |
@@ -43,6 +43,8 @@ See `docs/classroom-architecture.md` for the full contract.
    - root `AGENTS.md`;
    - `docs/classroom-architecture.md`;
    - `docs/classroom-roadmap.md`;
+   - `docs/classroom-api.md` for server/class work;
+   - `api/AGENTS.md` for server/class work;
    - this file;
    - `docs/AI-ONBOARDING.md`;
    - `docs/REPOSITORY-OPERATIONS.md`.
@@ -54,20 +56,15 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297 and #298 are merged to `main`.
-
-- PR #299: #290 role-aware Templates / Case Studies resource semantics.
-- PR #300: #291 Class → Workspace → Participant server domain and capability APIs.
-
-The two PRs are independent siblings. Either can merge first; after the first merge, refresh the other branch and reconcile shared roadmap/workstream documentation before merging.
+#297, #298, and #299 are merged to `main`. PR #300 is the active #291 server/domain work and has been reconciled against the #299 resource changes.
 
 ## Last completed action
 
-Opened draft PR #300 after implementing the #291 schema, capability authorization, collaboration alias integration, automated security matrix, and durable API/security documentation.
+Merged #299, then reconciled #300 onto the resulting `main` while preserving both resource semantics and the class/capability architecture.
 
 ## Next recommended action
 
-Finish CI on #299 and #300. Merge each only after its own canonical quality/security checks are green. After #300 lands, #292 can begin the Student join/resume UI against the documented `/api/classes/*` contract.
+Finish the final combined CI/security run for PR #300. If green, merge #300, close #291, update #288, and start #292 (Student join/resume) from the new `main`.
 
 ## Active #300 implementation
 
@@ -86,6 +83,8 @@ Finish CI on #299 and #300. Merge each only after its own canonical quality/secu
 - `api/` now participates in the changed-runtime test coverage guard.
 - Authorization coverage lives in `tests/classroom-api.unit.test.mjs` with deterministic in-memory repositories.
 
+- Validated implementation head completed 178 tests (177 pass, 0 fail, 1 intentional skip); CI, CodeQL, Dependency Review, and Template Manifest Guard were green before reconciliation with #299.
+
 ## Known risks / watch items
 
 - Existing Case Study payloads are client-bundled; role-based hiding is not a confidentiality control.
@@ -93,8 +92,8 @@ Finish CI on #299 and #300. Merge each only after its own canonical quality/secu
 - There is deliberately no current workspace-list endpoint; student non-enumeration must remain a security property when instructor listing is added.
 - Classroom role/session state must not leak into `kt-intake-full-v2`.
 - Instructor read-only behavior must be server-enforced, not just disabled controls.
-- Class creation remains capability-first and does not yet require an account/SSO identity, matching the existing open workspace-creation posture. Abuse/rate-limit controls are operational follow-on work if public exposure warrants them.
-- Feature-branch Vercel deployments are currently skipped, so #300 cannot exercise its additive Neon migration against a preview database before merge.
+- Class creation remains capability-first and does not yet require account/SSO identity; rate limiting/abuse controls are an operational follow-on if public exposure warrants them.
+- Feature-branch Vercel deployments are skipped, so the additive Neon migration cannot be smoke-tested against a preview database before merge.
 
 ## Handoff template
 

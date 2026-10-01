@@ -45,7 +45,7 @@ No runtime behavior should change.
 ## Slice 1 — Experience-role foundation
 
 **Issue:** #289  
-**Implementation:** draft PR #298, stacked on #297
+**Implementation:** PR #298 (merged)
 
 Branch: `feature/classroom-experience-roles`
 
@@ -62,11 +62,12 @@ Merge before class-specific runtime work where practical.
 
 ## Slice 2 — Templates / Case Studies resource semantics
 
-**Issue:** #290
+**Issue:** #290  
+**Implementation:** PR #299 (merged)
 
-Recommended branch: `feature/classroom-resource-split`
+Branch: `feature/classroom-resource-split`
 
-May stack on #289.
+Completed from the merged #289 foundation.
 
 Primary deliverables:
 
@@ -81,11 +82,12 @@ Do not yet claim protected cases are secure.
 
 ## Slice 3 — Class domain and authorization
 
-**Issue:** #291
+**Issue:** #291  
+**Implementation:** PR #300 (final validation)
 
 Branch: `feature/classroom-domain-api`
 
-Can proceed from #289 in parallel with #290.
+Implemented from the merged #289 foundation; reconciled after #290 merged.
 
 Primary deliverables:
 

@@ -12,6 +12,7 @@ const GLOBAL_KEYS = [
   'Event',
   'KeyboardEvent',
   'MouseEvent',
+  'Element',
   'HTMLElement'
 ];
 
