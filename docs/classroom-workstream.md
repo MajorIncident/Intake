@@ -6,14 +6,14 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-Architecture and governance bootstrap.
+Experience-role foundation (#289) stacked on the architecture/governance bootstrap.
 
 ## Program issues
 
 | Slice | Issue | Status | PR / branch | Notes |
 | --- | --- | --- | --- | --- |
 | Program | #288 | Open | PR #297 | Parent architecture/roadmap |
-| Experience role | #289 | Not started | — | First runtime slice |
+| Experience role | #289 | In progress | PR #298 / `feature/classroom-experience-roles` | Stacked on #297; runtime + tests implemented, validation in progress |
 | Templates / Case Studies | #290 | Not started | — | Can stack on #289 |
 | Class domain/API | #291 | Not started | — | Can branch from #289 in parallel with #290 |
 | Student join/resume | #292 | Not started | — | Depends on #291 |
@@ -54,15 +54,28 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-Architecture/governance bootstrap is active in draft PR #297 on `docs/classroom-program-architecture`.
+PR #297 remains the architecture/governance base. Draft PR #298 is the active runtime stack for #289 on `feature/classroom-experience-roles`.
 
 ## Last completed action
 
-Created #288–#296, established the durable architecture/roadmap/workstream documentation, and opened draft PR #297.
+Implemented the #289 experience-role foundation on top of #297 and opened draft PR #298.
 
 ## Next recommended action
 
-After PR #297 is reviewed/merged, start #289 on a short-lived branch from current `main`. Implement only the experience-role foundation and entry/resume layer; do not begin class persistence in that PR.
+Finish CI and visual/manual verification for PR #298. After #297 lands, retarget/rebase #298 to current `main`; after #298 lands, #290 (resource split) and #291 (class domain/API) may proceed in parallel.
+
+## Active #298 implementation
+
+- Canonical role IDs/config: `src/experienceRoles.js`.
+- Role controller / preference: `src/experienceRoleController.js`, key `kt-experience-role-v1`.
+- New browser: required role chooser.
+- Existing Intake or `?workspace=` link without preference: silent Standalone migration.
+- Standalone: normal Intake.
+- Student: normal Intake + transitional Student notice; no class admission yet.
+- Instructor: non-editing placeholder shell; no class data or authorization yet.
+- **View → Experience** safely switches roles without clearing Intake.
+- Experience role is excluded from SerializedAppState, file/template/summary flows, and Start Fresh clearing.
+- Menubar keyboard navigation skips hidden role-controlled controls.
 
 ## Known risks / watch items
 
