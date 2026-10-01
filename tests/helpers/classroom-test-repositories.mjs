@@ -63,6 +63,19 @@ export function createWorkspaceRepository() {
       primaryByHash.set(hash, workspace.id);
       return workspace;
     },
+    async createUntil(hash, snapshot, expiresAt, teamName) {
+      const workspace = {
+        id: nextId++,
+        snapshot,
+        revision: 1,
+        expires_at: expiresAt,
+        team_name: teamName,
+        teamName
+      };
+      workspaces.set(workspace.id, workspace);
+      primaryByHash.set(hash, workspace.id);
+      return workspace;
+    },
     async createCapability(workspaceId, hash, capabilityKind, expiresAt) {
       if (!workspaces.has(workspaceId)) return false;
       aliasByHash.set(hash, { workspaceId, capabilityKind, expiresAt, revoked: false });
