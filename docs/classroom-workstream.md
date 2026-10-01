@@ -261,7 +261,18 @@ Continue #295 on draft PR #307 from the current branch head.
   - mobile Standalone primary input → persisted reload;
   - uncaught browser page errors fail the journeys.
 - Normal repository quality gate is also green on the same stack.
-- Exact next action: add the deterministic Classroom API fixture layer to the local browser-test server, then build Student join/resume first. Do not jump directly to Instructor/coaching/protected-case journeys before the Student fixture is green.
+- Deterministic Classroom fixture checkpoint: `f0f81d9e2e2b738eae47a5db20d2b0c972d108a5`.
+  - local browser server now implements Student admission, collaboration session GET/PUT, presence PUT/PATCH/DELETE, empty Student coaching, and empty Student protected-resource catalog;
+  - workspace state is keyed by the issued workspace capability so parallel desktop/mobile journeys do not require a destructive global reset;
+  - the initial shared snapshot comes from the validated public Checkout Latency Standard Template.
+- Student real-browser journey checkpoint: `6f7a03fcd0cde23944e94a4513374a289ec3af81`.
+  - runs on desktop + mobile;
+  - exercises Join a class with real form controls;
+  - verifies class/assignment admission codes are cleared and not retained in the Student resume envelope;
+  - verifies the issued workspace capability is retained for same-device resume;
+  - edits the shared Intake, waits for a real collaboration PUT, reloads, reconnects, and verifies the shared edit returns from the fixture workspace;
+  - includes serious/critical axe scan and uncaught-page-error assertion after resumed Student state.
+- Exact next action: inspect CI + Browser E2E for the Student fixture/journey. Do not add Instructor fixture work until Student join/resume is green on both browser projects.
 
 ## Known risks / watch items
 
