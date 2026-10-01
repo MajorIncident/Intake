@@ -11,6 +11,7 @@ const root = new URL('../', import.meta.url);
 const publicManifestUrl = new URL('../src/templates.manifest.js', import.meta.url);
 const vercelIgnoreUrl = new URL('../.vercelignore', import.meta.url);
 const vercelConfigUrl = new URL('../vercel.json', import.meta.url);
+const templatesDirUrl = new URL('../templates/', import.meta.url);
 
 async function read(url) {
   return fs.readFile(url, 'utf8');
@@ -52,6 +53,20 @@ async function main() {
   }
   if (/build:templates|npm\s+run\s+build(?:\s|$)/u.test(buildCommand)) {
     throw new Error('Vercel buildCommand must not regenerate manifests after authored template JSON is excluded.');
+  }
+
+  if (process.env.VERCEL === '1') {
+    const deployedTemplateEntries = await fs.readdir(templatesDirUrl).catch(error => {
+      if (error?.code === 'ENOENT') return [];
+      throw error;
+    });
+    const deployedAuthoredJson = deployedTemplateEntries.filter(name => name.endsWith('.json'));
+    if (deployedAuthoredJson.length) {
+      throw new Error(
+        `Vercel deployment source still contains authored template JSON: ${deployedAuthoredJson.join(', ')}`
+      );
+    }
+    console.log('[verify:protected-cases] Vercel upload contains no authored templates/*.json files.');
   }
 
   const browserFiles = [
