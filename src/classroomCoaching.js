@@ -352,7 +352,8 @@ export function createClassroomCoachingController({
     clearPanels('student');
   };
 
-  const handleInput = () => {
+  const handleInput = event => {
+    if (event?.target?.closest?.('.classroom-coaching')) return;
     if (studentToken) renderStudent();
     if (instructorContext) renderInstructor();
   };

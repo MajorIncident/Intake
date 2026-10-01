@@ -56,7 +56,7 @@ function observeBody(id, statement) {
   };
 }
 
-function setup(fetchImpl) {
+function setup(fetchImpl, { onObservation = () => {}, onObservationEnd = () => {} } = {}) {
   dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
   persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.INSTRUCTOR, dom.window.localStorage);
   initExperienceRoleController({
@@ -93,6 +93,8 @@ function setup(fetchImpl) {
     windowRef: dom.window,
     now: () => Date.parse('2026-10-01T00:00:00Z'),
     toast: () => {},
+    onObservation,
+    onObservationEnd,
     setTimeoutImpl: fn => {
       calls.timers.push(fn);
       return calls.timers.length;
@@ -229,4 +231,30 @@ test('revoked Instructor access clears saved resume instead of falling back to e
   assert.equal(await env.controller.openClass(TOKEN), false);
   assert.equal(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY), null);
   assert.match(dom.window.document.getElementById('instructorClassError').textContent, /not accepted|expired/i);
+});
+
+
+test('Instructor observer lifecycle emits coaching integration hooks without granting edit access', async () => {
+  const observed = [];
+  let ended = 0;
+  const env = setup(async url => {
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  }, {
+    onObservation: context => observed.push(context),
+    onObservationEnd: () => { ended += 1; }
+  });
+
+  await env.controller.openClass(TOKEN);
+
+  assert.deepEqual(observed.at(-1), {
+    instructorToken: TOKEN,
+    workspaceId: W1,
+    workspaceRevision: 1
+  });
+
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
+  await settle();
+  assert.ok(ended >= 1, 'leaving Instructor ends the coaching observation context');
 });

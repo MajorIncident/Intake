@@ -43,7 +43,15 @@ function session() {
   };
 }
 
-function mount({ storedSession = null, recovery = null, connectResult = true, terminal = false, fetchImpl } = {}) {
+function mount({
+  storedSession = null,
+  recovery = null,
+  connectResult = true,
+  terminal = false,
+  fetchImpl,
+  onClassConnected = () => {},
+  onClassDisconnected = () => {}
+} = {}) {
   dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
   persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.STUDENT, dom.window.localStorage);
   if (storedSession) persistStudentSession(dom.window.localStorage, storedSession);
@@ -96,7 +104,9 @@ function mount({ storedSession = null, recovery = null, connectResult = true, te
     documentRef: dom.window.document,
     windowRef: dom.window,
     now: () => Date.parse('2026-10-01T00:00:00Z'),
-    toast: () => {}
+    toast: () => {},
+    onClassConnected,
+    onClassDisconnected
   });
   controller.init();
   return { controller, calls, collaborationState };
@@ -265,4 +275,25 @@ test('switching away from Student restores the pre-class local Intake without cl
   assert.deepEqual(env.calls.save.at(-1), recovery);
   assert.ok(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY), 'Student resume remains available');
   assert.ok(dom.window.localStorage.getItem(STUDENT_RECOVERY_STORAGE_KEY), 'pre-class recovery remains for future role switches');
+});
+
+
+test('Student classroom lifecycle exposes coaching connect/disconnect hooks without persisting feedback', async () => {
+  const connected = [];
+  let disconnected = 0;
+  const env = mount({
+    storedSession: session(),
+    onClassConnected: token => connected.push(token),
+    onClassDisconnected: () => { disconnected += 1; }
+  });
+  await settle();
+
+  assert.deepEqual(connected, [WORKSPACE_TOKEN]);
+
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
+  await settle();
+
+  assert.ok(disconnected >= 1);
+  assert.ok(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY), 'Student class resume remains independent of coaching UI');
+  assert.equal('coaching' in env.controller.getState(), false);
 });
