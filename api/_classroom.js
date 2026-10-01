@@ -118,7 +118,8 @@ async function initializeClassroomRepository() {
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL,
-    revoked_at TIMESTAMPTZ
+    revoked_at TIMESTAMPTZ,
+    UNIQUE (class_id, workspace_id)
   )`;
   await sql`CREATE INDEX IF NOT EXISTS classroom_classes_expiry_idx
     ON classroom_classes (expires_at)`;
@@ -139,13 +140,16 @@ async function initializeClassroomRepository() {
     ON classroom_workspaces (class_id, created_at)`;
 
   await sql`CREATE TABLE IF NOT EXISTS classroom_memberships (
-    class_id BIGINT NOT NULL REFERENCES classroom_classes(id) ON DELETE CASCADE,
-    workspace_id BIGINT NOT NULL REFERENCES collaboration_workspaces(id) ON DELETE CASCADE,
+    class_id BIGINT NOT NULL,
+    workspace_id BIGINT NOT NULL,
     participant_id UUID NOT NULL,
     access_token_hash CHAR(64) UNIQUE NOT NULL,
     joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (class_id, participant_id)
+    PRIMARY KEY (class_id, participant_id),
+    FOREIGN KEY (class_id, workspace_id)
+      REFERENCES classroom_workspaces(class_id, workspace_id)
+      ON DELETE CASCADE
   )`;
   await sql`CREATE INDEX IF NOT EXISTS classroom_memberships_workspace_idx
     ON classroom_memberships (workspace_id)`;
