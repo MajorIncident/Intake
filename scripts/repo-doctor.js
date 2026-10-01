@@ -15,6 +15,9 @@ const requiredFiles = [
   'docs/AI-ONBOARDING.md',
   'docs/architecture-overview.md',
   'docs/REPOSITORY-OPERATIONS.md',
+  'docs/classroom-architecture.md',
+  'docs/classroom-roadmap.md',
+  'docs/classroom-workstream.md',
   '.github/PULL_REQUEST_TEMPLATE.md',
   '.github/dependabot.yml'
 ];

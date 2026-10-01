@@ -15,6 +15,24 @@ Before editing code in a new human or AI session:
 
 If code and documentation disagree, treat the contradiction as part of the task: verify current behaviour and update the stale documentation in the same PR.
 
+## Long-running Classroom Program
+
+The Standalone / Student / Instructor program is tracked by #288. Any work touching experience roles, classes, classroom workspaces, instructor observation, coaching, or protected Case Studies must read `docs/classroom-architecture.md`, `docs/classroom-roadmap.md`, and `docs/classroom-workstream.md` before editing.
+
+Classroom invariants:
+
+- experience role (`standalone | student | instructor`) is independent from intake mode and template kind;
+- experience/class/session state never enters `kt-intake-full-v2`, exported Intake files, summaries, or curated Intake payloads;
+- Standalone remains backend-optional;
+- Student/team editing reuses the existing collaboration snapshot/revision/presence engine;
+- Instructor observation is read-only with respect to student Intake snapshots;
+- coaching uses separate persistence/revision semantics;
+- student credentials never provide class/workspace enumeration;
+- Case Study unlock passwords are pedagogy, not authentication;
+- protected Case Study payloads must ultimately be server-gated and absent from public Standalone assets.
+
+Every classroom PR must update `docs/classroom-workstream.md` before handoff with its issue, PR/base dependency, current HEAD, completed/incomplete work, validation, risks, and exact next action. For stacked PRs, state the merge order and never describe an unmerged dependent PR as independently mergeable.
+
 ## UI/UX Principles
 - **Apple-like spacing:** Use generous whitespace, especially around sections, cards, and form controls. Maintain consistent padding and margins (e.g., multiples of 8px) to create a calm, breathable layout.
 - **Typography hierarchy:** Favor clean sans-serif fonts with clear size steps. Headings should scale down gradually, and body text should remain highly legible. Use weight, size, and color to signal hierarchy while keeping the palette minimal.
