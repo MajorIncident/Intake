@@ -7,33 +7,35 @@ This document explains how the intake app boots, which modules own which DOM reg
 `main.js` is the entry point referenced by `index.html`. Once `DOMContentLoaded` fires it runs `boot()`, which performs the following steps:
 
 1. **Expose shared utilities** – assigns `window.showToast` first so modules and tests can emit notifications even before the rest of the UI finishes initializing.
-2. **Configure the KT table module** – calls `configureKT()` with callbacks owned by other modules:
+2. **Restore the product experience role** – `initExperienceRoleController()` reads the separate `kt-experience-role-v1` preference, silently migrates existing saved Intakes / `?workspace=` links to Standalone, or opens the first-run chooser for a genuinely new browser. It applies only broad `data-experience-surface` visibility and never mutates Intake state.
+3. **Configure the KT table module** – calls `configureKT()` with callbacks owned by other modules:
    - `autoResize` keeps textarea heights in sync with content.
    - `onSave` points to `saveAppState()` so KT edits trigger persistence.
    - `onTokensChange` points to `updatePrefaceTitles()` so `{OBJECT}` / `{DEVIATION}` tokens stay current.
    - `getObjectFull` / `getDeviationFull` let KT helper text reuse Preface values.
    - `showToast` lets KT surface inline alerts without directly importing the toast module.
-3. **Bring the KT experience online** – `initTable()`, `ensurePossibleCausesUI()`, and `renderCauses()` hydrate the IS/IS NOT grid and cause cards inside `[section:table]`.
-4. **Initialize feature modules with save hooks** –
+4. **Bring the KT experience online** – `initTable()`, `ensurePossibleCausesUI()`, and `renderCauses()` hydrate the IS/IS NOT grid and cause cards inside `[section:table]`.
+5. **Initialize feature modules with save hooks** –
    - `initPreface({ onSave: saveAppState })` wires `[section:preface]` / `[section:impact]` inputs.
    - `initializeCommunications({ onSave: saveAppState, showToast })` prepares the communications drawer DOM.
    - `initCommsDrawer()` and `initTemplatesDrawer()` set up the slide-in panels triggered from the header anchors.
    - `initStepsFeature({ onSave: saveAppState, onLog: logCommunication })` mounts the checklist UI and lets checkbox toggles emit communications log entries.
-5. **Connect summary generation** – registers `getSummaryState` as the summary module’s state provider via `setSummaryStateProvider()`.
-6. **Restore persisted state** – `restoreSavedIntake()` pulls any `kt-intake-full-v2` snapshot via `restoreFromStorage()` and rehydrates modules through `applyAppState()`.
-7. **Backfill Preface defaults** – `setBridgeOpenedNow()` runs if the bridge start timestamp is missing, then `updatePrefaceTitles()` and `startMirrorSync()` keep mirrored headings in sync.
-8. **Attach DOM event listeners** – dedicated `wire*` helpers connect buttons and drawers to their modules:
+6. **Connect summary generation** – registers `getSummaryState` as the summary module’s state provider via `setSummaryStateProvider()`.
+7. **Restore persisted state** – `restoreSavedIntake()` pulls any `kt-intake-full-v2` snapshot via `restoreFromStorage()` and rehydrates modules through `applyAppState()`.
+8. **Backfill Preface defaults** – `setBridgeOpenedNow()` runs if the bridge start timestamp is missing, then `updatePrefaceTitles()` and `startMirrorSync()` keep mirrored headings in sync.
+9. **Attach DOM event listeners** – dedicated `wire*` helpers connect buttons and drawers to their modules:
    - Summary buttons (`#genSummaryBtn`, `#generateAiSummaryBtn`) call `generateSummary()`.
    - Comms, templates, and “Start Fresh” controls toggle their drawers or invoke `startFresh()`.
    - File Save/Load buttons call `exportAppStateToFile()` and `importAppStateFromFile()`.
    - `wireKeyboardShortcuts()` installs Alt-key shortcuts for summary, communications logging, and the Notes workspace (`Alt+N`).
-9. **Finalize utilities** – `initVersionStamp()` stamps the footer, `mountAfterPossibleCauses()` inserts the Actions List card, and `exposeGlobals()` retains legacy `window.onGenerateSummary` helpers for bookmarked scripts.
+10. **Finalize utilities** – `initVersionStamp()` stamps the footer, `mountAfterPossibleCauses()` inserts the Actions List card, and `exposeGlobals()` retains legacy `window.onGenerateSummary` helpers for bookmarked scripts.
 
 ## Module responsibilities & shared callbacks
 
 | Module | Primary responsibilities | Shared callbacks/inputs |
 | --- | --- | --- |
 | `main.js` | Orchestrates boot, registers DOM listeners, wires file transfer + global shortcuts, exposes fallbacks for legacy integrations. | Relies on every feature module’s public API, but only coordinates them—it never reaches into DOM anchors it does not own. |
+| `src/experienceRoles.js` & `src/experienceRoleController.js` | Define Standalone/Student/Instructor independently from Intake modes, persist the local-only role preference, own the role chooser, and project broad product surfaces. | Own `kt-experience-role-v1`, `[feature:experience-role]`, `[feature:experience-role-switch]`, Student notice, and Instructor shell. Experience state never enters `appState`. |
 | `src/preface.js` | Manages `[section:preface]` + `[section:impact]` inputs, detection chips, mirror sync, and tokens such as `{OBJECT}` and `{DEVIATION}`. | Supplies `autoResize`, `updatePrefaceTitles`, `startMirrorSync`, `setBridgeOpenedNow`, `getPrefaceState`, `getObjectFull`, `getDeviationFull`. Receives `onSave` from `main.js`. |
 | `src/kt.js` | Owns `[section:table]`: builds the IS/IS NOT table, possible-cause cards, focus modes, and cause evidence previews. | Accepts callbacks from Preface & Toast via `configureKT()`. Provides `exportKTTableState`, `importKTTableState`, `getPossibleCauses`, and other helpers consumed by `appState` & summary modules. |
 | `src/comms.js` & `src/commsDrawer.js` | Handle the communications drawer DOM (`#commsDrawer` + backdrop), cadence inputs, log visibility, and logging buttons. | `initializeCommunications()` receives `onSave` + `showToast`. `initStepsFeature({ onLog: logCommunication })` lets checklist actions add log entries. `main.js` uses `getCommunicationElements()` to wire buttons. |
@@ -57,10 +59,11 @@ This document explains how the intake app boots, which modules own which DOM reg
 
 ## Persistence and summary data flow
 
-1. **State capture** – `saveAppState()` → `collectAppState()` → `saveToStorage()` writes JSON to `localStorage` (`kt-intake-full-v2`) and mirrors the latest actions under `kt-actions-by-analysis-v1`.
-2. **File export/import** – Save/Load buttons call `exportAppStateToFile()` / `importAppStateFromFile()`, which use the same serialized payload so cross-browser transfers reuse the storage contract.
-3. **Restore on boot** – `restoreSavedIntake()` reads from storage and passes the payload to `applyAppState()`. That function pushes each slice of data back into its owner module (Preface, KT, comms, steps, actions) before re-rendering possible causes and refreshing the Actions card.
-4. **Summary generation** – When `generateSummary()` runs it asks the registered provider (`getSummaryState`) for a read-only bundle of DOM nodes, helper callbacks (e.g., `buildHypothesisSentence`, `getStepsCounts`), and user-entered data. Summary builders never mutate the DOM—they format strings for `[section:summary]`, clipboard copies, or AI prompts.
+1. **Experience preference** – `src/experienceRoleController.js` reads/writes `kt-experience-role-v1` independently. It is not an input to `collectAppState()`, summary generation, file transfer, or template export.
+2. **State capture** – `saveAppState()` → `collectAppState()` → `saveToStorage()` writes JSON to `localStorage` (`kt-intake-full-v2`) and mirrors the latest actions under `kt-actions-by-analysis-v1`.
+3. **File export/import** – Save/Load buttons call `exportAppStateToFile()` / `importAppStateFromFile()`, which use the same serialized payload so cross-browser transfers reuse the storage contract.
+4. **Restore on boot** – `restoreSavedIntake()` reads from storage and passes the payload to `applyAppState()`. That function pushes each slice of data back into its owner module (Preface, KT, comms, steps, actions) before re-rendering possible causes and refreshing the Actions card.
+5. **Summary generation** – When `generateSummary()` runs it asks the registered provider (`getSummaryState`) for a read-only bundle of DOM nodes, helper callbacks (e.g., `buildHypothesisSentence`, `getStepsCounts`), and user-entered data. Summary builders never mutate the DOM—they format strings for `[section:summary]`, clipboard copies, or AI prompts.
 
 ### Flow diagram
 
