@@ -182,11 +182,13 @@ Need to know which module owns a given storage field? Jump to the [Storage-to-Mo
 - `npm run dev` and local `npm run build` still regenerate both manifests for maintainers. Commit the authored JSON and both generated manifests together.
 
 ### Vercel deployment
-- Production Vercel builds execute `npm run verify:protected-cases` (see `vercel.json`). They **do not regenerate manifests**, because authored `templates/*.json` source files are deliberately excluded from the deployment upload.
-- Generated manifests are therefore committed artifacts. GitHub CI remains responsible for running `npm run build:templates` / `check:templates` and proving they match their authored JSON sources.
-- `.vercelignore` prevents raw authored Case Study JSON from becoming directly fetchable static files. Keep that exclusion and the protected-case verifier aligned with any future output-directory/deployment changes.
+- Production Vercel builds execute `npm run verify:protected-cases && npm run build:vercel-public` (see `vercel.json`). They **do not regenerate manifests**, because authored `templates/*.json` source files are deliberately excluded from the deployment upload.
+- `scripts/build-vercel-public.mjs` creates the only public static surface under `dist/`: `index.html`, `main.js`, `styles.css`, and browser JavaScript under `src/` and `components/`. Internal docs, tests, build scripts, authoring JSON, AGENTS files, and repository metadata are not copied.
+- `vercel.json` must keep `outputDirectory: "dist"`. The former repository-root output exposed internal files such as `/docs/classroom-workstream.md` and `/scripts/build-templates-manifest.mjs`.
+- Generated manifests are committed artifacts. GitHub CI remains responsible for running `npm run build:templates` / `check:templates` and proving they match authored JSON; `npm run quality` also builds/verifies the same minimal `dist/` bundle.
+- `.vercelignore` prevents raw authored Case Study JSON from entering the Vercel source upload, while the `dist/` build prevents all non-runtime repository files from becoming public static assets.
 - Vercel Git deployments are deny-by-default for ordinary branches. `main` deploys automatically; short-lived `verify/**` branches are the explicit preview path for security/E2E checks. `vercel.json` also owns the ignored-build decision so those two allowed branch classes proceed even if the project dashboard has an older Ignored Build Step configured. This prevents AI checkpoint commits from exhausting Vercel build capacity while preserving GitHub CI on every PR commit.
-- When modifying the manifest workflow or required quality gates, update both this README and `vercel.json` so the documented steps mirror the actual hosted build.
+- When modifying the manifest workflow, public bundle, or required quality gates, update both this README and `vercel.json` so the documented steps mirror the actual hosted build.
 - Dependency changes must be installed through the normal npm registry so npm generates the complete lockfile. Run `npm run verify:lockfile` before committing and `npm ci` from a clean dependency tree; the offline guard catches missing resolved root-package entries before CI reaches its clean install.
 
 ## Documentation & anchor hygiene
