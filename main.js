@@ -59,13 +59,17 @@ import { initMajorIncidentAnalysis } from './src/majorIncidentAnalysis.js';
 import { initCollaboration } from './src/collaboration.js';
 import { initExperienceRoleController } from './src/experienceRoleController.js';
 import { initStudentClassroom } from './src/classroomStudent.js';
+import { initInstructorClassroom } from './src/classroomInstructor.js';
 
 /** Active shared-session controller, initialized during boot. @type {object|null} */
 let collaborationController = null;
 let studentClassroomController = null;
+let instructorClassroomController = null;
 
 /** Destroys collaboration resources during application or test teardown. @returns {void} */
 export function destroyCollaboration() {
+  instructorClassroomController?.destroy?.();
+  instructorClassroomController = null;
   studentClassroomController?.destroy?.();
   studentClassroomController = null;
   collaborationController?.destroy();
@@ -219,6 +223,12 @@ function boot() {
     collect: collectAppState,
     apply: applyAppState,
     saveLocal: saveToStorage,
+    toast: showToast
+  });
+  instructorClassroomController = initInstructorClassroom({
+    collaboration: collaborationController,
+    collect: collectAppState,
+    apply: applyAppState,
     toast: showToast
   });
   wireThemeToggle();

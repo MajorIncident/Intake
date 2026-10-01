@@ -269,9 +269,18 @@ async function initializeClassroomRepository() {
           cw.workspace_kind AS kind,
           cw.label,
           cw.created_at AS "createdAt",
-          COUNT(cm.participant_id)::int AS "participantCount"
+          COUNT(DISTINCT cm.participant_id)::int AS "participantCount",
+          COUNT(DISTINCT cp.participant_id) FILTER (
+            WHERE cp.last_seen_at >= NOW() - 30 * INTERVAL '1 second'
+          )::int AS "activeParticipantCount",
+          COUNT(DISTINCT cp.participant_id) FILTER (
+            WHERE cp.last_seen_at >= NOW() - 30 * INTERVAL '1 second'
+              AND cp.activity_state = 'editing'
+          )::int AS "editingParticipantCount",
+          MAX(cp.last_seen_at) AS "lastSeenAt"
         FROM classroom_workspaces cw
         LEFT JOIN classroom_memberships cm ON cm.workspace_id = cw.workspace_id
+        LEFT JOIN collaboration_participants cp ON cp.workspace_id = cw.workspace_id
         JOIN collaboration_workspaces w ON w.id = cw.workspace_id
         WHERE cw.class_id = ${classroom.internal_id}
           AND cw.revoked_at IS NULL

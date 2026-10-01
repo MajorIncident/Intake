@@ -325,26 +325,81 @@ Anchors present:
   <!-- [feature:student-class-entry] end -->
 
   <!-- [feature:instructor-shell] start -->
-  <main class="experience-shell instructor-shell" id="instructorExperienceShell" data-experience-surface="instructor-shell" aria-labelledby="instructorExperienceTitle" hidden>
-    <div class="experience-shell__card">
+  <main class="experience-shell instructor-shell" id="instructorExperienceShell" data-experience-surface="instructor-shell" aria-labelledby="instructorExperienceTitle" data-persistence="local-only" data-summary="exclude" hidden>
+    <section class="experience-shell__card instructor-entry-card" id="instructorClassEntryCard">
       <span class="experience-shell__eyebrow">Instructor</span>
-      <h2 id="instructorExperienceTitle">Instructor workspace</h2>
-      <p>The instructor experience is ready for its class layer. Class setup, the student/team roster, live observation, and coaching will connect here without changing the underlying student Intake.</p>
-      <div class="experience-shell__status" role="status">
-        <strong>No class connected yet</strong>
-        <span>Your existing Intake data is still available when you switch back to Standalone or Student.</span>
+      <h2 id="instructorExperienceTitle">Open your class</h2>
+      <p>Use the Instructor access code created with the class. It authorizes the roster and read-only observation only; it never becomes a Student workspace credential.</p>
+      <form class="instructor-class-form" id="instructorClassForm" autocomplete="off">
+        <div class="field" data-persistence="local-only" data-summary="exclude">
+          <label for="instructorClassCode" data-persistence="local-only" data-summary="exclude">Instructor access code</label>
+          <input id="instructorClassCode" name="instructorClassCode" type="password" autocomplete="off" spellcheck="false" placeholder="Paste Instructor access code" data-persistence="local-only" data-summary="exclude" />
+          <small>Your access code is stored only on this device for class resume and never enters Intake case data.</small>
+        </div>
+        <p class="student-class-form__error" id="instructorClassError" role="alert" aria-live="polite" hidden></p>
+        <div class="experience-shell__actions">
+          <button type="submit" class="btn" id="instructorClassOpenBtn" data-persistence="local-only" data-summary="exclude">Open class</button>
+          <button type="button" class="btn-secondary" data-open-experience-role-chooser data-persistence="local-only" data-summary="exclude">Change experience</button>
+        </div>
+      </form>
+      <section class="student-class-resume" id="instructorClassResumePanel" aria-live="polite" hidden>
+        <span class="student-class-resume__eyebrow">Saved instructor class</span>
+        <strong id="instructorClassResumeTitle">Instructor class</strong>
+        <p id="instructorClassResumeMessage">Reconnecting to your class roster…</p>
+        <div class="experience-shell__actions">
+          <button type="button" class="btn" id="instructorClassRetryBtn" data-persistence="local-only" data-summary="exclude">Retry connection</button>
+          <button type="button" class="btn-secondary" data-open-experience-role-chooser data-persistence="local-only" data-summary="exclude">Change experience</button>
+        </div>
+      </section>
+    </section>
+
+    <section class="experience-shell__card instructor-dashboard" id="instructorClassDashboard" aria-labelledby="instructorClassTitle" hidden>
+      <div class="instructor-dashboard__header">
+        <div>
+          <span class="experience-shell__eyebrow">Instructor class</span>
+          <h2 id="instructorClassTitle">Class</h2>
+          <p id="instructorClassExpiry">Instructor-managed class</p>
+        </div>
+        <div class="instructor-dashboard__actions">
+          <button type="button" class="btn-secondary" id="instructorTeachingResourcesBtn" data-open-templates-drawer aria-haspopup="dialog" aria-controls="templatesDrawer" aria-expanded="false" data-persistence="local-only" data-summary="exclude">
+            <span data-template-resource-launcher-label>Teaching Case Studies</span>
+          </button>
+          <button type="button" class="btn-secondary" id="instructorClassLeaveBtn" data-persistence="local-only" data-summary="exclude">Leave class</button>
+        </div>
       </div>
-      <div class="experience-shell__actions">
-        <button type="button" class="btn-primary" id="instructorTeachingResourcesBtn" data-open-templates-drawer aria-haspopup="dialog" aria-controls="templatesDrawer" aria-expanded="false" data-persistence="local-only" data-summary="exclude">
-          <span data-template-resource-launcher-label>Teaching Case Studies</span>
-        </button>
-        <button type="button" class="btn-secondary" data-open-experience-role-chooser data-persistence="local-only" data-summary="exclude">Change experience</button>
+      <div class="instructor-roster-controls" data-persistence="local-only" data-summary="exclude">
+        <label class="visually-hidden" for="instructorWorkspaceSearch">Search student or team workspaces</label>
+        <input id="instructorWorkspaceSearch" type="search" placeholder="Search students or teams" autocomplete="off" data-persistence="local-only" data-summary="exclude" />
+        <label class="visually-hidden" for="instructorWorkspaceFilter">Filter workspaces</label>
+        <select id="instructorWorkspaceFilter" data-persistence="local-only" data-summary="exclude">
+          <option value="all">All workspaces</option>
+          <option value="individual">Individuals</option>
+          <option value="group">Teams</option>
+        </select>
       </div>
-    </div>
+      <div class="instructor-roster-heading">
+        <strong>Class workspaces</strong>
+        <span id="instructorRosterSummary" aria-live="polite">0 workspaces</span>
+      </div>
+      <nav class="instructor-workspace-list" id="instructorWorkspaceList" aria-label="Student and team workspaces"></nav>
+    </section>
   </main>
   <!-- [feature:instructor-shell] end -->
 
   <div class="wrap" data-experience-surface="intake">
+    <!-- [feature:instructor-observer] start -->
+    <section class="instructor-observation-notice" id="instructorObservationNotice" aria-labelledby="instructorObservedWorkspace" data-persistence="local-only" data-summary="exclude" hidden>
+      <div class="instructor-observation-notice__main">
+        <span class="experience-role-notice__eyebrow">Read-only observation</span>
+        <strong id="instructorObservedWorkspace">Selected workspace</strong>
+        <div class="instructor-observation-notice__meta">
+          <span id="instructorObservedRevision">Revision —</span>
+          <span id="instructorObserverStatus" role="status" aria-live="polite">Connecting read-only view…</span>
+        </div>
+      </div>
+      <ul class="instructor-observation-participants" id="instructorObservationParticipants" aria-label="Recent student activity"></ul>
+    </section>
+    <!-- [feature:instructor-observer] end -->
     <!-- [feature:student-experience-notice] start -->
     <section class="experience-role-notice student-class-context" id="studentExperienceNotice" data-experience-surface="student-notice" aria-labelledby="studentClassContextTitle" data-persistence="local-only" data-summary="exclude" hidden>
       <div class="student-class-context__main">
