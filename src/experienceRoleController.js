@@ -10,7 +10,6 @@
 
 import { STORAGE_KEY as INTAKE_STORAGE_KEY } from './storage.js';
 import {
-  EXPERIENCE_ROLE_IDS,
   LEGACY_DEFAULT_EXPERIENCE_ROLE,
   getExperienceRoleDefinition,
   isExperienceSurfaceVisible,
