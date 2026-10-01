@@ -20,6 +20,15 @@ const INDEX_HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8
 const dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
 const globals = installJsdomGlobals(dom.window);
 globalThis.__toastMocks = { showToast: () => {} };
+let lastAppliedState = null;
+globalThis.__appStateMocks = {
+  collectAppState: () => ({}),
+  applyAppState: state => { lastAppliedState = state; },
+  getSummaryState: () => ({}),
+  resetAnalysisId: () => {},
+  getAnalysisId: () => '',
+  getLikelyCauseId: () => null
+};
 
 dom.window.requestAnimationFrame = callback => callback();
 globalThis.requestAnimationFrame = dom.window.requestAnimationFrame.bind(dom.window);
@@ -57,6 +66,7 @@ initTemplatesDrawer({ protectedCaseStudies: protectedProvider });
 
 after(() => {
   delete globalThis.__toastMocks;
+  delete globalThis.__appStateMocks;
   restoreJsdomGlobals(globals);
   dom.window.close();
 });
@@ -117,5 +127,5 @@ test('authorized Case Study payload is fetched only when Student applies it', as
   await new Promise(resolve => setImmediate(resolve));
   await new Promise(resolve => setImmediate(resolve));
 
-  assert.equal(dom.window.document.getElementById('oneLine').value, 'Protected Case Study applied');
+  assert.equal(lastAppliedState?.pre?.oneLine, 'Protected Case Study applied');
 });
