@@ -6,7 +6,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-#294 coaching feedback is implemented in draft PR #306 on `feature/classroom-coaching-feedback`. Runtime and focused regression validation are green; final documented-head gates and merge are the remaining work.
+#294 is merged and production READY. #295 Protected Case Study delivery is active on `feature/classroom-protected-cases`.
 
 ## Program issues
 
@@ -18,8 +18,8 @@ This is the live restart document for the Classroom Experience program (#288).
 | Class domain/API | #291 | Complete | PR #300 / `feature/classroom-domain-api` | Combined #290+#291 head: 183 tests, 182 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Student join/resume | #292 | Complete | PR #302 / `feature/classroom-student-experience` | 194 tests: 193 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Instructor observer | #293 | Complete | PR #305 merged | 208 tests: 207 pass, 0 fail, 1 skip; repository gates green |
-| Coaching | #294 | Implementation complete | PR #306 / `feature/classroom-coaching-feedback` | Validated implementation head: 224 tests, 223 pass, 0 fail, 1 skip; final docs/head checks pending merge |
-| Protected cases | #295 | Not started | — | Requires #290 + #291 |
+| Coaching | #294 | Complete | PR #306 merged | 224 tests: 223 pass, 0 fail, 1 skip; all repository gates green; production deployment READY |
+| Protected cases | #295 | In progress | `feature/classroom-protected-cases` | Public manifest leak confirmed; split contract being implemented |
 | Browser E2E/CI | #296 | Not started | — | Uses #279 infrastructure |
 | Browser test foundation | #279 | Existing open issue | — | Shared Playwright/accessibility foundation |
 
@@ -56,15 +56,15 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297–#305 are merged to `main`. #294 is active on `feature/classroom-coaching-feedback`.
+#297–#306 are merged to `main`. #295 is active on `feature/classroom-protected-cases`.
 
 ## Last completed action
 
-Completed #294 runtime/API/registry/UI implementation and focused regression coverage on PR #306. The validated implementation head completed 224 tests (223 pass, 0 fail, 1 intentional skip) with the canonical quality gate green; Dependency Review and Template Manifest Guard are green on the current documented head.
+Merged PR #306 / completed #294 as `4d0ab953fbdde32dde3441fbe2e415f0bf886634`. Production Vercel deployment reached READY and a post-deploy runtime-error scan found no errors.
 
 ## Next recommended action
 
-Inspect PR #306 first. If it is still open, confirm the final documented head has CI, CodeQL, Dependency Review, and Template Manifest Guard green; review the complete diff; then mark ready, squash-merge, close #294, and update #288. If #306 is already merged, start #295 Protected Case Study delivery from current `main`. Do not broaden #294 to ephemeral Possible Cause cards.
+Continue #295 on `feature/classroom-protected-cases`. The confirmed leak is the generated `src/templates.manifest.js`: `scripts/build-templates-manifest.mjs` currently compiles Standard Templates and Case Studies, including full Case Study state, into one public static module. Split the public generated manifest to Standard Templates only; keep validating all authored JSON; then add server-authorized Case Study catalog/payload delivery for Student and Instructor contexts. Do not treat the rotating Case Study password as authentication.
 
 ## Completed #300 implementation
 
@@ -120,7 +120,7 @@ Inspect PR #306 first. If it is still open, confirm the final documented head ha
   - Student → non-Student role changes now restore the Student pre-class local recovery without clearing Student resume.
 
 
-## Active #294 implementation
+## Completed #294 implementation
 
 - Coaching persistence is separate from `collaboration_workspaces.snapshot_json` and its revision.
 - Table: `classroom_coaching_feedback`, keyed by class/workspace/target.
@@ -145,6 +145,21 @@ Inspect PR #306 first. If it is still open, confirm the final documented head ha
 - Final documentation/security/module-map consolidation is complete.
 - GitHub Advanced Security flagged the original coaching target-ID regex for potential exponential backtracking; it was replaced with a linear-time dot-segment validator in `63bc782d885eb9d57bb74c09389db4c9955e52d7` with grammar regressions in `1e25af79c97a4c60f9a091bd41d9c5b8074c188e`.
 - Exact next action: confirm the post-review-fix head is green, resolve the CodeQL review thread, update PR/issue final SHA, then merge #306.
+
+## Active #295 implementation
+
+- Branch: `feature/classroom-protected-cases`.
+- Issue: #295.
+- Confirmed current leak: `scripts/build-templates-manifest.mjs` reads every JSON file under `templates/` and writes metadata + full state into public `src/templates.manifest.js`.
+- `src/templates.js` statically imports that manifest and assumes every listed resource has an in-bundle payload; role filtering therefore controls visibility only, not confidentiality.
+- Target architecture:
+  - authoring JSON remains in-repo and all resources stay build-validated;
+  - public generated manifest contains Standard Templates only;
+  - protected Case Study catalog/payload is loaded server-side after Classroom authorization;
+  - existing mode projection/pedagogical unlock behavior is preserved after authorization;
+  - static-bundle regression tests prove protected Case Study content is absent from public generated assets.
+- Delivery-safe parts: generator/runtime split → server authorization/API → Student/Instructor drawer integration → bundle guard/docs/final gates.
+- Exact next action: inspect drawer + authoring/build contracts, then implement the generator/public-runtime split as the first durable checkpoint.
 
 ## Known risks / watch items
 
