@@ -884,7 +884,7 @@ body.templates-drawer-open{overflow:hidden;}
   background:linear-gradient(180deg,#ffffff 0%,#f6f8fc 100%);
   display:flex; justify-content:flex-end; flex-wrap:wrap; gap:12px;
 }
-.templates-apply-btn{padding-inline:24px;}
+.templates-apply-btn{padding-inline:24px; background:#1769aa; border-color:#1769aa;}
 @media (max-width:720px){
   .templates-drawer{width:100%;}
   .templates-modes{grid-template-columns:1fr;}
