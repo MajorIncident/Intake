@@ -6,7 +6,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-Instructor class dashboard/read-only observer (#293) is implemented in PR #305. If #305 is still open, finish its final checks/review and merge it; if #305 is merged, #294 coaching feedback is the next slice.
+#293 is merged. #294 coaching feedback is active on `feature/classroom-coaching-feedback`. The first checkpoint establishes a separate coaching revision channel and Student read-only feedback authorization.
 
 ## Program issues
 
@@ -17,8 +17,8 @@ Instructor class dashboard/read-only observer (#293) is implemented in PR #305. 
 | Templates / Case Studies | #290 | Complete | PR #299 / `feature/classroom-resource-split` | 171 tests: 170 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Class domain/API | #291 | Complete | PR #300 / `feature/classroom-domain-api` | Combined #290+#291 head: 183 tests, 182 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Student join/resume | #292 | Complete | PR #302 / `feature/classroom-student-experience` | 194 tests: 193 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
-| Instructor observer | #293 | Implementation complete | PR #305 / `feature/classroom-instructor-observer` | Validated implementation head: 208 tests, 207 pass, 0 fail, 1 skip; final documentation/checks pending merge |
-| Coaching | #294 | Not started | — | Depends on observer |
+| Instructor observer | #293 | Complete | PR #305 merged | 208 tests: 207 pass, 0 fail, 1 skip; repository gates green |
+| Coaching | #294 | In progress | `feature/classroom-coaching-feedback` | Separate feedback table/revisions + Instructor write/Student read authorization implemented |
 | Protected cases | #295 | Not started | — | Requires #290 + #291 |
 | Browser E2E/CI | #296 | Not started | — | Uses #279 infrastructure |
 | Browser test foundation | #279 | Existing open issue | — | Shared Playwright/accessibility foundation |
@@ -56,7 +56,7 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297–#303 are merged to `main`. #293 is active on `feature/classroom-instructor-observer`.
+#297–#305 are merged to `main`. #294 is active on `feature/classroom-coaching-feedback`.
 
 ## Last completed action
 
@@ -64,7 +64,7 @@ Merged #302 / completed #292. Current `main` includes Student class admission, s
 
 ## Next recommended action
 
-Cold restart: inspect PR #305 first. If it is open, confirm the final head is green, review the diff, and merge/close #293. If it is already merged, update #288 if needed and start #294 coaching from current `main`. Do not reopen the Student snapshot channel for coaching.
+Continue #294 on `feature/classroom-coaching-feedback`. Server contract: Instructor GET/PUT/DELETE `/api/classes/coaching?workspaceId=...`; Student GET-only `/api/classes/coaching/student` authorized by the issued Student workspace capability. Next: stable coachable-target registry + fingerprints, then Instructor controls and Student in-context feedback UI.
 
 ## Completed #300 implementation
 
@@ -119,6 +119,17 @@ Cold restart: inspect PR #305 first. If it is open, confirm the final head is gr
   - leaving Instructor restores the pre-observation local DOM; explicit Leave class also clears the Instructor resume capability;
   - Student → non-Student role changes now restore the Student pre-class local recovery without clearing Student resume.
 
+
+## Active #294 implementation
+
+- Coaching persistence is separate from `collaboration_workspaces.snapshot_json` and its revision.
+- Table: `classroom_coaching_feedback`, keyed by class/workspace/target.
+- Status: `meets-standard` or `needs-improvement`; optional note.
+- Each target has its own `feedbackRevision`.
+- Review evidence stores both Student workspace revision and a versioned field fingerprint.
+- Instructor authority is class-scoped; no fake named reviewer identity is inferred from a rotating capability.
+- Student read authorization resolves the existing classroom membership from its issued workspace capability; there is no workspace selector and no Student write method.
+- Exact next step: implement `src/coachableFields.js` with stable IDs and deterministic fingerprints, then mount Instructor/Student UI without entering Intake persistence.
 
 ## Known risks / watch items
 

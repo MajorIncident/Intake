@@ -150,6 +150,7 @@ export function createClassroomRepository() {
   const classes = [];
   const workspaces = [];
   const memberships = new Map();
+  const coaching = new Map();
 
   const activeByInstructor = hash => classes.find(item => item.instructorHash === hash && !item.revoked) || null;
   const activeByJoin = hash => classes.find(item => item.studentJoinHash === hash && item.joinsEnabled && !item.revoked) || null;
@@ -165,6 +166,7 @@ export function createClassroomRepository() {
     classes,
     workspaces,
     memberships,
+    coaching,
     async createClass({ publicId, title, instructorHash, studentJoinHash }) {
       const item = {
         internalId: nextInternalId++,
@@ -265,6 +267,67 @@ export function createClassroomRepository() {
           label: workspace.label
         }
       } : null;
+    },
+    async listFeedbackForInstructor(instructorHash, workspacePublicId) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      const workspace = workspaces.find(candidate => (
+        candidate.classInternalId === item.internalId && candidate.id === workspacePublicId && !candidate.revoked
+      ));
+      if (!workspace) return null;
+      const prefix = item.internalId + ':' + workspace.workspaceId + ':';
+      return {
+        classroom: publicClass(item),
+        workspace: { internalId: workspace.workspaceId, id: workspace.id, kind: workspace.kind, label: workspace.label },
+        feedback: [...coaching.entries()]
+          .filter(([key]) => key.startsWith(prefix))
+          .map(([, value]) => ({ ...value }))
+          .sort((a, b) => a.targetId.localeCompare(b.targetId))
+      };
+    },
+    async upsertFeedback(instructorHash, workspacePublicId, feedbackInput) {
+      const scope = await this.listFeedbackForInstructor(instructorHash, workspacePublicId);
+      if (!scope) return null;
+      const key = scope.classroom.internal_id + ':' + scope.workspace.internalId + ':' + feedbackInput.targetId;
+      const previous = coaching.get(key);
+      const record = {
+        targetId: feedbackInput.targetId,
+        status: feedbackInput.status,
+        note: feedbackInput.note,
+        reviewedWorkspaceRevision: feedbackInput.reviewedWorkspaceRevision,
+        reviewedFieldFingerprint: feedbackInput.reviewedFieldFingerprint,
+        feedbackRevision: (previous?.feedbackRevision || 0) + 1,
+        createdAt: previous?.createdAt || 'created',
+        updatedAt: 'updated'
+      };
+      coaching.set(key, record);
+      return { classroom: scope.classroom, workspace: scope.workspace, feedback: { ...record } };
+    },
+    async deleteFeedback(instructorHash, workspacePublicId, targetId) {
+      const scope = await this.listFeedbackForInstructor(instructorHash, workspacePublicId);
+      if (!scope) return null;
+      const key = scope.classroom.internal_id + ':' + scope.workspace.internalId + ':' + targetId;
+      const cleared = coaching.delete(key);
+      return { classroom: scope.classroom, workspace: scope.workspace, cleared, targetId };
+    },
+    async listFeedbackForStudent(accessHash) {
+      const member = [...memberships.values()].find(value => value.accessHash === accessHash);
+      if (!member) return null;
+      const item = classes.find(candidate => candidate.internalId === member.classInternalId && !candidate.revoked);
+      if (!item) return null;
+      const workspace = workspaces.find(candidate => (
+        candidate.classInternalId === item.internalId && candidate.workspaceId === member.workspaceId && !candidate.revoked
+      ));
+      if (!workspace) return null;
+      const prefix = item.internalId + ':' + workspace.workspaceId + ':';
+      return {
+        classroom: publicClass(item),
+        workspace: { id: workspace.id, kind: workspace.kind, label: workspace.label },
+        feedback: [...coaching.entries()]
+          .filter(([key]) => key.startsWith(prefix))
+          .map(([, value]) => ({ ...value }))
+          .sort((a, b) => a.targetId.localeCompare(b.targetId))
+      };
     },
     async rotateWorkspaceClaim(instructorHash, workspacePublicId, nextHash) {
       const item = activeByInstructor(instructorHash);
