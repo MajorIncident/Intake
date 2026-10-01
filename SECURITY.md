@@ -21,9 +21,11 @@ The collaboration capability model treats possession of the full secret link as 
 
 For same-device Student resume, the browser necessarily retains the one issued Student workspace capability under `kt-classroom-student-session-v1`. The Student join and assignment capabilities are never retained after successful admission. The resume envelope must never be copied into Intake state, exports, summaries, templates, URLs, analytics, logs, or error telemetry.
 
+For same-device Instructor resume, the browser retains the Instructor class capability under `kt-classroom-instructor-session-v1` together with public class metadata and the last selected public workspace ID. This credential may list and observe only its represented class through the Instructor classroom API. It must never enter Intake state, exports, summaries, templates, URLs, analytics, logs, error telemetry, or `collaboration_workspace_capabilities`.
+
 A Student join capability alone must never enumerate class workspaces. Cross-class join/assignment combinations must fail without revealing which credential was valid. Instructor workspace listing is scoped to the represented class.
 
-`collaboration_workspace_capabilities` is an editable-alias path. Only explicitly allowed edit kinds may resolve through the existing collaboration PUT/PATCH handlers. Future read-only Instructor observer credentials must use a separate server authorization path; placing them in the editable alias table would be a privilege escalation. See `docs/classroom-api.md`.
+`collaboration_workspace_capabilities` is an editable-alias path. Only explicitly allowed edit kinds may resolve through the existing collaboration PUT/PATCH handlers. Instructor observation therefore uses the separate GET-only `/api/classes/observe` authorization path and the Instructor class capability is never inserted as a workspace alias. Moving Instructor observation into the editable alias table would be a privilege escalation. See `docs/classroom-api.md`.
 
 ## Supported code
 

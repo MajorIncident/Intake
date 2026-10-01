@@ -6,7 +6,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-Student class join/resume (#292) is complete in PR #302. The next implementation slice is #293: Instructor class dashboard and read-only live workspace observer.
+Instructor class dashboard/read-only observer (#293) is implemented in PR #305. If #305 is still open, finish its final checks/review and merge it; if #305 is merged, #294 coaching feedback is the next slice.
 
 ## Program issues
 
@@ -17,7 +17,7 @@ Student class join/resume (#292) is complete in PR #302. The next implementation
 | Templates / Case Studies | #290 | Complete | PR #299 / `feature/classroom-resource-split` | 171 tests: 170 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Class domain/API | #291 | Complete | PR #300 / `feature/classroom-domain-api` | Combined #290+#291 head: 183 tests, 182 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Student join/resume | #292 | Complete | PR #302 / `feature/classroom-student-experience` | 194 tests: 193 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
-| Instructor observer | #293 | Not started | — | Depends on class semantics |
+| Instructor observer | #293 | Implementation complete | PR #305 / `feature/classroom-instructor-observer` | Validated implementation head: 208 tests, 207 pass, 0 fail, 1 skip; final documentation/checks pending merge |
 | Coaching | #294 | Not started | — | Depends on observer |
 | Protected cases | #295 | Not started | — | Requires #290 + #291 |
 | Browser E2E/CI | #296 | Not started | — | Uses #279 infrastructure |
@@ -56,7 +56,7 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297–#302 are merged to `main`. No classroom implementation PR is currently active.
+#297–#303 are merged to `main`. #293 is active on `feature/classroom-instructor-observer`.
 
 ## Last completed action
 
@@ -64,7 +64,7 @@ Merged #302 / completed #292. Current `main` includes Student class admission, s
 
 ## Next recommended action
 
-Start #293 on a fresh branch from current `main`. Instructor observation must use a separate read-only server authorization path and must not reuse the editable `classroom-student` capability alias.
+Cold restart: inspect PR #305 first. If it is open, confirm the final head is green, review the diff, and merge/close #293. If it is already merged, update #288 if needed and start #294 coaching from current `main`. Do not reopen the Student snapshot channel for coaching.
 
 ## Completed #300 implementation
 
@@ -98,6 +98,27 @@ Start #293 on a fresh branch from current `main`. Instructor observation must us
 - Student Intake controls stay hidden until a class workspace is connected.
 - Automated coverage is in `tests/classroomStudent.unit.test.mjs`, `tests/classroomStudent.feature.test.mjs`, and collaboration regression tests.
 - Final #302 validation: 194 tests (193 pass, 0 fail, 1 intentional skip), with CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+
+## Active #293 implementation
+
+- Branch: `feature/classroom-instructor-observer`.
+- Read-only endpoint: `GET /api/classes/observe?workspaceId=<public UUID>`.
+- Authorization: Instructor class capability only; the server verifies class/workspace ownership before reading the collaboration workspace.
+- The observer returns snapshot/revision + recent participant activity but **never** a Student workspace capability.
+- The observer is GET-only and does not route through editable `/api/workspaces/session` or `/api/workspaces/presence`.
+- Planned client: persist Instructor capability outside Intake state, list own-class workspaces, search/filter a left rail, poll one selected workspace, apply it into the existing Intake DOM under a read-only projection, and restore pre-observation local Intake when leaving Instructor.
+- Coaching remains out of scope until #294.
+- Final validated #293 implementation head before documentation consolidation: 208 tests (207 pass, 0 fail, 1 intentional skip); CI, Dependency Review, and Template Manifest Guard green, with CodeQL completing independently.
+- Client checkpoint:
+  - `src/classroomInstructor.js` owns Instructor same-device resume, class roster polling, search/filter, selection, and observer polling;
+  - the Instructor capability is retained only in `kt-classroom-instructor-session-v1`, outside Intake state;
+  - selected Student snapshots render through the existing Intake DOM, never a cloned renderer;
+  - observation is applied inside a localStorage preservation boundary because normal `applyAppState()` legitimately updates feature caches during restore/import;
+  - the observed DOM is projected read-only/disabled after each snapshot render;
+  - rapid switching aborts/stales the prior observer before the next workspace can render;
+  - leaving Instructor restores the pre-observation local DOM; explicit Leave class also clears the Instructor resume capability;
+  - Student → non-Student role changes now restore the Student pre-class local recovery without clearing Student resume.
+
 
 ## Known risks / watch items
 

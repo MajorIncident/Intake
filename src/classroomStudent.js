@@ -231,7 +231,7 @@ export function createStudentClassroomController({
     } catch {}
   };
 
-  const restoreLocalRecovery = () => {
+  const restoreLocalRecovery = ({ clear = true } = {}) => {
     const snapshot = readRecovery();
     if (!snapshot) return false;
     try {
@@ -241,7 +241,9 @@ export function createStudentClassroomController({
     } catch {
       return false;
     } finally {
-      try { storage?.removeItem(STUDENT_RECOVERY_STORAGE_KEY); } catch {}
+      if (clear) {
+        try { storage?.removeItem(STUDENT_RECOVERY_STORAGE_KEY); } catch {}
+      }
     }
   };
 
@@ -432,6 +434,7 @@ export function createStudentClassroomController({
     if (collaboration?.getState?.().sessionKind === 'classroom') {
       collaboration.leave({ silent: true });
     }
+    restoreLocalRecovery({ clear: false });
   };
 
   const init = () => {

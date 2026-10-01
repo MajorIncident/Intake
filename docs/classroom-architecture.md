@@ -114,13 +114,13 @@ Student workspace editing continues through the existing collaboration synchroni
 
 Instructor mode is supervisory.
 
-In slice #289, Instructor renders only a non-editing shell and hides the normal editable Intake surfaces. That shell carries no class data and grants no privilege. The class roster/workspace navigator and server-enforced observer authorization arrive in later slices.
+Slice #293 turns the earlier non-editing Instructor shell into a class-aware observer. The Instructor class capability opens exactly one class, returns only that class's workspace metadata, and is retained locally only for same-device resume.
 
-The eventual instructor sees a class roster/workspace navigator and can rapidly switch the main observer among authorized individual/team workspaces.
+The Instructor gets a searchable/filterable individual/team workspace rail and can rapidly switch the main observer among authorized workspaces. Selection polls the GET-only class observer endpoint; switching aborts/stales the previous request before a later response can replace the newly selected workspace.
 
-The observed Intake should reuse the normal rendering model where practical, but all student-owned Intake controls must be non-editable in instructor observation.
+Observed Student state reuses the normal Intake DOM rather than maintaining a second renderer. Because normal `applyAppState()` is intentionally allowed to update feature caches during import/restore, the observer applies Student state inside a localStorage preservation boundary and then projects every Student-owned control read-only/disabled. The Instructor's pre-observation local Intake is restored when leaving the role/class.
 
-Instructor coaching writes go through the coaching channel, not the snapshot channel.
+Instructor coaching writes still go through the separate coaching channel in #294, not the Student snapshot channel.
 
 ## Authentication and capability model
 
@@ -138,7 +138,7 @@ A Student must present the matching **class join + assignment** pair. Cross-clas
 
 Raw bearer capabilities are never persisted where a hash suffices. Capabilities travel in Authorization headers or request bodies as appropriate, not API query strings. Responses remain no-store/no-referrer.
 
-`collaboration_workspace_capabilities` is deliberately an **editable alias** path. Only explicitly allowed edit kinds may resolve there; slice #291 allows `classroom-student` only. Future Instructor observer credentials must use a separate read-only authorization path so they cannot inherit snapshot PUT/PATCH access.
+`collaboration_workspace_capabilities` is deliberately an **editable alias** path. Only explicitly allowed edit kinds may resolve there; slice #291 allows `classroom-student` only. Slice #293 keeps the Instructor class capability outside that alias table and authorizes observation through the separate GET-only `/api/classes/observe` path so Instructor access cannot inherit snapshot PUT/PATCH capability.
 
 ## Student assignment
 

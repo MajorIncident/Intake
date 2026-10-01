@@ -9,6 +9,7 @@ import {
   CLASS_WORKSPACE_LABEL_MAX_LENGTH,
   classHandler,
   classJoinHandler,
+  classObserveHandler,
   classWorkspacesHandler,
   normalizeClassroomLabel,
   normalizeClassroomWorkspaceKind,
@@ -421,4 +422,170 @@ test('invalid instructor capability cannot create an orphan collaboration worksp
 
   assert.equal(res.statusCode, 404);
   assert.equal(creates, 0);
+});
+
+
+test('Instructor observation is class-scoped, revision-aware, and returns no editable capability', async () => {
+  const classrooms = createClassroomRepository();
+  const workspaceRepo = createWorkspaceRepository();
+
+  await classrooms.createClass({
+    publicId: CLASS_A_ID, title: 'Class A', instructorHash: testTokenHash('A'), studentJoinHash: testTokenHash('C')
+  });
+  await classrooms.createClass({
+    publicId: CLASS_B_ID, title: 'Class B', instructorHash: testTokenHash('B'), studentJoinHash: testTokenHash('D')
+  });
+  const workspace = await workspaceRepo.create(
+    testTokenHash('P'),
+    { pre: { oneLine: 'Initial student problem' } },
+    30,
+    'Team A'
+  );
+  await classrooms.addWorkspace(testTokenHash('A'), {
+    publicId: WORKSPACE_A_ID,
+    workspaceId: workspace.id,
+    kind: 'group',
+    label: 'Team Alpha',
+    claimHash: testTokenHash('X')
+  });
+  await workspaceRepo.upsertPresence(testTokenHash('P'), PARTICIPANT_A, 'Alex');
+
+  const handler = classObserveHandler({
+    getRepository: async () => classrooms,
+    getWorkspaceRepo: async () => workspaceRepo
+  });
+
+  const first = response();
+  await handler({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    query: { workspaceId: WORKSPACE_A_ID }
+  }, first);
+
+  assert.equal(first.statusCode, 200);
+  assert.equal(first.body.class.id, CLASS_A_ID);
+  assert.equal(first.body.workspace.id, WORKSPACE_A_ID);
+  assert.equal(first.body.workspace.kind, 'group');
+  assert.equal(first.body.workspace.label, 'Team Alpha');
+  assert.equal(first.body.workspace.teamName, 'Team A');
+  assert.equal(first.body.workspace.revision, 1);
+  assert.equal(first.body.snapshot.pre.oneLine, 'Initial student problem');
+  assert.equal(first.body.participants[0].displayName, 'Alex');
+  assert.equal('workspaceToken' in first.body, false);
+  assert.equal('token' in first.body, false);
+
+  const updated = await workspaceRepo.update(
+    testTokenHash('P'),
+    { pre: { oneLine: 'Updated student problem' } },
+    1
+  );
+  assert.equal(updated.status, 'updated');
+
+  const second = response();
+  await handler({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    query: { workspaceId: WORKSPACE_A_ID }
+  }, second);
+  assert.equal(second.statusCode, 200);
+  assert.equal(second.body.workspace.revision, 2);
+  assert.equal(second.body.snapshot.pre.oneLine, 'Updated student problem');
+});
+
+test('Instructor observation rejects cross-class and non-Instructor capabilities generically', async () => {
+  const classrooms = createClassroomRepository();
+  const workspaceRepo = createWorkspaceRepository();
+
+  await classrooms.createClass({
+    publicId: CLASS_A_ID, title: 'Class A', instructorHash: testTokenHash('A'), studentJoinHash: testTokenHash('C')
+  });
+  await classrooms.createClass({
+    publicId: CLASS_B_ID, title: 'Class B', instructorHash: testTokenHash('B'), studentJoinHash: testTokenHash('D')
+  });
+  const workspace = await workspaceRepo.create(testTokenHash('P'), { marker: 'A' }, 30, 'Team A');
+  await classrooms.addWorkspace(testTokenHash('A'), {
+    publicId: WORKSPACE_A_ID,
+    workspaceId: workspace.id,
+    kind: 'group',
+    label: 'Team A',
+    claimHash: testTokenHash('X')
+  });
+
+  const handler = classObserveHandler({
+    getRepository: async () => classrooms,
+    getWorkspaceRepo: async () => workspaceRepo
+  });
+
+  for (const token of ['B', 'C']) {
+    const denied = response();
+    await handler({
+      method: 'GET',
+      headers: { authorization: 'Bearer ' + token.repeat(43) },
+      query: { workspaceId: WORKSPACE_A_ID }
+    }, denied);
+    assert.equal(denied.statusCode, 404);
+    assert.deepEqual(denied.body, { error: 'Workspace not found.' });
+  }
+});
+
+test('Instructor observation is GET-only and cannot mutate a Student snapshot', async () => {
+  const classrooms = createClassroomRepository();
+  const workspaceRepo = createWorkspaceRepository();
+
+  await classrooms.createClass({
+    publicId: CLASS_A_ID, title: 'Class A', instructorHash: testTokenHash('A'), studentJoinHash: testTokenHash('C')
+  });
+  const workspace = await workspaceRepo.create(testTokenHash('P'), { marker: 'unchanged' }, 30, 'Team A');
+  await classrooms.addWorkspace(testTokenHash('A'), {
+    publicId: WORKSPACE_A_ID,
+    workspaceId: workspace.id,
+    kind: 'individual',
+    label: 'Alex',
+    claimHash: testTokenHash('X')
+  });
+
+  const handler = classObserveHandler({
+    getRepository: async () => classrooms,
+    getWorkspaceRepo: async () => workspaceRepo
+  });
+
+  const writeAttempt = response();
+  await handler({
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    query: { workspaceId: WORKSPACE_A_ID },
+    body: { snapshot: { marker: 'mutated' } }
+  }, writeAttempt);
+
+  assert.equal(writeAttempt.statusCode, 405);
+  assert.equal(writeAttempt.headers.Allow, 'GET');
+
+  const observed = response();
+  await handler({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    query: { workspaceId: WORKSPACE_A_ID }
+  }, observed);
+  assert.equal(observed.body.snapshot.marker, 'unchanged');
+});
+
+test('Instructor observation validates the public workspace selector before repository access', async () => {
+  let repositoryReads = 0;
+  const handler = classObserveHandler({
+    getRepository: async () => {
+      repositoryReads += 1;
+      return createClassroomRepository();
+    },
+    getWorkspaceRepo: async () => createWorkspaceRepository()
+  });
+
+  const invalid = response();
+  await handler({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    query: { workspaceId: 'not-a-workspace' }
+  }, invalid);
+
+  assert.equal(invalid.statusCode, 400);
+  assert.equal(repositoryReads, 0);
 });

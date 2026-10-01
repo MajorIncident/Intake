@@ -44,7 +44,7 @@ Rules:
 
 Today only `classroom-student` may resolve through that path.
 
-Future Instructor observer/read-only credentials for #293 must **not** be inserted as workspace aliases. Doing so would inherit the legacy collaboration PUT/PATCH capabilities and silently grant write access. Instructor observation requires a separate server-enforced read-only authorization path.
+Instructor observation for #293 must **not** be inserted as a workspace alias. `GET /api/classes/observe` is the canonical read-only path: it authenticates the Instructor class capability, proves class/workspace ownership, resolves the internal collaboration workspace server-side, and returns snapshot/presence without minting an edit alias. Routing Instructor observation through legacy collaboration PUT/PATCH would silently grant write access.
 
 ## Retention and revocation
 
