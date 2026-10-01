@@ -71,6 +71,16 @@ export function normalizeClassroomWorkspaceKind(value) {
 }
 
 /**
+ * Validate an opaque classroom public identifier.
+ *
+ * @param {unknown} value - Candidate UUID.
+ * @returns {boolean} Whether it is a valid UUID-shaped identifier.
+ */
+export function validateClassroomId(value) {
+  return validateParticipantId(value);
+}
+
+/**
  * Lazily initialize the classroom repository and its additive Neon schema.
  *
  * @returns {Promise<object>} Classroom repository.
@@ -288,7 +298,11 @@ async function initializeClassroomRepository() {
           AND public_id = ${workspacePublicId}::uuid
           AND revoked_at IS NULL
         RETURNING workspace_id, public_id AS id`;
-      return rows[0] ? { classroom, workspace: rows[0] } : null;
+      if (!rows[0]) return null;
+      await sql`UPDATE collaboration_workspaces
+        SET expires_at = NOW(), updated_at = NOW()
+        WHERE id = ${rows[0].workspace_id}`;
+      return { classroom, workspace: rows[0] };
     },
 
     async joinWorkspace({ studentJoinHash, claimHash, participantId, accessHash, workspaceRepository }) {
@@ -550,7 +564,7 @@ export function classWorkspacesHandler({
 
       if (req.method === 'PATCH') {
         const workspaceId = req.body?.workspaceId;
-        if (typeof workspaceId !== 'string' || !workspaceId) {
+        if (!validateClassroomId(workspaceId)) {
           return send(res, 400, { error: 'Invalid workspace.' });
         }
         if (req.body?.action === 'rotate-assignment') {
@@ -581,6 +595,11 @@ export function classWorkspacesHandler({
         return send(res, validation.status === 413 ? 413 : 400, {
           error: validation.status === 413 ? 'Snapshot is too large.' : 'Invalid workspace request.'
         });
+      }
+
+      const classroom = await repository.getClassByInstructor(instructorHash);
+      if (!classroom) {
+        return send(res, 404, { error: 'Class not found.' });
       }
 
       const workspaceRepository = await getWorkspaceRepo();
