@@ -66,17 +66,18 @@ Completed the #295 implementation/security/documentation slices through root col
 
 Continue #295 on draft PR #307 from the current branch head.
 
-1. Runtime/security implementation is complete, including public/server manifest split, Classroom-authorized delivery, browser/runtime leak guards, Vercel upload verification, and role-aware client integration.
-2. Vercel Git deployment policy is now repository-owned:
-   - ordinary branches are denied deployment by default;
-   - `main` remains allowed for production;
-   - `verify/**` branches are allowed for deliberate preview verification;
-   - repo `ignoreCommand` explicitly continues only `main` and `verify/**`.
-3. Ordinary feature commits repeatedly triggered GitHub CI/security checks while producing **no Vercel deployment record**.
-4. Verification branch `verify/protected-cases-preview` was moved to guarded PR head `f9f8fc8f22cd71029bb492ad278c4470264153b6`; Vercel deployment `dpl_Ep2q8Y3BMUWGEV7fzZQHnvdwPumA` reached **READY**.
-5. On that exact READY preview, the previously exposed protected authoring path `/templates/Microcomputer%20Cabinets.json` returned a genuine HTTP **404**.
-6. The connected Vercel fetch tool still stops at this project's Vercel Authentication layer for protected API requests after the initial static request. The normal web fetch cannot access the preview, the local runtime has no outbound DNS, and no Vercel CLI/automation bypass secret is available. Do not weaken preview protection or persist a bypass secret simply to satisfy this check.
-7. Exact next action: finalize docs/PR/issue evidence on the latest head, confirm all repository gates are green, then decide whether the deployed API authorization matrix can be accepted based on deterministic server tests + READY preview/static boundary evidence or must wait for an approved Vercel automation-bypass path. Keep PR #307 draft and do not merge without explicit authorization.
+1. Protected Case Study runtime/security implementation is complete: public/server manifest split, Classroom authorization, role-aware client delivery, static/runtime leak guards, and deterministic API/client coverage.
+2. A second-order production exposure was discovered during deployed verification: with the old `outputDirectory: "."`, production returned internal repository files such as `/docs/classroom-workstream.md` and `/scripts/build-templates-manifest.mjs` with HTTP 200.
+3. #307 now builds a minimal public `dist/` surface via `scripts/build-vercel-public.mjs`. It copies only `index.html`, `main.js`, `styles.css`, and browser JavaScript under `src/` + `components/`; it rejects internal file types and protected Case Study identifiers.
+4. `vercel.json` now uses `outputDirectory: "dist"` and `npm run verify:protected-cases && npm run build:vercel-public`. The verifier rejects any return to repository-root static output.
+5. Exact GitHub CI evidence on `7f998f96b92a6760d5437a8fd8ffc36ea0a97f4c`:
+   - `[verify:protected-cases] Protected 4 Case Study payload(s); public manifest/runtime and Vercel deployment boundary verified.`
+   - `[build:vercel-public] Built 45 public file(s) in dist/ with no internal docs or protected Case Study identifiers.`
+   - CI, CodeQL, Dependency Review, and Template Manifest Guard all green.
+6. Vercel Git deployment policy remains repository-owned: ordinary branches create no Vercel deployment; `main` and `verify/**` are the only allowed classes, and repo `ignoreCommand` explicitly continues those branches.
+7. A deliberate preview of the new `dist/` head was requested through `verify/protected-cases-preview`, but Vercel returned `upgradeToPro=build-rate-limit` before creating the deployment. This remains tracked in #304.
+8. The earlier guarded preview `dpl_Ep2q8Y3BMUWGEV7fzZQHnvdwPumA` reached READY and returned HTTP 404 for the formerly public Microcomputer Cabinets authored JSON path, proving the protected authoring-source boundary before the `dist/` broadening.
+9. Exact next action: finish PR/issue/diff synchronization on the latest documented head, then obtain one deliberate `verify/**` preview when Vercel capacity permits and confirm `/docs/classroom-workstream.md`, `/scripts/build-templates-manifest.mjs`, and protected `/templates/*.json` paths return 404. The deployed protected API matrix still requires an approved preview-auth bypass path; deterministic server tests are already green. Keep #307 draft and do not merge without explicit authorization.
 
 ## Completed #300 implementation
 
@@ -207,7 +208,9 @@ Continue #295 on draft PR #307 from the current branch head.
 - That READY preview returned HTTP **404** for the formerly public Microcomputer Cabinets authored JSON path.
 - Deterministic API tests already cover Instructor authorization, Student membership-bound authorization, metadata-only catalogs, authenticated payload POST, legacy-token rejection, and no-store/no-referrer response headers.
 - Remaining deployed API requests are blocked by the preview-auth tooling boundary, not by application/test failure.
-- Exact next action: finish final metadata/diff review and keep #307 draft until the remaining verification requirement is explicitly accepted or an approved preview automation-bypass path becomes available. Do not merge without explicit authorization.
+- Additional static-output hardening: production's old repository-root output was confirmed to expose internal `docs/*` and `scripts/*` files. #307 now generates/serves only `dist/`; canonical CI built 45 public files with no internal docs or protected identifiers.
+- Current deployed `dist/` verification is blocked only by Vercel's build-rate limit; #304 contains the infrastructure evidence.
+- Exact next action: synchronize final PR/issue metadata, review the complete diff, and run one deliberate `verify/**` preview of the latest head when Vercel capacity permits. Do not merge without explicit authorization.
 
 ## Known risks / watch items
 
