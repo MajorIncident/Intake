@@ -205,3 +205,48 @@ test('switching away from Student pauses classroom sync but keeps the resume env
   assert.ok(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY), 'resume capability is retained');
   assert.equal(dom.window.document.body.dataset.experienceRole, EXPERIENCE_ROLE_IDS.STANDALONE);
 });
+
+
+test('entering Student disconnects an existing Standalone collaboration before showing class entry', async () => {
+  dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.STANDALONE, dom.window.localStorage);
+  initExperienceRoleController({
+    documentRef: dom.window.document,
+    windowRef: dom.window,
+    storage: dom.window.localStorage,
+    location: dom.window.location
+  });
+
+  const calls = [];
+  const state = {
+    profile: { participantId: PARTICIPANT_ID, displayName: 'Alex' },
+    sessionKind: 'standalone',
+    token: 'z'.repeat(43)
+  };
+  const controller = createStudentClassroomController({
+    collaboration: {
+      getState: () => state,
+      leave: options => {
+        calls.push(options);
+        state.token = null;
+        state.sessionKind = 'local';
+      }
+    },
+    collect: () => ({ pre: { oneLine: 'Local' } }),
+    apply: () => {},
+    saveLocal: () => {},
+    fetchImpl: async () => response(500, {}),
+    storage: dom.window.localStorage,
+    documentRef: dom.window.document,
+    windowRef: dom.window,
+    toast: () => {}
+  });
+  controller.init();
+
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STUDENT);
+  await settle();
+
+  assert.deepEqual(calls, [{ silent: true }]);
+  assert.equal(dom.window.document.body.dataset.studentClassStatus, 'disconnected');
+  assert.equal(dom.window.document.querySelector('.wrap').hidden, true);
+});
