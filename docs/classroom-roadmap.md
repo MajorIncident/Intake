@@ -64,7 +64,7 @@ Merge before class-specific runtime work where practical.
 
 **Issue:** #290
 
-Recommended branch: `feature/classroom-resource-split`
+Branch: `feature/classroom-resource-split`
 
 May stack on #289.
 
