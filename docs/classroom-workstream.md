@@ -66,11 +66,11 @@ Completed the #295 implementation/security/documentation slices through root col
 
 Continue #295 on draft PR #307 from the current branch head. Runtime/security implementation is complete. Finish only the finalization sequence:
 
-1. verify the current documented head has CI, CodeQL, Dependency Review, and Template Manifest Guard green;
-2. inspect the complete #307 diff for accidental browser imports/identifiers and confirm `npm run verify:protected-cases` remains in `npm run quality`;
-3. perform deployed HTTP verification that protected `/templates/*.json` authoring paths are no longer served and that authorized/unauthorized protected API behavior matches the contract;
-4. update PR #307 and issue #295 with the final SHA/evidence;
-5. mark ready for review only after those checks. Do not merge unless explicitly authorized.
+1. GitHub-side validation is complete on `4f4e95ab02526a728a107325d83bfcb2a27fd851`: CI, CodeQL, Dependency Review, and Template Manifest Guard are all green.
+2. PR #307 and issue #295 are synchronized with the implemented architecture and remaining verification.
+3. Deployed HTTP verification remains blocked because Vercel cancels this feature branch through the project's **Ignored Build Step** policy. Deployment `dpl_CHjpJ4b8SfBxvyJSawvsWkEfsxpi` for security checkpoint `b316026...` is `CANCELED` with Vercel's ignored-build-step reason.
+4. Exact next action: obtain a preview deployment through an explicitly approved Vercel configuration/deployment path, then verify raw protected `/templates/*.json` paths are unavailable and authorized/unauthorized protected API behavior matches the contract.
+5. Keep PR #307 draft and do not merge until that deployed verification is complete and merge is explicitly authorized.
 
 ## Completed #300 implementation
 
@@ -194,7 +194,9 @@ Continue #295 on draft PR #307 from the current branch head. Runtime/security im
   - `b3160264adfac5d500711c22515bf21f27dff75d` — authored-JSON Vercel exclusion + boundary verifier;
   - later commits fix only test harness and documentation synchronization.
 - Final docs now cover security, API/architecture, README/deployment, scoped/global AGENTS, AI onboarding, roadmap, commenting guide, storage guidance, and repository operations.
-- Exact next action: run/inspect final documented-head gates, then deployed HTTP verification, then update PR #307 / #295. Do not merge without explicit authorization.
+- GitHub validation on `4f4e95ab02526a728a107325d83bfcb2a27fd851`: CI green; CodeQL green; Dependency Review green; Template Manifest Guard green.
+- Preview deployment status: blocked by Vercel Ignored Build Step; feature-branch deployment is canceled before a testable artifact exists.
+- Exact next action: obtain an explicitly approved preview deployment, run the deployed HTTP security checks, then mark #307 ready for review. Do not merge without explicit authorization.
 
 ## Known risks / watch items
 
@@ -203,7 +205,7 @@ Continue #295 on draft PR #307 from the current branch head. Runtime/security im
 - Classroom role/session state must not leak into `kt-intake-full-v2`.
 - Instructor read-only behavior must be server-enforced, not just disabled controls.
 - Class creation remains capability-first and does not yet require account/SSO identity; rate limiting/abuse controls are an operational follow-on if public exposure warrants them.
-- Feature-branch Vercel deployments are skipped in the normal Git flow. Final #295 handoff therefore needs an explicit deployed HTTP verification path before merge/production promotion, especially for raw `/templates/*.json` exclusion.
+- Feature-branch Vercel deployments are skipped by the project's Vercel Ignored Build Step. This is confirmed by canceled deployment `dpl_CHjpJ4b8SfBxvyJSawvsWkEfsxpi`. Final #295 handoff therefore needs an explicitly approved preview/deployment path before merge, especially for raw `/templates/*.json` exclusion.
 
 ## Handoff template
 
