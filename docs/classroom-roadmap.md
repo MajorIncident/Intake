@@ -146,7 +146,7 @@ Primary deliverables:
 
 **Issue:** #294
 
-**Implementation:** draft PR #306 on `feature/classroom-coaching-feedback`; implementation/coverage complete pending final documented-head gates and merge.
+**Implementation:** PR #306 merged; #294 complete.
 
 Stacks on instructor observer.
 
@@ -164,18 +164,28 @@ Primary deliverables:
 
 **Issue:** #295
 
-Recommended branch: `feature/classroom-protected-cases`
+**Implementation:** draft PR #307 on `feature/classroom-protected-cases`; runtime/security implementation complete, documentation/final gates in progress.
 
-Requires #290 semantics and #291 authorization.
+Requires #290 semantics and #291 authorization; both prerequisites are merged.
 
-Primary deliverables:
+Implemented deliverables:
 
-- split public template build from protected cases;
-- authenticated case catalog/payload API;
-- static-bundle guard;
-- authorized Student/Instructor flows;
-- unauthorized request tests;
-- deployment/docs migration.
+- public generated manifest contains Standard Templates only;
+- server-only generated manifest contains protected Case Study metadata/payloads;
+- Instructor class-scoped and Student membership-bound protected catalog/payload APIs;
+- metadata-only GET catalog and authenticated POST payload delivery;
+- in-memory Student/Instructor protected-resource client integrated with the shared drawer;
+- Standalone remains protected-resource free and backend-optional;
+- authored `templates/*.json` source excluded from Vercel deployment;
+- protected Case Study public-runtime/deployment verifier in the canonical quality gate;
+- authorization, bundle-boundary, and role/drawer regression tests;
+- security/architecture/cold-start documentation migration.
+
+Remaining before merge:
+
+- finish final documentation synchronization;
+- verify the final documented head has CI, CodeQL, Dependency Review, and Template Manifest Guard green;
+- review the complete PR diff and production-preview behavior, especially that raw `/templates/*.json` paths are no longer served.
 
 ## Slice 8 — Browser/E2E and required CI
 
