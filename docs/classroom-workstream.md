@@ -6,7 +6,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-Resource semantics (#290 / PR #299) are merged. Class domain/API (#291 / PR #300) is reconciled with that new `main` and in final validation.
+Resource semantics (#290) and the class domain/API (#291) are complete. The next implementation slice is #292: Student class join, assignment, and resume.
 
 ## Program issues
 
@@ -15,7 +15,7 @@ Resource semantics (#290 / PR #299) are merged. Class domain/API (#291 / PR #300
 | Program | #288 | Open | #297 merged | Architecture/governance foundation is now on `main` |
 | Experience role | #289 | Complete | PR #298 / `feature/classroom-experience-roles` | Runtime/tests/docs complete; canonical CI, dependency review, template guard, and CodeQL green |
 | Templates / Case Studies | #290 | Complete | PR #299 / `feature/classroom-resource-split` | 171 tests: 170 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
-| Class domain/API | #291 | In progress | PR #300 / `feature/classroom-domain-api` | Reconciled with merged #299; implementation-head gates green, final combined validation running |
+| Class domain/API | #291 | Complete | PR #300 / `feature/classroom-domain-api` | Combined #290+#291 head: 183 tests, 182 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Student join/resume | #292 | Not started | — | Depends on #291 |
 | Instructor observer | #293 | Not started | — | Depends on class semantics |
 | Coaching | #294 | Not started | — | Depends on observer |
@@ -56,15 +56,15 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297, #298, and #299 are merged to `main`. PR #300 is the active #291 server/domain work and has been reconciled against the #299 resource changes.
+#297, #298, and #299 are merged to `main`. PR #300 contains the completed #291 server/domain slice and is ready to merge after this completion-ledger head passes the same repository gates.
 
 ## Last completed action
 
-Merged #299, then reconciled #300 onto the resulting `main` while preserving both resource semantics and the class/capability architecture.
+Reconciled #300 with merged #299 and validated the combined product: 183 tests (182 pass, 0 fail, 1 intentional skip), with CI, CodeQL, Dependency Review, and Template Manifest Guard green.
 
 ## Next recommended action
 
-Finish the final combined CI/security run for PR #300. If green, merge #300, close #291, update #288, and start #292 (Student join/resume) from the new `main`.
+Merge PR #300, close #291, update #288, then start #292 on a fresh `feature/classroom-student-experience` branch from current `main`. The Student client should consume `docs/classroom-api.md`, persist resume credentials outside Intake state, and reuse the existing collaboration engine.
 
 ## Active #300 implementation
 
@@ -83,7 +83,7 @@ Finish the final combined CI/security run for PR #300. If green, merge #300, clo
 - `api/` now participates in the changed-runtime test coverage guard.
 - Authorization coverage lives in `tests/classroom-api.unit.test.mjs` with deterministic in-memory repositories.
 
-- Validated implementation head completed 178 tests (177 pass, 0 fail, 1 intentional skip); CI, CodeQL, Dependency Review, and Template Manifest Guard were green before reconciliation with #299.
+- Final combined #290 + #291 validation completed 183 tests (182 pass, 0 fail, 1 intentional skip); CI, CodeQL, Dependency Review, and Template Manifest Guard are green.
 
 ## Known risks / watch items
 
