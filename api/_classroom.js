@@ -118,8 +118,7 @@ async function initializeClassroomRepository() {
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL,
-    revoked_at TIMESTAMPTZ,
-    UNIQUE (class_id, workspace_id)
+    revoked_at TIMESTAMPTZ
   )`;
   await sql`CREATE INDEX IF NOT EXISTS classroom_classes_expiry_idx
     ON classroom_classes (expires_at)`;
@@ -134,7 +133,8 @@ async function initializeClassroomRepository() {
     individual_participant_id UUID,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    revoked_at TIMESTAMPTZ
+    revoked_at TIMESTAMPTZ,
+    UNIQUE (class_id, workspace_id)
   )`;
   await sql`CREATE INDEX IF NOT EXISTS classroom_workspaces_class_idx
     ON classroom_workspaces (class_id, created_at)`;
