@@ -183,7 +183,7 @@ Need to know which module owns a given storage field? Jump to the [Storage-to-Mo
 
 ### Vercel deployment
 - Production Vercel builds execute `npm run verify:protected-cases && npm run build:vercel-public` (see `vercel.json`). They **do not regenerate manifests**, because authored `templates/*.json` source files are deliberately excluded from the deployment upload.
-- `scripts/build-vercel-public.mjs` creates the only public static surface under `dist/`: `index.html`, `main.js`, `styles.css`, and browser JavaScript under `src/` and `components/`. Internal docs, tests, build scripts, authoring JSON, AGENTS files, and repository metadata are not copied.
+- `scripts/build-vercel-public.mjs` creates the only public static surface under `dist/`: `index.html`, `main.js`, `styles.css`, browser JavaScript under `src/` and `components/`, plus the explicitly public `docs/eula.md` linked from the footer. All other docs, tests, build scripts, authoring JSON, AGENTS files, and repository metadata are not copied.
 - `vercel.json` must keep `outputDirectory: "dist"`. The former repository-root output exposed internal files such as `/docs/classroom-workstream.md` and `/scripts/build-templates-manifest.mjs`.
 - Generated manifests are committed artifacts. GitHub CI remains responsible for running `npm run build:templates` / `check:templates` and proving they match authored JSON; `npm run quality` also builds/verifies the same minimal `dist/` bundle.
 - `.vercelignore` prevents raw authored Case Study JSON from entering the Vercel source upload, while the `dist/` build prevents all non-runtime repository files from becoming public static assets.
