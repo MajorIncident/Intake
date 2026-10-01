@@ -117,15 +117,24 @@ export function getActiveExperienceRole() {
  *
  * @returns {boolean} Whether backward-compatible Standalone migration is required.
  */
-function hasLegacyStandaloneContext() {
+function hasLegacySavedIntake() {
   try {
-    if (storageRef?.getItem(INTAKE_STORAGE_KEY)) {
-      return true;
-    }
+    return Boolean(storageRef?.getItem(INTAKE_STORAGE_KEY));
   } catch (_error) {
-    // Restricted storage should not prevent URL compatibility below.
+    return false;
   }
+}
 
+/**
+ * Detect an explicit pre-classroom collaboration capability in the current URL.
+ *
+ * Existing `?workspace=` links belong to the Standalone collaboration model.
+ * They intentionally override a stored Student/Instructor presentation preference
+ * so the user never joins an editable collaboration invisibly behind another role.
+ *
+ * @returns {boolean} Whether the URL contains an existing workspace capability.
+ */
+function hasStandaloneWorkspaceLink() {
   try {
     const search = typeof locationRef?.search === 'string' ? locationRef.search : '';
     return new URLSearchParams(search).has('workspace');
@@ -455,6 +464,15 @@ export function initExperienceRoleController({
 
   bindRoleControls();
 
+  if (hasStandaloneWorkspaceLink()) {
+    const collaborationRole = applyExperienceRole(LEGACY_DEFAULT_EXPERIENCE_ROLE, {
+      persist: true,
+      announce: false
+    });
+    closeExperienceRoleChooser({ force: true });
+    return collaborationRole;
+  }
+
   const storedRole = readExperienceRolePreference(storageRef);
   if (storedRole) {
     applyExperienceRole(storedRole, { persist: false, announce: false });
@@ -462,7 +480,7 @@ export function initExperienceRoleController({
     return storedRole;
   }
 
-  if (hasLegacyStandaloneContext()) {
+  if (hasLegacySavedIntake()) {
     const migratedRole = applyExperienceRole(LEGACY_DEFAULT_EXPERIENCE_ROLE, {
       persist: true,
       announce: false
