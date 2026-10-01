@@ -8,7 +8,7 @@ KT Intake is a browser-first Kepner–Tregoe (KT) incident workbook designed for
 - A genuinely new browser asks whether to **Work independently**, **Join a class**, or **Teach a class**. Existing saved Intakes and existing `?workspace=` collaboration links migrate silently to **Standalone** so the new chooser does not interrupt established workflows.
 - The selected experience resumes from the separate `kt-experience-role-v1` preference. Intake work itself still loads from `kt-intake-full-v2`, with action plans under `kt-actions-by-analysis-v1`.
 - Use the header controls to **Save to File** (exports a JSON snapshot) or **Load from File** (imports a previously saved snapshot) when you need to move an intake between browsers or machines.
-- Open the **Templates** drawer and click **Save current notes as template** to download the in-progress intake as curated template JSON. The prompt lets you choose between a **Case Study** template (password protected, multi-mode) or a **Standard** template (no password, always loads Full mode).
+- Open the shared resource drawer to work with curated material. **Standalone** receives public Standard Templates only. Connected **Students** receive Standard Templates plus Classroom-authorized Case Studies; connected **Instructors** receive authorized teaching Case Studies. The rotating Case Study mode password remains a learning/progression control, not authentication.
 
 ## Development Setup
 AI contributors should run the following commands (or manual preview) whenever the described workstream applies so linting, templates, and docs stay current.
@@ -18,12 +18,14 @@ AI contributors should run the following commands (or manual preview) whenever t
 | `npm ci` / `npm install` | Run once after cloning or whenever `package.json` changes. | Installs the pinned toolchain for scripts, tests, and template validation. Node 24 is the repository baseline; `.nvmrc` is authoritative. See [`docs/AI-ONBOARDING.md`](docs/AI-ONBOARDING.md). |
 | `npm run dev` | During day-to-day feature work that touches `src/`, `components/`, or `scripts/`. | Starts the watcher so template manifests regenerate automatically; pair it with the guidance in [`docs/commenting-guide.md`](docs/commenting-guide.md) when wiring new anchors. |
 | Open `index.html` directly | For quick manual QA or smoke tests that do not require the watcher. | The static file reflects the latest bundle after any build step, so you can double-check flows without Node running. |
-| `npm run build` | Before opening a pull request or testing deployment changes. | Rebuilds the static bundle and regenerates `src/templates.manifest.js`. Mirrors the Vercel command noted below. |
-| `npm run build:templates` | Immediately after editing JSON under `templates/` or `templates.manifest` logic. | Validates curated snapshots and should accompany any template-focused feature (see "Template manifest workflow" below). |
+| `npm run build` | After editing authored JSON under `templates/` and before opening a pull request. | Validates all authored resources and regenerates both the public Standard Template manifest and server-only protected Case Study manifest. This is a repository-authoring command, not the Vercel production command. |
+| `npm run build:templates` | Immediately after editing JSON under `templates/` or generated-manifest logic. | Validates every authored resource, writes public Standards to `src/templates.manifest.js`, and writes protected Case Studies to `api/protected-case-studies.manifest.js`. |
 | `npm run verify:tests` | Any time you change runtime code under `src/`, `components/`, or server `api/`. | Enforces the coverage contract described in [`docs/testing-guidelines.md`](docs/testing-guidelines.md) and scaffolds missing suites. |
 | `npm run verify:summary` | Whenever you add or change form controls/options. | Ensures new inputs are wired into the Copy & Paste Summary, documented, and styled with the Apple-like rhythm. See [`docs/summary-style-checklist.md`](docs/summary-style-checklist.md). |
 | `npm run verify:persistence` | When adding or editing inputs/captions that should survive reloads. | Confirms new controls tie into `src/appState.js` and `src/storage.js`, prompting template/state updates so saves/loads remain lossless. |
-| `npm test` | Before committing or when adding new suites. | Runs the full test matrix (DOM + unit) so CI sees the same state you validated locally. |\n| `npm run quality` | Before marking any pull request ready. | Canonical repository gate: lockfile, repo doctor, domain guards, lint, generated-file freshness, storage docs, and the full test suite. See [`docs/REPOSITORY-OPERATIONS.md`](docs/REPOSITORY-OPERATIONS.md). |
+| `npm test` | Before committing or when adding new suites. | Runs the full test matrix (DOM + unit) so CI sees the same state you validated locally. |
+| `npm run verify:protected-cases` | After any template/classroom/deployment boundary change. | Proves protected Case Study IDs/names are absent from public browser runtime assets and that authored `templates/*.json` remains excluded from Vercel deployment. |
+| `npm run quality` | Before marking any pull request ready. | Canonical repository gate: lockfile, repo doctor, domain guards, lint, generated-file freshness, protected-case boundary, storage docs, and the full test suite. See [`docs/REPOSITORY-OPERATIONS.md`](docs/REPOSITORY-OPERATIONS.md). |
 | `npm run update:storage-docs` / `npm run check:storage-docs` | Run `update` whenever you alter persisted schema, then `check` before pushing. | Keeps [`docs/storage-schema.md`](docs/storage-schema.md) and [`docs/storage-schema.appendix.md`](docs/storage-schema.appendix.md) synced with new keys or shapes. |
 
 ## Entry Point & Boot Logic
@@ -57,6 +59,7 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 | `src/actionsStore.js` | Persists actions by analysis ID under `kt-actions-by-analysis-v1`, providing CRUD and sorting helpers for the card UI. |
 | `src/coachableFields.js` | Stable domain coaching-target registry and deterministic versioned field fingerprints; DOM IDs are placement hooks, not persistence identity. |
 | `src/classroomCoaching.js` | Instructor coaching controls and Student read-only feedback UI backed by the separate Classroom coaching API. |
+| `src/classroomCaseStudies.js` | In-memory authorized Classroom Case Study catalog/payload client. It receives active Student/Instructor capabilities from their lifecycle controllers and never persists them. |
 | `main.js` | Entry point that imports every module, wires shared events, and runs `boot()`. |
 
 ### Storage keys
@@ -74,8 +77,8 @@ Coaching feedback is server-side Classroom data, not a local Intake storage key.
 Experience role is a product-level choice, not an Intake workflow mode. General / IT / Pharma / Major Incident remain controlled by `meta.intakeMode`; Standalone / Student / Instructor are controlled separately by `src/experienceRoles.js` and `src/experienceRoleController.js`.
 
 - **Standalone** exposes the normal Intake and current collaboration behavior. Its resource drawer contains **Templates only**.
-- **Student** first joins an instructor-preconfigured class workspace using a class code, assignment code, and display name. The two admission codes are used once and discarded; the returned per-participant workspace capability is retained locally for same-device resume and is attached to the existing collaboration engine without entering the URL. Once connected, the Student sees class/workspace/identity context and can use both **Templates** and **Case Studies**. Switching away from Student pauses the live classroom connection while preserving resume; **Leave class** clears resume and restores the local Intake captured before joining. Students also receive Instructor coaching beside the reviewed field, read-only, including optional notes and a **Changed since review** indicator when that field's current evidence no longer matches the reviewed fingerprint.
-- **Instructor** opens an instructor-preconfigured class with the Instructor class capability, gets a searchable individual/team workspace rail, and can rapidly switch a **live read-only** view of each Student/team Intake. Observation uses the normal Intake renderer but the Student-owned controls are projected read-only; the Instructor credential is authorized only through the class-scoped GET observer path and never becomes a Student edit capability. Switching away pauses observation while preserving same-device class resume; **Leave class** clears the Instructor resume and restores the instructor's prior local Intake. In that read-only view, instructors can mark registered fields **Meets standard** or **Needs improvement**, add an optional note, revise/clear feedback, and see when the reviewed field has changed.
+- **Student** first joins an instructor-preconfigured class workspace using a class code, assignment code, and display name. The two admission codes are used once and discarded; the returned per-participant workspace capability is retained locally for same-device resume and is attached to the existing collaboration engine without entering the URL. Once connected, the Student sees class/workspace/identity context, public **Templates**, and a protected **Case Study** catalog fetched with that issued Classroom capability. Full Case Study state is fetched only on demand when the Student applies a case after the existing pedagogical mode/password step. Switching away from Student pauses the live classroom connection and clears the in-memory protected catalog while preserving class resume; **Leave class** clears resume and restores the local Intake captured before joining. Students also receive Instructor coaching beside the reviewed field, read-only, including optional notes and a **Changed since review** indicator when that field's current evidence no longer matches the reviewed fingerprint.
+- **Instructor** opens an instructor-preconfigured class with the Instructor class capability, gets a searchable individual/team workspace rail, and can rapidly switch a **live read-only** view of each Student/team Intake. Observation uses the normal Intake renderer but the Student-owned controls are projected read-only; the Instructor credential is authorized only through the class-scoped GET observer path and never becomes a Student edit capability. The same Instructor class capability authorizes the protected teaching Case Study catalog/payload API. Switching away pauses observation and clears the in-memory protected catalog while preserving same-device class resume; **Leave class** clears the Instructor resume and restores the instructor's prior local Intake. In that read-only view, instructors can mark registered fields **Meets standard** or **Needs improvement**, add an optional note, revise/clear feedback, and see when the reviewed field has changed.
 - Use **View → Experience** to switch roles without changing or deleting Intake data.
 
 ## Notes workspace
@@ -105,11 +108,14 @@ The existing Vercel project is **`intake`**, with the **`neon-intake`** integrat
 
 Classroom slice #291 layers class organization and authorization over the existing collaboration engine; it does **not** create a second Intake synchronization system.
 
-The server adds three class routes:
+The core class routes are:
 
 - `/api/classes` — create/administer one class with an Instructor bearer capability;
 - `/api/classes/workspaces` — Instructor-only creation/listing and assignment lifecycle for individual/group workspaces;
-- `/api/classes/join` — Student admission into exactly one assigned workspace.
+- `/api/classes/join` — Student admission into exactly one assigned workspace;
+- `/api/classes/observe` — Instructor-only read-only live workspace observation;
+- `/api/classes/coaching` and `/api/classes/coaching/student` — separate Instructor-write / Student-read coaching channel;
+- `/api/classes/case-studies` and `/api/classes/case-studies/student` — protected Case Study catalog and POST payload delivery after Classroom authorization.
 
 A Student join requires **two independent capabilities**: the class Student-join capability and an assignment capability for one individual/group workspace. The Student join capability by itself cannot list assignments or classmates. A successful join returns a newly minted per-participant workspace capability that works with the existing `/api/workspaces/session` and `/api/workspaces/presence` endpoints.
 
@@ -166,16 +172,20 @@ Need to know which module owns a given storage field? Jump to the [Storage-to-Mo
 - Keep the UI accessible: reuse layout classes, maintain contrast, and follow the Apple-like spacing guidance in `AGENTS.md`.
 
 ### Template manifest workflow
-- Curated resources live as JSON snapshots under `templates/` (one file per resource). Each file lists metadata (`id`, `name`, `description`, `templateKind`, `supportedModes`) plus a `SerializedAppState` payload.
-- `templateKind: standard` means a reusable **Template**; `templateKind: case-study` means a **Case Study**. `src/templateAvailability.js` projects those existing records by experience role without duplicating the registry: Standalone = Templates, Student = Templates + Case Studies, Instructor = teaching-only Case Studies.
-- **Transitional security boundary:** Case Study payloads are still compiled into the public client manifest in this slice. Hiding them from Standalone is normal-UI visibility, **not confidentiality**. #295 moves protected Case Study metadata/payloads behind authorized server delivery.
-- Run `npm run build:templates` after editing or adding template JSON. The script validates each snapshot and regenerates `src/templates.manifest.js`.
-- `npm run dev` and `npm run build` automatically invoke the generator, so the manifest always stays in sync during local development.
+- Curated resources live as authored JSON snapshots under `templates/` (one file per resource). Each file lists metadata (`id`, `name`, `description`, `templateKind`, `supportedModes`) plus a `SerializedAppState` payload.
+- `npm run build:templates` validates **all** authored resources and generates two explicit boundaries:
+  - `src/templates.manifest.js` — public Standard Templates only;
+  - `api/protected-case-studies.manifest.js` — server-only Case Study metadata and full payloads.
+- `templateKind: standard` means a reusable public **Template**. `templateKind: case-study` means a protected Classroom **Case Study**. `src/templateAvailability.js` still owns role semantics; `src/classroomCaseStudies.js` supplies only the currently authorized protected catalog/payloads.
+- Authored `templates/*.json` files are build-time source and are excluded from Vercel deployment by `.vercelignore`. Never import the server-only protected manifest from browser modules.
+- Run `npm run verify:protected-cases` after changing this boundary and `npm run quality` before handoff. The rotating Case Study mode password remains pedagogy only; Classroom capability authorization is the confidentiality boundary.
+- `npm run dev` and local `npm run build` still regenerate both manifests for maintainers. Commit the authored JSON and both generated manifests together.
 
 ### Vercel deployment
-- Production deploys on Vercel now execute `npm run build && npm test` (see `vercel.json`). The build step regenerates `src/templates.manifest.js` so templates remain in sync, and the test pass acts as a guardrail for regressions before traffic hits the static bundle.
-- When modifying the manifest workflow or required quality gates, update both the README and `vercel.json` so the documented steps mirror the actual build command.
-- Use `vercel build` (or run `npm run build && npm test`) locally to mirror the hosted environment whenever you change deployment requirements.
+- Production Vercel builds execute `npm run verify:protected-cases` (see `vercel.json`). They **do not regenerate manifests**, because authored `templates/*.json` source files are deliberately excluded from the deployment upload.
+- Generated manifests are therefore committed artifacts. GitHub CI remains responsible for running `npm run build:templates` / `check:templates` and proving they match their authored JSON sources.
+- `.vercelignore` prevents raw authored Case Study JSON from becoming directly fetchable static files. Keep that exclusion and the protected-case verifier aligned with any future output-directory/deployment changes.
+- When modifying the manifest workflow or required quality gates, update both this README and `vercel.json` so the documented steps mirror the actual hosted build.
 - Dependency changes must be installed through the normal npm registry so npm generates the complete lockfile. Run `npm run verify:lockfile` before committing and `npm ci` from a clean dependency tree; the offline guard catches missing resolved root-package entries before CI reaches its clean install.
 
 ## Documentation & anchor hygiene
