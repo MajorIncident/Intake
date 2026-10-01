@@ -242,6 +242,12 @@ function chooserFocusables() {
     .filter((element) => !element.hidden && !element.hasAttribute('disabled'));
 }
 
+/**
+ * Resolve a visible focus destination after the chooser closes.
+ *
+ * @param {HTMLElement|null} requested - Preferred focus target captured when the chooser opened.
+ * @returns {HTMLElement|null} Visible target or the stable View-menu trigger fallback.
+ */
 function resolveReturnFocus(requested) {
   const hiddenBySelf = Boolean(requested?.hidden) || requested?.getAttribute?.('aria-hidden') === 'true';
   const hiddenByAncestor = Boolean(requested?.closest?.('[hidden], [aria-hidden="true"]'));
