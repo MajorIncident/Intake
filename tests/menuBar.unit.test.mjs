@@ -21,7 +21,14 @@ beforeEach(() => {
           <button type="button" class="menu-trigger" data-menu-target="collab" aria-haspopup="true" aria-expanded="false">Collaboration</button>
           <div class="menu-panel" id="collab" role="menu" hidden>
             <button type="button" class="menu-item" id="comms" role="menuitem">Comms</button>
+            <button type="button" class="menu-item" id="hiddenItem" role="menuitem" hidden>Hidden item</button>
             <button type="button" class="menu-item" id="steps" role="menuitem">Steps</button>
+          </div>
+        </div>
+        <div class="menu-group" hidden>
+          <button type="button" class="menu-trigger" data-menu-target="hiddenMenu" aria-haspopup="true" aria-expanded="false">Hidden</button>
+          <div class="menu-panel" id="hiddenMenu" role="menu" hidden>
+            <button type="button" class="menu-item" id="hiddenMenuItem" role="menuitem">Hidden menu item</button>
           </div>
         </div>
         <div class="menu-group">
