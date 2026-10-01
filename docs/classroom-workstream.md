@@ -56,17 +56,17 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297, #298, and #299 are merged to `main`. PR #300 contains the completed #291 server/domain slice and is ready to merge after this completion-ledger head passes the same repository gates.
+No classroom implementation PR is currently active. #297, #298, #299, and #300 are merged to `main`.
 
 ## Last completed action
 
-Reconciled #300 with merged #299 and validated the combined product: 183 tests (182 pass, 0 fail, 1 intentional skip), with CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+Merged #300 / completed #291 after reconciling it with #299. Current `main` includes both role-based resource semantics and the classroom capability/API layer, validated together with 183 tests (182 pass, 0 fail, 1 intentional skip) plus green CI, CodeQL, Dependency Review, and Template Manifest Guard.
 
 ## Next recommended action
 
-Merge PR #300, close #291, update #288, then start #292 on a fresh `feature/classroom-student-experience` branch from current `main`. The Student client should consume `docs/classroom-api.md`, persist resume credentials outside Intake state, and reuse the existing collaboration engine.
+Start #292 on a fresh `feature/classroom-student-experience` branch from current `main`. The Student client should consume `docs/classroom-api.md`, persist resume credentials outside Intake state, and reuse the existing collaboration engine.
 
-## Active #300 implementation
+## Completed #300 implementation
 
 - Canonical server contract: `docs/classroom-api.md`.
 - Server rules: `api/AGENTS.md`.
