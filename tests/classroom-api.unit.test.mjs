@@ -322,6 +322,35 @@ test('join and assignment capabilities rotate independently', async () => {
   assert.equal(newInstructor.statusCode, 200);
 });
 
+test('join disablement and class revocation stop new classroom access', async () => {
+  const classrooms = createClassroomRepository();
+  await classrooms.createClass({
+    publicId: CLASS_A_ID, title: 'Class A', instructorHash: testTokenHash('A'), studentJoinHash: testTokenHash('C')
+  });
+
+  const admin = classHandler({ getRepository: async () => classrooms });
+
+  const disabled = response();
+  await admin({
+    method: 'PATCH',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    body: { action: 'set-joins', enabled: false }
+  }, disabled);
+  assert.equal(disabled.statusCode, 200);
+  assert.equal(disabled.body.class.joinsEnabled, false);
+
+  const revoked = response();
+  await admin({
+    method: 'DELETE',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) }
+  }, revoked);
+  assert.equal(revoked.statusCode, 200);
+
+  const after = response();
+  await admin({ method: 'GET', headers: { authorization: 'Bearer ' + 'A'.repeat(43) } }, after);
+  assert.equal(after.statusCode, 404);
+});
+
 test('invalid instructor capability cannot create an orphan collaboration workspace', async () => {
   const classrooms = createClassroomRepository();
   const workspaceRepo = createWorkspaceRepository();
