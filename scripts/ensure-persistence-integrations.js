@@ -83,8 +83,28 @@ function getInterfaceAdditions() {
     .filter((line) => line.startsWith('+') && !line.startsWith('+++'));
 }
 
+/**
+ * Identify role-projection containers that do not themselves introduce a form control.
+ *
+ * Experience-role surfaces add visibility metadata to existing layout containers. They
+ * must not force summary/persistence wiring unless the same added line also introduces
+ * an actual form element. This keeps the guard strict for real controls while avoiding
+ * false positives from presentation-only wrappers.
+ *
+ * @param {string} line - Added diff line.
+ * @returns {boolean} Whether the line is only an experience-surface container.
+ */
+function isExperienceSurfaceContainerOnly(line) {
+  if (!/data-experience-surface=["'][^"']+["']/.test(line)) {
+    return false;
+  }
+  return !/<(input|textarea|select|option|button|label)\b/i.test(line)
+    && !/createElement\(['"](?:input|textarea|select|option|button|label)['"]\)/i.test(line);
+}
+
 const addedInterfaceLines = getInterfaceAdditions();
 const triggerLines = addedInterfaceLines.filter((line) => {
+  if (isExperienceSurfaceContainerOnly(line)) return false;
   if (/data-persistence=["']local-only["']/.test(line)) return false;
   return (
     /<(input|textarea|select|option|button|label)\b/i.test(line) ||
