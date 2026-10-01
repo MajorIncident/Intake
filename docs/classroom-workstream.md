@@ -6,7 +6,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-Student class join/resume (#292) is active in draft PR #302.
+Student class join/resume (#292) is complete in PR #302. The next implementation slice is #293: Instructor class dashboard and read-only live workspace observer.
 
 ## Program issues
 
@@ -16,7 +16,7 @@ Student class join/resume (#292) is active in draft PR #302.
 | Experience role | #289 | Complete | PR #298 / `feature/classroom-experience-roles` | Runtime/tests/docs complete; canonical CI, dependency review, template guard, and CodeQL green |
 | Templates / Case Studies | #290 | Complete | PR #299 / `feature/classroom-resource-split` | 171 tests: 170 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Class domain/API | #291 | Complete | PR #300 / `feature/classroom-domain-api` | Combined #290+#291 head: 183 tests, 182 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
-| Student join/resume | #292 | In progress | PR #302 / `feature/classroom-student-experience` | Join/resume/recovery implementation and tests are on the branch; CI/docs validation in progress |
+| Student join/resume | #292 | Complete | PR #302 / `feature/classroom-student-experience` | 194 tests: 193 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Instructor observer | #293 | Not started | — | Depends on class semantics |
 | Coaching | #294 | Not started | — | Depends on observer |
 | Protected cases | #295 | Not started | — | Requires #290 + #291 |
@@ -56,7 +56,7 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297–#301 are merged to `main`. Draft PR #302 is the active Student client slice on `feature/classroom-student-experience`.
+#297–#301 are merged to `main`. PR #302 contains the completed Student client slice and is ready to merge after this completion-ledger head passes the same repository gates.
 
 ## Last completed action
 
@@ -64,7 +64,7 @@ Merged #300 / completed #291 after reconciling it with #299. Current `main` incl
 
 ## Next recommended action
 
-Finish #302 validation and documentation. Do not start #293 until #302 lands; Instructor observation should then build on the established class/workspace/session context without reusing editable Student capabilities.
+Merge #302, close #292, update #288, then start #293 on a fresh branch from current `main`. Instructor observation must use a separate read-only server authorization path and must not reuse the editable `classroom-student` capability alias.
 
 ## Completed #300 implementation
 
@@ -97,6 +97,7 @@ Finish #302 validation and documentation. Do not start #293 until #302 lands; In
 - Switching away from Student disconnects live class sync but keeps resume; switching back resumes.
 - Student Intake controls stay hidden until a class workspace is connected.
 - Automated coverage is in `tests/classroomStudent.unit.test.mjs`, `tests/classroomStudent.feature.test.mjs`, and collaboration regression tests.
+- Final #302 validation: 194 tests (193 pass, 0 fail, 1 intentional skip), with CI, CodeQL, Dependency Review, and Template Manifest Guard green.
 
 ## Known risks / watch items
 
