@@ -117,29 +117,36 @@ Instructor coaching writes go through the coaching channel, not the snapshot cha
 
 ## Authentication and capability model
 
-The current collaboration model is capability-based: possession of a secret workspace token grants access, and only a hash is persisted server-side. Classroom work should preserve that capability-oriented simplicity initially while separating privileges.
+The current collaboration model is capability-based: possession of a secret workspace token grants access, and only a hash is persisted server-side. Slice #291 preserves that simplicity while separating privileges.
 
-Minimum credential types:
+Implemented credential types:
 
-- **Instructor class capability** — class administration/roster observation/coaching.
-- **Student class join capability or code** — admission into a class; cannot enumerate class workspaces.
-- **Workspace capability** — existing collaboration access used after the server resolves the student's authorized workspace.
+- **Instructor class capability** — administers exactly one class and may enumerate that class's classroom workspace metadata.
+- **Student class join capability** — admits a join attempt into one class but cannot enumerate assignments/workspaces.
+- **Assignment capability** — identifies exactly one individual/group workspace inside the admitted class.
+- **Student workspace capability** — minted after successful join and accepted by the existing editable collaboration session/presence APIs.
 - **Case Study unlock password** — instructional gating only; never authentication.
 
-Raw bearer capabilities should not be persisted server-side where a hash suffices. Avoid secrets in query strings where possible; preserve no-store/referrer protections.
+A Student must present the matching **class join + assignment** pair. Cross-class pairs fail generically.
+
+Raw bearer capabilities are never persisted where a hash suffices. Capabilities travel in Authorization headers or request bodies as appropriate, not API query strings. Responses remain no-store/no-referrer.
+
+`collaboration_workspace_capabilities` is deliberately an **editable alias** path. Only explicitly allowed edit kinds may resolve there; slice #291 allows `classroom-student` only. Future Instructor observer credentials must use a separate read-only authorization path so they cannot inherit snapshot PUT/PATCH access.
 
 ## Student assignment
 
 The API, not the client, decides which workspace a student may join.
 
-Supported shapes:
+Slice #291 implements:
 
-- individual: one student -> one workspace;
-- group: multiple students -> one workspace.
+- individual: the first opaque participant UUID to claim an assignment binds that assignment; another participant UUID cannot claim it;
+- group: multiple participants can use the same assignment capability and receive distinct editable workspace capabilities for one shared collaboration workspace.
 
-A student flow may ask for a display name and, only where policy allows, an instructor-configured team selection. It must not obtain an unrestricted workspace list.
+The class join endpoint has no list operation. A Student receives workspace metadata only after the matching class-join and assignment capabilities authorize one workspace.
 
-Resume data on a device should contain only what is necessary to reconnect; it must not leak instructor or cross-workspace secrets into exported Intake JSON.
+Display name remains presentation metadata, not identity. This is still a capability system: deliberately sharing an already-issued workspace capability delegates that capability.
+
+Resume data on a device should contain only what is necessary to reconnect; it must not leak Instructor, assignment, or cross-workspace secrets into exported Intake JSON.
 
 ## Instructor observation
 
@@ -211,14 +218,14 @@ Target state:
 
 Continue the existing Neon/Vercel approach unless evidence justifies a platform migration.
 
-Expected domain additions may include:
+Slice #291 adds these domain tables:
 
-- classes;
-- class capabilities / capability hashes;
-- classroom workspace relationships;
-- student membership/assignment records;
-- coaching feedback;
-- case assignments/access metadata.
+- `collaboration_workspace_capabilities` for explicitly editable aliases into existing collaboration workspaces;
+- `classroom_classes` for class metadata, retention, Instructor capability hash, and Student-join capability hash;
+- `classroom_workspaces` for individual/group assignment metadata and assignment capability hashes;
+- `classroom_memberships` for participant-to-workspace membership and per-participant workspace capability hashes.
+
+Later slices may add coaching feedback and protected Case Study assignment/access metadata.
 
 Schema initialization/migration must be idempotent and documented. Avoid making browser boot depend on schema creation for Standalone.
 

@@ -11,6 +11,7 @@ export const PRESENCE_WINDOW_SECONDS = 30;
 export const IDLE_PRESENCE_WINDOW_SECONDS = 300;
 export const EDITING_FIELD_MAX_LENGTH = 120;
 export const ACTIVITY_STATES = Object.freeze(['active', 'focused', 'editing', 'idle']);
+export const WORKSPACE_EDIT_CAPABILITY_KINDS = Object.freeze(['classroom-student']);
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const PARTICIPANT_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DEFAULT_EXPIRY_DAYS = 30;
@@ -37,6 +38,19 @@ export function validateSnapshot(snapshot) {
 
 /** Validates a secret token shape. @param {unknown} token Candidate token. @returns {boolean} Whether valid. */
 export function validateToken(token) { return typeof token === 'string' && TOKEN_PATTERN.test(token); }
+
+/**
+ * Restrict aliases accepted by editable collaboration endpoints.
+ *
+ * Read-only observer capabilities must use a separate authorization path rather
+ * than inheriting snapshot update access from the legacy collaboration API.
+ *
+ * @param {unknown} value Candidate capability kind.
+ * @returns {boolean} Whether the kind grants edit-capable workspace access.
+ */
+export function isWorkspaceEditCapabilityKind(value) {
+  return typeof value === 'string' && WORKSPACE_EDIT_CAPABILITY_KINDS.includes(value);
+}
 
 /** Normalizes a human-entered collaboration label. @param {unknown} value Candidate label. @param {number} maximum Maximum length. @returns {string|null} Normalized label, an empty string, or null when invalid. */
 export function normalizeCollaborationName(value, maximum) {
@@ -100,6 +114,16 @@ async function initializeRepository() {
   await sql`ALTER TABLE collaboration_workspaces ADD COLUMN IF NOT EXISTS team_name VARCHAR(80)`;
   await sql`ALTER TABLE collaboration_workspaces ADD COLUMN IF NOT EXISTS next_participant_number INTEGER NOT NULL DEFAULT 1`;
   await sql`CREATE INDEX IF NOT EXISTS collaboration_workspaces_expires_at_idx ON collaboration_workspaces (expires_at)`;
+  await sql`CREATE TABLE IF NOT EXISTS collaboration_workspace_capabilities (
+    token_hash CHAR(64) PRIMARY KEY,
+    workspace_id BIGINT NOT NULL REFERENCES collaboration_workspaces(id) ON DELETE CASCADE,
+    capability_kind VARCHAR(32) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ
+  )`;
+  await sql`CREATE INDEX IF NOT EXISTS collaboration_workspace_capabilities_workspace_idx
+    ON collaboration_workspace_capabilities (workspace_id)`;
   await sql`CREATE TABLE IF NOT EXISTS collaboration_participants (
     workspace_id BIGINT NOT NULL REFERENCES collaboration_workspaces(id) ON DELETE CASCADE,
     participant_id UUID NOT NULL,
@@ -115,6 +139,26 @@ async function initializeRepository() {
   await sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS activity_state VARCHAR(16) NOT NULL DEFAULT 'active'`;
   await sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS activity_sequence BIGINT NOT NULL DEFAULT 0`;
   await sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
+
+  async function resolveWorkspaceId(tokenHash) {
+    const rows = await sql`SELECT w.id
+      FROM collaboration_workspaces w
+      WHERE w.expires_at > NOW()
+        AND (
+          w.token_hash = ${tokenHash}
+          OR EXISTS (
+            SELECT 1
+            FROM collaboration_workspace_capabilities c
+            WHERE c.workspace_id = w.id
+              AND c.token_hash = ${tokenHash}
+              AND c.revoked_at IS NULL
+              AND c.capability_kind = 'classroom-student'
+              AND (c.expires_at IS NULL OR c.expires_at > NOW())
+          )
+        )`;
+    return rows[0]?.id || null;
+  }
+
   return {
     async create(tokenHash, snapshot, expiryDays, teamName) {
       const rows = await sql`INSERT INTO collaboration_workspaces (token_hash, snapshot_json, expires_at, team_name)
@@ -122,26 +166,38 @@ async function initializeRepository() {
         RETURNING id, revision, expires_at, COALESCE(team_name, 'Shared intake') AS team_name`;
       return rows[0];
     },
+    async createUntil(tokenHash, snapshot, expiresAt, teamName) {
+      const rows = await sql`INSERT INTO collaboration_workspaces (token_hash, snapshot_json, expires_at, team_name)
+        VALUES (${tokenHash}, ${JSON.stringify(snapshot)}::jsonb, ${expiresAt}::timestamptz, ${teamName || null})
+        RETURNING id, revision, expires_at, COALESCE(team_name, 'Shared intake') AS team_name`;
+      return rows[0];
+    },
     async load(tokenHash) {
+      const workspaceId = await resolveWorkspaceId(tokenHash);
+      if (!workspaceId) return null;
       const rows = await sql`SELECT snapshot_json AS snapshot, revision, expires_at, COALESCE(team_name, 'Shared intake') AS team_name
-        FROM collaboration_workspaces WHERE token_hash = ${tokenHash} AND expires_at > NOW()`;
+        FROM collaboration_workspaces WHERE id = ${workspaceId} AND expires_at > NOW()`;
       return rows[0] || null;
     },
     async update(tokenHash, snapshot, revision) {
+      const workspaceId = await resolveWorkspaceId(tokenHash);
+      if (!workspaceId) return { status: 'missing' };
       const rows = await sql`UPDATE collaboration_workspaces
         SET snapshot_json = ${JSON.stringify(snapshot)}::jsonb, revision = revision + 1, updated_at = NOW()
-        WHERE token_hash = ${tokenHash} AND revision = ${revision} AND expires_at > NOW()
+        WHERE id = ${workspaceId} AND revision = ${revision} AND expires_at > NOW()
         RETURNING revision, expires_at`;
       if (rows[0]) return { status: 'updated', workspace: rows[0] };
-      const current = await sql`SELECT revision FROM collaboration_workspaces WHERE token_hash = ${tokenHash} AND expires_at > NOW()`;
+      const current = await sql`SELECT revision FROM collaboration_workspaces WHERE id = ${workspaceId} AND expires_at > NOW()`;
       return current[0] ? { status: 'conflict', revision: current[0].revision } : { status: 'missing' };
     },
     async upsertPresence(tokenHash, participantId, requestedName, activity = {}) {
+      const workspaceId = await resolveWorkspaceId(tokenHash);
+      if (!workspaceId) return null;
       const existing = await sql`SELECT w.id AS workspace_id, COALESCE(w.team_name, 'Shared intake') AS team_name,
           p.fallback_number
         FROM collaboration_workspaces w
         LEFT JOIN collaboration_participants p ON p.workspace_id = w.id AND p.participant_id = ${participantId}::uuid
-        WHERE w.token_hash = ${tokenHash} AND w.expires_at > NOW()`;
+        WHERE w.id = ${workspaceId} AND w.expires_at > NOW()`;
       if (!existing[0]) return null;
       let fallbackNumber = existing[0].fallback_number;
       if (!fallbackNumber) {
@@ -175,8 +231,10 @@ async function initializeRepository() {
       return { teamName: existing[0].team_name, self: { id: participantId, displayName }, participants };
     },
     async listPresence(tokenHash) {
+      const workspaceId = await resolveWorkspaceId(tokenHash);
+      if (!workspaceId) return null;
       const workspaces = await sql`SELECT id, COALESCE(team_name, 'Shared intake') AS team_name
-        FROM collaboration_workspaces WHERE token_hash = ${tokenHash} AND expires_at > NOW()`;
+        FROM collaboration_workspaces WHERE id = ${workspaceId} AND expires_at > NOW()`;
       if (!workspaces[0]) return null;
       const participants = await sql`SELECT participant_id AS id, display_name AS "displayName", last_seen_at AS "lastSeenAt",
           last_active_at AS "lastActiveAt", editing_field AS "editingField", editing_revision AS "editingRevision",
@@ -188,9 +246,11 @@ async function initializeRepository() {
       return { teamName: workspaces[0].team_name, participants };
     },
     async renameWorkspace(tokenHash, requestedTeamName) {
+      const workspaceId = await resolveWorkspaceId(tokenHash);
+      if (!workspaceId) return null;
       const workspaces = await sql`UPDATE collaboration_workspaces
         SET team_name = ${requestedTeamName || 'Shared intake'}, updated_at = NOW()
-        WHERE token_hash = ${tokenHash} AND expires_at > NOW()
+        WHERE id = ${workspaceId} AND expires_at > NOW()
         RETURNING id, COALESCE(team_name, 'Shared intake') AS team_name`;
       if (!workspaces[0]) return null;
       const participants = await sql`SELECT participant_id AS id, display_name AS "displayName", last_seen_at AS "lastSeenAt",
@@ -203,11 +263,31 @@ async function initializeRepository() {
       return { teamName: workspaces[0].team_name, participants };
     },
     async removePresence(tokenHash, participantId) {
-      const rows = await sql`DELETE FROM collaboration_participants p
-        USING collaboration_workspaces w
-        WHERE p.workspace_id = w.id AND w.token_hash = ${tokenHash}
-          AND p.participant_id = ${participantId}::uuid
-        RETURNING p.participant_id`;
+      const workspaceId = await resolveWorkspaceId(tokenHash);
+      if (!workspaceId) return false;
+      const rows = await sql`DELETE FROM collaboration_participants
+        WHERE workspace_id = ${workspaceId}
+          AND participant_id = ${participantId}::uuid
+        RETURNING participant_id`;
+      return rows.length > 0;
+    },
+    async createCapability(workspaceId, tokenHash, capabilityKind, expiresAt = null) {
+      if (!isWorkspaceEditCapabilityKind(capabilityKind)) {
+        return false;
+      }
+      const rows = await sql`INSERT INTO collaboration_workspace_capabilities
+        (token_hash, workspace_id, capability_kind, expires_at)
+        SELECT ${tokenHash}, id, ${capabilityKind}, ${expiresAt}
+        FROM collaboration_workspaces
+        WHERE id = ${workspaceId} AND expires_at > NOW()
+        RETURNING token_hash`;
+      return rows.length > 0;
+    },
+    async revokeCapability(tokenHash) {
+      const rows = await sql`UPDATE collaboration_workspace_capabilities
+        SET revoked_at = NOW()
+        WHERE token_hash = ${tokenHash} AND revoked_at IS NULL
+        RETURNING token_hash`;
       return rows.length > 0;
     }
   };

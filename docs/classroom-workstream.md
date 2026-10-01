@@ -6,7 +6,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-Resource semantics (#290 / PR #299) are complete and green. Class domain/API (#291 / PR #300) is active independently.
+Resource semantics (#290) and the class domain/API (#291) are complete. The next implementation slice is #292: Student class join, assignment, and resume.
 
 ## Program issues
 
@@ -15,7 +15,7 @@ Resource semantics (#290 / PR #299) are complete and green. Class domain/API (#2
 | Program | #288 | Open | #297 merged | Architecture/governance foundation is now on `main` |
 | Experience role | #289 | Complete | PR #298 / `feature/classroom-experience-roles` | Runtime/tests/docs complete; canonical CI, dependency review, template guard, and CodeQL green |
 | Templates / Case Studies | #290 | Complete | PR #299 / `feature/classroom-resource-split` | 171 tests: 170 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
-| Class domain/API | #291 | In progress | PR #300 / `feature/classroom-domain-api` | Independent sibling PR; server capability implementation under CI |
+| Class domain/API | #291 | Complete | PR #300 / `feature/classroom-domain-api` | Combined #290+#291 head: 183 tests, 182 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Student join/resume | #292 | Not started | — | Depends on #291 |
 | Instructor observer | #293 | Not started | — | Depends on class semantics |
 | Coaching | #294 | Not started | — | Depends on observer |
@@ -43,6 +43,8 @@ See `docs/classroom-architecture.md` for the full contract.
    - root `AGENTS.md`;
    - `docs/classroom-architecture.md`;
    - `docs/classroom-roadmap.md`;
+   - `docs/classroom-api.md` for server/class work;
+   - `api/AGENTS.md` for server/class work;
    - this file;
    - `docs/AI-ONBOARDING.md`;
    - `docs/REPOSITORY-OPERATIONS.md`.
@@ -54,26 +56,34 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297 and #298 are merged to `main`. PR #299 is ready to merge as completed #290 work. PR #300 is the active #291 server/domain sibling and must be refreshed against `main` after #299 lands.
+#297, #298, and #299 are merged to `main`. PR #300 contains the completed #291 server/domain slice and is ready to merge after this completion-ledger head passes the same repository gates.
 
 ## Last completed action
 
-Implemented the #290 role-aware resource policy/drawer and opened draft PR #299.
+Reconciled #300 with merged #299 and validated the combined product: 183 tests (182 pass, 0 fail, 1 intentional skip), with CI, CodeQL, Dependency Review, and Template Manifest Guard green.
 
 ## Next recommended action
 
-Merge green PR #299, then refresh PR #300 against the new `main` and reconcile the shared classroom roadmap/workstream docs before its final validation.
+Merge PR #300, close #291, update #288, then start #292 on a fresh `feature/classroom-student-experience` branch from current `main`. The Student client should consume `docs/classroom-api.md`, persist resume credentials outside Intake state, and reuse the existing collaboration engine.
 
-## Active #299 implementation
+## Active #300 implementation
 
-- `src/templateAvailability.js` is the policy bridge between experience role and existing `templateKind`.
-- Standalone normal UI renders Standard Templates only.
-- Student normal UI renders Templates + Case Studies; Case Study mode/password behavior is unchanged.
-- Instructor shell launches teaching-only Case Studies with no apply/save/mode/password controls.
-- The shared template registry and projection logic remain in `src/templates.js`; there is no duplicate resource registry.
-- Static placeholder Case Study markup was removed from `index.html`; resources are rendered by the role-aware controller.
-- Security boundary remains transitional: Case Study payloads are still present in the public manifest until #295.
-- Canonical CI completed with 171 tests (170 pass, 0 fail, 1 intentional skip); CodeQL, dependency review, and template-manifest guard are green.
+- Canonical server contract: `docs/classroom-api.md`.
+- Server rules: `api/AGENTS.md`.
+- Class/admin/join logic: `api/_classroom.js` and `api/classes/*`.
+- Additive Neon tables: `classroom_classes`, `classroom_workspaces`, `classroom_memberships`, plus `collaboration_workspace_capabilities`.
+- Student admission requires class-join + assignment capability; Student join has no list operation.
+- Instructor workspace listing is class-scoped.
+- Individual assignments bind the first participant UUID; group assignments permit multiple participants.
+- Successful Student join mints a per-participant `classroom-student` edit alias accepted by the existing collaboration session/presence engine.
+- Editable alias resolution is restricted to explicit edit kinds; future Instructor observer tokens must use a separate read-only server path.
+- Classroom workspaces inherit the class's absolute expiry.
+- Membership has a DB-level composite class/workspace foreign key.
+- Instructor/Student-join/assignment capabilities support rotation; class/assignment revocation is server-side.
+- `api/` now participates in the changed-runtime test coverage guard.
+- Authorization coverage lives in `tests/classroom-api.unit.test.mjs` with deterministic in-memory repositories.
+
+- Final combined #290 + #291 validation completed 183 tests (182 pass, 0 fail, 1 intentional skip); CI, CodeQL, Dependency Review, and Template Manifest Guard are green.
 
 ## Known risks / watch items
 
@@ -82,6 +92,8 @@ Merge green PR #299, then refresh PR #300 against the new `main` and reconcile t
 - There is deliberately no current workspace-list endpoint; student non-enumeration must remain a security property when instructor listing is added.
 - Classroom role/session state must not leak into `kt-intake-full-v2`.
 - Instructor read-only behavior must be server-enforced, not just disabled controls.
+- Class creation remains capability-first and does not yet require account/SSO identity; rate limiting/abuse controls are an operational follow-on if public exposure warrants them.
+- Feature-branch Vercel deployments are skipped, so the additive Neon migration cannot be smoke-tested against a preview database before merge.
 
 ## Handoff template
 

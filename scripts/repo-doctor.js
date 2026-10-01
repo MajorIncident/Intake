@@ -16,6 +16,7 @@ const requiredFiles = [
   'docs/architecture-overview.md',
   'docs/REPOSITORY-OPERATIONS.md',
   'docs/classroom-architecture.md',
+  'docs/classroom-api.md',
   'docs/classroom-roadmap.md',
   'docs/classroom-workstream.md',
   '.github/PULL_REQUEST_TEMPLATE.md',

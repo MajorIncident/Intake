@@ -12,11 +12,16 @@ Never commit, log, paste into issues, or include in test fixtures:
 
 - database connection strings or credentials;
 - raw collaboration workspace tokens or secret links;
+- Instructor class capabilities, Student join capabilities, assignment capabilities, or classroom workspace capabilities;
 - authorization headers;
 - production incident snapshots containing confidential data;
 - private participant identity data.
 
-The collaboration capability model treats possession of the full secret link as read/write authorization. Server code must store only token hashes and must not log tokens or snapshots.
+The collaboration capability model treats possession of the full secret link as read/write authorization. Classroom uses the same capability principle but separates privileges: Instructor class, Student join, assignment, and Student workspace capabilities are distinct secrets. Server code stores only token hashes and must not log raw capabilities or snapshots.
+
+A Student join capability alone must never enumerate class workspaces. Cross-class join/assignment combinations must fail without revealing which credential was valid. Instructor workspace listing is scoped to the represented class.
+
+`collaboration_workspace_capabilities` is an editable-alias path. Only explicitly allowed edit kinds may resolve through the existing collaboration PUT/PATCH handlers. Future read-only Instructor observer credentials must use a separate server authorization path; placing them in the editable alias table would be a privilege escalation. See `docs/classroom-api.md`.
 
 ## Supported code
 
