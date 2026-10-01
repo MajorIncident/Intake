@@ -191,11 +191,13 @@ Changing a target ID is a data migration.
 
 The existing `templateKind` distinction remains useful.
 
-Transitional state:
+Transitional state (#290):
 
-- Standard Template content may remain client-bundled.
-- Case Study content may initially remain bundled while role-based UI separation lands.
-- Documentation must explicitly state that this is visibility, not confidentiality.
+- Standard Template content remains client-bundled and is available in Standalone and Student.
+- Case Study content remains client-bundled, but `src/templateAvailability.js` makes normal UI availability role-aware: Standalone hides it, Student can apply it through the existing mode/password flow, and Instructor sees it as a teaching resource rather than starter content for an instructor Intake.
+- Instructor teaching resources deliberately have no apply action until class assignment exists.
+- The existing rotating Case Study password remains pedagogy only.
+- **This is visibility, not confidentiality.** A technically capable user can still inspect the current public bundle until #295 removes protected Case Study payloads from static assets.
 
 Target state:
 
