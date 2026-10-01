@@ -100,6 +100,16 @@ async function initializeRepository() {
   await sql`ALTER TABLE collaboration_workspaces ADD COLUMN IF NOT EXISTS team_name VARCHAR(80)`;
   await sql`ALTER TABLE collaboration_workspaces ADD COLUMN IF NOT EXISTS next_participant_number INTEGER NOT NULL DEFAULT 1`;
   await sql`CREATE INDEX IF NOT EXISTS collaboration_workspaces_expires_at_idx ON collaboration_workspaces (expires_at)`;
+  await sql`CREATE TABLE IF NOT EXISTS collaboration_workspace_capabilities (
+    token_hash CHAR(64) PRIMARY KEY,
+    workspace_id BIGINT NOT NULL REFERENCES collaboration_workspaces(id) ON DELETE CASCADE,
+    capability_kind VARCHAR(32) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ
+  )`;
+  await sql`CREATE INDEX IF NOT EXISTS collaboration_workspace_capabilities_workspace_idx
+    ON collaboration_workspace_capabilities (workspace_id)`;
   await sql`CREATE TABLE IF NOT EXISTS collaboration_participants (
     workspace_id BIGINT NOT NULL REFERENCES collaboration_workspaces(id) ON DELETE CASCADE,
     participant_id UUID NOT NULL,
@@ -115,6 +125,25 @@ async function initializeRepository() {
   await sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS activity_state VARCHAR(16) NOT NULL DEFAULT 'active'`;
   await sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS activity_sequence BIGINT NOT NULL DEFAULT 0`;
   await sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
+
+  async function resolveWorkspaceId(tokenHash) {
+    const rows = await sql`SELECT w.id
+      FROM collaboration_workspaces w
+      WHERE w.expires_at > NOW()
+        AND (
+          w.token_hash = ${tokenHash}
+          OR EXISTS (
+            SELECT 1
+            FROM collaboration_workspace_capabilities c
+            WHERE c.workspace_id = w.id
+              AND c.token_hash = ${tokenHash}
+              AND c.revoked_at IS NULL
+              AND (c.expires_at IS NULL OR c.expires_at > NOW())
+          )
+        )`;
+    return rows[0]?.id || null;
+  }
+
   return {
     async create(tokenHash, snapshot, expiryDays, teamName) {
       const rows = await sql`INSERT INTO collaboration_workspaces (token_hash, snapshot_json, expires_at, team_name)
@@ -123,25 +152,31 @@ async function initializeRepository() {
       return rows[0];
     },
     async load(tokenHash) {
+      const workspaceId = await resolveWorkspaceId(tokenHash);
+      if (!workspaceId) return null;
       const rows = await sql`SELECT snapshot_json AS snapshot, revision, expires_at, COALESCE(team_name, 'Shared intake') AS team_name
-        FROM collaboration_workspaces WHERE token_hash = ${tokenHash} AND expires_at > NOW()`;
+        FROM collaboration_workspaces WHERE id = ${workspaceId} AND expires_at > NOW()`;
       return rows[0] || null;
     },
     async update(tokenHash, snapshot, revision) {
+      const workspaceId = await resolveWorkspaceId(tokenHash);
+      if (!workspaceId) return { status: 'missing' };
       const rows = await sql`UPDATE collaboration_workspaces
         SET snapshot_json = ${JSON.stringify(snapshot)}::jsonb, revision = revision + 1, updated_at = NOW()
-        WHERE token_hash = ${tokenHash} AND revision = ${revision} AND expires_at > NOW()
+        WHERE id = ${workspaceId} AND revision = ${revision} AND expires_at > NOW()
         RETURNING revision, expires_at`;
       if (rows[0]) return { status: 'updated', workspace: rows[0] };
-      const current = await sql`SELECT revision FROM collaboration_workspaces WHERE token_hash = ${tokenHash} AND expires_at > NOW()`;
+      const current = await sql`SELECT revision FROM collaboration_workspaces WHERE id = ${workspaceId} AND expires_at > NOW()`;
       return current[0] ? { status: 'conflict', revision: current[0].revision } : { status: 'missing' };
     },
     async upsertPresence(tokenHash, participantId, requestedName, activity = {}) {
+      const workspaceId = await resolveWorkspaceId(tokenHash);
+      if (!workspaceId) return null;
       const existing = await sql`SELECT w.id AS workspace_id, COALESCE(w.team_name, 'Shared intake') AS team_name,
           p.fallback_number
         FROM collaboration_workspaces w
         LEFT JOIN collaboration_participants p ON p.workspace_id = w.id AND p.participant_id = ${participantId}::uuid
-        WHERE w.token_hash = ${tokenHash} AND w.expires_at > NOW()`;
+        WHERE w.id = ${workspaceId} AND w.expires_at > NOW()`;
       if (!existing[0]) return null;
       let fallbackNumber = existing[0].fallback_number;
       if (!fallbackNumber) {
@@ -175,8 +210,10 @@ async function initializeRepository() {
       return { teamName: existing[0].team_name, self: { id: participantId, displayName }, participants };
     },
     async listPresence(tokenHash) {
+      const workspaceId = await resolveWorkspaceId(tokenHash);
+      if (!workspaceId) return null;
       const workspaces = await sql`SELECT id, COALESCE(team_name, 'Shared intake') AS team_name
-        FROM collaboration_workspaces WHERE token_hash = ${tokenHash} AND expires_at > NOW()`;
+        FROM collaboration_workspaces WHERE id = ${workspaceId} AND expires_at > NOW()`;
       if (!workspaces[0]) return null;
       const participants = await sql`SELECT participant_id AS id, display_name AS "displayName", last_seen_at AS "lastSeenAt",
           last_active_at AS "lastActiveAt", editing_field AS "editingField", editing_revision AS "editingRevision",
@@ -188,9 +225,11 @@ async function initializeRepository() {
       return { teamName: workspaces[0].team_name, participants };
     },
     async renameWorkspace(tokenHash, requestedTeamName) {
+      const workspaceId = await resolveWorkspaceId(tokenHash);
+      if (!workspaceId) return null;
       const workspaces = await sql`UPDATE collaboration_workspaces
         SET team_name = ${requestedTeamName || 'Shared intake'}, updated_at = NOW()
-        WHERE token_hash = ${tokenHash} AND expires_at > NOW()
+        WHERE id = ${workspaceId} AND expires_at > NOW()
         RETURNING id, COALESCE(team_name, 'Shared intake') AS team_name`;
       if (!workspaces[0]) return null;
       const participants = await sql`SELECT participant_id AS id, display_name AS "displayName", last_seen_at AS "lastSeenAt",
@@ -203,11 +242,28 @@ async function initializeRepository() {
       return { teamName: workspaces[0].team_name, participants };
     },
     async removePresence(tokenHash, participantId) {
-      const rows = await sql`DELETE FROM collaboration_participants p
-        USING collaboration_workspaces w
-        WHERE p.workspace_id = w.id AND w.token_hash = ${tokenHash}
-          AND p.participant_id = ${participantId}::uuid
-        RETURNING p.participant_id`;
+      const workspaceId = await resolveWorkspaceId(tokenHash);
+      if (!workspaceId) return false;
+      const rows = await sql`DELETE FROM collaboration_participants
+        WHERE workspace_id = ${workspaceId}
+          AND participant_id = ${participantId}::uuid
+        RETURNING participant_id`;
+      return rows.length > 0;
+    },
+    async createCapability(workspaceId, tokenHash, capabilityKind, expiresAt = null) {
+      const rows = await sql`INSERT INTO collaboration_workspace_capabilities
+        (token_hash, workspace_id, capability_kind, expires_at)
+        SELECT ${tokenHash}, id, ${capabilityKind}, ${expiresAt}
+        FROM collaboration_workspaces
+        WHERE id = ${workspaceId} AND expires_at > NOW()
+        RETURNING token_hash`;
+      return rows.length > 0;
+    },
+    async revokeCapability(tokenHash) {
+      const rows = await sql`UPDATE collaboration_workspace_capabilities
+        SET revoked_at = NOW()
+        WHERE token_hash = ${tokenHash} AND revoked_at IS NULL
+        RETURNING token_hash`;
       return rows.length > 0;
     }
   };
