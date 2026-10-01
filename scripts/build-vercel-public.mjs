@@ -32,17 +32,23 @@ async function copyFile(relativePath) {
   await fs.copyFile(source, destination);
 }
 
-async function copyJavaScriptTree(directoryName) {
-  const sourceDirectory = new URL(`../${directoryName}/`, import.meta.url);
-  const destinationDirectory = new URL(`../dist/${directoryName}/`, import.meta.url);
+async function copyJavaScriptTree(directoryName, relativeDirectory = '') {
+  const sourceDirectory = new URL(
+    `../${directoryName}/${relativeDirectory ? `${relativeDirectory}/` : ''}`,
+    import.meta.url
+  );
+  const destinationDirectory = new URL(
+    `../dist/${directoryName}/${relativeDirectory ? `${relativeDirectory}/` : ''}`,
+    import.meta.url
+  );
   await fs.mkdir(destinationDirectory, { recursive: true });
 
   const entries = await fs.readdir(sourceDirectory, { withFileTypes: true });
   for (const entry of entries) {
     if (entry.isDirectory()) {
-      throw new Error(
-        `Unexpected nested directory in public runtime tree ${directoryName}/${entry.name}; update build-vercel-public.mjs explicitly.`
-      );
+      const child = relativeDirectory ? `${relativeDirectory}/${entry.name}` : entry.name;
+      await copyJavaScriptTree(directoryName, child);
+      continue;
     }
     if (!entry.isFile() || !entry.name.endsWith('.js')) continue;
     await fs.copyFile(
