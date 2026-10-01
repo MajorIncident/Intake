@@ -39,6 +39,19 @@ export function validateSnapshot(snapshot) {
 /** Validates a secret token shape. @param {unknown} token Candidate token. @returns {boolean} Whether valid. */
 export function validateToken(token) { return typeof token === 'string' && TOKEN_PATTERN.test(token); }
 
+/**
+ * Restrict aliases accepted by editable collaboration endpoints.
+ *
+ * Read-only observer capabilities must use a separate authorization path rather
+ * than inheriting snapshot update access from the legacy collaboration API.
+ *
+ * @param {unknown} value Candidate capability kind.
+ * @returns {boolean} Whether the kind grants edit-capable workspace access.
+ */
+export function isWorkspaceEditCapabilityKind(value) {
+  return typeof value === 'string' && WORKSPACE_EDIT_CAPABILITY_KINDS.includes(value);
+}
+
 /** Normalizes a human-entered collaboration label. @param {unknown} value Candidate label. @param {number} maximum Maximum length. @returns {string|null} Normalized label, an empty string, or null when invalid. */
 export function normalizeCollaborationName(value, maximum) {
   if (value === undefined || value === null) return '';
@@ -253,7 +266,7 @@ async function initializeRepository() {
       return rows.length > 0;
     },
     async createCapability(workspaceId, tokenHash, capabilityKind, expiresAt = null) {
-      if (!WORKSPACE_EDIT_CAPABILITY_KINDS.includes(capabilityKind)) {
+      if (!isWorkspaceEditCapabilityKind(capabilityKind)) {
         return false;
       }
       const rows = await sql`INSERT INTO collaboration_workspace_capabilities
