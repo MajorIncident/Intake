@@ -6,7 +6,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-Resource semantics (#290) and the class domain/API (#291) are complete. The next implementation slice is #292: Student class join, assignment, and resume.
+Student class join/resume (#292) is active in draft PR #302.
 
 ## Program issues
 
@@ -16,7 +16,7 @@ Resource semantics (#290) and the class domain/API (#291) are complete. The next
 | Experience role | #289 | Complete | PR #298 / `feature/classroom-experience-roles` | Runtime/tests/docs complete; canonical CI, dependency review, template guard, and CodeQL green |
 | Templates / Case Studies | #290 | Complete | PR #299 / `feature/classroom-resource-split` | 171 tests: 170 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Class domain/API | #291 | Complete | PR #300 / `feature/classroom-domain-api` | Combined #290+#291 head: 183 tests, 182 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
-| Student join/resume | #292 | Not started | — | Depends on #291 |
+| Student join/resume | #292 | In progress | PR #302 / `feature/classroom-student-experience` | Join/resume/recovery implementation and tests are on the branch; CI/docs validation in progress |
 | Instructor observer | #293 | Not started | — | Depends on class semantics |
 | Coaching | #294 | Not started | — | Depends on observer |
 | Protected cases | #295 | Not started | — | Requires #290 + #291 |
@@ -56,7 +56,7 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-No classroom implementation PR is currently active. #297, #298, #299, and #300 are merged to `main`.
+#297–#301 are merged to `main`. Draft PR #302 is the active Student client slice on `feature/classroom-student-experience`.
 
 ## Last completed action
 
@@ -64,7 +64,7 @@ Merged #300 / completed #291 after reconciling it with #299. Current `main` incl
 
 ## Next recommended action
 
-Start #292 on a fresh `feature/classroom-student-experience` branch from current `main`. The Student client should consume `docs/classroom-api.md`, persist resume credentials outside Intake state, and reuse the existing collaboration engine.
+Finish #302 validation and documentation. Do not start #293 until #302 lands; Instructor observation should then build on the established class/workspace/session context without reusing editable Student capabilities.
 
 ## Completed #300 implementation
 
@@ -84,6 +84,19 @@ Start #292 on a fresh `feature/classroom-student-experience` branch from current
 - Authorization coverage lives in `tests/classroom-api.unit.test.mjs` with deterministic in-memory repositories.
 
 - Final combined #290 + #291 validation completed 183 tests (182 pass, 0 fail, 1 intentional skip); CI, CodeQL, Dependency Review, and Template Manifest Guard are green.
+
+## Active #302 implementation
+
+- Student admission UI uses class join + assignment capabilities and display name; it never enumerates workspaces.
+- `src/classroomStudent.js` owns join, same-device resume, class context, role switching, terminal recovery, and Leave class.
+- `kt-classroom-student-session-v1` retains only the issued per-participant workspace capability plus public class/workspace/participant context.
+- Student join and assignment capabilities are discarded after successful admission.
+- `kt-classroom-student-local-recovery-v1` preserves the pre-class local Intake so Leave class / terminal revocation can restore it.
+- Classroom workspace capability is attached programmatically to `src/collaboration.js`; it never enters `?workspace=`.
+- Classroom mode disables direct link copying, legacy shared-session leave, and team rename controls.
+- Switching away from Student disconnects live class sync but keeps resume; switching back resumes.
+- Student Intake controls stay hidden until a class workspace is connected.
+- Automated coverage is in `tests/classroomStudent.unit.test.mjs`, `tests/classroomStudent.feature.test.mjs`, and collaboration regression tests.
 
 ## Known risks / watch items
 
