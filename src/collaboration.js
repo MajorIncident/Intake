@@ -169,6 +169,7 @@ export function createCollaborationController({
     if (element('leaveCollaborationBtn')) element('leaveCollaborationBtn').disabled = !token || !legacyLeaveEnabled;
     if (element('editCollaborationNameBtn')) element('editCollaborationNameBtn').disabled = !joinedPresence;
     if (element('editCollaborationTeamBtn')) element('editCollaborationTeamBtn').disabled = !joinedPresence || sessionKind === 'classroom';
+    if (element('editCollaborationTeamBannerBtn')) element('editCollaborationTeamBannerBtn').disabled = !joinedPresence || sessionKind === 'classroom';
     if (element('collaborationConflictActions')) element('collaborationConflictActions').hidden = !conflicted;
     renderStatus(token ? 'Synced' : 'Local only'); renderPresence({ stale: !online() });
   };
