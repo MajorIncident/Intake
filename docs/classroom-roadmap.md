@@ -83,7 +83,7 @@ Do not yet claim protected cases are secure.
 ## Slice 3 — Class domain and authorization
 
 **Issue:** #291  
-**Implementation:** PR #300 (final validation)
+**Implementation:** PR #300
 
 Branch: `feature/classroom-domain-api`
 
