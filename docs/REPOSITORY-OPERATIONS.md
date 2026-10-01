@@ -33,10 +33,13 @@ Case Study authoring source is intentionally present in Git but intentionally ab
 - `src/templates.manifest.js` is public and may contain Standard Templates only.
 - `api/protected-case-studies.manifest.js` is server-only generated content and may contain protected Case Study metadata/payloads.
 - Browser runtime files must never import or duplicate the server-only manifest.
-- Production Vercel builds run `npm run verify:protected-cases` rather than regenerating manifests, because the authored JSON files are intentionally excluded from the upload.
-- GitHub CI/local authoring remains responsible for `npm run build:templates` / `npm run check:templates` freshness.
+- `scripts/build-vercel-public.mjs` generates the **only** public static surface under `dist/`: `index.html`, `main.js`, `styles.css`, and browser JavaScript under `src/` and `components/`.
+- Vercel `outputDirectory` must remain `dist`. Serving `.` is prohibited because production previously exposed internal files such as `docs/classroom-workstream.md` and `scripts/build-templates-manifest.mjs`.
+- The public-bundle builder rejects internal Markdown/JSON/MJS/AGENTS files and scans all emitted text for protected Case Study IDs/names.
+- Production Vercel builds run `npm run verify:protected-cases && npm run build:vercel-public`; they do not regenerate manifests because authored template JSON is intentionally excluded from the upload.
+- GitHub CI/local authoring remains responsible for `npm run build:templates` / `npm run check:templates` freshness, and `npm run quality` also builds/verifies the same minimal `dist/` surface.
 
-Any change to `vercel.json`, `.vercelignore`, template generation, static output layout, or protected-resource routing must re-run `npm run verify:protected-cases` and include a deployed HTTP check that raw `/templates/*.json` Case Study paths are not served.
+Any change to `vercel.json`, `.vercelignore`, template generation, static output layout, or protected-resource routing must re-run `npm run quality` and include a deployed HTTP check that raw `/templates/*.json` Case Study paths and internal `/docs/*` / `/scripts/*` paths are not served.
 
 
 ### Vercel Git deployment policy
