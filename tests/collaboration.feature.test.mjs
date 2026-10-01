@@ -438,6 +438,8 @@ test('classroom attach reuses collaboration sync without exposing the workspace 
   assert.equal(env.dom.window.location.search, '?source=classroom', 'workspace capability never enters the URL');
   assert.equal(env.dom.window.document.getElementById('copyCollaborationLinkBtn').disabled, true);
   assert.equal(env.dom.window.document.getElementById('leaveCollaborationBtn').disabled, true);
+  assert.equal(env.dom.window.document.getElementById('editCollaborationTeamBtn').disabled, true);
+  assert.equal(env.dom.window.document.getElementById('editCollaborationTeamBannerBtn').disabled, true);
   assert.equal(await env.controller.copyLink(), false);
 });
 
