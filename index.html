@@ -279,6 +279,51 @@ Anchors present:
   </div>
   <!-- [feature:experience-role] end -->
 
+  <!-- [feature:student-class-entry] start -->
+  <main class="student-class-entry" id="studentClassEntryShell" data-experience-surface="student-entry" aria-labelledby="studentClassEntryTitle" data-persistence="local-only" data-summary="exclude" hidden>
+    <div class="student-class-entry__card">
+      <div class="student-class-entry__intro">
+        <span class="experience-shell__eyebrow">Student</span>
+        <h2 id="studentClassEntryTitle">Join your class workspace</h2>
+        <p>Enter the class and assignment codes your instructor gave you. Intake uses both codes only to resolve your assigned individual or team workspace; they are not stored after a successful join.</p>
+      </div>
+
+      <form class="student-class-form" id="studentClassJoinForm" autocomplete="off">
+        <div class="student-class-form__grid">
+          <div class="field">
+            <label for="studentDisplayName">Your name</label>
+            <input id="studentDisplayName" name="studentDisplayName" type="text" maxlength="60" autocomplete="name" placeholder="Alex" data-persistence="local-only" data-summary="exclude" />
+          </div>
+          <div class="field">
+            <label for="studentClassCode">Class code</label>
+            <input id="studentClassCode" name="studentClassCode" type="password" autocomplete="off" spellcheck="false" placeholder="Paste class code" data-persistence="local-only" data-summary="exclude" />
+          </div>
+          <div class="field">
+            <label for="studentAssignmentCode">Assignment code</label>
+            <input id="studentAssignmentCode" name="studentAssignmentCode" type="password" autocomplete="off" spellcheck="false" placeholder="Paste assignment code" data-persistence="local-only" data-summary="exclude" />
+          </div>
+        </div>
+        <p class="student-class-form__privacy">Your class codes are used for this join request and then discarded. Only the issued workspace capability is kept on this device for resume.</p>
+        <p class="student-class-form__error" id="studentClassJoinError" role="alert" aria-live="polite" hidden></p>
+        <div class="student-class-form__actions">
+          <button type="submit" class="btn" id="studentClassJoinSubmit" data-persistence="local-only" data-summary="exclude">Join class</button>
+          <button type="button" class="btn-secondary" data-open-experience-role-chooser data-persistence="local-only" data-summary="exclude">Change experience</button>
+        </div>
+      </form>
+
+      <section class="student-class-resume" id="studentClassResumePanel" aria-live="polite" hidden>
+        <span class="student-class-resume__eyebrow">Saved class</span>
+        <strong id="studentClassResumeTitle">Your class workspace</strong>
+        <p id="studentClassResumeMessage">Reconnecting to your saved class workspace…</p>
+        <div class="student-class-form__actions">
+          <button type="button" class="btn" id="studentClassRetryBtn" data-persistence="local-only" data-summary="exclude">Retry connection</button>
+          <button type="button" class="btn-secondary" data-open-experience-role-chooser data-persistence="local-only" data-summary="exclude">Change experience</button>
+        </div>
+      </section>
+    </div>
+  </main>
+  <!-- [feature:student-class-entry] end -->
+
   <!-- [feature:instructor-shell] start -->
   <main class="experience-shell instructor-shell" id="instructorExperienceShell" data-experience-surface="instructor-shell" aria-labelledby="instructorExperienceTitle" hidden>
     <div class="experience-shell__card">
@@ -301,12 +346,19 @@ Anchors present:
 
   <div class="wrap" data-experience-surface="intake">
     <!-- [feature:student-experience-notice] start -->
-    <section class="experience-role-notice" id="studentExperienceNotice" data-experience-surface="student-notice" aria-labelledby="studentExperienceNoticeTitle" hidden>
-      <div>
-        <span class="experience-role-notice__eyebrow">Student</span>
-        <strong id="studentExperienceNoticeTitle">Student experience is active</strong>
+    <section class="experience-role-notice student-class-context" id="studentExperienceNotice" data-experience-surface="student-notice" aria-labelledby="studentClassContextTitle" data-persistence="local-only" data-summary="exclude" hidden>
+      <div class="student-class-context__main">
+        <span class="experience-role-notice__eyebrow">Student class</span>
+        <strong id="studentClassContextTitle">Student class</strong>
+        <div class="student-class-context__meta">
+          <span><span class="student-class-context__label">Workspace</span><strong id="studentClassWorkspace">Assigned workspace</strong></span>
+          <span><span class="student-class-context__label">Format</span><strong id="studentClassWorkspaceKind">Team workspace</strong></span>
+          <span><span class="student-class-context__label">You</span><strong id="studentClassIdentity">Student</strong></span>
+          <span><span class="student-class-context__label">Instructor</span><strong>Instructor-managed</strong></span>
+        </div>
+        <small id="studentClassExpiry">Instructor-managed class</small>
       </div>
-      <p>Class joining is not connected in this foundation step yet. Until it is, this Intake remains local unless you deliberately start a normal shared session.</p>
+      <button type="button" class="btn-secondary" id="studentClassLeaveBtn" data-persistence="local-only" data-summary="exclude">Leave class</button>
     </section>
     <!-- [feature:student-experience-notice] end -->
     <!-- [feature:major-incident-role-legend] start -->
