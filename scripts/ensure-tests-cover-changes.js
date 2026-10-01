@@ -2,7 +2,7 @@
 /**
  * Guard script that verifies feature changes include matching test updates.
  *
- * When runtime code under `src/` or `components/` is modified without touching
+ * When runtime code under `src/`, `components/`, or `api/` is modified without touching
  * any test files beneath `tests/` (matching the `*.test.mjs` convention), this script will scaffold placeholders based
  * on `tests/template.feature.test.mjs` so contributors have a starting point.
  */
@@ -54,7 +54,9 @@ try {
 const changedFiles = diffOutput === '' ? [] : diffOutput.split('\n');
 
 const runtimeChanges = changedFiles.filter((filePath) => {
-  return filePath.startsWith('src/') || filePath.startsWith('components/');
+  return filePath.startsWith('src/')
+    || filePath.startsWith('components/')
+    || filePath.startsWith('api/');
 });
 
 if (runtimeChanges.length === 0) {
@@ -89,6 +91,7 @@ runtimeChanges.forEach((runtimePath) => {
   const fileName = runtimePath
     .replace(/^src\//, '')
     .replace(/^components\//, '')
+    .replace(/^api\//, 'api-')
     .replace(/\.[^.]+$/, '')
     .replace(/[\\/]+/g, '-');
   const targetPath = path.join(outputDir, `${fileName}.feature.test.mjs`);
