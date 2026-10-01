@@ -159,7 +159,12 @@ Continue #295 on `feature/classroom-protected-cases`. The confirmed leak is the 
   - existing mode projection/pedagogical unlock behavior is preserved after authorization;
   - static-bundle regression tests prove protected Case Study content is absent from public generated assets.
 - Delivery-safe parts: generator/runtime split → server authorization/API → Student/Instructor drawer integration → bundle guard/docs/final gates.
-- Exact next action: inspect drawer + authoring/build contracts, then implement the generator/public-runtime split as the first durable checkpoint.
+- Public/server manifest split checkpoint: `5d8ecb756de179276164d575cfc4ea1a03ef7115`; Template Manifest Guard green.
+- Authorized server API checkpoint: `5dfd2718a2fefc2357afb22a5a906cd3f045e970`.
+- Authorized client/lifecycle checkpoint: `83e278b87392c7be5eb8ba8ec4f19d84a0b94def`.
+- Drawer integration checkpoint: `35acd62d35a0826e8e350507a16c187ffceafbc1`.
+- Student/Instructor protected catalog is in-memory only; Case Study payload fetch uses authenticated POST after the pedagogical unlock; Standalone has no protected provider context.
+- Exact next action: inspect canonical gates on `35acd62...`, fix findings, then add final import/static-bundle guard + docs/security review.
 
 ## Known risks / watch items
 
