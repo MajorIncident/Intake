@@ -161,8 +161,9 @@ Anchors present:
             aria-haspopup="dialog"
             aria-controls="templatesDrawer"
             aria-expanded="false"
+            data-open-templates-drawer
           >
-            <span class="menu-item__label">Templates</span>
+            <span class="menu-item__label" data-template-resource-launcher-label>Templates</span>
             <span class="menu-shortcut">Alt+T</span>
           </button>
           <button class="menu-item menu-item--accent" id="genSummaryBtn" role="menuitem" onclick="onGenerateSummary()">
@@ -199,48 +200,13 @@ Anchors present:
           <div class="templates-drawer__body">
             <section class="templates-section">
               <div class="templates-section__header">
-                <h3>Quick start templates</h3>
-                <p>Select one to preview the fields it fills.</p>
+                <h3 id="templatesResourceHeading">Quick start templates</h3>
+                <p id="templatesResourceHelp">Select one to preview the fields it fills.</p>
               </div>
-              <div class="templates-groups" id="templatesList" aria-label="Template choices">
-                <section class="templates-group" role="group" aria-label="Templates">
-                  <header class="templates-group__header">
-                    <p class="templates-group__title">Templates</p>
-                    <p class="templates-group__subtitle">Standard prefills that apply instantly.</p>
-                  </header>
-                  <ul class="templates-list" role="listbox" aria-label="Templates">
-                    <li>
-                      <button type="button" class="templates-list__item" role="option" aria-selected="true">
-                        <span class="templates-list__name">Critical Incident Warmup</span>
-                        <span class="templates-list__meta">Full prefill for major events</span>
-                      </button>
-                    </li>
-                    <li>
-                      <button type="button" class="templates-list__item" role="option" aria-selected="false">
-                        <span class="templates-list__name">Rapid Recovery</span>
-                        <span class="templates-list__meta">Minimal notes for swarming</span>
-                      </button>
-                    </li>
-                  </ul>
-                </section>
-                <section class="templates-group" role="group" aria-label="Case Studies">
-                  <header class="templates-group__header">
-                    <p class="templates-group__title">Case Studies</p>
-                    <p class="templates-group__subtitle">Instructor-led walkthroughs that unlock with a password.</p>
-                  </header>
-                  <ul class="templates-list" role="listbox" aria-label="Case Studies">
-                    <li>
-                      <button type="button" class="templates-list__item" role="option" aria-selected="false">
-                        <span class="templates-list__name">Executive Update</span>
-                        <span class="templates-list__meta">Summaries tuned for senior comms</span>
-                      </button>
-                    </li>
-                  </ul>
-                </section>
-              </div>
+              <div class="templates-groups" id="templatesList" aria-label="Template and Case Study choices"></div>
               <p class="templates-type-hint" id="templatesTypeHint" aria-live="polite"></p>
             </section>
-            <section class="templates-section">
+            <section class="templates-section" id="templatesModeSection">
               <div class="templates-section__header">
                 <h3>Mode</h3>
                 <p>Decide how much detail to apply from the chosen template.</p>
@@ -252,14 +218,18 @@ Anchors present:
                 <button type="button" class="templates-mode" data-mode="executive" aria-pressed="false">Executive</button>
               </div>
             </section>
-            <section class="templates-section templates-auth">
+            <section class="templates-section templates-auth" id="templatesAuthSection">
               <label for="templatesPassword">Confirm with template password</label>
               <input type="password" id="templatesPassword" placeholder="Enter template password" autocomplete="off" />
               <small>Case study templates need this password before you can apply or save notes.</small>
             </section>
+            <section class="templates-teaching-notice" id="templatesTeachingNotice" aria-live="polite" hidden>
+              <strong>Teaching resource</strong>
+              <p>Case Studies are available for review here. Class assignment controls will connect when the classroom workspace layer is added.</p>
+            </section>
           </div>
-          <footer class="templates-drawer__footer">
-            <button type="button" class="btn templates-apply-btn" id="templatesApplyBtn">Apply template</button>
+          <footer class="templates-drawer__footer" id="templatesDrawerFooter">
+            <button type="button" class="btn templates-apply-btn" id="templatesApplyBtn" data-persistence="local-only" data-summary="exclude">Apply resource</button>
           </footer>
         </div>
       </aside>
@@ -319,7 +289,12 @@ Anchors present:
         <strong>No class connected yet</strong>
         <span>Your existing Intake data is still available when you switch back to Standalone or Student.</span>
       </div>
-      <button type="button" class="btn-secondary" data-open-experience-role-chooser data-persistence="local-only" data-summary="exclude">Change experience</button>
+      <div class="experience-shell__actions">
+        <button type="button" class="btn-primary" id="instructorTeachingResourcesBtn" data-open-templates-drawer aria-haspopup="dialog" aria-controls="templatesDrawer" aria-expanded="false" data-persistence="local-only" data-summary="exclude">
+          <span data-template-resource-launcher-label>Teaching Case Studies</span>
+        </button>
+        <button type="button" class="btn-secondary" data-open-experience-role-chooser data-persistence="local-only" data-summary="exclude">Change experience</button>
+      </div>
     </div>
   </main>
   <!-- [feature:instructor-shell] end -->

@@ -6,7 +6,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-Experience-role foundation (#289) complete. Next program work can split into #290 and #291.
+Resource semantics (#290 / PR #299) are complete and green. Class domain/API (#291 / PR #300) is active independently.
 
 ## Program issues
 
@@ -14,8 +14,8 @@ Experience-role foundation (#289) complete. Next program work can split into #29
 | --- | --- | --- | --- | --- |
 | Program | #288 | Open | #297 merged | Architecture/governance foundation is now on `main` |
 | Experience role | #289 | Complete | PR #298 / `feature/classroom-experience-roles` | Runtime/tests/docs complete; canonical CI, dependency review, template guard, and CodeQL green |
-| Templates / Case Studies | #290 | Not started | — | Can stack on #289 |
-| Class domain/API | #291 | Not started | — | Can branch from #289 in parallel with #290 |
+| Templates / Case Studies | #290 | Complete | PR #299 / `feature/classroom-resource-split` | 171 tests: 170 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
+| Class domain/API | #291 | In progress | PR #300 / `feature/classroom-domain-api` | Independent sibling PR; server capability implementation under CI |
 | Student join/resume | #292 | Not started | — | Depends on #291 |
 | Instructor observer | #293 | Not started | — | Depends on class semantics |
 | Coaching | #294 | Not started | — | Depends on observer |
@@ -54,31 +54,26 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297 is merged to `main`. #298 contains the completed #289 implementation and is ready to squash-merge to `main`.
+#297 and #298 are merged to `main`. PR #299 is ready to merge as completed #290 work. PR #300 is the active #291 server/domain sibling and must be refreshed against `main` after #299 lands.
 
 ## Last completed action
 
-Implemented the #289 experience-role foundation on top of #297 and opened draft PR #298.
+Implemented the #290 role-aware resource policy/drawer and opened draft PR #299.
 
 ## Next recommended action
 
-Start #290 (resource split) and #291 (class domain/API) as separate short-lived branches from current `main`; they may proceed in parallel. Vercel's Git integration currently skips feature-branch deployments, so #296 must establish a deterministic browser-test target rather than assuming an auto-preview URL.
+Merge green PR #299, then refresh PR #300 against the new `main` and reconcile the shared classroom roadmap/workstream docs before its final validation.
 
-## Active #298 implementation
+## Active #299 implementation
 
-- Canonical role IDs/config: `src/experienceRoles.js`.
-- Role controller / preference: `src/experienceRoleController.js`, key `kt-experience-role-v1`.
-- New browser: required role chooser.
-- Existing Intake or `?workspace=` link without preference: silent Standalone migration.
-- Standalone: normal Intake.
-- Student: normal Intake + transitional Student notice; no class admission yet.
-- Instructor: non-editing placeholder shell; no class data or authorization yet.
-- **View → Experience** safely switches roles without clearing Intake.
-- Experience role is excluded from SerializedAppState, file/template/summary flows, and Start Fresh clearing.
-- Menubar keyboard navigation skips hidden role-controlled controls.
-- Legacy `?workspace=` collaboration links explicitly override a stored Student/Instructor preference and enter Standalone, preventing hidden background collaboration.
-- Summary/persistence guards now distinguish presentation-only `data-experience-surface` containers from new data-bearing controls while retaining enforcement for actual form controls.
-- Canonical CI passed with 166 tests (165 pass, 0 fail, 1 intentional skip); dependency review, template-manifest guard, and CodeQL are green. Browser preview was unavailable because Vercel intentionally skipped the feature-branch deployment.
+- `src/templateAvailability.js` is the policy bridge between experience role and existing `templateKind`.
+- Standalone normal UI renders Standard Templates only.
+- Student normal UI renders Templates + Case Studies; Case Study mode/password behavior is unchanged.
+- Instructor shell launches teaching-only Case Studies with no apply/save/mode/password controls.
+- The shared template registry and projection logic remain in `src/templates.js`; there is no duplicate resource registry.
+- Static placeholder Case Study markup was removed from `index.html`; resources are rendered by the role-aware controller.
+- Security boundary remains transitional: Case Study payloads are still present in the public manifest until #295.
+- Canonical CI completed with 171 tests (170 pass, 0 fail, 1 intentional skip); CodeQL, dependency review, and template-manifest guard are green.
 
 ## Known risks / watch items
 

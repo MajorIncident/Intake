@@ -66,9 +66,9 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 
 Experience role is a product-level choice, not an Intake workflow mode. General / IT / Pharma / Major Incident remain controlled by `meta.intakeMode`; Standalone / Student / Instructor are controlled separately by `src/experienceRoles.js` and `src/experienceRoleController.js`.
 
-- **Standalone** exposes the normal Intake and current collaboration behavior.
-- **Student** currently exposes the normal Intake plus an explicit Student context notice; class admission/workspace assignment arrives in the later classroom slices.
-- **Instructor** currently exposes a non-editing Instructor shell while class/roster/observer capability is built. Choosing Instructor at this stage is a local UI preference, **not authentication or authorization**.
+- **Standalone** exposes the normal Intake and current collaboration behavior. Its resource drawer contains **Templates only**.
+- **Student** exposes the normal Intake plus an explicit Student context notice and can use both **Templates** and **Case Studies**. Case Studies retain the existing mode projection and rotating instructor password.
+- **Instructor** exposes a non-editing Instructor shell plus **Teaching Case Studies**. Instructors can review the Case Study catalog, but this slice deliberately does not apply those cases into an instructor Intake; class assignment arrives with the classroom layer. Choosing Instructor at this stage is a local UI preference, **not authentication or authorization**.
 - Use **View → Experience** to switch roles without changing or deleting Intake data.
 
 ## Notes workspace
@@ -143,7 +143,9 @@ Need to know which module owns a given storage field? Jump to the [Storage-to-Mo
 - Keep the UI accessible: reuse layout classes, maintain contrast, and follow the Apple-like spacing guidance in `AGENTS.md`.
 
 ### Template manifest workflow
-- Curated starter templates now live as JSON snapshots under `templates/` (one file per template). Each file lists metadata (`id`, `name`, `description`, `templateKind`, `supportedModes`) plus a `SerializedAppState` payload.
+- Curated resources live as JSON snapshots under `templates/` (one file per resource). Each file lists metadata (`id`, `name`, `description`, `templateKind`, `supportedModes`) plus a `SerializedAppState` payload.
+- `templateKind: standard` means a reusable **Template**; `templateKind: case-study` means a **Case Study**. `src/templateAvailability.js` projects those existing records by experience role without duplicating the registry: Standalone = Templates, Student = Templates + Case Studies, Instructor = teaching-only Case Studies.
+- **Transitional security boundary:** Case Study payloads are still compiled into the public client manifest in this slice. Hiding them from Standalone is normal-UI visibility, **not confidentiality**. #295 moves protected Case Study metadata/payloads behind authorized server delivery.
 - Run `npm run build:templates` after editing or adding template JSON. The script validates each snapshot and regenerates `src/templates.manifest.js`.
 - `npm run dev` and `npm run build` automatically invoke the generator, so the manifest always stays in sync during local development.
 
