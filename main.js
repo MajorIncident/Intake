@@ -204,7 +204,8 @@ function boot() {
   initCommsDrawer();
   classroomCaseStudiesController = initClassroomCaseStudies({ windowRef: window });
   instructorExerciseConsoleController = initInstructorExerciseConsole({
-    documentRef: document
+    documentRef: document,
+    onSelectWorkspace: workspaceId => instructorClassroomController?.selectWorkspace?.(workspaceId)
   });
   initTemplatesDrawer({ protectedCaseStudies: classroomCaseStudiesController });
   initNotesWorkspace({ onSave: saveAppState, showToast });
