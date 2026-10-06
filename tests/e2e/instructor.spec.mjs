@@ -68,6 +68,14 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.locator('[data-participant-id="99999999-9999-4999-8999-999999999999"]')).toContainText('Waiting Student');
   await expect(page.getByLabel('Assignment for Waiting Student')).toHaveValue('');
 
+  await expect(page.locator('#instructorExerciseConsole')).toBeVisible();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('1 staged Case Study available');
+  await page.getByLabel('Staged Case Study').selectOption('browser-staged-simulation');
+  await page.getByRole('button', { name: 'Create draft' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Draft · draft created');
+  await expect(page.locator('#instructorExerciseCaseName')).toHaveText('Browser Staged Simulation');
+  await expect(page.locator('#instructorExerciseCreateBtn')).toBeDisabled();
+
   const storedAfterStart = await page.evaluate(key => window.localStorage.getItem(key), INSTRUCTOR_SESSION_STORAGE_KEY);
   expect(storedAfterStart).toContain('K7FM-P4Q2');
   expect(storedAfterStart).not.toContain('studentJoinToken');
@@ -90,6 +98,7 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
 
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes')).toBe(true);
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes/workspaces')).toBe(true);
+  expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes/exercise')).toBe(true);
   expect(classroomRequests.some(request => request.method === 'PATCH' && request.pathname === '/api/classes/participants')).toBe(true);
   expect(classroomRequests.some(request => request.pathname === '/api/classes/join')).toBe(false);
   expect(classroomRequests.some(request => request.body.includes('assignmentToken'))).toBe(false);
@@ -103,6 +112,10 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.locator('#instructorJoinCode')).toHaveText('K7FM-P4Q2');
   await expect(page.locator('#instructorParticipantSummary')).toHaveText('1 student · 0 waiting');
   await expect(page.getByLabel('Assignment for Waiting Student')).not.toHaveValue('');
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Draft');
+  await expect(page.locator('#instructorExerciseCaseName')).toHaveText('Browser Staged Simulation');
+  await expect(page.getByLabel('Staged Case Study')).toHaveValue('browser-staged-simulation');
+  await expect(page.locator('#instructorExerciseCreateBtn')).toBeDisabled();
 
   await expectNoBlockingA11yViolations(page);
   expect(pageErrors).toEqual([]);
