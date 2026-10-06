@@ -87,6 +87,51 @@ test('Standalone resource drawer exposes public Templates only and remains acces
 });
 
 
+test('Standalone file export/import round trip restores Intake data and workflow mode', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop File menu journey; mobile primary interaction is covered separately.');
+  const pageErrors = watchPageErrors(page);
+  await startFresh(page);
+  await enterStandalone(page);
+
+  const exportedProblem = 'Payment authorization latency increased after a routing change.';
+  await page.locator('#oneLine').fill(exportedProblem);
+  await page.locator('#oneLine').blur();
+
+  await page.locator('#intakeModeSelect').selectOption('majorIncident');
+  await expect(page.locator('body')).toHaveAttribute('data-intake-mode', 'majorIncident');
+  await expect(page.locator('#commsBtn')).toBeVisible();
+  await expect(page.locator('#stepsBtn')).toBeVisible();
+
+  await page.getByRole('button', { name: 'File' }).click();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('menuitem', { name: 'Save to File' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^kt-intake-.*\.json$/);
+  const exportedPath = await download.path();
+  expect(exportedPath).toBeTruthy();
+
+  await page.locator('#oneLine').fill('This mutation should disappear after import.');
+  await page.locator('#oneLine').blur();
+  await page.locator('#intakeModeSelect').selectOption('general');
+  await expect(page.locator('body')).toHaveAttribute('data-intake-mode', 'general');
+  await expect(page.locator('#commsBtn')).toBeHidden();
+  await expect(page.locator('#stepsBtn')).toBeHidden();
+
+  await page.getByRole('button', { name: 'File' }).click();
+  const chooserPromise = page.waitForEvent('filechooser');
+  await page.getByRole('menuitem', { name: 'Load from File' }).click();
+  const chooser = await chooserPromise;
+  await chooser.setFiles(exportedPath);
+
+  await expect(page.locator('#oneLine')).toHaveValue(exportedProblem);
+  await expect(page.locator('#intakeModeSelect')).toHaveValue('majorIncident');
+  await expect(page.locator('body')).toHaveAttribute('data-intake-mode', 'majorIncident');
+  await expect(page.locator('#commsBtn')).toBeVisible();
+  await expect(page.locator('#stepsBtn')).toBeVisible();
+
+  expect(pageErrors).toEqual([]);
+});
+
 test('mobile Standalone accepts primary Intake input and persists it', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-mobile', 'Mobile-only primary interaction smoke.');
   const pageErrors = watchPageErrors(page);
