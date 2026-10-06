@@ -345,6 +345,19 @@ async function initializeClassroomRepository() {
     expires_at TIMESTAMPTZ NOT NULL,
     UNIQUE (class_id, id)
   )`;
+  await sql`ALTER TABLE classroom_exercises
+    ADD COLUMN IF NOT EXISTS simulation_version INTEGER`;
+  await sql`ALTER TABLE classroom_exercises
+    ADD COLUMN IF NOT EXISTS simulation_fingerprint CHAR(64)`;
+  await sql`UPDATE classroom_exercises
+    SET simulation_version = COALESCE(simulation_version, 1),
+        simulation_fingerprint = COALESCE(simulation_fingerprint, repeat('0', 64))
+    WHERE simulation_version IS NULL OR simulation_fingerprint IS NULL`;
+  await sql`ALTER TABLE classroom_exercises
+    ALTER COLUMN simulation_version SET NOT NULL`;
+  await sql`ALTER TABLE classroom_exercises
+    ALTER COLUMN simulation_fingerprint SET NOT NULL`;
+
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS classroom_exercises_one_open_per_class_idx
     ON classroom_exercises (class_id)
     WHERE status <> 'completed'`;
