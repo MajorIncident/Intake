@@ -27,6 +27,7 @@ const INSTRUCTOR_WORKSPACE_IDS = Object.freeze({
   GROUP: '22222222-2222-4222-8222-222222222222'
 });
 const classroomWorkspaces = new Map();
+const classroomCoachingFeedback = new Map();
 
 const CONTENT_TYPES = Object.freeze({
   '.css': 'text/css; charset=utf-8',
@@ -169,6 +170,12 @@ function sendJson(response, status, body) {
   response.end(status === 204 ? undefined : JSON.stringify(body));
 }
 
+function instructorWorkspaceIdForToken(workspaceToken) {
+  return workspaceToken.endsWith('m')
+    ? INSTRUCTOR_WORKSPACE_IDS.GROUP
+    : INSTRUCTOR_WORKSPACE_IDS.INDIVIDUAL;
+}
+
 function classroomContext(workspaceToken) {
   const suffix = workspaceToken.slice(-8);
   return {
@@ -178,8 +185,8 @@ function classroomContext(workspaceToken) {
       expiresAt: CLASSROOM_EXPIRY
     },
     workspace: {
-      id: `workspace-${suffix}`,
-      kind: 'individual',
+      id: instructorWorkspaceIdForToken(workspaceToken),
+      kind: workspaceToken.endsWith('m') ? 'group' : 'individual',
       label: 'Browser Test Workspace',
       expiresAt: CLASSROOM_EXPIRY
     }
@@ -217,6 +224,86 @@ async function handleClassroomApi(request, response, url) {
       return true;
     }
     sendJson(response, 200, observation);
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/coaching') {
+    const instructorToken = bearerToken(request);
+    if (!validCapability(instructorToken)) {
+      sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
+      return true;
+    }
+    const workspaceId = url.searchParams.get('workspaceId') || '';
+    if (!Object.values(INSTRUCTOR_WORKSPACE_IDS).includes(workspaceId)) {
+      sendJson(response, 404, { error: 'Workspace not found.' });
+      return true;
+    }
+    const workspaceFeedback = classroomCoachingFeedback.get(workspaceId) || new Map();
+
+    if (request.method === 'GET') {
+      sendJson(response, 200, {
+        class: instructorClass(),
+        workspace: instructorRoster().workspaces.find(item => item.id === workspaceId),
+        feedback: [...workspaceFeedback.values()]
+      });
+      return true;
+    }
+
+    if (request.method === 'PUT') {
+      const body = await readJson(request).catch(() => null);
+      if (!body || typeof body.targetId !== 'string' || !['meets-standard', 'needs-improvement'].includes(body.status)) {
+        sendJson(response, 400, { error: 'Invalid coaching feedback.' });
+        return true;
+      }
+      const previous = workspaceFeedback.get(body.targetId);
+      const record = {
+        targetId: body.targetId,
+        status: body.status,
+        note: typeof body.note === 'string' ? body.note : '',
+        reviewedWorkspaceRevision: Number.isInteger(body.reviewedWorkspaceRevision)
+          ? body.reviewedWorkspaceRevision
+          : 1,
+        reviewedFieldFingerprint: typeof body.reviewedFieldFingerprint === 'string'
+          ? body.reviewedFieldFingerprint
+          : '',
+        feedbackRevision: (previous?.feedbackRevision || 0) + 1,
+        createdAt: previous?.createdAt || '2099-12-31T22:00:00.000Z',
+        updatedAt: '2099-12-31T22:30:00.000Z'
+      };
+      workspaceFeedback.set(record.targetId, record);
+      classroomCoachingFeedback.set(workspaceId, workspaceFeedback);
+      sendJson(response, 200, { feedback: record });
+      return true;
+    }
+
+    if (request.method === 'DELETE') {
+      const body = await readJson(request).catch(() => ({}));
+      const cleared = typeof body?.targetId === 'string' && workspaceFeedback.delete(body.targetId);
+      classroomCoachingFeedback.set(workspaceId, workspaceFeedback);
+      sendJson(response, 200, { cleared });
+      return true;
+    }
+
+    sendJson(response, 405, { error: 'Method not allowed.' });
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/coaching/student') {
+    if (request.method !== 'GET') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const workspaceToken = bearerToken(request);
+    if (!getWorkspace(workspaceToken)) {
+      sendJson(response, 404, { error: 'Class feedback not found.' });
+      return true;
+    }
+    const context = classroomContext(workspaceToken);
+    const workspaceFeedback = classroomCoachingFeedback.get(context.workspace.id) || new Map();
+    sendJson(response, 200, {
+      ...context,
+      feedback: [...workspaceFeedback.values()]
+    });
     return true;
   }
 
@@ -358,17 +445,6 @@ async function handleClassroomApi(request, response, url) {
       self: requestBody,
       participants
     });
-    return true;
-  }
-
-  if (url.pathname === '/api/classes/coaching/student' && request.method === 'GET') {
-    const workspaceToken = bearerToken(request);
-    if (!getWorkspace(workspaceToken)) {
-      sendJson(response, 404, { error: 'Class feedback not found.' });
-      return true;
-    }
-    const context = classroomContext(workspaceToken);
-    sendJson(response, 200, { ...context, feedback: [] });
     return true;
   }
 
