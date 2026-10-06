@@ -272,7 +272,19 @@ Continue #295 on draft PR #307 from the current branch head.
   - verifies the issued workspace capability is retained for same-device resume;
   - edits the shared Intake, waits for a real collaboration PUT, reloads, reconnects, and verifies the shared edit returns from the fixture workspace;
   - includes serious/critical axe scan and uncaught-page-error assertion after resumed Student state.
-- Exact next action: inspect CI + Browser E2E for the Student fixture/journey. Do not add Instructor fixture work until Student join/resume is green on both browser projects.
+- Student stabilization after the #307 merge/restack:
+  - #307 merged to `main` as `09f034f1f1776a3aaf92be7dec86b902549c8eb9`; production deployment `dpl_C7cwWcBSHRjaDwvZtc8VpYbdzFKf` reached READY and #295/#304 were closed with production evidence.
+  - PR #308 was restacked onto merged `main` without force rewriting via sync commit `224dfcad016935417f88607ad2cd1b1b7ed2a013`.
+  - `1cff933dcab9536e92dfd86ed65a5aa9a136aa7f` removes an ambiguous Student display-name selector.
+  - `fba3841480b21a04b8b37b9d757b9d8240d631fe` fixes the real Student-admission layout bug where the floating Notes Intake surface intercepted the Join class button.
+  - axe-driven product repairs then fixed footer/resource/action/presence contrast and made the closed Templates dialog inert; regression coverage protects the inert lifecycle.
+  - Student gate on `b39c1c16b6e9cded47e0f1db32b697614030a222`: Browser E2E, CI, CodeQL, Dependency Review, and Template Manifest Guard all green on desktop/mobile.
+- Instructor observer checkpoint:
+  - `a38bd5e312684be36f414e07696a87a21d65688c` adds deterministic Instructor roster and observation fixtures with two stable workspaces.
+  - `f70aa734e24fd2b3d97f25b6a298c2106cad3ce5` adds the real-browser Instructor journey: class open, roster, workspace switch, read-only projection, persisted class resume, no Student join or editable collaboration endpoint traffic, axe, and uncaught-page-error protection.
+  - the first browser run exposed invalid `aria-readonly` on the generic Intake wrapper; `ce4738be9fcf37c723387fe94d112b7f0d27cf87` removes that invalid container ARIA while preserving read-only/disabled control semantics, with regression coverage in `845f0059a3a2ea9a3dd75d5143b61069f9c4909d`.
+  - Instructor gate on `845f0059a3a2ea9a3dd75d5143b61069f9c4909d`: Browser E2E, CI, CodeQL, Dependency Review, and Template Manifest Guard all green on desktop/mobile.
+- Exact next action: extend the deterministic fixture and Playwright layer through the earliest remaining critical journey: Instructor coaching feedback round trip plus Student edit-after-review. After that, add protected Case Study authorized/unauthorized browser journeys, then invalid/expired/revoked credentials and unauthorized enumeration before the final required-vs-advisory CI decision.
 
 ## Known risks / watch items
 
