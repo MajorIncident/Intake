@@ -170,10 +170,8 @@ function studentExercisePayload(context, caseStudy) {
       status: context.exercise.status,
       stagePhase: context.exercise.stagePhase,
       exerciseRevision: context.exercise.exerciseRevision,
-      // Tranche 4 has not yet installed the collaboration PUT lock. Do not
-      // represent the persisted policy bit as enforced authority.
-      studentEditingEnabled: true,
-      editFreezeEnforced: false,
+      studentEditingEnabled: context.exercise.studentEditingEnabled !== false,
+      editFreezeEnforced: true,
       currentStage: stage
         ? {
             id: stage.id,
@@ -216,7 +214,7 @@ async function instructorExercisePayload(repository, instructorHash, classroom, 
     releases: releases?.releases || [],
     workspaceState: workspaceState?.workspaceState || [],
     checkpoints: checkpoints?.checkpoints || [],
-    editFreezeEnforced: false
+    editFreezeEnforced: true
   };
 }
 
@@ -396,7 +394,25 @@ export function classExerciseHandler({
           exercisePublicId: current.exercise.id,
           expectedRevision,
           stageId: stage.id,
-          workspaceRepository
+          workspaceRepository,
+          studentEditingEnabled: stage.defaultDebriefEditPolicy !== 'frozen'
+        });
+      } else if (action === 'set-editing') {
+        if (
+          current.exercise.status !== 'active'
+          || current.exercise.stagePhase !== 'debrief'
+          || !stage
+          || typeof req.body?.enabled !== 'boolean'
+        ) {
+          return send(res, 400, { error: 'Invalid debrief editing policy.' });
+        }
+        result = await repository.updateExerciseLifecycle(instructorHash, {
+          exercisePublicId: current.exercise.id,
+          expectedRevision,
+          status: current.exercise.status,
+          currentStageId: current.exercise.currentStageId,
+          stagePhase: current.exercise.stagePhase,
+          studentEditingEnabled: req.body.enabled
         });
       } else if (action === 'advance') {
         if (current.exercise.status !== 'active' || current.exercise.stagePhase !== 'debrief' || !stage) {
