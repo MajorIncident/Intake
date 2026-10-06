@@ -52,7 +52,7 @@ test('Student joins an assigned workspace, discards admission codes, and resumes
   await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'student');
   await expect(page.locator('#studentClassEntryShell')).toBeVisible();
 
-  await page.getByLabel('Your name').fill(displayName);
+  await page.locator('#studentDisplayName').fill(displayName);
   await page.getByLabel('Class code').fill(classCode);
   await page.getByLabel('Assignment code').fill(assignmentCode);
   await page.getByRole('button', { name: 'Join class' }).click();
