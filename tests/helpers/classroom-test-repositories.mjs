@@ -129,6 +129,14 @@ export function createWorkspaceRepository() {
         participants: next
       };
     },
+    async removePresenceByWorkspaceId(workspaceId, participantId) {
+      const workspace = workspaces.get(Number(workspaceId)) || workspaces.get(workspaceId);
+      if (!workspace) return false;
+      const participants = presenceByWorkspace.get(workspace.id) || [];
+      const next = participants.filter(item => item.id !== participantId);
+      presenceByWorkspace.set(workspace.id, next);
+      return next.length !== participants.length;
+    },
     async observeById(workspaceId) {
       const workspace = workspaces.get(Number(workspaceId)) || workspaces.get(workspaceId);
       if (!workspace) return null;
