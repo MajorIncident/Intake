@@ -312,6 +312,68 @@ export function createInstructorClassroomController({
     }
   };
 
+  const renderParticipants = () => {
+    const list = element('instructorParticipantList');
+    if (!list) return;
+    list.replaceChildren();
+
+    if (element('instructorParticipantSummary')) {
+      const waiting = participants.filter(participant => !participant.assignment).length;
+      element('instructorParticipantSummary').textContent =
+        `${participants.length} student${participants.length === 1 ? '' : 's'} · ${waiting} waiting`;
+    }
+
+    participants.forEach(participant => {
+      const row = documentRef.createElement('div');
+      row.className = 'instructor-participant-row';
+      row.dataset.participantId = participant.id;
+      row.setAttribute('data-persistence', 'local-only');
+      row.setAttribute('data-summary', 'exclude');
+
+      const identity = documentRef.createElement('div');
+      identity.className = 'instructor-participant-row__identity';
+      const name = documentRef.createElement('strong');
+      name.textContent = participant.displayName || 'Student';
+      const status = documentRef.createElement('span');
+      status.textContent = participant.assignment
+        ? `${participant.assignment.kind === 'group' ? 'Team' : 'Individual'} · ${participant.assignment.label}`
+        : 'Waiting / unassigned';
+      identity.append(name, status);
+
+      const select = documentRef.createElement('select');
+      select.setAttribute('aria-label', `Assignment for ${participant.displayName || 'student'}`);
+      select.setAttribute('data-persistence', 'local-only');
+      select.setAttribute('data-summary', 'exclude');
+      select.disabled = busy;
+
+      const waitingOption = documentRef.createElement('option');
+      waitingOption.value = '';
+      waitingOption.textContent = 'Waiting / unassigned';
+      select.append(waitingOption);
+
+      workspaces.forEach(workspace => {
+        const option = documentRef.createElement('option');
+        option.value = workspace.id;
+        option.textContent = `${workspace.kind === 'group' ? 'Team' : 'Individual'} · ${workspace.label}`;
+        select.append(option);
+      });
+      select.value = participant.assignment?.id || '';
+      select.addEventListener('change', event => {
+        void assignParticipant(participant.id, event.target.value || null);
+      });
+
+      row.append(identity, select);
+      list.append(row);
+    });
+
+    if (!participants.length) {
+      const empty = documentRef.createElement('p');
+      empty.className = 'instructor-participant-empty';
+      empty.textContent = 'No students have joined yet. Share the Student join code; late arrivals will appear here automatically.';
+      list.append(empty);
+    }
+  };
+
   const renderObservation = body => {
     if (element('instructorObservationNotice')) element('instructorObservationNotice').hidden = false;
     if (element('instructorObservedWorkspace')) element('instructorObservedWorkspace').textContent = body.workspace?.label || 'Selected workspace';
@@ -468,14 +530,21 @@ export function createInstructorClassroomController({
   const fetchRoster = async token => {
     abort(rosterAbort);
     rosterAbort = typeof AbortControllerImpl === 'function' ? new AbortControllerImpl() : null;
-    const response = await fetchImpl(INSTRUCTOR_WORKSPACES_ENDPOINT, {
+    const options = {
       method: 'GET',
       headers: { Authorization: `Bearer ${token}` },
       signal: rosterAbort?.signal
-    });
-    const body = await responseJson(response);
+    };
+    const [workspaceResponse, participantResponse] = await Promise.all([
+      fetchImpl(INSTRUCTOR_WORKSPACES_ENDPOINT, options),
+      fetchImpl(INSTRUCTOR_PARTICIPANTS_ENDPOINT, options)
+    ]);
+    const [workspaceBody, participantBody] = await Promise.all([
+      responseJson(workspaceResponse),
+      responseJson(participantResponse)
+    ]);
     rosterAbort = null;
-    return { response, body };
+    return { workspaceResponse, workspaceBody, participantResponse, participantBody };
   };
 
   const validWorkspace = workspace => (
@@ -485,11 +554,32 @@ export function createInstructorClassroomController({
     && typeof workspace.label === 'string'
   );
 
-  const acceptRoster = body => {
-    if (typeof body.class?.id !== 'string' || typeof body.class?.title !== 'string' || !Array.isArray(body.workspaces)) {
+  const validParticipant = participant => (
+    participant
+    && UUID_PATTERN.test(participant.id || '')
+    && typeof participant.displayName === 'string'
+    && Number.isInteger(participant.assignmentRevision)
+    && (
+      participant.assignment === null
+      || (
+        validWorkspace(participant.assignment)
+      )
+    )
+  );
+
+  const acceptRoster = (workspaceBody, participantBody) => {
+    if (
+      typeof workspaceBody.class?.id !== 'string'
+      || typeof workspaceBody.class?.title !== 'string'
+      || !Array.isArray(workspaceBody.workspaces)
+      || typeof participantBody.class?.id !== 'string'
+      || participantBody.class.id !== workspaceBody.class.id
+      || !Array.isArray(participantBody.participants)
+    ) {
       return false;
     }
-    workspaces = body.workspaces.filter(validWorkspace);
+    workspaces = workspaceBody.workspaces.filter(validWorkspace);
+    participants = participantBody.participants.filter(validParticipant);
     return true;
   };
 
