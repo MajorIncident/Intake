@@ -3131,6 +3131,14 @@ body.dialog-open{overflow:hidden;}
 
 /* Instructor classroom observer */
 .instructor-class-form{margin-top:24px;}
+.instructor-class-start-form{margin-top:22px;padding-bottom:18px;border-bottom:1px solid var(--line);}
+.instructor-existing-class{margin-top:14px;}
+.instructor-existing-class>summary{cursor:pointer;color:var(--muted);font-size:12px;font-weight:750;}
+.instructor-existing-class[open]>summary{color:var(--ink-strong);}
+.instructor-join-code{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;}
+.instructor-join-code>span{color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;}
+.instructor-join-code>strong{padding:6px 9px;border:1px solid var(--line);border-radius:10px;background:var(--panel-muted);color:var(--ink-strong);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;}
+.instructor-join-code .btn-secondary{padding:6px 9px;font-size:11px;}
 .instructor-class-form .field{max-width:680px;}
 .instructor-class-form input[type="password"]{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.02em;}
 .instructor-dashboard{display:flex;flex-direction:column;min-height:0;}
@@ -3138,6 +3146,21 @@ body.dialog-open{overflow:hidden;}
 .instructor-dashboard__header h2{margin:0;color:var(--ink-strong);font-size:22px;letter-spacing:-.02em;}
 .instructor-dashboard__header p{margin:6px 0 0;color:var(--muted);font-size:12px;}
 .instructor-dashboard__actions{display:flex;gap:8px;flex-wrap:wrap;}
+.instructor-live-management{margin:16px 0;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--panel-muted);}
+.instructor-live-management__heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.instructor-live-management__heading>div{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.instructor-live-management__heading strong,.instructor-participant-heading strong{color:var(--ink-strong);font-size:13px;}
+.instructor-live-management__heading span,.instructor-participant-heading span{color:var(--muted);font-size:10px;}
+.instructor-workspace-create{display:grid;grid-template-columns:minmax(0,1fr) 105px auto;gap:7px;margin-bottom:12px;}
+.instructor-workspace-create input,.instructor-workspace-create select{min-width:0;}
+.instructor-participant-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:7px;}
+.instructor-participant-list{display:flex;flex-direction:column;gap:6px;max-height:235px;overflow:auto;}
+.instructor-participant-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,150px);gap:8px;align-items:center;padding:8px 9px;border:1px solid var(--line);border-radius:11px;background:var(--panel);}
+.instructor-participant-row__identity{min-width:0;}
+.instructor-participant-row__identity strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-strong);font-size:12px;}
+.instructor-participant-row__identity span{display:block;margin-top:2px;color:var(--muted);font-size:10px;}
+.instructor-participant-row select{width:100%;min-width:0;font-size:11px;}
+.instructor-participant-empty{margin:6px 2px;color:var(--muted);font-size:11px;line-height:1.45;}
 .instructor-roster-controls{display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:8px;margin:16px 0 12px;}
 .instructor-roster-controls input,.instructor-roster-controls select{min-width:0;}
 .instructor-roster-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;color:var(--muted);font-size:12px;}
@@ -3177,6 +3200,9 @@ body[data-experience-role="instructor"].instructor-class-connected .wrap{max-wid
   .instructor-dashboard__header,.instructor-observation-notice{flex-direction:column;align-items:stretch;}
   .instructor-dashboard__actions{flex-direction:column;}
   .instructor-roster-controls{grid-template-columns:1fr;}
+  .instructor-workspace-create{grid-template-columns:1fr;}
+  .instructor-participant-heading{align-items:flex-start;flex-direction:column;}
+  .instructor-participant-row{grid-template-columns:1fr;}
   .instructor-observation-participants{justify-content:flex-start;max-width:none;}
 }
 
