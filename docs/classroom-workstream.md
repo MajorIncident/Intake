@@ -338,7 +338,15 @@ Continue #295 on draft PR #307 from the current branch head.
   - `df3633d008bb7e352509e15c1964b7d27ebf441f` adds focused join-code normalization, waiting-roster, class-scoping, and class-session-rotation tests.
   - validation: canonical quality **241 tests / 1 intentional skip**; required Browser E2E **22 passed / 6 intentional skips / 0 failed**; CodeQL, Dependency Review, and Template Manifest Guard green.
   - current Student UI and legacy `POST /api/classes/join` remain unchanged.
-- Exact next action: implement the live-class HTTP admission/status/access layer on top of these primitives (Start Class join code, `POST /api/classes/admit`, Instructor participant roster, Student own-status, Student current-workspace access), with authorization tests before any UI cutover or assignment/reassignment UI.
+- HTTP admission/status/access checkpoint:
+  - `746559e67620aab3457b6cda90e42168d5350dde` adds Start Class join-code return, race-safe live workspace-access issuance, and live/legacy Student-context resolution;
+  - `1b81d4a4c80a7fe16cee5523d6c13811f51f20b3` mirrors live access in the deterministic repository;
+  - `2d6f92d05c693c35818e4457685c311c66a65807` adds one-code admission, Instructor participant roster, Student own-status, and Student current-workspace access handlers;
+  - route entrypoints land in `11a83da6...` through `dc698c110...`;
+  - `04f95f24dd63d2ce75260034d75c9c514d07e84e` adds the focused authorization matrix.
+  - validation: repository quality **244 tests / 243 pass / 0 fail / 1 intentional skip**; required Browser E2E **22 passed / 6 intentional skips / 0 failed**; CodeQL, Dependency Review, and Template Manifest Guard green.
+  - current Student UI remains on the legacy two-code path; no live team-management UI has been cut over yet.
+- Exact next action: implement Instructor assign/reassign/unassign semantics with old-workspace capability revocation, cross-class rejection, assignment-revision increments, and no snapshot merge. Prove the server race/security contract before building Instructor drag/drop/team UI or Student automatic reassignment.
 
 ## Approved Classroom follow-on direction
 
