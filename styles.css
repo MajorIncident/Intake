@@ -3224,6 +3224,24 @@ body[data-experience-role="instructor"].instructor-class-connected .wrap{max-wid
 }
 
 
+/* Instructor staged exercise console */
+.instructor-exercise-console{margin:16px 0 0;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--panel);}
+.instructor-exercise-console__heading{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.instructor-exercise-console__heading>div{display:flex;align-items:baseline;gap:8px;min-width:0;flex-wrap:wrap;}
+.instructor-exercise-console__heading strong{color:var(--ink-strong);font-size:13px;}
+.instructor-exercise-console__heading span{color:var(--muted);font-size:10px;}
+.instructor-exercise-console__heading .btn-secondary{padding:6px 9px;font-size:10px;}
+.instructor-exercise-console__summary{margin-top:10px;padding:9px 10px;border-radius:11px;background:var(--panel-muted);}
+.instructor-exercise-console__summary>strong{display:block;color:var(--ink-strong);font-size:12px;}
+.instructor-exercise-console__summary p{margin:4px 0 0;color:var(--muted);font-size:10px;line-height:1.45;}
+.instructor-exercise-console__available{margin-top:9px;}
+.instructor-exercise-console__available>span{display:block;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;}
+.instructor-exercise-console__available ul{display:flex;flex-direction:column;gap:5px;max-height:92px;overflow:auto;margin:6px 0 0;padding:0;list-style:none;}
+.instructor-exercise-console__available li{padding:7px 8px;border:1px solid var(--line);border-radius:10px;background:var(--panel-muted);}
+.instructor-exercise-console__available li strong{display:block;color:var(--ink-strong);font-size:11px;}
+.instructor-exercise-console__available li span{display:block;margin-top:2px;color:var(--muted);font-size:9px;line-height:1.35;}
+.instructor-exercise-console__available .instructor-exercise-console__empty{color:var(--muted);font-size:10px;line-height:1.4;}
+
 /* Classroom coaching feedback */
 .classroom-coaching{margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel-muted);font-size:12px;line-height:1.45;}
 .classroom-coaching__heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;}
