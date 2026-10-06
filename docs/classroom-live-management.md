@@ -362,6 +362,42 @@ The Student client requests access:
 - after assignment revision changes;
 - on resume when its locally cached workspace access is missing/stale.
 
+## Implementation checkpoint — live HTTP admission/status/access
+
+Completed on #314 after the additive persistence tranche and before any Student UI cutover.
+
+Implemented:
+- Start Class now generates and returns a formatted human Student join code while preserving the legacy high-entropy `studentJoinToken` for compatibility;
+- `POST /api/classes/admit` accepts only join code + participant ID + display name and returns a high-entropy Student class-session token;
+- admitted Students may remain waiting/unassigned with no collaboration edit authority;
+- `GET /api/classes/participants` is Instructor-only and lists only the represented class;
+- `GET /api/classes/student` returns only the represented Student's own assignment state and never a roster/workspace catalog;
+- `POST /api/classes/student/access` exchanges a Student class-session token for a fresh assignment-specific `classroom-student` workspace capability only when assigned;
+- rotating current workspace access revokes the prior edit token;
+- the class-session token itself is not accepted by collaboration workspace APIs;
+- live workspace-access tokens now resolve through the existing Student coaching/protected-resource membership boundary, while legacy membership tokens continue to work;
+- workspace-access issuance checks class/workspace/assignment revision before persisting the token so a concurrent assignment change cannot silently bind stale access to the wrong team.
+
+Durable implementation commits:
+- `746559e67620aab3457b6cda90e42168d5350dde` — Start Class join code + live workspace-access repository path + live/legacy Student context resolution;
+- `1b81d4a4c80a7fe16cee5523d6c13811f51f20b3` — deterministic repository parity for live access;
+- `2d6f92d05c693c35818e4457685c311c66a65807` — live admission/roster/status/access handlers;
+- `11a83da6d96588022b8879b3c5ca1e6961e75ed8` through `dc698c1103285efe95932c253f6cdbd1172b3227` — Vercel route entrypoints;
+- `04f95f24dd63d2ce75260034d75c9c514d07e84e` — focused HTTP authorization tests.
+
+Validation on `04f95f2...`:
+- repository quality: **244 tests / 243 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **22 passed / 6 intentional project-scoped skips / 0 failed**;
+- CodeQL, Dependency Review, and Template Manifest Guard: green.
+
+**Exact next tranche:** implement Instructor assign/reassign/unassign repository + HTTP semantics before building the live management UI. The critical acceptance proof is:
+1. assign waiting Student -> access token edits destination workspace;
+2. reassign A -> B -> old A token is revoked before B access can be issued;
+3. unassign -> old token is revoked and Student returns to waiting;
+4. cross-class destination assignment is rejected;
+5. no assignment operation copies or merges Intake snapshots;
+6. stale Team A authority can never become Team B authority.
+
 ## Student client lifecycle
 
 ### Waiting
