@@ -75,6 +75,25 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.locator('#instructorExerciseStatus')).toHaveText('Draft · draft created');
   await expect(page.locator('#instructorExerciseCaseName')).toHaveText('Browser Staged Simulation');
   await expect(page.locator('#instructorExerciseCreateBtn')).toBeDisabled();
+  await expect(page.locator('#instructorExerciseStartBtn')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Start exercise' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('In progress · exercise started');
+  await expect(page.locator('#instructorExerciseStageTitle')).toHaveText('Clarify the browser case');
+  await expect(page.locator('#instructorExerciseStageObjective')).toHaveText('Capture the initial situation in Intake.');
+  await expect(page.locator('#instructorExerciseStageTiming')).toHaveText('Suggested time: 5 min');
+  await expect(page.locator('#instructorExerciseFacilitation')).toContainText('Browser facilitation note');
+  await expect(page.locator('#instructorExerciseFacilitation')).toContainText('Synthetic Instructor-only browser facilitation.');
+  await expect(page.locator('#instructorExercisePauseBtn')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Pause exercise' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Paused · exercise paused');
+  await expect(page.locator('#instructorExerciseResumeBtn')).toBeVisible();
+  await expect(page.locator('#instructorExerciseLifecycleHelp')).toContainText('Pause controls class pacing only');
+
+  await page.getByRole('button', { name: 'Resume exercise' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('In progress · exercise resumed');
+  await expect(page.locator('#instructorExercisePauseBtn')).toBeVisible();
 
   const storedAfterStart = await page.evaluate(key => window.localStorage.getItem(key), INSTRUCTOR_SESSION_STORAGE_KEY);
   expect(storedAfterStart).toContain('K7FM-P4Q2');
@@ -99,6 +118,7 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes')).toBe(true);
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes/workspaces')).toBe(true);
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes/exercise')).toBe(true);
+  expect(classroomRequests.filter(request => request.method === 'PATCH' && request.pathname === '/api/classes/exercise')).toHaveLength(3);
   expect(classroomRequests.some(request => request.method === 'PATCH' && request.pathname === '/api/classes/participants')).toBe(true);
   expect(classroomRequests.some(request => request.pathname === '/api/classes/join')).toBe(false);
   expect(classroomRequests.some(request => request.body.includes('assignmentToken'))).toBe(false);
@@ -112,10 +132,12 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.locator('#instructorJoinCode')).toHaveText('K7FM-P4Q2');
   await expect(page.locator('#instructorParticipantSummary')).toHaveText('1 student · 0 waiting');
   await expect(page.getByLabel('Assignment for Waiting Student')).not.toHaveValue('');
-  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Draft');
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('In progress');
   await expect(page.locator('#instructorExerciseCaseName')).toHaveText('Browser Staged Simulation');
   await expect(page.getByLabel('Staged Case Study')).toHaveValue('browser-staged-simulation');
   await expect(page.locator('#instructorExerciseCreateBtn')).toBeDisabled();
+  await expect(page.locator('#instructorExerciseStageTitle')).toHaveText('Clarify the browser case');
+  await expect(page.locator('#instructorExercisePauseBtn')).toBeVisible();
 
   await expectNoBlockingA11yViolations(page);
   expect(pageErrors).toEqual([]);
