@@ -196,6 +196,51 @@ Validation on `af6b6f21...`:
 
 **Exact next tranche:** implement additive exercise persistence/repository primitives only: `classroom_exercises`, optional-content releases, per-workspace stage readiness, immutable debrief checkpoints, optimistic exercise revision, idempotent checkpoint/release behavior, class scoping, retention/expiry, and deterministic in-memory parity. Do not add HTTP exercise routes, edit-freeze enforcement, or Instructor/Student UI in that tranche.
 
+## Implementation checkpoint — exercise persistence / repository
+
+Tranche 3 is implemented below the HTTP/UI layer.
+
+Persistence:
+- `classroom_exercises` stores one exercise run with public UUID, owning class, protected Case Study ID, pinned simulation version + SHA-256 definition fingerprint, lifecycle status/stage/phase, optimistic `exercise_revision`, editing-policy state, timestamps, and class-bounded expiry;
+- a partial unique index permits at most one non-completed exercise per class;
+- `classroom_exercise_releases` stores optional Student-content releases by exercise + stage + content ID;
+- `classroom_exercise_workspace_state` stores team/workspace readiness and the collaboration revision observed when Ready was marked;
+- `classroom_exercise_checkpoints` stores immutable per-workspace stage snapshots/revisions for debrief evidence;
+- class/workspace composite foreign keys prevent cross-class workspace state/checkpoint rows;
+- exercise rows inherit the owning class's absolute expiry; all repository access also requires the active, unexpired owning class.
+
+Repository semantics:
+- draft creation is idempotent at the class level: an existing non-completed exercise is returned rather than creating a parallel run;
+- exercise lifecycle mutation requires the expected exercise revision and returns an explicit conflict without mutating on stale input;
+- lifecycle mutations increment the revision once and retain start/completion timestamps;
+- a new optional release is atomic with one exercise-revision increment;
+- replaying the same optional release is an unchanged success and does not increment revision, even if the caller repeats its earlier expected revision;
+- a different release with a stale revision conflicts;
+- Student readiness resolves from the stable Student class session to the **currently assigned** workspace; Waiting Students cannot create workspace readiness;
+- readiness remains attached to the old team after reassignment, while subsequent readiness writes attach to the destination team;
+- checkpoint capture validates Instructor class + exercise + workspace scope and is first-write-wins for exercise + stage + workspace;
+- replaying checkpoint capture returns the original revision/snapshot rather than overwriting debrief evidence;
+- checkpoint snapshots are cloned in deterministic parity so later mutation of the source object cannot mutate captured evidence;
+- no stage/lifecycle operation copies or merges live Intake snapshots.
+
+Definition drift protection:
+- each exercise pins the staged simulation schema version and a 64-character definition fingerprint supplied by the later API/service layer;
+- a migration-safe fallback fingerprint of all zeroes is used only if an earlier schema-only table somehow existed before these columns; the API tranche must treat a fingerprint mismatch/sentinel as fail-closed rather than silently reinterpret a running exercise.
+
+Durable implementation commits:
+- `ea964de7afc002ca307a903db7e1493d56837f13` — additive exercise/release/workspace-state/checkpoint schema;
+- `3e519b8f4ab136404ade550376af0c80e06574f1` — real Neon repository primitives;
+- `8595e1ec1072b365e82f759494ea0edb25001a4c` — deterministic in-memory parity;
+- `f7c1e580ca8fdc5e818e1f6974af374850f6d3a6` — focused repository contract tests;
+- `09ffaa6c1ce081166240fe484bbccea6b29901f5`, `6979abc429c6d67169e044758cf394eb052ef85b`, `257981611cccea907a37bc8a037caa68cbb9bc88`, and `c01dfff2f2bd1f9d7625901860210cc00eee7051` — pin simulation definition identity and make those columns migration-safe.
+
+Validation on the pre-definition-hardening implementation head `f7c1e58...`:
+- repository quality: **265 tests / 264 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **26 passed / 8 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
+
+The final documented head must rerun the same complete gate after definition-identity hardening.
+
 ## Exercise domain model
 
 Persist orchestration state separately from static Case Study definitions.
@@ -204,10 +249,12 @@ Persist orchestration state separately from static Case Study definitions.
 
 One row represents one run of one Case Study in one class.
 
-Recommended fields:
-- `id`;
+Implemented fields include:
+- internal `id` plus public UUID `public_id`;
 - `class_id`;
 - `case_study_id`;
+- `simulation_version`;
+- `simulation_fingerprint` — SHA-256 of the normalized staged definition supplied by the exercise service;
 - `status: draft | active | paused | completed`;
 - `current_stage_id` (nullable before start);
 - `stage_phase: work | debrief`;
@@ -216,7 +263,8 @@ Recommended fields:
 - `started_at`;
 - `completed_at`;
 - `created_at`;
-- `updated_at`.
+- `updated_at`;
+- `expires_at` copied from the owning class.
 
 A class may have historical completed exercises. At most one non-completed exercise should be active for a class unless a later product decision explicitly introduces parallel exercises.
 
@@ -517,7 +565,7 @@ When Student A moves Team A -> Team B:
 - Duplicate/retried advance must not skip a stage.
 - Student polling treats a newer exercise revision as authoritative.
 - An out-of-order older response must never replace newer stage state in the browser.
-- Case definition changes after an exercise starts must not silently reinterpret the running exercise. Initial implementation should rely on immutable deployed definition/version and record the simulation definition version on the exercise.
+- Case definition changes after an exercise starts must not silently reinterpret the running exercise. The exercise pins both simulation version and a definition fingerprint; later API reads/mutations must fail closed when the current server-only definition does not match that identity.
 - If a staged definition is missing/corrupt after an exercise was created, fail closed: do not expose full Case Study state to Students.
 
 ## Accessibility requirements
@@ -626,20 +674,18 @@ Do not make Standalone or ordinary Classroom assignment boot depend on an active
 
 ## Exact next implementation action
 
-Implement **Tranche 3 only**: additive exercise persistence/repository primitives and deterministic in-memory parity.
+Implement **Tranche 4 only — exercise APIs and authorization** on top of the now-proven repository contract.
 
-Required repository semantics:
-- create/select one draft exercise for one class from an already validated staged Case Study identity/version;
-- at most one non-completed exercise per class initially;
-- optimistic `exercise_revision` mutation;
-- current stage/status/phase/editing policy persistence;
-- idempotent optional content releases scoped to exercise + stage;
-- workspace-scoped Ready state that records workspace revision evidence;
-- immutable per-workspace debrief checkpoint capture that is idempotent for exercise + stage + workspace;
-- class/workspace ownership validation;
-- retention bounded by the owning class;
-- no Intake snapshot merge/copy during ordinary stage/assignment operations.
+Required server/API slice:
+- Instructor `POST /api/classes/exercise` selects/creates a draft only from a protected Case Study with a valid explicit `simulation` definition, computes/pins the normalized definition fingerprint, and refuses a definition mismatch;
+- Instructor `GET /api/classes/exercise` returns only the represented class's current exercise plus the complete Instructor-authorized staged definition;
+- Instructor lifecycle PATCH actions for start, pause, resume, optional-content release, begin-debrief, advance, and complete use `expectedRevision` and the immutable stage ordering from the pinned definition;
+- **do not expose a claimed edit-freeze guarantee yet**: temporary collaboration write-lock enforcement remains Tranche 5; begin-debrief may persist phase/checkpoints while editing remains effectively open until that guard lands;
+- begin-debrief captures each current class workspace's collaboration snapshot/revision exactly once through the immutable checkpoint primitive;
+- Student `GET /api/classes/exercise/student` uses the Student **class-session** capability and returns only current/cumulative released Student-safe content, never future stage metadata or Instructor content;
+- Student Ready route resolves the participant's current assignment server-side and records the server-observed workspace revision; Waiting cannot mark Ready;
+- close the active-staged-case bypass in Student protected Case Study full-payload retrieval so the complete `state` cannot be fetched while that case is the current non-completed staged exercise;
+- add a complete authorization/error matrix: wrong class, human join code, Instructor-vs-Student credential confusion, stale revision, non-staged case, definition drift, Waiting readiness, cross-class workspace/checkpoint attempts, and future/Instructor-content withholding;
+- keep all staged responses `no-store` / `no-referrer`.
 
-Add deterministic in-memory repository parity and focused tests before any HTTP route consumes these methods.
-
-Stop before exercise HTTP handlers, collaboration edit-freeze enforcement, or Instructor/Student UI.
+Stop before Student collaboration PUT freeze/423 behavior and before Instructor/Student exercise UI.
