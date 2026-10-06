@@ -39,6 +39,23 @@ Role policy remains separate from confidentiality:
 
 The rotating Case Study mode password is pedagogy only. Authorization comes from the active classroom capability.
 
+
+
+## Optional staged simulation definition (#313)
+
+A protected `case-study` may later add a server-only `simulation` object validated by `scripts/build-templates-manifest.mjs`. Standard Templates must not use this field.
+
+Keep three concepts separate:
+- `state` — complete protected source/exemplar Intake payload;
+- `simulation.studentContent` — only content blocks eligible for controlled Student release;
+- `simulation.instructorContent` — facilitation/debrief/model material that Student endpoints must never return.
+
+`simulation.stages` references stable content IDs. Stage/content IDs must be unique and cross-references valid. Future-stage Student content must remain server-gated, not preloaded into browser assets.
+
+Do not infer or fabricate official stage boundaries from a completed `state`. Until authoritative case pages/evidence/facilitation material is supplied and reviewed, use synthetic staged definitions only in deterministic tests/fixtures rather than production authored Case Studies.
+
+Read `docs/classroom-staged-simulation.md` for the full lifecycle and authorization contract before adding or editing staged content.
+
 ## Editing Workflow
 1. Edit/add the authored JSON under `templates/`.
 2. Run `npm run build:templates`.
