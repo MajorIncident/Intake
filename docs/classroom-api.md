@@ -121,11 +121,25 @@ On success the server:
 
 That returned capability is accepted by the existing `/api/workspaces/session` and `/api/workspaces/presence` handlers.
 
-### Student client consumption (#292)
+### Student client consumption (#292 legacy + #312 live)
 
-The browser sends the Student join capability only in the Authorization header and the assignment capability only in the POST body. On success, both admission codes are discarded. The raw returned `workspaceToken` is retained under `kt-classroom-student-session-v1` solely for same-device resume.
+The legacy two-code compatibility path still sends the Student join capability in the Authorization header and the assignment capability in the POST body. On legacy success, both admission codes are discarded and the returned `workspaceToken` remains in the dedicated `kt-classroom-student-session-v1` resume envelope exactly as before.
 
-The collaboration client attaches that workspace capability programmatically; classroom workspace capabilities are **not** written into `?workspace=` URLs. Classroom mode disables collaboration-link copying and legacy shared-session leaving so the Student controller remains the owner of resume/Leave-class lifecycle.
+The normal #312 live-class path is different:
+
+1. the browser sends display name + human join code to `POST /api/classes/admit`;
+2. the human join code is discarded after admission;
+3. the browser persists only the high-entropy `studentSessionToken` plus public class/participant/assignment context;
+4. an unassigned Student stays in Waiting and does not connect collaboration;
+5. the browser polls only `GET /api/classes/student` with the class-session capability;
+6. while assigned, it exchanges that class-session capability at `POST /api/classes/student/access` for the current assignment-specific editable workspace capability;
+7. that workspace capability is kept **memory-only** and is never written into the Student resume envelope or `?workspace=` URL;
+8. on reload or assignment change, the browser reacquires fresh current-workspace access from the server;
+9. on reassignment or unassign, the old collaboration session is left before destination/current access is obtained.
+
+This means same-device live resume survives team movement without persisting stale team authority. The server remains authoritative for assignment revision and revokes the old workspace alias before the Student receives destination access.
+
+Classroom mode continues to disable collaboration-link copying and legacy shared-session leaving so the Student controller owns resume, automatic reassignment, Waiting, and Leave-class lifecycle.
 
 ### `GET /api/classes/observe?workspaceId=<public-workspace-id>`
 
@@ -307,6 +321,17 @@ Key direction:
 - legacy two-code admission remains supported during the additive migration.
 
 Implemented live-class endpoints are `POST /api/classes/admit`, `GET/PATCH /api/classes/participants`, `GET /api/classes/student`, and `POST /api/classes/student/access`. Existing `POST /api/classes/join` remains a compatibility path until a later explicit migration.
+
+Student live-client semantics now implemented:
+- normal Student entry is one human class code + display name;
+- legacy two-code access remains available under an explicit recovery disclosure;
+- Waiting retains the class-session capability but holds no collaboration edit authority;
+- assignment-specific workspace tokens are memory-only and reacquired on reload/move;
+- assignment revision changes trigger old-workspace disconnect before destination access;
+- destination snapshot is loaded as authoritative; no old-team/local Intake merge occurs;
+- unassign returns the Student to Waiting without requiring another human join code;
+- terminal class-session failure clears the invalid session and restores pre-class local recovery where available;
+- real-browser coverage proves Waiting -> Team Alpha -> same-device resume -> Team Beta -> Waiting and verifies stale Alpha/Beta workspace tokens return 404 after move/unassign.
 
 Assignment semantics:
 - `PATCH /api/classes/participants` is Instructor-only and accepts `participantId` plus a same-class `workspaceId`, or `workspaceId: null` to return the Student to waiting;
