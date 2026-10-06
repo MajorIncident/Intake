@@ -466,7 +466,16 @@ Continue #295 on draft PR #307 from the current branch head.
   - the live Instructor browser journey proves draft create, server-backed reload/resume, disabled duplicate-create control, and no local exercise persistence;
   - summary/persistence guards explicitly mark the staged selector, label, placeholder, and dynamic options as local-only / summary-excluded rather than incorrectly wiring Classroom exercise state into Intake serialization;
   - 6A final-head repository quality was green, but the existing four-browser integration acceptance exceeded its 30s global timeout (historical green runtime was already 26.1s). 6B raises only that test budget to 45s; no failing product assertion was suppressed.
-- Exact next action: implement **Tranche 6C — Start/Pause/Resume and current-stage Instructor context**. Add revision-safe Start/Pause/Resume controls to the existing console, render current stage title/objective plus Instructor-only facilitation material after Start, handle 409 mutation conflicts by authoritative refresh, and add focused DOM/browser coverage. Do not add optional evidence release, Begin Debrief, Freeze/Unfreeze, Advance, or Complete until subsequent slices; keep Student staged-case UI and production official-case staging deferred.
+- Tranche 6C — Start/Pause/Resume and current-stage Instructor context:
+  - implementation spans `53ce2b7...` through `2888beb...`;
+  - draft-only **Start exercise**, active-only **Pause exercise**, and paused-only **Resume exercise** controls use the current server `exerciseRevision`;
+  - lifecycle PATCH conflict behavior is fail-refresh: a 409 triggers authoritative GET and never replays stale Instructor intent;
+  - after Start, the console renders current stage title, Student objective, suggested timing, and only the current stage's Instructor-authorized facilitation blocks;
+  - Pause explicitly describes class pacing as distinct from Student editing freeze, preserving the later debrief-policy boundary;
+  - deterministic browser fixture now implements matching Start/Pause/Resume revision semantics against the synthetic staged case;
+  - focused controller coverage proves revision progression, stage/facilitation rendering, state-specific controls, and 409 refresh; real-browser Instructor acceptance proves Start -> Pause -> Resume -> reload;
+  - the unrelated four-browser acceptance timeout is raised narrowly from 30s to 45s after the previous run completed product assertions but timed out during teardown; no behavioral assertion was removed.
+- Exact next action: implement **Tranche 6D — optional evidence release and team readiness/progress signals**. Add current-work-stage optional release controls using revision-safe `release-content`, show already-released state, render per-workspace Ready/working signals from `workspaceState`, and connect team rows to existing observer navigation where practical. Do not add Begin Debrief, Freeze/Unfreeze, Advance, or Complete yet; keep Student staged-case UI and production official-case staging deferred.
 
 ## Approved Classroom follow-on direction
 
