@@ -309,6 +309,13 @@ async function initializeRepository() {
         RETURNING participant_id`;
       return rows.length > 0;
     },
+    async removePresenceByWorkspaceId(workspaceId, participantId) {
+      const rows = await sql`DELETE FROM collaboration_participants
+        WHERE workspace_id = ${workspaceId}
+          AND participant_id = ${participantId}::uuid
+        RETURNING participant_id`;
+      return rows.length > 0;
+    },
     async createCapability(workspaceId, tokenHash, capabilityKind, expiresAt = null) {
       if (!isWorkspaceEditCapabilityKind(capabilityKind)) {
         return false;
