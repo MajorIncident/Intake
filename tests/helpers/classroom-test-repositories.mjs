@@ -310,7 +310,7 @@ export function createClassroomRepository() {
       const cleared = coaching.delete(key);
       return { classroom: scope.classroom, workspace: scope.workspace, cleared, targetId };
     },
-    async listFeedbackForStudent(accessHash) {
+    async getStudentContext(accessHash) {
       const member = [...memberships.values()].find(value => value.accessHash === accessHash);
       if (!member) return null;
       const item = classes.find(candidate => candidate.internalId === member.classInternalId && !candidate.revoked);
@@ -319,10 +319,19 @@ export function createClassroomRepository() {
         candidate.classInternalId === item.internalId && candidate.workspaceId === member.workspaceId && !candidate.revoked
       ));
       if (!workspace) return null;
-      const prefix = item.internalId + ':' + workspace.workspaceId + ':';
       return {
         classroom: publicClass(item),
         workspace: { id: workspace.id, kind: workspace.kind, label: workspace.label },
+        internal: { classId: item.internalId, workspaceId: workspace.workspaceId }
+      };
+    },
+    async listFeedbackForStudent(accessHash) {
+      const scope = await this.getStudentContext(accessHash);
+      if (!scope) return null;
+      const prefix = scope.internal.classId + ':' + scope.internal.workspaceId + ':';
+      return {
+        classroom: scope.classroom,
+        workspace: scope.workspace,
         feedback: [...coaching.entries()]
           .filter(([key]) => key.startsWith(prefix))
           .map(([, value]) => ({ ...value }))

@@ -1,5 +1,13 @@
 {
-  "buildCommand": "npm run build && npm test",
-  "outputDirectory": ".",
-  "cleanUrls": true
+  "buildCommand": "npm run verify:protected-cases && npm run build:vercel-public",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "git": {
+    "deploymentEnabled": {
+      "**": false,
+      "main": true,
+      "verify/**": true
+    }
+  },
+  "ignoreCommand": "case \"$VERCEL_GIT_COMMIT_REF\" in main|verify/*) exit 1 ;; *) exit 0 ;; esac"
 }

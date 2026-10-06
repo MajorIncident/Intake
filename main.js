@@ -62,15 +62,19 @@ import { initExperienceRoleController } from './src/experienceRoleController.js'
 import { initStudentClassroom } from './src/classroomStudent.js';
 import { initInstructorClassroom } from './src/classroomInstructor.js';
 import { initClassroomCoaching } from './src/classroomCoaching.js';
+import { initClassroomCaseStudies } from './src/classroomCaseStudies.js';
 
 /** Active shared-session controller, initialized during boot. @type {object|null} */
 let collaborationController = null;
 let studentClassroomController = null;
 let instructorClassroomController = null;
 let classroomCoachingController = null;
+let classroomCaseStudiesController = null;
 
 /** Destroys collaboration resources during application or test teardown. @returns {void} */
 export function destroyCollaboration() {
+  classroomCaseStudiesController?.destroy?.();
+  classroomCaseStudiesController = null;
   classroomCoachingController?.destroy?.();
   classroomCoachingController = null;
   instructorClassroomController?.destroy?.();
@@ -194,7 +198,8 @@ function boot() {
 
   initPreface({ onSave: saveAppState });
   initCommsDrawer();
-  initTemplatesDrawer();
+  classroomCaseStudiesController = initClassroomCaseStudies({ windowRef: window });
+  initTemplatesDrawer({ protectedCaseStudies: classroomCaseStudiesController });
   initNotesWorkspace({ onSave: saveAppState, showToast });
   initializeCommunications({ onSave: saveAppState, showToast });
   initStepsFeature({ onSave: saveAppState, onLog: logCommunication });
@@ -233,8 +238,14 @@ function boot() {
     apply: applyAppState,
     saveLocal: saveToStorage,
     toast: showToast,
-    onClassConnected: token => classroomCoachingController?.connectStudent?.(token),
-    onClassDisconnected: () => classroomCoachingController?.disconnectStudent?.()
+    onClassConnected: token => {
+      classroomCoachingController?.connectStudent?.(token);
+      void classroomCaseStudiesController?.connectStudent?.(token);
+    },
+    onClassDisconnected: () => {
+      classroomCoachingController?.disconnectStudent?.();
+      classroomCaseStudiesController?.disconnect?.();
+    }
   });
   instructorClassroomController = initInstructorClassroom({
     collaboration: collaborationController,
@@ -242,7 +253,9 @@ function boot() {
     apply: applyAppState,
     toast: showToast,
     onObservation: context => classroomCoachingController?.showInstructorWorkspace?.(context),
-    onObservationEnd: () => classroomCoachingController?.hideInstructorWorkspace?.()
+    onObservationEnd: () => classroomCoachingController?.hideInstructorWorkspace?.(),
+    onClassConnected: token => { void classroomCaseStudiesController?.connectInstructor?.(token); },
+    onClassDisconnected: () => classroomCaseStudiesController?.disconnect?.()
   });
   wireThemeToggle();
   wireSummaryEvents();

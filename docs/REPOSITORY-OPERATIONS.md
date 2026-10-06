@@ -18,11 +18,50 @@ After changing the runtime, update `.nvmrc` and `package.json#engines` together 
 - summary integration guard;
 - persistence integration guard;
 - ESLint/JSDoc;
-- generated template-manifest freshness;
+- generated public/server template-manifest freshness;
+- protected Case Study browser/deployment boundary verification;
 - generated storage-documentation freshness;
 - the full Node/jsdom test suite.
 
 Individual commands remain useful while developing, but a PR is not complete until the aggregate gate passes.
+
+## Protected Case Study deployment boundary
+
+Case Study authoring source is intentionally present in Git but intentionally absent from the public Vercel deployment surface.
+
+- `templates/*.json` is repository/build-time source and is excluded by `.vercelignore`.
+- `src/templates.manifest.js` is public and may contain Standard Templates only.
+- `api/protected-case-studies.manifest.js` is server-only generated content and may contain protected Case Study metadata/payloads.
+- Browser runtime files must never import or duplicate the server-only manifest.
+- `scripts/build-vercel-public.mjs` generates the **only** public static surface under `dist/`: `index.html`, `main.js`, `styles.css`, browser JavaScript under `src/` and `components/`, plus the explicitly public `docs/eula.md` linked from the app footer.
+- Vercel `outputDirectory` must remain `dist`. Serving `.` is prohibited because production previously exposed internal files such as `docs/classroom-workstream.md` and `scripts/build-templates-manifest.mjs`.
+- The public-bundle builder rejects all other Markdown plus JSON/MJS/AGENTS/internal files and scans all emitted text—including the EULA—for protected Case Study IDs/names.
+- Production Vercel builds run `npm run verify:protected-cases && npm run build:vercel-public`; they do not regenerate manifests because authored template JSON is intentionally excluded from the upload.
+- GitHub CI/local authoring remains responsible for `npm run build:templates` / `npm run check:templates` freshness, and `npm run quality` also builds/verifies the same minimal `dist/` surface.
+
+Any change to `vercel.json`, `.vercelignore`, template generation, static output layout, or protected-resource routing must re-run `npm run quality` and include a deployed HTTP check that raw `/templates/*.json` Case Study paths and internal `/docs/*` / `/scripts/*` paths are not served.
+
+
+### Vercel Git deployment policy
+
+Repository configuration deliberately separates ordinary development branches from intentional deployment verification:
+
+- `main` is allowed to deploy automatically to Vercel;
+- `verify/**` branches are allowed to create deliberate preview deployments for security/E2E verification;
+- all other Git branches are denied Vercel Git deployment by default.
+
+Two repository-owned controls enforce this in `vercel.json`:
+
+1. `git.deploymentEnabled` denies all branches by default, then explicitly allows `main` and `verify/**`. This prevents ordinary feature/checkpoint commits from creating Vercel deployment records at all.
+2. `ignoreCommand` returns “continue” only for `main` and `verify/**`. This overrides the older project-level Ignored Build Step for the branches we intentionally allow to reach Vercel.
+
+Both rules are checked by `npm run verify:protected-cases`.
+
+The default deny is important for AI-assisted work: small checkpoint commits continue to trigger GitHub quality/security checks **without** consuming Vercel build capacity. The Classroom program confirmed this behavior repeatedly: ordinary `feature/classroom-protected-cases` commits produced no Vercel deployment record, while `verify/protected-cases-preview` produced a READY preview from the exact PR head.
+
+Do not rely on the project-level Ignored Build Step as the primary feature-branch control. Before this repo-owned policy, ignored builds still created canceled deployment records and contributed to build-rate exhaustion tracked in #304.
+
+When a preview is genuinely needed, move or create a short-lived `verify/**` branch at the exact PR head. Do not add a temporary allow rule to a normal `feature/**` branch.
 
 ## GitHub branch controls
 
@@ -57,6 +96,12 @@ A new AI coding session should not assume prior conversational state. Before edi
 7. Work on a short-lived branch and PR; never assume a stale branch is still appropriate.
 
 At handoff, record what changed, what was tested, any manual checks still required, and any environment/settings changes that cannot live in Git.
+
+For protected Case Study work, the handoff must also record whether the final deployed preview was checked for:
+- blocked/unavailable raw `/templates/*.json` authoring files;
+- Standalone absence of protected resources;
+- authorized Student/Instructor catalog access;
+- unauthorized protected API rejection.
 
 
 ## Delivery resilience for AI-assisted work

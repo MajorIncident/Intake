@@ -25,6 +25,7 @@ For any work in the Standalone / Student / Instructor program (#288), also read 
 | `src/classroomInstructor.js` | Instructor class resume, roster, read-only observation, and coaching-observation lifecycle hooks. |
 | `src/coachableFields.js` | Stable coaching target IDs and versioned field fingerprints; DOM placement is deliberately separate from persistence identity. |
 | `src/classroomCoaching.js` | Instructor coaching controls and Student read-only feedback rendering through the separate coaching API. |
+| `src/classroomCaseStudies.js` | Authorized in-memory protected Case Study catalog/payload client. Receives active Classroom capabilities from Student/Instructor lifecycle controllers, never persists them, and clears context on disconnect. |
 | `src/comms.js` | `initializeCommunications()`, `logCommunication()`, `toggleLogVisibility()`, `setCadence()`, `setManualNextUpdate()`, `getCommunicationElements()`. |
 | `src/constants.js` | `ROWS`, `STEP_DEFINITIONS`, `CAUSE_FINDING_MODES`, and other deep-frozen config. Never mutate these directly. |
 | `src/kt.js` | `configureKT()`, `initTable()`, `ensurePossibleCausesUI()`, `renderCauses()` for the IS/IS NOT workflow. |
@@ -36,7 +37,8 @@ For any work in the Standalone / Student / Instructor program (#288), also read 
 | `src/summary.js` | `generateSummary()`, `setSummaryStateProvider()`, helpers that compose both clipboard output and AI prompts. |
 | `src/toast.js` | `showToast()` for lightweight notifications reused by comms and bootstrapping.
 | `api/_workspace.js` | Existing collaboration persistence/handlers plus explicitly edit-capable workspace aliases. Only `classroom-student` aliases may resolve through legacy read/write collaboration endpoints. |
-| `api/_classroom.js` | Class schema/capabilities, class-scoped observation, Student admission, rotation/revocation, and separate Instructor-write/Student-read coaching feedback APIs. |
+| `api/_classroom.js` | Class schema/capabilities, class-scoped observation, Student admission, rotation/revocation, Student membership lookup, and separate Instructor-write/Student-read coaching feedback APIs. |
+| `api/_protectedCaseStudies.js` | Server-only protected Case Study catalog/payload delivery. Instructor access is class-scoped; Student access resolves active membership from the issued Student workspace capability. |
 
 ## Working Agreement for AI Agents
 - **Stay modular:** Add new behaviour by creating a file under `src/` and exporting named helpers. Only touch `main.js` to import and wire these helpers.
@@ -45,6 +47,7 @@ For any work in the Standalone / Student / Instructor program (#288), also read 
 - **Document as you go:** Follow the patterns in [`docs/commenting-guide.md`](./commenting-guide.md) to add module docblocks, update the anchor catalogue, and refresh README/`AGENTS.md` anchors before merging.
 - **Reuse constants:** Extend `src/constants.js` if new enumerations or immutable lists are required. Deep-freeze ensures downstream modules receive read-only copies.
 - **Preserve storage compatibility:** When saving extra Intake data, extend the shape emitted by `collectAppState()` and persisted by `saveToStorage()`. Experience/class/session context is different: experience role is explicitly stored outside SerializedAppState under `kt-experience-role-v1` and must remain excluded from Intake exports/templates/summaries. Always update `applyAppState()` so round-trip tests pass.
+- **Protect Classroom resources:** Standard Templates may live in the public browser manifest. Protected Case Studies may not. Keep full Case Study metadata/payloads in `api/protected-case-studies.manifest.js`, keep authored `templates/*.json` excluded from Vercel deployment, and never import the server-only manifest from browser code. Run `npm run verify:protected-cases` after touching this boundary.
   - Review [`docs/storage-schema.md`](./storage-schema.md) whenever you change persisted shapes, run `npm run update:storage-docs` afterward, and run `npm run check:storage-docs` (or rely on the CI workflow) before submitting. Update any tests under `tests/` that assert on persisted state so they reflect the new schema.
 
 
@@ -136,6 +139,7 @@ function boot() {
 - Always run a manual smoke test by opening `index.html` in a modern browser, entering sample data, generating a summary, and refreshing to confirm persistence.
 - Automated suites should rely on `collectAppState()` / `applyAppState()` for deterministic state setup and on `generateSummary()` for output verification.
 - Core local intake workflows can still run browser-first, but collaboration uses Vercel Functions under `api/` and Neon persistence. Use a deployed/HTTP environment with the required database variable when testing shared sessions; do not infer collaboration health from a `file://` smoke test.
+- Protected Case Study production checks require HTTP/Vercel verification as well: raw `/templates/*.json` authoring files must not be fetchable, Standalone must not receive the protected catalog, and Student/Instructor catalog/payload requests must require their active Classroom capability.
 
 ## Safe Extension Checklist
 1. Identify the owning module for the UI you are touching; update that module instead of `main.js`.

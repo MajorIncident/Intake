@@ -7,6 +7,7 @@ import {
   __dangerousSetTemplateManifestForTests as setTemplateManifest,
   getTemplateMetadata,
   getTemplatePayload,
+  projectTemplateState,
   listTemplateModes,
   listTemplates
 } from '../src/templates.js';
@@ -253,4 +254,23 @@ test('mode projections filter KT table columns per mode', () => {
   assert.ok(dcQuestion, 'question row should be present in d&c mode');
   assert.equal(dcQuestion.di, 'Differentiator', 'd&c mode surfaces distinctions');
   assert.equal(dcQuestion.ch, 'Changes', 'd&c mode surfaces changes');
+});
+
+
+test('projectTemplateState applies canonical mode rules to authorized external payloads', () => {
+  const payload = projectTemplateState(
+    buildState(),
+    TEMPLATE_MODE_IDS.IS_IS_NOT,
+    [TEMPLATE_MODE_IDS.IS_IS_NOT, TEMPLATE_MODE_IDS.FULL]
+  );
+  assert.ok(payload);
+  const row = payload.table.find(item => item.questionId === 'what-object');
+  assert.equal(row.is, 'Object is failing');
+  assert.equal(row.no, 'Objects not failing');
+  assert.equal(row.di, '');
+  assert.equal(row.ch, '');
+  assert.equal(
+    projectTemplateState(buildState(), TEMPLATE_MODE_IDS.DC, [TEMPLATE_MODE_IDS.FULL]),
+    null
+  );
 });

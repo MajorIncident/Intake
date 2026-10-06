@@ -13,11 +13,22 @@ import {
 } from '../src/experienceRoleController.js';
 import { EXPERIENCE_ROLE_IDS } from '../src/experienceRoles.js';
 import { initTemplatesDrawer } from '../src/templatesDrawer.js';
+import { getTemplatePayload, TEMPLATE_MODE_IDS } from '../src/templates.js';
 import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
 
 const INDEX_HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
 const globals = installJsdomGlobals(dom.window);
+globalThis.__toastMocks = { showToast: () => {} };
+let lastAppliedState = null;
+globalThis.__appStateMocks = {
+  collectAppState: () => ({}),
+  applyAppState: state => { lastAppliedState = state; },
+  getSummaryState: () => ({}),
+  resetAnalysisId: () => {},
+  getAnalysisId: () => '',
+  getLikelyCauseId: () => null
+};
 
 dom.window.requestAnimationFrame = callback => callback();
 globalThis.requestAnimationFrame = dom.window.requestAnimationFrame.bind(dom.window);
@@ -29,9 +40,33 @@ initExperienceRoleController({
   storage: dom.window.localStorage,
   location: dom.window.location
 });
-initTemplatesDrawer();
+const protectedProvider = {
+  getCatalog: () => [{
+    id: 'authorized-case',
+    name: 'Authorized Case',
+    description: 'Loaded only after classroom authorization.',
+    templateKind: 'case-study',
+    supportedModes: ['intake', 'is-is-not', 'dc', 'full']
+  }],
+  getPayload: async caseStudyId => {
+    if (caseStudyId !== 'authorized-case') return null;
+    const state = getTemplatePayload('checkout-latency', TEMPLATE_MODE_IDS.FULL);
+    state.pre.oneLine = 'Protected Case Study applied';
+    return {
+      id: 'authorized-case',
+      name: 'Authorized Case',
+      description: 'Loaded only after classroom authorization.',
+      templateKind: 'case-study',
+      supportedModes: ['intake', 'is-is-not', 'dc', 'full'],
+      state
+    };
+  }
+};
+initTemplatesDrawer({ protectedCaseStudies: protectedProvider });
 
 after(() => {
+  delete globalThis.__toastMocks;
+  delete globalThis.__appStateMocks;
   restoreJsdomGlobals(globals);
   dom.window.close();
 });
@@ -75,4 +110,22 @@ test('drawer projects normal resources across Standalone, Student, and Instructo
   assert.ok(resourceKinds().includes('standard'));
   assert.equal(resourceKinds().includes('case-study'), false);
   assert.equal(dom.window.document.getElementById('templatesDrawerTitle').textContent, 'Templates');
+});
+
+
+test('authorized Case Study payload is fetched only when Student applies it', async () => {
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STUDENT);
+  const caseButton = dom.window.document.querySelector('#templatesList [data-template-id="authorized-case"]');
+  assert.ok(caseButton);
+  caseButton.click();
+
+  const password = dom.window.document.getElementById('templatesPassword');
+  const minutes = String(new Date().getMinutes()).padStart(2, '0');
+  password.value = `full${minutes}`;
+  dom.window.document.getElementById('templatesApplyBtn').click();
+
+  await new Promise(resolve => setImmediate(resolve));
+  await new Promise(resolve => setImmediate(resolve));
+
+  assert.equal(lastAppliedState?.pre?.oneLine, 'Protected Case Study applied');
 });

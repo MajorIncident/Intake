@@ -13,3 +13,12 @@ Keep feature modules independently initialisable, own only their feature-specifi
 `coachableFields.js` owns stable coaching target identity and deterministic field fingerprints. Persistence identity must remain domain-based (`problem.one-line`, `kt.where-location`, etc.); DOM IDs and KT row bindings are rendering hooks only. Do not add ephemeral Possible Cause identifiers to the durable registry without first defining stable lifecycle identity.
 
 `classroomCoaching.js` owns Instructor coaching controls and Student read-only feedback presentation. Coaching is presentation plus a separate Classroom API channel: never add it to `collectAppState()`, `kt-intake-full-v2`, summaries, templates, or collaboration snapshot revisions. Student mode may only read feedback; Instructor controls must remain interactive while the observed Student Intake remains read-only.
+
+
+## Protected Classroom resources
+
+`classroomCaseStudies.js` owns the authorized in-memory protected Case Study catalog/payload client. It receives active capabilities only through Student/Instructor lifecycle callbacks, keeps no localStorage/sessionStorage record, and clears catalog/context when the class role disconnects. Its public state must never expose a bearer capability.
+
+`templatesDrawer.js` may combine public Standard Template metadata with the current authorized in-memory Case Study catalog, but must fetch a protected payload only on demand and project it through `projectTemplateState()`. Standalone must work with no protected provider or classroom backend.
+
+Browser modules must never import `api/protected-case-studies.manifest.js` or refer to protected Case Study IDs/names. `npm run verify:protected-cases` enforces this boundary. The rotating Case Study password remains instructional UX, not authentication.
