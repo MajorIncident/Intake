@@ -726,6 +726,10 @@ async function handleClassroomApi(request, response, url) {
       description: BROWSER_STAGED_CASE.description,
       supportedModes: [...BROWSER_STAGED_CASE.supportedModes]
     }];
+    const exerciseReleases = () => structuredClone(classroomExerciseReleases.get(instructorToken) || []);
+    const exerciseProgress = exercise => structuredClone(
+      browserExerciseWorkspaceState(instructorToken, exercise)
+    );
 
     if (request.method === 'GET') {
       const exercise = classroomExercises.get(instructorToken) || null;
@@ -734,8 +738,8 @@ async function handleClassroomApi(request, response, url) {
             class: classContext,
             exercise: structuredClone(exercise),
             caseStudy: structuredClone(BROWSER_STAGED_CASE),
-            releases: [],
-            workspaceState: [],
+            releases: exerciseReleases(),
+            workspaceState: exerciseProgress(exercise),
             checkpoints: [],
             editFreezeEnforced: true,
             availableCaseStudies
@@ -769,8 +773,8 @@ async function handleClassroomApi(request, response, url) {
           class: classContext,
           exercise: structuredClone(existing),
           caseStudy: structuredClone(BROWSER_STAGED_CASE),
-          releases: [],
-          workspaceState: [],
+          releases: exerciseReleases(),
+          workspaceState: exerciseProgress(existing),
           checkpoints: [],
           editFreezeEnforced: true,
           created: false
@@ -790,12 +794,13 @@ async function handleClassroomApi(request, response, url) {
         simulationFingerprint: 'b'.repeat(64)
       };
       classroomExercises.set(instructorToken, exercise);
+      classroomExerciseReleases.set(instructorToken, []);
       sendJson(response, 201, {
         class: classContext,
         exercise: structuredClone(exercise),
         caseStudy: structuredClone(BROWSER_STAGED_CASE),
-        releases: [],
-        workspaceState: [],
+        releases: exerciseReleases(),
+        workspaceState: exerciseProgress(exercise),
         checkpoints: [],
         editFreezeEnforced: true,
         created: true
@@ -810,6 +815,67 @@ async function handleClassroomApi(request, response, url) {
         sendJson(response, 404, { error: 'Exercise not found.' });
         return true;
       }
+
+      if (body?.action === 'release-content') {
+        const contentId = typeof body.contentId === 'string' ? body.contentId.trim() : '';
+        const stage = BROWSER_STAGED_CASE.simulation.stages.find(item => item.id === exercise.currentStageId);
+        if (
+          exercise.status !== 'active'
+          || exercise.stagePhase !== 'work'
+          || !stage
+          || !stage.optionalReleaseIds.includes(contentId)
+        ) {
+          sendJson(response, 400, { error: 'Invalid current-stage content release.' });
+          return true;
+        }
+
+        const releases = classroomExerciseReleases.get(instructorToken) || [];
+        const existingRelease = releases.find(item => (
+          item.stageId === stage.id && item.contentId === contentId
+        ));
+        if (existingRelease) {
+          sendJson(response, 200, {
+            class: classContext,
+            exercise: structuredClone(exercise),
+            caseStudy: structuredClone(BROWSER_STAGED_CASE),
+            releases: exerciseReleases(),
+            workspaceState: exerciseProgress(exercise),
+            checkpoints: [],
+            editFreezeEnforced: true,
+            changed: false
+          });
+          return true;
+        }
+
+        if (!Number.isInteger(body.expectedRevision) || body.expectedRevision !== exercise.exerciseRevision) {
+          sendJson(response, 409, {
+            error: 'Exercise changed. Refresh and retry.',
+            exercise: structuredClone(exercise)
+          });
+          return true;
+        }
+
+        releases.push({
+          stageId: stage.id,
+          contentId,
+          releasedAt: '2099-12-31T23:31:00.000Z'
+        });
+        classroomExerciseReleases.set(instructorToken, releases);
+        exercise.exerciseRevision += 1;
+        classroomExercises.set(instructorToken, exercise);
+        sendJson(response, 200, {
+          class: classContext,
+          exercise: structuredClone(exercise),
+          caseStudy: structuredClone(BROWSER_STAGED_CASE),
+          releases: exerciseReleases(),
+          workspaceState: exerciseProgress(exercise),
+          checkpoints: [],
+          editFreezeEnforced: true,
+          changed: true
+        });
+        return true;
+      }
+
       if (!Number.isInteger(body?.expectedRevision) || body.expectedRevision !== exercise.exerciseRevision) {
         sendJson(response, 409, {
           error: 'Exercise changed. Refresh and retry.',
@@ -859,8 +925,8 @@ async function handleClassroomApi(request, response, url) {
         class: classContext,
         exercise: structuredClone(exercise),
         caseStudy: structuredClone(BROWSER_STAGED_CASE),
-        releases: [],
-        workspaceState: [],
+        releases: exerciseReleases(),
+        workspaceState: exerciseProgress(exercise),
         checkpoints: [],
         editFreezeEnforced: true,
         changed: true
