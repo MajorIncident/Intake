@@ -61,6 +61,12 @@ const BROWSER_STAGED_CASE = Object.freeze({
         kind: 'narrative',
         title: 'Initial browser briefing',
         body: 'Synthetic Student-safe browser briefing.'
+      },
+      {
+        id: 'browser-hint-1',
+        kind: 'evidence',
+        title: 'Optional browser evidence',
+        body: 'Synthetic optional Student evidence released only by the Instructor.'
       }
     ],
     instructorContent: [
@@ -77,7 +83,7 @@ const BROWSER_STAGED_CASE = Object.freeze({
         title: 'Clarify the browser case',
         studentObjective: 'Capture the initial situation in Intake.',
         initialReleaseIds: ['browser-brief-1'],
-        optionalReleaseIds: [],
+        optionalReleaseIds: ['browser-hint-1'],
         intakeTargetIds: ['problem.one-line'],
         suggestedMinutes: 5,
         instructorContentIds: ['browser-teach-1'],
@@ -100,6 +106,7 @@ const studentLiveAccessContexts = new Map();
 const classroomWorkspaces = new Map();
 const classroomCoachingFeedback = new Map();
 const classroomExercises = new Map();
+const classroomExerciseReleases = new Map();
 
 const CONTENT_TYPES = Object.freeze({
   '.css': 'text/css; charset=utf-8',
@@ -354,6 +361,27 @@ function managedInstructorParticipantRoster(token) {
     class: fixture.classContext,
     participants: structuredClone(fixture.participants)
   };
+}
+
+function browserExerciseWorkspaceState(token, exercise) {
+  if (!exercise?.currentStageId) return [];
+  const fixture = managedInstructorFixture(token);
+  const workspaces = fixture?.workspaces || instructorRoster().workspaces;
+  return workspaces.map((workspace, index) => {
+    const observed = fixture?.workspaceStates?.get(workspace.id);
+    const ready = index === 0;
+    return {
+      workspaceId: workspace.id,
+      workspaceKind: workspace.kind,
+      workspaceLabel: workspace.label,
+      stageId: exercise.currentStageId,
+      readyForDebrief: ready,
+      readyAt: ready ? '2099-12-31T23:30:00.000Z' : null,
+      readyWorkspaceRevision: ready ? (observed?.revision || 1) : null,
+      createdAt: '2099-12-31T23:29:00.000Z',
+      updatedAt: '2099-12-31T23:30:00.000Z'
+    };
+  });
 }
 
 function managedInstructorObservation(token, workspaceId) {
@@ -646,6 +674,7 @@ async function handleClassroomApi(request, response, url) {
       integratedInstructorWorkspaceStates.clear();
       integratedInstructorParticipants = [];
       classroomExercises.delete(INTEGRATED_INSTRUCTOR_TOKEN);
+      classroomExerciseReleases.delete(INTEGRATED_INSTRUCTOR_TOKEN);
       sendJson(response, 201, {
         class: integratedInstructorClass(),
         instructorToken: INTEGRATED_INSTRUCTOR_TOKEN,
@@ -664,6 +693,7 @@ async function handleClassroomApi(request, response, url) {
     liveInstructorWorkspaces = [];
     liveInstructorWorkspaceStates.clear();
     classroomExercises.delete(LIVE_INSTRUCTOR_TOKEN);
+    classroomExerciseReleases.delete(LIVE_INSTRUCTOR_TOKEN);
     liveInstructorParticipants = [{
       id: LIVE_PARTICIPANT_ID,
       displayName: 'Waiting Student',
