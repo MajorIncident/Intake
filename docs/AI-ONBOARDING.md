@@ -21,8 +21,8 @@ For any work in the Standalone / Student / Instructor program (#288), also read 
 | `src/appState.js` | `collectAppState()`, `applyAppState()`, `getSummaryState()` for round-trip UI testing and summary hydration. |
 | `src/experienceRoles.js` | Canonical Standalone / Student / Instructor IDs, labels, and declarative product-surface policy. |
 | `src/experienceRoleController.js` | First-run chooser, role resume/switching, backward-compatible Standalone migration, and local-only `kt-experience-role-v1` preference. |
-| `src/classroomStudent.js` | Student class admission/resume/exit plus coaching-connect lifecycle hooks. |
-| `src/classroomInstructor.js` | Instructor class resume, roster, read-only observation, and coaching-observation lifecycle hooks. |
+| `src/classroomStudent.js` | Normal one-code Student admission, Waiting/own-status polling, class-session resume, assignment-specific workspace access/reassignment/unassign, legacy two-code recovery, and coaching/resource lifecycle hooks. |
+| `src/classroomInstructor.js` | Start Class, human join-code display, same-device Instructor resume, live roster/team assignment management, read-only observation, and coaching lifecycle hooks. |
 | `src/coachableFields.js` | Stable coaching target IDs and versioned field fingerprints; DOM placement is deliberately separate from persistence identity. |
 | `src/classroomCoaching.js` | Instructor coaching controls and Student read-only feedback rendering through the separate coaching API. |
 | `src/classroomCaseStudies.js` | Authorized in-memory protected Case Study catalog/payload client. Receives active Classroom capabilities from Student/Instructor lifecycle controllers, never persists them, and clears context on disconnect. |
@@ -37,8 +37,8 @@ For any work in the Standalone / Student / Instructor program (#288), also read 
 | `src/summary.js` | `generateSummary()`, `setSummaryStateProvider()`, helpers that compose both clipboard output and AI prompts. |
 | `src/toast.js` | `showToast()` for lightweight notifications reused by comms and bootstrapping.
 | `api/_workspace.js` | Existing collaboration persistence/handlers plus explicitly edit-capable workspace aliases. Only `classroom-student` aliases may resolve through legacy read/write collaboration endpoints. |
-| `api/_classroom.js` | Class schema/capabilities, class-scoped observation, Student admission, rotation/revocation, Student membership lookup, and separate Instructor-write/Student-read coaching feedback APIs. |
-| `api/_protectedCaseStudies.js` | Server-only protected Case Study catalog/payload delivery. Instructor access is class-scoped; Student access resolves active membership from the issued Student workspace capability. |
+| `api/_classroom.js` | Class/live-participant schema and capabilities, one-code admission, own-status/current-access exchange, Instructor assign/reassign/unassign, class-scoped observation, legacy admission compatibility, and separate coaching APIs. |
+| `api/_protectedCaseStudies.js` | Server-only protected Case Study catalog/payload delivery. Instructor access is class-scoped; Student access resolves only the currently active Classroom workspace authority. #313 staged release must extend this boundary rather than shipping unreleased case content to the browser. |
 
 ## Working Agreement for AI Agents
 - **Stay modular:** Add new behaviour by creating a file under `src/` and exporting named helpers. Only touch `main.js` to import and wire these helpers.
