@@ -978,6 +978,7 @@ export function createInstructorClassroomController({
     if (!stored) {
       activeSession = null;
       workspaces = [];
+      participants = [];
       selectedWorkspaceId = '';
       renderEntry();
       return false;
@@ -987,7 +988,8 @@ export function createInstructorClassroomController({
     if (isInstructorSessionExpired(stored, now())) {
       return terminalClass('Your saved Instructor class access has expired. Use the current Instructor access code.');
     }
-    if (element('instructorClassForm')) element('instructorClassForm').hidden = true;
+    if (element('instructorClassStartForm')) element('instructorClassStartForm').hidden = true;
+    if (element('instructorExistingClass')) element('instructorExistingClass').hidden = true;
     if (element('instructorClassResumePanel')) element('instructorClassResumePanel').hidden = false;
     if (element('instructorClassResumeTitle')) element('instructorClassResumeTitle').textContent = stored.class.title;
     if (element('instructorClassResumeMessage')) element('instructorClassResumeMessage').textContent = 'Reconnecting to your class roster…';
@@ -1000,6 +1002,7 @@ export function createInstructorClassroomController({
     clearInstructorSession(storage);
     activeSession = null;
     workspaces = [];
+    participants = [];
     selectedWorkspaceId = '';
     restoreLocal();
     renderEntry();
@@ -1015,10 +1018,22 @@ export function createInstructorClassroomController({
     setConnectedLayout(false);
   };
 
+  const handleStartSubmit = event => {
+    event.preventDefault();
+    void startClass(element('instructorClassTitleInput')?.value || '');
+  };
   const handleSubmit = event => {
     event.preventDefault();
     void openClass(element('instructorClassCode')?.value || '');
   };
+  const handleWorkspaceCreate = event => {
+    event.preventDefault();
+    void createWorkspace(
+      element('instructorWorkspaceKind')?.value || 'group',
+      element('instructorWorkspaceLabel')?.value || ''
+    );
+  };
+  const handleCopyJoinCode = () => { void copyJoinCode(); };
   const handleRetry = () => { void resume(); };
   const handleLeave = () => leaveClass();
   const handleSearch = event => {
@@ -1045,7 +1060,10 @@ export function createInstructorClassroomController({
   };
 
   const init = () => {
+    element('instructorClassStartForm')?.addEventListener('submit', handleStartSubmit);
     element('instructorClassForm')?.addEventListener('submit', handleSubmit);
+    element('instructorWorkspaceCreateForm')?.addEventListener('submit', handleWorkspaceCreate);
+    element('instructorCopyJoinCodeBtn')?.addEventListener('click', handleCopyJoinCode);
     element('instructorClassRetryBtn')?.addEventListener('click', handleRetry);
     element('instructorClassLeaveBtn')?.addEventListener('click', handleLeave);
     element('instructorWorkspaceSearch')?.addEventListener('input', handleSearch);
@@ -1063,7 +1081,10 @@ export function createInstructorClassroomController({
     stopLive();
     onObservationEnd();
     restoreReadonlyProjection();
+    element('instructorClassStartForm')?.removeEventListener('submit', handleStartSubmit);
     element('instructorClassForm')?.removeEventListener('submit', handleSubmit);
+    element('instructorWorkspaceCreateForm')?.removeEventListener('submit', handleWorkspaceCreate);
+    element('instructorCopyJoinCodeBtn')?.removeEventListener('click', handleCopyJoinCode);
     element('instructorClassRetryBtn')?.removeEventListener('click', handleRetry);
     element('instructorClassLeaveBtn')?.removeEventListener('click', handleLeave);
     element('instructorWorkspaceSearch')?.removeEventListener('input', handleSearch);
@@ -1076,12 +1097,16 @@ export function createInstructorClassroomController({
     init,
     destroy,
     openClass,
+    startClass,
+    createWorkspace,
+    assignParticipant,
+    copyJoinCode,
     resume,
     refreshRoster,
     selectWorkspace,
     leaveClass,
     getState: () => ({
-      activeSession, workspaces, selectedWorkspaceId, observerEpoch,
+      activeSession, workspaces, participants, selectedWorkspaceId, observerEpoch,
       latestObservation, busy, searchQuery, kindFilter, lastError
     })
   };
