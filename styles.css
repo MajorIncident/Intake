@@ -958,9 +958,9 @@ body.comms-drawer-open{overflow:hidden;}
   align-items:center;
   line-height:1.6;
 }
-.site-footer a{color:var(--accent); text-decoration:none;}
+.site-footer a{color:var(--accent); text-decoration:underline; text-underline-offset:2px;}
 .site-footer a:hover,
-.site-footer a:focus{text-decoration:underline;}
+.site-footer a:focus{text-decoration-thickness:2px;}
 .site-footer__meta{
   font-size:12px;
   color:#7d8aa6;
