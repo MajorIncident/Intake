@@ -524,7 +524,47 @@ Validation on `0c8692c...`:
 - required Browser E2E: **25 passed / 7 intentional project-scoped skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
 
-**Exact next tranche:** add one integrated multi-browser live-class acceptance journey using the same class instance end-to-end: Instructor starts class -> late Students join from the displayed human code -> Instructor sees Waiting -> creates Team A/Team B -> assigns multiple Students -> same-team Students synchronize while the other team remains isolated -> Instructor observes/coaches -> moves one Student A -> B -> old A authority fails and Student lands on B -> unassign returns Student to Waiting. Keep the accessible selector path canonical. Do not add #313 stage/case orchestration yet.
+## Implementation checkpoint — integrated live-class acceptance
+
+Completed after the Instructor and Student live clients were independently browser-green.
+
+The deterministic browser server now has a parallel-safe integrated classroom namespace with its own Instructor capability, human join code, workspace IDs, participant roster, and shared workspace-state maps. This keeps the integrated acceptance journey isolated from the existing Instructor-only and Student-only fixtures when Playwright runs specs concurrently.
+
+The real-browser journey in `tests/e2e/classroom-live-integration.spec.mjs` drives four browser contexts against one class:
+- Instructor starts **Integrated Browser Classroom** and the test reads the actual join code rendered by the Instructor UI;
+- Instructor creates Team Alpha and Team Beta;
+- two Students join through that displayed one-code path and appear Waiting in the Instructor roster;
+- both Students are assigned to Team Alpha through the accessible assignment selectors;
+- one Student edits Team Alpha and the second Student converges on the same Intake;
+- a late Student joins after Team Alpha work has begun, appears Waiting, and is assigned to Team Beta;
+- Team Beta edits remain isolated while both Team Alpha Students retain Team Alpha state;
+- Instructor opens Team Alpha read-only and observes the actual shared Student snapshot;
+- Instructor saves field-level **Needs improvement** coaching and a Team Alpha Student receives it read-only;
+- Instructor moves Student Alpha One from Team Alpha to Team Beta;
+- the moved Student lands on Team Beta's existing snapshot rather than carrying Team Alpha content across;
+- the remaining Team Alpha Student stays on Team Alpha unchanged;
+- the moved Student's old Team Alpha workspace token returns 404;
+- Instructor unassigns that Student, the Student returns to Waiting, and the old Team Beta token also returns 404;
+- both destination-team and remaining-team state remain intact;
+- serious/critical axe violations and uncaught page errors remain fatal.
+
+Fixture implementation:
+- `5f1404921eeec8b2aba3103672be547af35b6865` shares managed Instructor workspace state with Student collaboration/observation;
+- `4f36af2d5221234a9ebf35d574f287f7aa52bb39` connects one-code Student admission/assignment to the Instructor-managed class;
+- `e7b8d06111b8dbda6ba6a27372956b3d012899c3` enables coaching on managed live workspaces;
+- `2262490c9de7da5a9b675932fda2c84475977168` adds the integrated four-browser acceptance journey;
+- `971898cb4eca725ad079be5c8ba5c97484fdab2f`, `6c712e47383079d5aa50869be4e9d9a26def28e9`, and `9315210dd15ed583cfbd3201302699d025ded3a1` isolate and route managed fixtures by capability so parallel specs cannot reset or mutate each other's class state.
+
+Validation on `9315210...`:
+- repository quality: **252 tests / 251 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **26 passed / 8 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
+
+This closes the browser acceptance matrix listed below for #312 without adding #313 staged exercise/case state.
+
+**Exact next tranche:** final #312 security/docs/merge-readiness review. Reconcile the canonical API/architecture docs with the implemented one-code live lifecycle, review the complete `main -> #314` diff and unresolved review/security state, verify rollback/legacy compatibility language, and make the draft PR ready for review only if the documented head remains green. Keep #313 as the next separate product slice.
+
+
 
 ## Student client lifecycle
 
