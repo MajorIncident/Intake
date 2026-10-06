@@ -44,6 +44,7 @@ const STUDENT_LIVE_CLASS = Object.freeze({
 let liveClassState = null;
 let liveInstructorWorkspaces = [];
 let liveInstructorParticipants = [];
+const liveInstructorWorkspaceStates = new Map();
 let studentLiveCounter = 0;
 const studentLiveSessions = new Map();
 const studentLiveAccessContexts = new Map();
@@ -120,15 +121,17 @@ function setStudentLiveAssignment(session, assignment, revision) {
 
 function studentLiveStatus(session) {
   session.statusReads += 1;
-  if (session.assignmentRevision === 0 && session.statusReads >= 2) {
-    setStudentLiveAssignment(session, session.teamA, 1);
-  } else if (session.assignment?.id === session.teamA.id && session.accessCount >= 2) {
-    setStudentLiveAssignment(session, session.teamB, 2);
-  } else if (session.assignment?.id === session.teamB.id && session.accessCount >= 3) {
-    setStudentLiveAssignment(session, null, 3);
+  if (!session.integrated) {
+    if (session.assignmentRevision === 0 && session.statusReads >= 2) {
+      setStudentLiveAssignment(session, session.teamA, 1);
+    } else if (session.assignment?.id === session.teamA.id && session.accessCount >= 2) {
+      setStudentLiveAssignment(session, session.teamB, 2);
+    } else if (session.assignment?.id === session.teamB.id && session.accessCount >= 3) {
+      setStudentLiveAssignment(session, null, 3);
+    }
   }
   return {
-    class: STUDENT_LIVE_CLASS,
+    class: session.classContext || STUDENT_LIVE_CLASS,
     participant: {
       id: session.participantId,
       displayName: session.displayName,
@@ -146,7 +149,7 @@ function issueStudentLiveAccess(session) {
   const workspaceState = session.workspaceStates.get(assignment.id);
   classroomWorkspaces.set(workspaceToken, workspaceState);
   studentLiveAccessContexts.set(workspaceToken, {
-    class: STUDENT_LIVE_CLASS,
+    class: session.classContext || STUDENT_LIVE_CLASS,
     workspace: {
       ...assignment,
       expiresAt: CLASSROOM_EXPIRY
@@ -270,23 +273,27 @@ function liveInstructorParticipantRoster() {
 
 function liveInstructorObservation(workspaceId) {
   const workspace = liveInstructorWorkspaces.find(item => item.id === workspaceId);
-  if (!workspace) return null;
-  const snapshot = freshClassroomSnapshot();
-  if (!snapshot.pre || typeof snapshot.pre !== 'object') snapshot.pre = {};
-  snapshot.pre.oneLine = `${workspace.label} live-class Intake.`;
+  const state = liveInstructorWorkspaceStates.get(workspaceId);
+  if (!workspace || !state) return null;
   return {
     class: liveInstructorClass(),
     workspace: {
       id: workspace.id,
       kind: workspace.kind,
       label: workspace.label,
-      teamName: workspace.label,
-      revision: 1,
+      teamName: state.teamName,
+      revision: state.revision,
       expiresAt: CLASSROOM_EXPIRY,
       updatedAt: '2099-12-31T23:00:00.000Z'
     },
-    participants: [],
-    snapshot
+    participants: liveInstructorParticipants
+      .filter(participant => participant.assignment?.id === workspaceId)
+      .map(participant => ({
+        id: participant.id,
+        displayName: participant.displayName,
+        activityState: 'active'
+      })),
+    snapshot: structuredClone(state.snapshot)
   };
 }
 
