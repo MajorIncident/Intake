@@ -17,6 +17,8 @@ Keep feature modules independently initialisable, own only their feature-specifi
 
 ## Protected Classroom resources
 
+`classroomExerciseInstructor.js` owns the Instructor staged-exercise console client. It receives the Instructor capability only through the class lifecycle, keeps that credential and exercise payload in memory, and reads `/api/classes/exercise`. Exercise state, staged definitions, and capabilities must never enter Intake persistence, summaries, exports, URLs, or public manifests. Tranche 6 lifecycle mutations must remain optimistic-revision protected.
+
 `classroomCaseStudies.js` owns the authorized in-memory protected Case Study catalog/payload client. It receives active capabilities only through Student/Instructor lifecycle callbacks, keeps no localStorage/sessionStorage record, and clears catalog/context when the class role disconnects. Its public state must never expose a bearer capability.
 
 `templatesDrawer.js` may combine public Standard Template metadata with the current authorized in-memory Case Study catalog, but must fetch a protected payload only on demand and project it through `projectTemplateState()`. Standalone must work with no protected provider or classroom backend.
