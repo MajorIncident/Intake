@@ -477,18 +477,54 @@ Validation on `d3e2a397...`:
 - required Browser E2E: **23 passed / 7 intentional project-scoped skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
 
-**Exact next tranche:** cut the Student client over additively to the live class-session model:
-1. Student normal join becomes display name + one human class code;
-2. `POST /api/classes/admit` mints/persists only the Student class-session capability plus public context;
-3. an admitted unassigned Student shows Waiting and does not connect collaboration;
-4. poll only `GET /api/classes/student` for own assignment revision/state;
-5. when assigned, exchange the class-session token through `POST /api/classes/student/access`, then connect the existing collaboration controller with the returned assignment-specific token;
-6. on assignment revision change, disconnect/discard the old workspace token before requesting destination access and render destination snapshot as authoritative;
-7. on unassign, disconnect collaboration and return to Waiting while keeping the class-session capability;
-8. preserve the legacy two-code resume/admission path during migration;
-9. extend deterministic browser fixture + real-browser tests for one-code join, waiting, late assignment, A -> B reassignment, unassign, and stale-old-token cutoff.
+## Implementation checkpoint — Student live-class client
 
-Do not remove legacy Student sessions/routes in this tranche, and do not add #313 staged exercise state yet.
+Completed on #314 after the Instructor live-management surface.
+
+Implemented:
+- normal Student entry is now **display name + one human class code**;
+- legacy class + assignment capability entry remains available under **Use legacy two-code access** for additive compatibility;
+- `POST /api/classes/admit` creates the live Student session and the human code is discarded after admission;
+- the same-device live resume envelope persists only the high-entropy Student class-session capability plus public class/participant/assignment context;
+- assignment-specific workspace edit capabilities are **memory-only** and intentionally rejected if present in a live resume envelope;
+- an admitted unassigned Student renders a dedicated Waiting state, hides Intake, does not connect collaboration, and polls only own assignment status;
+- assignment exchanges the class-session capability through `POST /api/classes/student/access`, then attaches the existing collaboration controller;
+- reassignment disconnects/discards old workspace authority before requesting destination access; destination Intake is authoritative and no snapshot merge occurs;
+- unassign disconnects collaboration and returns the Student to Waiting while retaining class-session authority;
+- role changes pause/disconnect live workspace activity without destroying the resumable class session;
+- terminal class-session failure clears invalid Classroom authority and restores pre-class local recovery where available;
+- coaching and protected-resource Student integrations continue to receive only the currently active assignment-specific workspace token.
+
+Compatibility:
+- legacy two-code Student join/resume remains supported;
+- current legacy browser authorization, coaching, protected Case Study, and team-collaboration journeys explicitly open the recovery disclosure and remain green;
+- no legacy routes/tables were removed.
+
+Deterministic/browser coverage:
+- focused tests prove one-code Waiting and Waiting -> Team Alpha -> Team Beta -> Waiting lifecycle;
+- live resume tests prove no assignment-specific `workspaceToken` is persisted;
+- the isolated browser fixture rotates fresh workspace capabilities while preserving canonical Team A/B snapshots;
+- real-browser desktop + mobile coverage proves one-code join -> Waiting -> Team Alpha -> edit -> reload/resume Alpha -> Team Beta -> Waiting;
+- the browser test proves destination Team Beta does not inherit Team Alpha Intake;
+- stale Alpha access returns 404 after reassignment and stale Beta access returns 404 after unassign;
+- serious/critical axe scanning caught the Waiting eyebrow contrast at 3.72:1; the Waiting surface now uses the existing accessible `var(--accent-text)` foreground;
+- all legacy two-code browser journeys remain available through the explicit recovery disclosure.
+
+Durable implementation commits:
+- `47485439c34fc7237c28f93619924e2da87b084a` / `73792b71db9ec7965c36c2b905ebc09bb699ea78` — primary one-code Student UX, Waiting surface, and legacy recovery disclosure;
+- `d32c7ec331daa5010f9617c6b332756e9395d35b` — live Student admission/status/access/resume/reassignment lifecycle;
+- `db54b1aa84dc4d43802aa568b811b6974a84c02c` / `a3d520655c928abbeb4cb63e592593a38a969cd8` — live session-isolation and lifecycle tests;
+- `8485b2ca1a5ba59fb98d4aae0398a9052fab91b6` / `2fd0d53c0fd8e4e4cac0298aca9f5ed7ad930a94` — isolated live Student browser fixture and side-effect-free Waiting behavior;
+- `50f6260a251793c0794945d941ad4ac1c97d4e8d` — live Student Playwright journey;
+- `30dbb0d807793fc503b4933c24ffa7e2ff50d8ba` through `1b90c0f40238769d6ab17ce9bfe7d44fc391a212` — legacy Student browser journeys explicitly enter two-code recovery;
+- `0c8692c7486ecb50c730d0757c41426b81830250` — Waiting-state WCAG contrast repair and green implementation gate.
+
+Validation on `0c8692c...`:
+- repository quality: **252 tests / 251 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **25 passed / 7 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
+
+**Exact next tranche:** add one integrated multi-browser live-class acceptance journey using the same class instance end-to-end: Instructor starts class -> late Students join from the displayed human code -> Instructor sees Waiting -> creates Team A/Team B -> assigns multiple Students -> same-team Students synchronize while the other team remains isolated -> Instructor observes/coaches -> moves one Student A -> B -> old A authority fails and Student lands on B -> unassign returns Student to Waiting. Keep the accessible selector path canonical. Do not add #313 stage/case orchestration yet.
 
 ## Student client lifecycle
 
@@ -584,10 +620,7 @@ Keep working:
 - existing Instructor bearer resume;
 - current observation/coaching/protected-resource paths.
 
-New Student UI moves to admit/status/access only after:
-- repository/API tests prove assignment/reassignment safety;
-- new protected Case Study/coaching Student authorization accepts the new workspace-access path;
-- browser fixture supports waiting/assign/reassign.
+The normal Student UI now uses admit/status/access because the repository/API safety matrix, coaching/protected-resource authorization, and browser waiting/reassignment coverage are green. The legacy two-code path remains available under an explicit recovery disclosure during the additive migration.
 
 Do not delete legacy tables/routes in #312 unless a separate migration explicitly proves no supported client depends on them.
 
