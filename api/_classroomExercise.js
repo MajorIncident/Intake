@@ -86,6 +86,12 @@ function caseStudySummary(caseStudy) {
   };
 }
 
+function stagedCaseStudyCatalog(manifest) {
+  return manifest
+    .filter(entry => entry?.templateKind === 'case-study' && entry.simulation)
+    .map(caseStudySummary);
+}
+
 function instructorDefinition(caseStudy) {
   return {
     ...caseStudySummary(caseStudy),
@@ -307,7 +313,11 @@ export function classExerciseHandler({
       const current = await repository.getCurrentExerciseForInstructor(instructorHash);
       if (!current) {
         return req.method === 'GET'
-          ? send(res, 200, { class: classroom, exercise: null })
+          ? send(res, 200, {
+              class: classroom,
+              exercise: null,
+              availableCaseStudies: stagedCaseStudyCatalog(manifest)
+            })
           : send(res, 404, { error: 'Exercise not found.' });
       }
       const caseStudy = stagedCaseStudy(manifest, current.exercise.caseStudyId);
@@ -316,13 +326,16 @@ export function classExerciseHandler({
       }
 
       if (req.method === 'GET') {
-        return send(res, 200, await instructorExercisePayload(
-          repository,
-          instructorHash,
-          current.classroom,
-          current.exercise,
-          caseStudy
-        ));
+        return send(res, 200, {
+          ...(await instructorExercisePayload(
+            repository,
+            instructorHash,
+            current.classroom,
+            current.exercise,
+            caseStudy
+          )),
+          availableCaseStudies: stagedCaseStudyCatalog(manifest)
+        });
       }
 
       const expectedRevision = positiveRevision(req.body?.expectedRevision);
