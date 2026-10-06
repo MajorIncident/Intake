@@ -290,3 +290,20 @@ No classroom credential is stored in browser Intake state.
 The repository test-change guard treats `api/` as runtime code, so future server changes require test changes.
 
 For current execution state, read `docs/classroom-workstream.md`.
+
+
+## #312 live-class management contract
+
+The next-generation live-class contract is defined in `docs/classroom-live-management.md`.
+
+Key direction:
+- the human-facing join code is an admission locator, not a workspace bearer capability;
+- admitted Students receive a stable high-entropy **class-session** capability;
+- Students may exist in a waiting/unassigned state;
+- Instructor assignment/reassignment is server-authoritative;
+- editable workspace capabilities are assignment-specific and revoked on move/unassign;
+- the Student class-session capability is never accepted by collaboration edit endpoints;
+- destination workspace state wins on reassignment; no automatic Intake merge occurs;
+- legacy two-code admission remains supported during the additive migration.
+
+Planned new endpoints are `POST /api/classes/admit`, `GET/PATCH /api/classes/participants`, `GET /api/classes/student`, and `POST /api/classes/student/access`. Existing `POST /api/classes/join` remains a compatibility path until a later explicit migration.

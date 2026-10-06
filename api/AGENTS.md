@@ -90,3 +90,28 @@ Classroom API changes must preserve automated coverage for:
 - legacy Standalone collaboration behavior.
 - coaching class scoping, independent feedback revisions, Student read-only access, and zero Student snapshot-revision changes.
 - protected Case Study Instructor class scoping, Student membership-bound access, rejection of legacy collaboration capabilities, metadata-only catalogs, POST-only payload selection, and private response headers.
+
+
+## #312 live-class capability direction
+
+Read `docs/classroom-live-management.md` before implementing #312.
+
+The new capability chain is intentionally different from the legacy two-code admission path:
+
+```text
+human join code (admission locator only)
+  -> high-entropy Student class-session capability
+  -> own assignment-status API only
+  -> assignment-specific classroom-student workspace capability
+  -> existing collaboration edit APIs
+```
+
+Rules:
+- never accept the human join code on workspace/observer/coaching/resource APIs;
+- never accept the Student class-session capability on collaboration edit APIs;
+- unassigned participants have no workspace edit capability;
+- on assign/reassign/unassign, revoke the previous workspace-access capability before destination access is issued;
+- never remap one still-active edit token from an old workspace to a new workspace;
+- no assignment operation copies or merges Intake snapshots;
+- keep legacy `/api/classes/join` and `classroom_memberships` working during the additive migration;
+- Student status endpoints return only that Student's assignment; they never enumerate classmates/workspaces.

@@ -313,6 +313,26 @@ Continue #295 on draft PR #307 from the current branch head.
   - First required-gate validation on `c9b03f30...`: repository quality succeeded and browser regression reported **22 passed, 6 intentional skips**; CodeQL, Dependency Review, and Template Manifest Guard also green.
 - Exact next action: synchronize final docs/PR/issues, review the complete `main → #308` diff and unresolved review/security state, then make #308 ready for review/merge if the documented head remains green. After #308 / #296 / #279 close, begin #312 as the next product slice; #313 follows on the live-class/team-management substrate.
 
+## Active #312 implementation
+
+- Issue: #312.
+- Branch: `feature/classroom-live-management`.
+- Base: `main` at #308 merge `6c58336ac1677764641c09eadb201abcad8eeac1`.
+- First tranche: architecture + server contract only; no schema/runtime mutation until the admission/assignment/reassignment security contract is documented.
+- Canonical design: `docs/classroom-live-management.md`.
+- Decided model:
+  - Instructor normal path is **Start a class**;
+  - one human-friendly Student join code;
+  - join code is admission-only, not workspace authority;
+  - admission mints a stable high-entropy Student class-session capability;
+  - Students may wait unassigned;
+  - workspace edit capabilities are assignment-specific and revoked on move/unassign;
+  - Student polls only own assignment status and never receives workspace lists;
+  - reassignment never merges snapshots; destination team state wins;
+  - legacy two-code admission remains supported during additive migration.
+- Critical race protection: never remap one active workspace edit token from Team A to Team B. Old edit capability is revoked; Student obtains fresh destination access after assignment revision changes.
+- Exact next action after this architecture checkpoint: implement the additive join-code + `classroom_participants` schema and repository methods with API tests, while leaving the existing Student UI and legacy `/api/classes/join` path unchanged.
+
 ## Approved Classroom follow-on direction
 
 The current #288 program establishes the secure Classroom foundation, but it is **not** the final Instructor-led teaching experience.
