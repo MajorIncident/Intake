@@ -496,6 +496,128 @@ async function initializeClassroomRepository() {
       };
     },
 
+    async assignParticipant(instructorHash, { participantId, workspacePublicId, workspaceRepository }) {
+      const classroom = await classByInstructor(instructorHash);
+      if (!classroom) return null;
+
+      const participantRows = await sql`SELECT
+          workspace_id AS "workspaceInternalId",
+          workspace_access_token_hash AS "workspaceAccessHash",
+          assignment_revision AS "assignmentRevision"
+        FROM classroom_participants
+        WHERE class_id = ${classroom.internal_id}
+          AND participant_id = ${participantId}::uuid
+          AND revoked_at IS NULL`;
+      const participant = participantRows[0];
+      if (!participant) return null;
+
+      let destination = null;
+      if (workspacePublicId !== null) {
+        const destinationRows = await sql`SELECT
+            cw.workspace_id AS "internalId",
+            cw.public_id AS id,
+            cw.workspace_kind AS kind,
+            cw.label
+          FROM classroom_workspaces cw
+          JOIN collaboration_workspaces w ON w.id = cw.workspace_id
+          WHERE cw.class_id = ${classroom.internal_id}
+            AND cw.public_id = ${workspacePublicId}::uuid
+            AND cw.revoked_at IS NULL
+            AND w.expires_at > NOW()`;
+        destination = destinationRows[0] || null;
+        if (!destination) return null;
+
+        if (destination.kind === 'individual') {
+          const claimed = await sql`UPDATE classroom_workspaces
+            SET individual_participant_id = COALESCE(individual_participant_id, ${participantId}::uuid),
+                updated_at = NOW()
+            WHERE class_id = ${classroom.internal_id}
+              AND workspace_id = ${destination.internalId}
+              AND (individual_participant_id IS NULL OR individual_participant_id = ${participantId}::uuid)
+            RETURNING workspace_id`;
+          if (!claimed[0]) {
+            return { status: 'occupied', classroom };
+          }
+        }
+      }
+
+      const nextWorkspaceInternalId = destination?.internalId || null;
+      if ((participant.workspaceInternalId || null) === nextWorkspaceInternalId) {
+        return {
+          status: 'unchanged',
+          classroom,
+          participant: {
+            id: participantId,
+            assignmentRevision: participant.assignmentRevision
+          },
+          assignment: destination
+            ? { id: destination.id, kind: destination.kind, label: destination.label }
+            : null
+        };
+      }
+
+      if (participant.workspaceAccessHash) {
+        await workspaceRepository.revokeCapability(participant.workspaceAccessHash);
+      }
+      if (participant.workspaceInternalId) {
+        await workspaceRepository.removePresenceByWorkspaceId(participant.workspaceInternalId, participantId);
+      }
+
+      const updatedRows = await sql`UPDATE classroom_participants
+        SET workspace_id = ${nextWorkspaceInternalId},
+            workspace_access_token_hash = NULL,
+            assignment_revision = assignment_revision + 1,
+            assigned_at = CASE WHEN ${nextWorkspaceInternalId} IS NULL THEN NULL ELSE NOW() END,
+            updated_at = NOW()
+        WHERE class_id = ${classroom.internal_id}
+          AND participant_id = ${participantId}::uuid
+          AND assignment_revision = ${participant.assignmentRevision}
+          AND revoked_at IS NULL
+        RETURNING
+          participant_id AS id,
+          display_name AS "displayName",
+          assignment_revision AS "assignmentRevision",
+          joined_at AS "joinedAt",
+          updated_at AS "updatedAt"`;
+      const updated = updatedRows[0];
+
+      if (!updated) {
+        if (destination?.kind === 'individual') {
+          const currentRows = await sql`SELECT workspace_id AS "workspaceInternalId"
+            FROM classroom_participants
+            WHERE class_id = ${classroom.internal_id}
+              AND participant_id = ${participantId}::uuid
+              AND revoked_at IS NULL`;
+          if (currentRows[0]?.workspaceInternalId !== destination.internalId) {
+            await sql`UPDATE classroom_workspaces
+              SET individual_participant_id = NULL, updated_at = NOW()
+              WHERE class_id = ${classroom.internal_id}
+                AND workspace_id = ${destination.internalId}
+                AND individual_participant_id = ${participantId}::uuid`;
+          }
+        }
+        return { status: 'conflict', classroom };
+      }
+
+      if (participant.workspaceInternalId && participant.workspaceInternalId !== nextWorkspaceInternalId) {
+        await sql`UPDATE classroom_workspaces
+          SET individual_participant_id = NULL, updated_at = NOW()
+          WHERE class_id = ${classroom.internal_id}
+            AND workspace_id = ${participant.workspaceInternalId}
+            AND workspace_kind = 'individual'
+            AND individual_participant_id = ${participantId}::uuid`;
+      }
+
+      return {
+        status: 'updated',
+        classroom,
+        participant: updated,
+        assignment: destination
+          ? { id: destination.id, kind: destination.kind, label: destination.label }
+          : null
+      };
+    },
+
     async issueParticipantWorkspaceAccess({ sessionHash, accessHash, workspaceRepository }) {
       const context = await this.getParticipantBySession(sessionHash);
       if (!context) return null;
@@ -777,6 +899,12 @@ async function initializeClassroomRepository() {
         JOIN classroom_workspaces cw
           ON cw.class_id = cp.class_id AND cw.workspace_id = cp.workspace_id
         JOIN collaboration_workspaces w ON w.id = cw.workspace_id
+        JOIN collaboration_workspace_capabilities cap
+          ON cap.token_hash = cp.workspace_access_token_hash
+          AND cap.workspace_id = cw.workspace_id
+          AND cap.capability_kind = ${CLASSROOM_STUDENT_CAPABILITY_KIND}
+          AND cap.revoked_at IS NULL
+          AND (cap.expires_at IS NULL OR cap.expires_at > NOW())
         WHERE cp.workspace_access_token_hash = ${accessHash}
           AND cp.revoked_at IS NULL
           AND c.revoked_at IS NULL
@@ -1425,20 +1553,56 @@ export function classAdmitHandler({
  * @param {object} [dependencies] Injectable dependencies.
  * @returns {Function} Vercel handler.
  */
-export function classParticipantsHandler({ getRepository = getClassroomRepository } = {}) {
+export function classParticipantsHandler({
+  getRepository = getClassroomRepository,
+  getWorkspaceRepo = getWorkspaceRepository
+} = {}) {
   return async (req, res) => {
-    if (req.method !== 'GET') return methodNotAllowed(res, 'GET');
+    if (!['GET', 'PATCH'].includes(req.method)) return methodNotAllowed(res, 'GET, PATCH');
     const authorization = requireBearer(req);
     if (!authorization.ok) return send(res, authorization.status, { error: authorization.error });
 
+    const instructorHash = hashWorkspaceToken(authorization.token);
+
     try {
       const repository = await getRepository();
-      const result = await repository.listParticipants(hashWorkspaceToken(authorization.token));
-      return result
-        ? send(res, 200, { class: result.classroom, participants: result.participants })
-        : send(res, 404, { error: 'Class not found.' });
+      if (req.method === 'GET') {
+        const result = await repository.listParticipants(instructorHash);
+        return result
+          ? send(res, 200, { class: result.classroom, participants: result.participants })
+          : send(res, 404, { error: 'Class not found.' });
+      }
+
+      const participantId = req.body?.participantId;
+      const workspaceId = req.body?.workspaceId ?? null;
+      if (!validateParticipantId(participantId)
+        || (workspaceId !== null && !validateClassroomId(workspaceId))) {
+        return send(res, 400, { error: 'Invalid participant assignment.' });
+      }
+
+      const workspaceRepository = await getWorkspaceRepo();
+      const result = await repository.assignParticipant(instructorHash, {
+        participantId,
+        workspacePublicId: workspaceId,
+        workspaceRepository
+      });
+      if (!result) {
+        return send(res, 404, { error: 'Participant or workspace not found.' });
+      }
+      if (result.status === 'occupied') {
+        return send(res, 409, { error: 'Individual workspace is already assigned.' });
+      }
+      if (result.status === 'conflict') {
+        return send(res, 409, { error: 'Participant assignment changed. Retry.' });
+      }
+      return send(res, 200, {
+        class: result.classroom,
+        participant: result.participant,
+        assignment: result.assignment,
+        changed: result.status === 'updated'
+      });
     } catch {
-      return send(res, 500, { error: 'Unable to load class participants.' });
+      return send(res, 500, { error: 'Unable to update class participant.' });
     }
   };
 }
