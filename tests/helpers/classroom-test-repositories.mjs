@@ -88,6 +88,10 @@ export function createWorkspaceRepository() {
       alias.revoked = true;
       return true;
     },
+    async getCapabilityKind(hash) {
+      const alias = aliasByHash.get(hash);
+      return alias && !alias.revoked ? alias.capabilityKind : null;
+    },
     async load(hash) {
       const workspace = resolve(hash);
       return workspace ? {
@@ -591,7 +595,8 @@ export function createClassroomRepository() {
       exercisePublicId,
       expectedRevision,
       stageId,
-      workspaceRepository
+      workspaceRepository,
+      studentEditingEnabled
     }) {
       const item = activeByInstructor(instructorHash);
       if (!item) return null;
@@ -634,9 +639,7 @@ export function createClassroomRepository() {
       }
 
       exercise.stagePhase = 'debrief';
-      // Tranche 4 deliberately does not claim edit freeze; Tranche 5 will add the
-      // collaboration write guard before this policy can become authoritative.
-      exercise.studentEditingEnabled = true;
+      exercise.studentEditingEnabled = studentEditingEnabled;
       exercise.exerciseRevision += 1;
       exercise.updatedAt = 'updated';
       return {
