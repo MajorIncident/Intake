@@ -715,7 +715,12 @@ async function handleClassroomApi(request, response, url) {
       return true;
     }
     const workspaceId = url.searchParams.get('workspaceId') || '';
-    if (!Object.values(INSTRUCTOR_WORKSPACE_IDS).includes(workspaceId)) {
+    const legacyWorkspace = instructorRoster().workspaces.find(item => item.id === workspaceId) || null;
+    const liveWorkspace = instructorToken === LIVE_INSTRUCTOR_TOKEN
+      ? liveInstructorWorkspaces.find(item => item.id === workspaceId) || null
+      : null;
+    const workspace = liveWorkspace || legacyWorkspace;
+    if (!workspace) {
       sendJson(response, 404, { error: 'Workspace not found.' });
       return true;
     }
@@ -723,8 +728,8 @@ async function handleClassroomApi(request, response, url) {
 
     if (request.method === 'GET') {
       sendJson(response, 200, {
-        class: instructorClass(),
-        workspace: instructorRoster().workspaces.find(item => item.id === workspaceId),
+        class: liveWorkspace ? liveInstructorClass() : instructorClass(),
+        workspace,
         feedback: [...workspaceFeedback.values()]
       });
       return true;
