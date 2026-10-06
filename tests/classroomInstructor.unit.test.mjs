@@ -9,7 +9,9 @@ import {
   INSTRUCTOR_SESSION_STORAGE_KEY,
   INSTRUCTOR_SESSION_VERSION,
   clearInstructorSession,
+  formatInstructorJoinCode,
   isInstructorSessionExpired,
+  normalizeInstructorJoinCode,
   persistInstructorSession,
   readInstructorSession,
   validateInstructorCapability
@@ -22,6 +24,7 @@ function session(overrides = {}) {
   return {
     version: INSTRUCTOR_SESSION_VERSION,
     instructorToken: TOKEN,
+    joinCode: 'K7FM-P4Q2',
     class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
     selectedWorkspaceId: WORKSPACE_ID,
     openedAt: '2026-10-01T00:00:00Z',
@@ -33,6 +36,13 @@ test('Instructor capability validation accepts only the expected opaque token sh
   assert.equal(validateInstructorCapability(TOKEN), true);
   assert.equal(validateInstructorCapability('short'), false);
   assert.equal(validateInstructorCapability(null), false);
+});
+
+test('Instructor join-code helpers accept only the unambiguous human code contract', () => {
+  assert.equal(normalizeInstructorJoinCode(' k7fm-p4q2 '), 'K7FMP4Q2');
+  assert.equal(formatInstructorJoinCode('k7fmp4q2'), 'K7FM-P4Q2');
+  assert.equal(normalizeInstructorJoinCode('K7F0-P4Q2'), '');
+  assert.equal(normalizeInstructorJoinCode('short'), '');
 });
 
 test('Instructor same-device resume envelope round-trips outside Intake state', () => {
@@ -48,6 +58,8 @@ test('Instructor same-device resume envelope round-trips outside Intake state', 
 test('Instructor resume rejects malformed sessions and detects server expiry', () => {
   const dom = new JSDOM('', { url: 'https://intake.test/' });
   dom.window.localStorage.setItem(INSTRUCTOR_SESSION_STORAGE_KEY, JSON.stringify(session({ instructorToken: 'bad' })));
+  assert.equal(readInstructorSession(dom.window.localStorage), null);
+  dom.window.localStorage.setItem(INSTRUCTOR_SESSION_STORAGE_KEY, JSON.stringify(session({ joinCode: 'BAD-CODE' })));
   assert.equal(readInstructorSession(dom.window.localStorage), null);
 
   assert.equal(isInstructorSessionExpired(session(), Date.parse('2026-10-01T00:00:00Z')), false);
