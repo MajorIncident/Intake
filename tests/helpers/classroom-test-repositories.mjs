@@ -150,10 +150,14 @@ export function createClassroomRepository() {
   const classes = [];
   const workspaces = [];
   const memberships = new Map();
+  const participants = new Map();
   const coaching = new Map();
 
   const activeByInstructor = hash => classes.find(item => item.instructorHash === hash && !item.revoked) || null;
   const activeByJoin = hash => classes.find(item => item.studentJoinHash === hash && item.joinsEnabled && !item.revoked) || null;
+  const activeByJoinCode = joinCode => classes.find(item => (
+    item.studentJoinCode === joinCode && item.joinsEnabled && !item.revoked
+  )) || null;
   const publicClass = item => item ? {
     internal_id: item.internalId,
     id: item.id,
@@ -166,14 +170,16 @@ export function createClassroomRepository() {
     classes,
     workspaces,
     memberships,
+    participants,
     coaching,
-    async createClass({ publicId, title, instructorHash, studentJoinHash }) {
+    async createClass({ publicId, title, instructorHash, studentJoinHash, studentJoinCode = null }) {
       const item = {
         internalId: nextInternalId++,
         id: publicId,
         title,
         instructorHash,
         studentJoinHash,
+        studentJoinCode,
         joinsEnabled: true,
         expiresAt: 'future',
         revoked: false
@@ -183,6 +189,103 @@ export function createClassroomRepository() {
     },
     async getClassByInstructor(hash) {
       return publicClass(activeByInstructor(hash));
+    },
+    async getClassByJoinCode(joinCode) {
+      return publicClass(activeByJoinCode(joinCode));
+    },
+    async admitParticipant({ joinCode, participantId, displayName, sessionHash }) {
+      const item = activeByJoinCode(joinCode);
+      if (!item) return null;
+      const key = item.internalId + ':' + participantId;
+      const previous = participants.get(key);
+      if (previous?.revoked) return null;
+      const participant = {
+        classInternalId: item.internalId,
+        participantId,
+        displayName,
+        sessionHash,
+        workspaceId: previous?.workspaceId || null,
+        workspaceAccessHash: previous?.workspaceAccessHash || null,
+        assignmentRevision: previous?.assignmentRevision || 0,
+        joinedAt: previous?.joinedAt || 'joined',
+        updatedAt: 'updated',
+        revoked: false
+      };
+      participants.set(key, participant);
+      const assignment = participant.workspaceId
+        ? workspaces.find(workspace => (
+            workspace.classInternalId === item.internalId
+            && workspace.workspaceId === participant.workspaceId
+            && !workspace.revoked
+          ))
+        : null;
+      return {
+        classroom: publicClass(item),
+        participant: {
+          id: participant.participantId,
+          displayName: participant.displayName,
+          assignmentRevision: participant.assignmentRevision,
+          joinedAt: participant.joinedAt,
+          updatedAt: participant.updatedAt
+        },
+        assignment: assignment
+          ? { id: assignment.id, kind: assignment.kind, label: assignment.label }
+          : null
+      };
+    },
+    async getParticipantBySession(sessionHash) {
+      const participant = [...participants.values()].find(value => value.sessionHash === sessionHash && !value.revoked);
+      if (!participant) return null;
+      const item = classes.find(candidate => candidate.internalId === participant.classInternalId && !candidate.revoked);
+      if (!item) return null;
+      const assignment = participant.workspaceId
+        ? workspaces.find(workspace => (
+            workspace.classInternalId === item.internalId
+            && workspace.workspaceId === participant.workspaceId
+            && !workspace.revoked
+          ))
+        : null;
+      return {
+        classroom: publicClass(item),
+        participant: {
+          id: participant.participantId,
+          displayName: participant.displayName,
+          assignmentRevision: participant.assignmentRevision,
+          joinedAt: participant.joinedAt
+        },
+        assignment: assignment
+          ? { id: assignment.id, kind: assignment.kind, label: assignment.label }
+          : null,
+        internal: { classId: item.internalId, workspaceId: participant.workspaceId || null }
+      };
+    },
+    async listParticipants(instructorHash) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      return {
+        classroom: publicClass(item),
+        participants: [...participants.values()]
+          .filter(participant => participant.classInternalId === item.internalId && !participant.revoked)
+          .map(participant => {
+            const assignment = participant.workspaceId
+              ? workspaces.find(workspace => (
+                  workspace.classInternalId === item.internalId
+                  && workspace.workspaceId === participant.workspaceId
+                  && !workspace.revoked
+                ))
+              : null;
+            return {
+              id: participant.participantId,
+              displayName: participant.displayName,
+              assignmentRevision: participant.assignmentRevision,
+              joinedAt: participant.joinedAt,
+              updatedAt: participant.updatedAt,
+              assignment: assignment
+                ? { id: assignment.id, kind: assignment.kind, label: assignment.label }
+                : null
+            };
+          })
+      };
     },
     async rotateStudentJoin(instructorHash, nextHash) {
       const item = activeByInstructor(instructorHash);
