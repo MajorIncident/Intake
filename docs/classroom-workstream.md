@@ -381,6 +381,40 @@ Continue #295 on draft PR #307 from the current branch head.
   - #312 browser acceptance now covers the complete live-class lifecycle without adding #313 staged simulation state.
 - Exact next action: perform the final #312 docs/security/merge-readiness review: reconcile API/architecture docs with the implemented one-code lifecycle, review the full `main -> #314` diff and unresolved review/security state, confirm additive rollback/legacy compatibility, and move #314 out of draft only if the final documented head remains green. Keep #313 as the next separate product slice.
 
+## #312 merge boundary
+
+- #312 completed in PR #314.
+- Squash merge on `main`: `b141d55050207e4cf7ce842a4452a220a5268968`.
+- Final #312 head before merge: `d6a2f27b95639340ad46f6e596368f064671a08f`.
+- Final gate: repository quality **252 tests / 251 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+- #312 issue closed.
+- #313 starts from the merge commit, not from the old #312 feature branch.
+
+## Active #313 implementation
+
+- Issue: #313 — Instructor-orchestrated case simulation and staged debrief.
+- Branch: `feature/classroom-staged-simulation`.
+- Base: #312 merge `b141d55050207e4cf7ce842a4452a220a5268968`.
+- Canonical contract: `docs/classroom-staged-simulation.md`.
+- Architecture checkpoint: `808bdfaa74e7e6a11a88173ee43c5c86d9a8da51`.
+- First tranche is architecture/governance only; no exercise tables/routes/UI yet.
+- Decided model:
+  - staged simulation is class-level orchestration layered over #312 assignment/workspaces;
+  - exercise lifecycle is separate from Intake/collaboration/coaching state;
+  - Student staged reads use the stable Student class-session capability, allowing safe current-stage access while Waiting;
+  - Student collaboration edits remain assignment-specific workspace-capability authorized;
+  - future-stage and Instructor-only content are withheld server-side;
+  - existing full protected Case Study `state` is source/exemplar material and cannot serve as the Student staged feed;
+  - a staged Case Study requires an explicit server-only `simulation` definition; never infer official stages from a completed Intake payload;
+  - while a staged exercise is active, the Student full-payload Case Study endpoint must not provide a bypass to the selected case's complete `state`;
+  - workspace readiness is team-scoped;
+  - beginning debrief captures immutable per-workspace checkpoints so pre-debrief reasoning can be discussed later without overwriting live Intake;
+  - optional edit freeze must be enforced on the Student collaboration write path, not only in the UI;
+  - late join enters the current class stage; reassignment preserves class stage while destination team Intake/readiness wins;
+  - Instructor lifecycle mutations use optimistic exercise revision so retries cannot double-advance.
+- Production stage content is intentionally **not authored yet**. Use synthetic deterministic staged content for infrastructure tests until authoritative case pages/evidence/facilitation material is supplied and reviewed.
+- Exact next action after this architecture tranche: extend Case Study authoring validation/server-only manifest with an **optional** `simulation` definition and focused tests for unique IDs/cross-references, Student-vs-Instructor content separation, public-manifest exclusion, and backward compatibility. Stop before exercise persistence/API/UI.
+
 ## Approved Classroom follow-on direction
 
 The current #288 program establishes the secure Classroom foundation, but it is **not** the final Instructor-led teaching experience.
