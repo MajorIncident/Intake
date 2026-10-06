@@ -3240,6 +3240,18 @@ body[data-experience-role="instructor"].instructor-class-connected .wrap{max-wid
 .instructor-exercise-console__setup-row select{min-width:0;font-size:10px;}
 .instructor-exercise-console__setup-row .btn-secondary{padding:7px 9px;font-size:10px;white-space:nowrap;}
 .instructor-exercise-console__setup small{display:block;margin-top:5px;color:var(--muted);font-size:9px;line-height:1.4;}
+.instructor-exercise-console__lifecycle{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+.instructor-exercise-console__lifecycle small{flex-basis:100%;color:var(--muted);font-size:9px;line-height:1.4;}
+.instructor-exercise-console__stage{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:11px;background:var(--panel-muted);}
+.instructor-exercise-console__stage-heading{display:flex;flex-direction:column;gap:2px;}
+.instructor-exercise-console__stage-heading span,.instructor-exercise-console__facilitation>span{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;}
+.instructor-exercise-console__stage-heading strong{color:var(--ink-strong);font-size:12px;}
+.instructor-exercise-console__stage>p{margin:6px 0 0;color:var(--ink);font-size:10px;line-height:1.45;}
+.instructor-exercise-console__stage-meta{margin-top:6px;color:var(--muted);font-size:9px;}
+.instructor-exercise-console__facilitation{margin-top:9px;padding-top:9px;border-top:1px solid var(--line);}
+.instructor-exercise-console__facilitation article{margin-top:6px;}
+.instructor-exercise-console__facilitation article strong{display:block;color:var(--ink-strong);font-size:10px;}
+.instructor-exercise-console__facilitation article p{margin:3px 0 0;color:var(--ink);font-size:9px;line-height:1.4;}
 .instructor-exercise-console__available{margin-top:9px;}
 .instructor-exercise-console__available>span{display:block;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;}
 .instructor-exercise-console__available ul{display:flex;flex-direction:column;gap:5px;max-height:92px;overflow:auto;margin:6px 0 0;padding:0;list-style:none;}
