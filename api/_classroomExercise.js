@@ -355,7 +355,7 @@ export function classExerciseHandler({
           status: 'paused',
           currentStageId: current.exercise.currentStageId,
           stagePhase: current.exercise.stagePhase,
-          studentEditingEnabled: true
+          studentEditingEnabled: current.exercise.studentEditingEnabled !== false
         });
       } else if (action === 'resume') {
         if (current.exercise.status !== 'paused') {
@@ -367,7 +367,7 @@ export function classExerciseHandler({
           status: 'active',
           currentStageId: current.exercise.currentStageId,
           stagePhase: current.exercise.stagePhase,
-          studentEditingEnabled: true
+          studentEditingEnabled: current.exercise.studentEditingEnabled !== false
         });
       } else if (action === 'release-content') {
         const contentId = typeof req.body?.contentId === 'string' ? req.body.contentId.trim() : '';
