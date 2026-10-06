@@ -34,6 +34,13 @@ const LIVE_WORKSPACE_IDS = Object.freeze([
   '77777777-7777-4777-8777-777777777777',
   '88888888-8888-4888-8888-888888888888'
 ]);
+const INTEGRATED_INSTRUCTOR_TOKEN = `${'i'.repeat(42)}t`;
+const INTEGRATED_JOIN_CODE = 'J8NP-C5R3';
+const INTEGRATED_WORKSPACE_IDS = Object.freeze([
+  'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'
+]);
 const LIVE_PARTICIPANT_ID = '99999999-9999-4999-8999-999999999999';
 const STUDENT_LIVE_JOIN_CODE = 'M7QR-T4P2';
 const STUDENT_LIVE_CLASS = Object.freeze({
@@ -45,6 +52,10 @@ let liveClassState = null;
 let liveInstructorWorkspaces = [];
 let liveInstructorParticipants = [];
 const liveInstructorWorkspaceStates = new Map();
+let integratedClassState = null;
+let integratedInstructorWorkspaces = [];
+let integratedInstructorParticipants = [];
+const integratedInstructorWorkspaceStates = new Map();
 let studentLiveCounter = 0;
 const studentLiveSessions = new Map();
 const studentLiveAccessContexts = new Map();
@@ -198,6 +209,37 @@ function liveInstructorClass() {
     joinCode: 'K7FMP4Q2',
     expiresAt: CLASSROOM_EXPIRY
   };
+}
+
+function integratedInstructorClass() {
+  return integratedClassState || {
+    id: 'browser-integrated-class',
+    title: 'Integrated Browser Classroom',
+    joinCode: 'J8NPC5R3',
+    expiresAt: CLASSROOM_EXPIRY
+  };
+}
+
+function managedInstructorFixture(token) {
+  if (token === INTEGRATED_INSTRUCTOR_TOKEN) {
+    return {
+      classContext: integratedInstructorClass(),
+      workspaces: integratedInstructorWorkspaces,
+      participants: integratedInstructorParticipants,
+      workspaceStates: integratedInstructorWorkspaceStates,
+      workspaceIds: INTEGRATED_WORKSPACE_IDS
+    };
+  }
+  if (token === LIVE_INSTRUCTOR_TOKEN) {
+    return {
+      classContext: liveInstructorClass(),
+      workspaces: liveInstructorWorkspaces,
+      participants: liveInstructorParticipants,
+      workspaceStates: liveInstructorWorkspaceStates,
+      workspaceIds: LIVE_WORKSPACE_IDS
+    };
+  }
+  return null;
 }
 
 function instructorRoster() {
