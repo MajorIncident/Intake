@@ -476,7 +476,13 @@ async function handleClassroomApi(request, response, url) {
     if (!session.assignment) {
       sendJson(response, 409, {
         status: 'waiting',
-        ...studentLiveStatus(session)
+        class: STUDENT_LIVE_CLASS,
+        participant: {
+          id: session.participantId,
+          displayName: session.displayName,
+          assignmentRevision: session.assignmentRevision
+        },
+        assignment: null
       });
       return true;
     }
