@@ -304,17 +304,131 @@ function classroomContext(workspaceToken) {
 }
 
 async function handleClassroomApi(request, response, url) {
-  if (url.pathname === '/api/classes/workspaces') {
-    if (request.method !== 'GET') {
+  if (url.pathname === '/api/classes') {
+    if (request.method !== 'POST') {
       sendJson(response, 405, { error: 'Method not allowed.' });
       return true;
     }
+    const body = await readJson(request).catch(() => null);
+    const title = typeof body?.title === 'string' ? body.title.trim() : '';
+    if (!title) {
+      sendJson(response, 400, { error: 'Invalid class title.' });
+      return true;
+    }
+    liveClassState = {
+      id: 'browser-live-class',
+      title,
+      joinCode: 'K7FMP4Q2',
+      expiresAt: CLASSROOM_EXPIRY
+    };
+    liveInstructorWorkspaces = [];
+    liveInstructorParticipants = [{
+      id: LIVE_PARTICIPANT_ID,
+      displayName: 'Waiting Student',
+      assignmentRevision: 0,
+      joinedAt: '2099-12-31T20:00:00.000Z',
+      updatedAt: '2099-12-31T20:00:00.000Z',
+      assignment: null
+    }];
+    sendJson(response, 201, {
+      class: liveInstructorClass(),
+      instructorToken: LIVE_INSTRUCTOR_TOKEN,
+      studentJoinToken: `${'c'.repeat(42)}s`,
+      joinCode: LIVE_JOIN_CODE
+    });
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/workspaces') {
     const instructorToken = bearerToken(request);
     if (!activeInstructorCapability(instructorToken)) {
       sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
       return true;
     }
-    sendJson(response, 200, instructorRoster());
+
+    if (request.method === 'GET') {
+      sendJson(response, 200, instructorToken === LIVE_INSTRUCTOR_TOKEN
+        ? liveInstructorRoster()
+        : instructorRoster());
+      return true;
+    }
+
+    if (request.method === 'POST' && instructorToken === LIVE_INSTRUCTOR_TOKEN) {
+      const body = await readJson(request).catch(() => null);
+      const kind = ['group', 'individual'].includes(body?.kind) ? body.kind : '';
+      const label = typeof body?.label === 'string' ? body.label.trim() : '';
+      if (!kind || !label || !body?.snapshot || typeof body.snapshot !== 'object') {
+        sendJson(response, 400, { error: 'Invalid workspace request.' });
+        return true;
+      }
+      const id = LIVE_WORKSPACE_IDS[liveInstructorWorkspaces.length];
+      if (!id) {
+        sendJson(response, 409, { error: 'Browser fixture workspace limit reached.' });
+        return true;
+      }
+      const workspace = {
+        id,
+        kind,
+        label,
+        createdAt: '2099-12-31T21:00:00.000Z',
+        participantCount: 0,
+        activeParticipantCount: 0,
+        editingParticipantCount: 0
+      };
+      liveInstructorWorkspaces.push(workspace);
+      sendJson(response, 201, {
+        workspace,
+        assignmentToken: `${'a'.repeat(42)}${String(liveInstructorWorkspaces.length).slice(-1)}`
+      });
+      return true;
+    }
+
+    sendJson(response, 405, { error: 'Method not allowed.' });
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/participants') {
+    const instructorToken = bearerToken(request);
+    if (!activeInstructorCapability(instructorToken)) {
+      sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
+      return true;
+    }
+
+    if (request.method === 'GET') {
+      sendJson(response, 200, instructorToken === LIVE_INSTRUCTOR_TOKEN
+        ? liveInstructorParticipantRoster()
+        : instructorParticipants());
+      return true;
+    }
+
+    if (request.method === 'PATCH' && instructorToken === LIVE_INSTRUCTOR_TOKEN) {
+      const body = await readJson(request).catch(() => null);
+      const participant = liveInstructorParticipants.find(item => item.id === body?.participantId);
+      const workspace = body?.workspaceId === null
+        ? null
+        : liveInstructorWorkspaces.find(item => item.id === body?.workspaceId);
+      if (!participant || (body?.workspaceId !== null && !workspace)) {
+        sendJson(response, 404, { error: 'Participant or workspace not found.' });
+        return true;
+      }
+      const unchanged = (participant.assignment?.id || null) === (workspace?.id || null);
+      if (!unchanged) {
+        participant.assignmentRevision += 1;
+        participant.assignment = workspace
+          ? { id: workspace.id, kind: workspace.kind, label: workspace.label }
+          : null;
+        participant.updatedAt = '2099-12-31T22:00:00.000Z';
+      }
+      sendJson(response, 200, {
+        class: liveInstructorClass(),
+        participant: structuredClone(participant),
+        assignment: structuredClone(participant.assignment),
+        changed: !unchanged
+      });
+      return true;
+    }
+
+    sendJson(response, 405, { error: 'Method not allowed.' });
     return true;
   }
 
@@ -328,7 +442,10 @@ async function handleClassroomApi(request, response, url) {
       sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
       return true;
     }
-    const observation = instructorObservation(url.searchParams.get('workspaceId') || '');
+    const workspaceId = url.searchParams.get('workspaceId') || '';
+    const observation = instructorToken === LIVE_INSTRUCTOR_TOKEN
+      ? liveInstructorObservation(workspaceId)
+      : instructorObservation(workspaceId);
     if (!observation) {
       sendJson(response, 404, { error: 'Workspace not found.' });
       return true;
