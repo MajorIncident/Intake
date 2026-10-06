@@ -1368,6 +1368,165 @@ export function classStudentCoachingHandler({ getRepository = getClassroomReposi
   };
 }
 /**
+ * Create the one-code live Student admission handler.
+ *
+ * The human join code is only an admission locator. Successful admission mints
+ * a high-entropy Student class-session capability that cannot edit collaboration
+ * directly and may represent a waiting/unassigned Student.
+ *
+ * @param {object} [dependencies] Injectable dependencies.
+ * @returns {Function} Vercel handler.
+ */
+export function classAdmitHandler({
+  getRepository = getClassroomRepository,
+  tokenFactory = generateWorkspaceToken
+} = {}) {
+  return async (req, res) => {
+    if (req.method !== 'POST') return methodNotAllowed(res, 'POST');
+
+    const joinCode = normalizeClassJoinCode(req.body?.joinCode);
+    const participantId = req.body?.participantId;
+    const displayName = normalizeCollaborationName(req.body?.displayName, DISPLAY_NAME_MAX_LENGTH);
+    if (!joinCode || !validateParticipantId(participantId) || displayName === null) {
+      return send(res, 400, { error: 'Invalid class admission request.' });
+    }
+
+    try {
+      const repository = await getRepository();
+      const studentSessionToken = tokenFactory();
+      const result = await repository.admitParticipant({
+        joinCode,
+        participantId,
+        displayName,
+        sessionHash: hashWorkspaceToken(studentSessionToken)
+      });
+      if (!result) {
+        return send(res, 404, { error: 'Class not available.' });
+      }
+      return send(res, 200, {
+        class: {
+          id: result.classroom.id,
+          title: result.classroom.title,
+          expiresAt: result.classroom.expiresAt
+        },
+        participant: result.participant,
+        assignment: result.assignment,
+        studentSessionToken
+      });
+    } catch {
+      return send(res, 500, { error: 'Unable to enter class.' });
+    }
+  };
+}
+
+/**
+ * Create the Instructor-only live participant roster handler.
+ *
+ * @param {object} [dependencies] Injectable dependencies.
+ * @returns {Function} Vercel handler.
+ */
+export function classParticipantsHandler({ getRepository = getClassroomRepository } = {}) {
+  return async (req, res) => {
+    if (req.method !== 'GET') return methodNotAllowed(res, 'GET');
+    const authorization = requireBearer(req);
+    if (!authorization.ok) return send(res, authorization.status, { error: authorization.error });
+
+    try {
+      const repository = await getRepository();
+      const result = await repository.listParticipants(hashWorkspaceToken(authorization.token));
+      return result
+        ? send(res, 200, { class: result.classroom, participants: result.participants })
+        : send(res, 404, { error: 'Class not found.' });
+    } catch {
+      return send(res, 500, { error: 'Unable to load class participants.' });
+    }
+  };
+}
+
+/**
+ * Create the Student own-assignment status handler.
+ *
+ * A Student class-session capability resolves only the represented participant.
+ * It never returns a class roster, workspace catalog, or editable capability.
+ *
+ * @param {object} [dependencies] Injectable dependencies.
+ * @returns {Function} Vercel handler.
+ */
+export function classStudentHandler({ getRepository = getClassroomRepository } = {}) {
+  return async (req, res) => {
+    if (req.method !== 'GET') return methodNotAllowed(res, 'GET');
+    const authorization = requireBearer(req);
+    if (!authorization.ok) return send(res, authorization.status, { error: authorization.error });
+
+    try {
+      const repository = await getRepository();
+      const result = await repository.getParticipantBySession(hashWorkspaceToken(authorization.token));
+      return result
+        ? send(res, 200, {
+            class: result.classroom,
+            participant: result.participant,
+            assignment: result.assignment
+          })
+        : send(res, 404, { error: 'Student class session not found.' });
+    } catch {
+      return send(res, 500, { error: 'Unable to load Student class status.' });
+    }
+  };
+}
+
+/**
+ * Create the Student current-workspace access handler.
+ *
+ * The stable Student class-session capability is exchanged for a fresh
+ * assignment-specific edit capability only while the represented participant is
+ * currently assigned to a live workspace.
+ *
+ * @param {object} [dependencies] Injectable dependencies.
+ * @returns {Function} Vercel handler.
+ */
+export function classStudentAccessHandler({
+  getRepository = getClassroomRepository,
+  getWorkspaceRepo = getWorkspaceRepository,
+  tokenFactory = generateWorkspaceToken
+} = {}) {
+  return async (req, res) => {
+    if (req.method !== 'POST') return methodNotAllowed(res, 'POST');
+    const authorization = requireBearer(req);
+    if (!authorization.ok) return send(res, authorization.status, { error: authorization.error });
+
+    try {
+      const repository = await getRepository();
+      const workspaceRepository = await getWorkspaceRepo();
+      const workspaceToken = tokenFactory();
+      const result = await repository.issueParticipantWorkspaceAccess({
+        sessionHash: hashWorkspaceToken(authorization.token),
+        accessHash: hashWorkspaceToken(workspaceToken),
+        workspaceRepository
+      });
+      if (!result) {
+        return send(res, 404, { error: 'Student class session not found.' });
+      }
+      if (result.waiting) {
+        return send(res, 409, {
+          status: 'waiting',
+          class: result.classroom,
+          participant: result.participant,
+          assignment: null
+        });
+      }
+      return send(res, 200, {
+        class: result.classroom,
+        participant: result.participant,
+        assignment: result.assignment,
+        workspaceToken
+      });
+    } catch {
+      return send(res, 500, { error: 'Unable to issue Student workspace access.' });
+    }
+  };
+}
+
+/**
  * Create the student class-join handler.
  *
  * The shared class join capability never enumerates workspaces. A join succeeds
