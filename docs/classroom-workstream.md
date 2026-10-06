@@ -429,7 +429,17 @@ Continue #295 on draft PR #307 from the current branch head.
   - `09ffaa6c...` through `c01dfff2f2bd1f9d7625901860210cc00eee7051` additionally pin simulation version + definition fingerprint on each exercise and keep those columns migration-safe so later APIs can fail closed on definition drift.
   - pre-hardening validation on `f7c1e58...`: repository quality **265 tests / 264 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
   - no exercise HTTP route, Student collaboration write lock, or exercise UI exists yet.
-- Exact next action: implement **Tranche 4 only — exercise APIs/authorization**: Instructor create/read/lifecycle/release/debrief/checkpoint/advance/complete, Student class-session current release + workspace readiness, pinned-definition drift checks, and active-staged-case full-payload bypass closure. Build the complete credential/class/future-content authorization matrix. Do **not** claim or expose server-enforced editing freeze until Tranche 5, and do not add Instructor/Student exercise UI yet.
+- Staged exercise API / authorization checkpoint:
+  - Instructor `POST/GET/PATCH /api/classes/exercise` now owns class-scoped draft creation/read plus start/pause/resume/optional release/begin-debrief/advance/complete with optimistic exercise revision and immutable stage ordering.
+  - Student `GET /api/classes/exercise/student` uses the stable class-session capability and returns only current/cumulative Student-safe released content; future stage and Instructor-only material remain server-withheld.
+  - Student `PUT /api/classes/exercise/student/ready` resolves the current assignment server-side, records server-observed workspace revision, rejects Waiting, and fails closed on reassignment races.
+  - every read/mutation validates the pinned simulation version/fingerprint against the current protected definition.
+  - active/completed staged cases block Student full protected Case Study payload retrieval for that case; completion does not imply exemplar release.
+  - Instructor full protected access and unrelated protected resources retain their existing behavior.
+  - Tranche 4 deliberately returns `editFreezeEnforced: false`; no security claim is made until collaboration PUT enforcement lands.
+  - implementation/security-test checkpoint: `5afc0041db89348d97ca0986cab89491765d0e00`.
+  - validation: repository quality **273 tests / 272 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+- Exact next action: implement **Tranche 5 only — server-enforced Student editing policy**. Enforce the staged exercise editing policy in the `classroom-student` collaboration write path before revision mutation, keep GET/presence/coaching/readiness unaffected, preserve Standalone and no-exercise Classroom behavior, define a stable temporary-lock response contract, and add direct API regressions proving frozen writes cannot mutate snapshot/revision. Stop before Instructor/Student exercise UI.
 
 ## Approved Classroom follow-on direction
 
