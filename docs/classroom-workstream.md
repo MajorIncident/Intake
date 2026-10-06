@@ -372,7 +372,14 @@ Continue #295 on draft PR #307 from the current branch head.
   - the first browser run exposed two bounded issues: four older tests needed to open the intentional legacy recovery disclosure, and the Waiting eyebrow inherited a 3.72:1 blue-on-pale-blue contrast. `30dbb0d...` through `1b90c0f...` update the legacy journeys; `0c8692c7486ecb50c730d0757c41426b81830250` applies the existing accessible accent-text foreground.
   - validation on `0c8692c...`: repository quality **252 tests / 251 pass / 0 fail / 1 intentional skip**; required Browser E2E **25 passed / 7 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
   - live same-device resume persists the stable Student class-session capability, never the current team workspace token; reload/move reacquires fresh server-authorized access.
-- Exact next action: add an integrated live-class multi-browser acceptance journey driven by one Instructor and multiple live Students on the same class: real displayed join code, late Waiting roster, Team A/Team B creation and assignment, same-team synchronization, cross-team isolation, observer/coaching, A -> B reassignment with stale-A cutoff, and unassign back to Waiting. Keep the accessible non-drag selector canonical and keep #313 staged case orchestration out of #314.
+- Integrated live-class acceptance checkpoint:
+  - `5f1404921eeec8b2aba3103672be547af35b6865` / `4f36af2d5221234a9ebf35d574f287f7aa52bb39` share managed Instructor workspace state with live Student collaboration and bind one-code admission to the same Instructor-owned class.
+  - `e7b8d06111b8dbda6ba6a27372956b3d012899c3` carries existing field-level coaching across managed live workspaces.
+  - `2262490c9de7da5a9b675932fda2c84475977168` adds the four-browser acceptance journey: displayed Instructor join code -> two Waiting Students -> Team Alpha shared sync -> late Student -> Team Beta isolation -> Instructor observe/coach -> A -> B move -> stale-A 404 -> unassign -> stale-B 404.
+  - before accepting the gate, `971898cb4eca725ad079be5c8ba5c97484fdab2f` / `6c712e47383079d5aa50869be4e9d9a26def28e9` / `9315210dd15ed583cfbd3201302699d025ded3a1` isolate the integrated class capability/join-code/workspace namespace so fully parallel Playwright specs cannot reset one another.
+  - validation on `9315210...`: repository quality **252 tests / 251 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+  - #312 browser acceptance now covers the complete live-class lifecycle without adding #313 staged simulation state.
+- Exact next action: perform the final #312 docs/security/merge-readiness review: reconcile API/architecture docs with the implemented one-code lifecycle, review the full `main -> #314` diff and unresolved review/security state, confirm additive rollback/legacy compatibility, and move #314 out of draft only if the final documented head remains green. Keep #313 as the next separate product slice.
 
 ## Approved Classroom follow-on direction
 
