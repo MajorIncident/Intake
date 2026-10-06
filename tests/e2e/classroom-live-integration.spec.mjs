@@ -1,0 +1,202 @@
+/**
+ * Integrated real-browser acceptance for one Instructor and multiple live Students.
+ */
+
+import AxeBuilder from '@axe-core/playwright';
+import { expect, test } from '@playwright/test';
+
+function watchPageErrors(page) {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  return errors;
+}
+
+async function startFresh(page) {
+  await page.goto('/');
+  await page.evaluate(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+  await page.reload();
+}
+
+async function expectNoBlockingA11yViolations(page) {
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  const blockingViolations = accessibility.violations.filter(
+    violation => violation.impact === 'serious' || violation.impact === 'critical'
+  );
+  expect(blockingViolations, JSON.stringify(blockingViolations, null, 2)).toEqual([]);
+}
+
+async function joinLiveStudent(page, { name, classCode }) {
+  await startFresh(page);
+  await page.getByRole('button', { name: /Join a class/ }).click();
+  await page.locator('#studentDisplayName').fill(name);
+  await page.getByLabel('Class code').fill(classCode);
+  await page.getByRole('button', { name: 'Join class' }).click();
+  await expect(page.locator('body')).toHaveAttribute('data-student-class-status', 'waiting');
+  await expect(page.locator('#studentClassWaitingIdentity')).toHaveText(name);
+}
+
+async function createTeam(page, label) {
+  await page.locator('#instructorWorkspaceLabel').fill(label);
+  await page.getByLabel('Workspace type').selectOption('group');
+  await page.getByRole('button', { name: 'Create workspace' }).click();
+  await expect(page.locator('.instructor-workspace-item').filter({ hasText: label })).toBeVisible();
+}
+
+test('live class integrates Instructor roster, team sync, isolation, coaching, reassignment, and unassign', async ({ browser }, testInfo) => {
+  test.skip(testInfo.project.name === 'chromium-mobile', 'Integrated four-browser classroom acceptance is covered once on desktop; mobile Student and Instructor paths have dedicated coverage.');
+
+  const contextOptions = { baseURL: testInfo.project.use.baseURL };
+  const instructorContext = await browser.newContext(contextOptions);
+  const studentAContext = await browser.newContext(contextOptions);
+  const studentBContext = await browser.newContext(contextOptions);
+  const lateStudentContext = await browser.newContext(contextOptions);
+
+  const instructor = await instructorContext.newPage();
+  const studentA = await studentAContext.newPage();
+  const studentB = await studentBContext.newPage();
+  const lateStudent = await lateStudentContext.newPage();
+
+  const instructorErrors = watchPageErrors(instructor);
+  const studentAErrors = watchPageErrors(studentA);
+  const studentBErrors = watchPageErrors(studentB);
+  const lateStudentErrors = watchPageErrors(lateStudent);
+  const studentATokens = [];
+
+  studentA.on('request', request => {
+    const url = new URL(request.url());
+    if (url.pathname !== '/api/workspaces/session') return;
+    const header = request.headers().authorization || '';
+    const match = /^Bearer\s+(.+)$/u.exec(header);
+    if (match && !studentATokens.includes(match[1])) studentATokens.push(match[1]);
+  });
+
+  try {
+    await startFresh(instructor);
+    await instructor.getByRole('button', { name: /Teach a class/ }).click();
+    await instructor.getByLabel('Class title').fill('Integrated Browser Classroom');
+    await instructor.getByRole('button', { name: 'Start class' }).click();
+
+    await expect(instructor.locator('#instructorClassDashboard')).toBeVisible();
+    const classCode = (await instructor.locator('#instructorJoinCode').textContent())?.trim() || '';
+    expect(classCode).toMatch(/^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/u);
+
+    await createTeam(instructor, 'Team Alpha');
+    await createTeam(instructor, 'Team Beta');
+
+    await joinLiveStudent(studentA, { name: 'Student Alpha One', classCode });
+    await joinLiveStudent(studentB, { name: 'Student Alpha Two', classCode });
+
+    await expect(instructor.locator('[data-participant-id]').filter({ hasText: 'Student Alpha One' })).toBeVisible({ timeout: 10000 });
+    await expect(instructor.locator('[data-participant-id]').filter({ hasText: 'Student Alpha Two' })).toBeVisible({ timeout: 10000 });
+
+    await instructor.getByLabel('Assignment for Student Alpha One').selectOption({ label: 'Team · Team Alpha' });
+    await instructor.getByLabel('Assignment for Student Alpha Two').selectOption({ label: 'Team · Team Alpha' });
+
+    await expect(studentA.locator('body')).toHaveAttribute('data-student-class-status', 'connected', { timeout: 10000 });
+    await expect(studentB.locator('body')).toHaveAttribute('data-student-class-status', 'connected', { timeout: 10000 });
+    await expect(studentA.locator('#studentClassWorkspace')).toHaveText('Team Alpha');
+    await expect(studentB.locator('#studentClassWorkspace')).toHaveText('Team Alpha');
+    await expect(studentA.locator('#oneLine')).toHaveValue('Team Alpha live-class Intake.');
+    await expect(studentB.locator('#oneLine')).toHaveValue('Team Alpha live-class Intake.');
+
+    const alphaUpdate = 'Team Alpha converged on one shared Intake.';
+    const alphaSave = studentA.waitForResponse(response => (
+      response.request().method() === 'PUT'
+      && new URL(response.url()).pathname === '/api/workspaces/session'
+      && response.ok()
+    ));
+    await studentA.locator('#oneLine').fill(alphaUpdate);
+    await studentA.locator('#oneLine').blur();
+    await alphaSave;
+    await expect(studentB.locator('#oneLine')).toHaveValue(alphaUpdate, { timeout: 10000 });
+
+    await joinLiveStudent(lateStudent, { name: 'Late Student', classCode });
+    await expect(instructor.locator('[data-participant-id]').filter({ hasText: 'Late Student' })).toContainText('Waiting / unassigned', { timeout: 10000 });
+    await instructor.getByLabel('Assignment for Late Student').selectOption({ label: 'Team · Team Beta' });
+
+    await expect(lateStudent.locator('body')).toHaveAttribute('data-student-class-status', 'connected', { timeout: 10000 });
+    await expect(lateStudent.locator('#studentClassWorkspace')).toHaveText('Team Beta');
+    await expect(lateStudent.locator('#oneLine')).toHaveValue('Team Beta live-class Intake.');
+
+    const betaUpdate = 'Team Beta stayed isolated with its own Intake.';
+    const betaSave = lateStudent.waitForResponse(response => (
+      response.request().method() === 'PUT'
+      && new URL(response.url()).pathname === '/api/workspaces/session'
+      && response.ok()
+    ));
+    await lateStudent.locator('#oneLine').fill(betaUpdate);
+    await lateStudent.locator('#oneLine').blur();
+    await betaSave;
+
+    await expect(studentA.locator('#oneLine')).toHaveValue(alphaUpdate);
+    await expect(studentB.locator('#oneLine')).toHaveValue(alphaUpdate);
+
+    await instructor.locator('.instructor-workspace-item').filter({ hasText: 'Team Alpha' }).click();
+    await expect(instructor.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
+    await expect(instructor.locator('#oneLine')).toHaveValue(alphaUpdate, { timeout: 10000 });
+    await expect(instructor.locator('#oneLine')).toHaveJSProperty('readOnly', true);
+
+    const coaching = instructor.locator('.classroom-coaching--instructor[data-coaching-target-id="problem.one-line"]');
+    await expect(coaching).toBeVisible();
+    await coaching.locator('summary').click();
+    await coaching.locator('textarea').fill('Make the deviation measurable before the debrief.');
+    const feedbackSaved = instructor.waitForResponse(response => (
+      response.request().method() === 'PUT'
+      && new URL(response.url()).pathname === '/api/classes/coaching'
+      && response.ok()
+    ));
+    await coaching.getByRole('button', { name: 'Needs improvement' }).click();
+    await feedbackSaved;
+
+    const studentFeedback = studentB.locator('.classroom-coaching--student[data-coaching-target-id="problem.one-line"]');
+    await expect(studentFeedback).toContainText('Instructor feedback · Needs improvement', { timeout: 10000 });
+    await expect(studentFeedback).toContainText('Make the deviation measurable before the debrief.');
+
+    expect(studentATokens.length).toBeGreaterThanOrEqual(1);
+    const staleAlphaToken = studentATokens.at(-1);
+
+    await instructor.getByLabel('Assignment for Student Alpha One').selectOption({ label: 'Team · Team Beta' });
+
+    await expect(studentA.locator('#studentClassWorkspace')).toHaveText('Team Beta', { timeout: 10000 });
+    await expect(studentA.locator('#oneLine')).toHaveValue(betaUpdate, { timeout: 10000 });
+    await expect(studentB.locator('#studentClassWorkspace')).toHaveText('Team Alpha');
+    await expect(studentB.locator('#oneLine')).toHaveValue(alphaUpdate);
+    expect(studentATokens.length).toBeGreaterThanOrEqual(2);
+
+    const staleAlphaResponse = await studentA.request.get('/api/workspaces/session', {
+      headers: { Authorization: `Bearer ${staleAlphaToken}` }
+    });
+    expect(staleAlphaResponse.status()).toBe(404);
+
+    const betaToken = studentATokens.at(-1);
+    await instructor.getByLabel('Assignment for Student Alpha One').selectOption('');
+
+    await expect(studentA.locator('body')).toHaveAttribute('data-student-class-status', 'waiting', { timeout: 10000 });
+    await expect(studentA.locator('#studentClassWaitingPanel')).toBeVisible();
+    await expect(studentA.locator('.wrap')).toBeHidden();
+
+    const staleBetaResponse = await studentA.request.get('/api/workspaces/session', {
+      headers: { Authorization: `Bearer ${betaToken}` }
+    });
+    expect(staleBetaResponse.status()).toBe(404);
+
+    await expect(lateStudent.locator('#oneLine')).toHaveValue(betaUpdate);
+    await expect(studentB.locator('#oneLine')).toHaveValue(alphaUpdate);
+
+    await expectNoBlockingA11yViolations(instructor);
+    await expectNoBlockingA11yViolations(studentA);
+
+    expect(instructorErrors).toEqual([]);
+    expect(studentAErrors).toEqual([]);
+    expect(studentBErrors).toEqual([]);
+    expect(lateStudentErrors).toEqual([]);
+  } finally {
+    await instructorContext.close();
+    await studentAContext.close();
+    await studentBContext.close();
+    await lateStudentContext.close();
+  }
+});
