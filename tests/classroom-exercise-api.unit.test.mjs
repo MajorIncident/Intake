@@ -11,7 +11,9 @@ import {
   classStudentExerciseReadyHandler,
   fingerprintStagedSimulation
 } from '../api/_classroomExercise.js';
+import { createClassroomStudentWritePolicy } from '../api/_classroomWritePolicy.js';
 import { studentCaseStudiesHandler } from '../api/_protectedCaseStudies.js';
+import { workspaceHandler } from '../api/_workspace.js';
 import {
   createClassroomRepository,
   createWorkspaceRepository,
@@ -280,8 +282,8 @@ test('Instructor lifecycle is revision-safe, optional release is idempotent, and
   assert.equal(debrief.body.exercise.exerciseRevision, 4);
   assert.equal(debrief.body.capturedCount, 2);
   assert.equal(debrief.body.checkpoints.length, 2);
-  assert.equal(debrief.body.editFreezeEnforced, false);
-  assert.equal(debrief.body.exercise.studentEditingEnabled, true);
+  assert.equal(debrief.body.editFreezeEnforced, true);
+  assert.equal(debrief.body.exercise.studentEditingEnabled, false);
 
   await workspaceRepo.update(
     testTokenHash('P'),
@@ -395,7 +397,8 @@ test('Student staged read exposes only cumulative released Student content and n
     stage2.body.exercise.releasedContent.map(item => item.content.id),
     ['brief-1', 'hint-1', 'brief-2']
   );
-  assert.equal(stage2.body.exercise.editFreezeEnforced, false);
+  assert.equal(stage2.body.exercise.editFreezeEnforced, true);
+  assert.equal(stage2.body.exercise.studentEditingEnabled, true);
 
   const instructorCredential = response();
   await student({
@@ -403,6 +406,121 @@ test('Student staged read exposes only cumulative released Student content and n
     headers: { authorization: 'Bearer ' + 'A'.repeat(43) }
   }, instructorCredential);
   assert.equal(instructorCredential.statusCode, 404);
+});
+
+test('server-enforced debrief freeze blocks Classroom Student PUT without mutating Intake while Standalone remains writable', async () => {
+  const { classrooms, workspaceRepo } = await setupClass();
+  await admit(classrooms);
+  await classrooms.assignParticipant(testTokenHash('A'), {
+    participantId: PARTICIPANT_A,
+    workspacePublicId: WORKSPACE_A_ID,
+    workspaceRepository: workspaceRepo
+  });
+  await classrooms.issueParticipantWorkspaceAccess({
+    sessionHash: testTokenHash('S'),
+    accessHash: testTokenHash('W'),
+    workspaceRepository: workspaceRepo
+  });
+
+  await workspaceRepo.create(
+    testTokenHash('Z'),
+    { pre: { oneLine: 'Standalone before' } },
+    30,
+    'Standalone'
+  );
+
+  const instructor = instructorHandler(classrooms, workspaceRepo);
+  await createExercise(instructor);
+  await patchExercise(instructor, { action: 'start', expectedRevision: 1 });
+
+  const session = workspaceHandler({
+    getRepository: async () => workspaceRepo,
+    getWritePolicy: createClassroomStudentWritePolicy({
+      getRepository: async () => classrooms
+    })
+  });
+
+  const beforeDebrief = response();
+  await session({
+    method: 'PUT',
+    headers: { authorization: 'Bearer ' + 'W'.repeat(43) },
+    body: {
+      revision: 1,
+      snapshot: { pre: { oneLine: 'Team A during work' } }
+    }
+  }, beforeDebrief);
+  assert.equal(beforeDebrief.statusCode, 200);
+  assert.equal(beforeDebrief.body.revision, 2);
+
+  const debrief = await patchExercise(instructor, {
+    action: 'begin-debrief',
+    expectedRevision: 2
+  });
+  assert.equal(debrief.statusCode, 200);
+  assert.equal(debrief.body.exercise.studentEditingEnabled, false);
+  assert.equal(debrief.body.editFreezeEnforced, true);
+
+  const frozenWrite = response();
+  await session({
+    method: 'PUT',
+    headers: { authorization: 'Bearer ' + 'W'.repeat(43) },
+    body: {
+      revision: 2,
+      snapshot: { pre: { oneLine: 'MUST NOT SAVE' } }
+    }
+  }, frozenWrite);
+  assert.equal(frozenWrite.statusCode, 423);
+  assert.equal(frozenWrite.body.code, 'classroom-editing-locked');
+
+  const afterFrozenWrite = await workspaceRepo.load(testTokenHash('W'));
+  assert.equal(afterFrozenWrite.revision, 2);
+  assert.equal(afterFrozenWrite.snapshot.pre.oneLine, 'Team A during work');
+
+  const frozenRead = response();
+  await session({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'W'.repeat(43) },
+    query: {}
+  }, frozenRead);
+  assert.equal(frozenRead.statusCode, 200);
+  assert.equal(frozenRead.body.revision, 2);
+  assert.equal(frozenRead.body.snapshot.pre.oneLine, 'Team A during work');
+
+  const standaloneWrite = response();
+  await session({
+    method: 'PUT',
+    headers: { authorization: 'Bearer ' + 'Z'.repeat(43) },
+    body: {
+      revision: 1,
+      snapshot: { pre: { oneLine: 'Standalone changed while class is frozen' } }
+    }
+  }, standaloneWrite);
+  assert.equal(standaloneWrite.statusCode, 200);
+  assert.equal(standaloneWrite.body.revision, 2);
+
+  const unfreeze = await patchExercise(instructor, {
+    action: 'set-editing',
+    expectedRevision: 3,
+    enabled: true
+  });
+  assert.equal(unfreeze.statusCode, 200);
+  assert.equal(unfreeze.body.exercise.studentEditingEnabled, true);
+  assert.equal(unfreeze.body.exercise.exerciseRevision, 4);
+
+  const afterUnfreeze = response();
+  await session({
+    method: 'PUT',
+    headers: { authorization: 'Bearer ' + 'W'.repeat(43) },
+    body: {
+      revision: 2,
+      snapshot: { pre: { oneLine: 'Team A after unfreeze' } }
+    }
+  }, afterUnfreeze);
+  assert.equal(afterUnfreeze.statusCode, 200);
+  assert.equal(afterUnfreeze.body.revision, 3);
+
+  const finalTeamA = await workspaceRepo.load(testTokenHash('W'));
+  assert.equal(finalTeamA.snapshot.pre.oneLine, 'Team A after unfreeze');
 });
 
 test('Student Ready records the server-observed current workspace revision and Waiting cannot mark Ready', async () => {
