@@ -269,6 +269,15 @@ The legacy membership table remains supported for two-code compatibility. Live a
 
 Database foreign keys and handler authorization jointly enforce class/workspace isolation. Existing collaboration tables, Standalone secret links, and the legacy Classroom path remain valid.
 
+#313 Tranche 3 adds persistence primitives but **no exercise HTTP routes yet**:
+
+- `classroom_exercises` — class-scoped exercise run with protected Case Study ID, pinned simulation version + definition fingerprint, status/stage/phase, optimistic `exercise_revision`, editing-policy state, timestamps, and owning-class expiry;
+- `classroom_exercise_releases` — idempotent optional-content release records;
+- `classroom_exercise_workspace_state` — workspace-scoped Ready state and workspace-revision evidence;
+- `classroom_exercise_checkpoints` — immutable exercise/stage/workspace snapshot + revision evidence captured for debrief.
+
+At most one non-completed exercise exists per class in the initial model. Exercise mutation is optimistic-revision protected; replaying an already-recorded optional release does not advance revision. Ready state follows the workspace, not the participant, and checkpoint rows are first-write-wins. All repository access is class/workspace scoped and bounded by the class expiry.
+
 No classroom credential is stored in browser Intake state.
 
 ## Rotation and revocation
