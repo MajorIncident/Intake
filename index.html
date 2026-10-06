@@ -433,6 +433,26 @@ Anchors present:
           </div>
           <small id="instructorExerciseSetupHelp">Choose an explicitly staged Case Study. Creating a draft does not release anything to Students.</small>
         </form>
+        <div class="instructor-exercise-console__lifecycle" id="instructorExerciseLifecycle" data-persistence="local-only" data-summary="exclude" hidden>
+          <button type="button" class="btn" id="instructorExerciseStartBtn" data-persistence="local-only" data-summary="exclude" hidden>Start exercise</button>
+          <button type="button" class="btn-secondary" id="instructorExercisePauseBtn" data-persistence="local-only" data-summary="exclude" hidden>Pause exercise</button>
+          <button type="button" class="btn" id="instructorExerciseResumeBtn" data-persistence="local-only" data-summary="exclude" hidden>Resume exercise</button>
+          <small id="instructorExerciseLifecycleHelp">Pause controls class pacing only. Student editing freeze is a separate debrief control.</small>
+        </div>
+        <section class="instructor-exercise-console__stage" id="instructorExerciseStagePanel" aria-labelledby="instructorExerciseStageTitle" data-persistence="local-only" data-summary="exclude" hidden>
+          <div class="instructor-exercise-console__stage-heading">
+            <span>Current stage</span>
+            <strong id="instructorExerciseStageTitle">Stage</strong>
+          </div>
+          <p id="instructorExerciseStageObjective"></p>
+          <div class="instructor-exercise-console__stage-meta">
+            <span id="instructorExerciseStageTiming"></span>
+          </div>
+          <div class="instructor-exercise-console__facilitation" id="instructorExerciseFacilitation" hidden>
+            <span>Instructor facilitation</span>
+            <div id="instructorExerciseFacilitationList"></div>
+          </div>
+        </section>
         <div class="instructor-exercise-console__available">
           <span>Available staged Case Studies</span>
           <ul id="instructorExerciseAvailableList" aria-live="polite"></ul>
