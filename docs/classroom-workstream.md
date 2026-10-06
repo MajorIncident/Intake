@@ -222,7 +222,7 @@ Continue #295 on draft PR #307 from the current branch head.
 
 - Branch: `feature/classroom-browser-e2e`.
 - Draft PR: #308.
-- Stack base: draft PR #307 / `feature/classroom-protected-cases`.
+- Base: `main` at merged #307 (`09f034f1f1776a3aaf92be7dec86b902549c8eb9`).
 - The branch was refreshed onto current #307 because the old stack had diverged (8 ahead / 21 behind) and GitHub could no longer create the PR merge ref; subsequent pull-request workflows were not launching.
 - Refreshed stack checkpoint: `593b9766d3a993c4834f475a90a362cfaf1aa6f0` — one commit ahead / zero behind #307 at refresh time, carrying only the browser/E2E surface.
 - Browser foundation is real and running in GitHub Actions:
@@ -284,7 +284,16 @@ Continue #295 on draft PR #307 from the current branch head.
   - `f70aa734e24fd2b3d97f25b6a298c2106cad3ce5` adds the real-browser Instructor journey: class open, roster, workspace switch, read-only projection, persisted class resume, no Student join or editable collaboration endpoint traffic, axe, and uncaught-page-error protection.
   - the first browser run exposed invalid `aria-readonly` on the generic Intake wrapper; `ce4738be9fcf37c723387fe94d112b7f0d27cf87` removes that invalid container ARIA while preserving read-only/disabled control semantics, with regression coverage in `845f0059a3a2ea9a3dd75d5143b61069f9c4909d`.
   - Instructor gate on `845f0059a3a2ea9a3dd75d5143b61069f9c4909d`: Browser E2E, CI, CodeQL, Dependency Review, and Template Manifest Guard all green on desktop/mobile.
-- Exact next action: extend the deterministic fixture and Playwright layer through the earliest remaining critical journey: Instructor coaching feedback round trip plus Student edit-after-review. After that, add protected Case Study authorized/unauthorized browser journeys, then invalid/expired/revoked credentials and unauthorized enumeration before the final required-vs-advisory CI decision.
+- Coaching browser checkpoint:
+  - `tests/e2e/coaching.spec.mjs` exercises Instructor feedback save, Student read-only feedback, and changed-since-review after a Student edit.
+  - The checkpoint exposed and repaired a collaboration presence-badge contrast defect; the pre-protected-case head `f0740c1043ef0866827071a4800e3aa4376b365c` was green across Browser E2E, CI, CodeQL, Dependency Review, and Template Manifest Guard.
+- Protected Case Study browser checkpoint:
+  - `88c2928dbcf137940fb12b0e06e645d7b2b7866b` extends the deterministic browser server with protected Case Study catalog/payload responses while retaining authorization checks.
+  - `7d1770e30e66bdfb66f93efba3001f5f1034848b` adds the real-browser security journey: unauthenticated Student catalog and payload retrieval return 404; an admitted Student receives metadata-only catalog records; the protected payload is POSTed only when applying the selected Case Study through the real resource drawer and password flow.
+  - The first run exposed a test-only assumption: a closed off-canvas drawer remains rendered and therefore Playwright-visible even though it is `aria-hidden` and `inert`. `1d181d22e77507e87377ac8b2798ed6b927c3b98` now asserts the actual closed-drawer interaction contract.
+  - Browser E2E on `1d181d22...`: **14 passed, 4 intentionally project-scoped skips, 0 failed**.
+  - Browser E2E, CI, CodeQL, Dependency Review, and Template Manifest Guard are all green on `1d181d22...`.
+- Exact next action: add deterministic browser coverage for invalid/expired/revoked Classroom credentials and unauthorized workspace enumeration attempts. Then finish the remaining collaboration/team coverage, documentation/stability review, and required-vs-advisory Browser E2E check decision before #308 is ready for review.
 
 ## Known risks / watch items
 
