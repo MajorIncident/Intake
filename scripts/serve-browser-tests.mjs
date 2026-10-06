@@ -394,55 +394,85 @@ async function handleClassroomApi(request, response, url) {
     const joinCode = typeof body?.joinCode === 'string'
       ? body.joinCode.trim().toUpperCase().replace(/[\s-]+/gu, '')
       : '';
-    const expectedCode = STUDENT_LIVE_JOIN_CODE.replace('-', '');
+    const isolatedCode = STUDENT_LIVE_JOIN_CODE.replace('-', '');
+    const integratedCode = LIVE_JOIN_CODE.replace('-', '');
     const participantId = typeof body?.participantId === 'string' ? body.participantId : '';
     const displayName = typeof body?.displayName === 'string' ? body.displayName.trim() : '';
-    if (joinCode !== expectedCode || !participantId || !displayName) {
+    if (![isolatedCode, integratedCode].includes(joinCode) || !participantId || !displayName) {
       sendJson(response, 404, { error: 'Class not available.' });
       return true;
     }
 
     const sequence = ++studentLiveCounter;
     const studentSessionToken = fixtureCapability('l', sequence);
-    const teamA = {
-      id: studentLiveWorkspaceId(sequence, 1),
-      kind: 'group',
-      label: 'Team Alpha'
-    };
-    const teamB = {
-      id: studentLiveWorkspaceId(sequence, 2),
-      kind: 'group',
-      label: 'Team Beta'
-    };
-    const makeWorkspaceState = label => {
-      const snapshot = freshClassroomSnapshot();
-      if (!snapshot.pre || typeof snapshot.pre !== 'object') snapshot.pre = {};
-      snapshot.pre.oneLine = `${label} destination Intake.`;
-      return {
-        snapshot,
-        revision: 1,
-        teamName: label,
-        participants: new Map()
+    let session;
+
+    if (joinCode === integratedCode && liveClassState) {
+      session = {
+        participantId,
+        displayName,
+        assignmentRevision: 0,
+        assignment: null,
+        workspaceStates: liveInstructorWorkspaceStates,
+        classContext: liveInstructorClass(),
+        integrated: true,
+        statusReads: 0,
+        accessCount: 0,
+        activeWorkspaceToken: ''
       };
-    };
-    const session = {
-      participantId,
-      displayName,
-      assignmentRevision: 0,
-      assignment: null,
-      teamA,
-      teamB,
-      workspaceStates: new Map([
-        [teamA.id, makeWorkspaceState(teamA.label)],
-        [teamB.id, makeWorkspaceState(teamB.label)]
-      ]),
-      statusReads: 0,
-      accessCount: 0,
-      activeWorkspaceToken: ''
-    };
+      liveInstructorParticipants.push({
+        id: participantId,
+        displayName,
+        assignmentRevision: 0,
+        joinedAt: '2099-12-31T20:05:00.000Z',
+        updatedAt: '2099-12-31T20:05:00.000Z',
+        assignment: null
+      });
+    } else if (joinCode === isolatedCode) {
+      const teamA = {
+        id: studentLiveWorkspaceId(sequence, 1),
+        kind: 'group',
+        label: 'Team Alpha'
+      };
+      const teamB = {
+        id: studentLiveWorkspaceId(sequence, 2),
+        kind: 'group',
+        label: 'Team Beta'
+      };
+      const makeWorkspaceState = label => {
+        const snapshot = freshClassroomSnapshot();
+        if (!snapshot.pre || typeof snapshot.pre !== 'object') snapshot.pre = {};
+        snapshot.pre.oneLine = `${label} destination Intake.`;
+        return {
+          snapshot,
+          revision: 1,
+          teamName: label,
+          participants: new Map()
+        };
+      };
+      session = {
+        participantId,
+        displayName,
+        assignmentRevision: 0,
+        assignment: null,
+        teamA,
+        teamB,
+        workspaceStates: new Map([
+          [teamA.id, makeWorkspaceState(teamA.label)],
+          [teamB.id, makeWorkspaceState(teamB.label)]
+        ]),
+        statusReads: 0,
+        accessCount: 0,
+        activeWorkspaceToken: ''
+      };
+    } else {
+      sendJson(response, 404, { error: 'Class not available.' });
+      return true;
+    }
+
     studentLiveSessions.set(studentSessionToken, session);
     sendJson(response, 200, {
-      class: STUDENT_LIVE_CLASS,
+      class: session.classContext || STUDENT_LIVE_CLASS,
       participant: {
         id: participantId,
         displayName,
@@ -483,7 +513,7 @@ async function handleClassroomApi(request, response, url) {
     if (!session.assignment) {
       sendJson(response, 409, {
         status: 'waiting',
-        class: STUDENT_LIVE_CLASS,
+        class: session.classContext || STUDENT_LIVE_CLASS,
         participant: {
           id: session.participantId,
           displayName: session.displayName,
@@ -495,7 +525,7 @@ async function handleClassroomApi(request, response, url) {
     }
     const workspaceToken = issueStudentLiveAccess(session);
     sendJson(response, 200, {
-      class: STUDENT_LIVE_CLASS,
+      class: session.classContext || STUDENT_LIVE_CLASS,
       participant: {
         id: session.participantId,
         displayName: session.displayName,
@@ -525,6 +555,7 @@ async function handleClassroomApi(request, response, url) {
       expiresAt: CLASSROOM_EXPIRY
     };
     liveInstructorWorkspaces = [];
+    liveInstructorWorkspaceStates.clear();
     liveInstructorParticipants = [{
       id: LIVE_PARTICIPANT_ID,
       displayName: 'Waiting Student',
@@ -579,6 +610,15 @@ async function handleClassroomApi(request, response, url) {
         editingParticipantCount: 0
       };
       liveInstructorWorkspaces.push(workspace);
+      const snapshot = freshClassroomSnapshot();
+      if (!snapshot.pre || typeof snapshot.pre !== 'object') snapshot.pre = {};
+      snapshot.pre.oneLine = `${workspace.label} live-class Intake.`;
+      liveInstructorWorkspaceStates.set(workspace.id, {
+        snapshot,
+        revision: 1,
+        teamName: workspace.label,
+        participants: new Map()
+      });
       sendJson(response, 201, {
         workspace,
         assignmentToken: `${'a'.repeat(42)}${String(liveInstructorWorkspaces.length).slice(-1)}`
@@ -621,6 +661,17 @@ async function handleClassroomApi(request, response, url) {
           ? { id: workspace.id, kind: workspace.kind, label: workspace.label }
           : null;
         participant.updatedAt = '2099-12-31T22:00:00.000Z';
+
+        const liveSession = [...studentLiveSessions.values()].find(session => (
+          session.integrated && session.participantId === participant.id
+        ));
+        if (liveSession) {
+          setStudentLiveAssignment(
+            liveSession,
+            participant.assignment ? structuredClone(participant.assignment) : null,
+            participant.assignmentRevision
+          );
+        }
       }
       sendJson(response, 200, {
         class: liveInstructorClass(),
