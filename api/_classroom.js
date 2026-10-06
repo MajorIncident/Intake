@@ -22,6 +22,8 @@ import {
 export const CLASS_TITLE_MAX_LENGTH = 120;
 export const CLASS_WORKSPACE_LABEL_MAX_LENGTH = 120;
 export const CLASS_WORKSPACE_KINDS = Object.freeze(['individual', 'group']);
+export const CLASS_JOIN_CODE_LENGTH = 8;
+export const CLASS_JOIN_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export const DEFAULT_CLASS_EXPIRY_DAYS = 30;
 export const COACHING_STATUSES = Object.freeze(['meets-standard', 'needs-improvement']);
 export const COACHING_NOTE_MAX_LENGTH = 2000;
@@ -82,6 +84,37 @@ export function normalizeClassroomWorkspaceKind(value) {
  */
 export function validateClassroomId(value) {
   return validateParticipantId(value);
+}
+
+
+/**
+ * Normalize a human-facing live Classroom join code.
+ *
+ * Spaces and hyphens are presentation-only. Ambiguous characters such as
+ * 0/O and 1/I are deliberately excluded from the accepted alphabet.
+ *
+ * @param {unknown} value - Candidate join code.
+ * @returns {string|null} Canonical eight-character code or null.
+ */
+export function normalizeClassJoinCode(value) {
+  if (typeof value !== 'string') return null;
+  const compact = value.trim().toUpperCase().replace(/[\s-]+/gu, '');
+  if (compact.length !== CLASS_JOIN_CODE_LENGTH) return null;
+  for (const character of compact) {
+    if (!CLASS_JOIN_CODE_ALPHABET.includes(character)) return null;
+  }
+  return compact;
+}
+
+/**
+ * Format a normalized join code for human display.
+ *
+ * @param {unknown} value - Candidate join code.
+ * @returns {string|null} Grouped display form or null.
+ */
+export function formatClassJoinCode(value) {
+  const normalized = normalizeClassJoinCode(value);
+  return normalized ? `${normalized.slice(0, 4)}-${normalized.slice(4)}` : null;
 }
 
 /**
@@ -199,6 +232,11 @@ async function initializeClassroomRepository() {
   )`;
   await sql`CREATE INDEX IF NOT EXISTS classroom_classes_expiry_idx
     ON classroom_classes (expires_at)`;
+  await sql`ALTER TABLE classroom_classes
+    ADD COLUMN IF NOT EXISTS student_join_code VARCHAR(8)`;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS classroom_classes_student_join_code_idx
+    ON classroom_classes (student_join_code)
+    WHERE student_join_code IS NOT NULL`;
 
   await sql`CREATE TABLE IF NOT EXISTS classroom_workspaces (
     workspace_id BIGINT PRIMARY KEY REFERENCES collaboration_workspaces(id) ON DELETE CASCADE,
@@ -215,6 +253,29 @@ async function initializeClassroomRepository() {
   )`;
   await sql`CREATE INDEX IF NOT EXISTS classroom_workspaces_class_idx
     ON classroom_workspaces (class_id, created_at)`;
+
+  await sql`CREATE TABLE IF NOT EXISTS classroom_participants (
+    class_id BIGINT NOT NULL REFERENCES classroom_classes(id) ON DELETE CASCADE,
+    participant_id UUID NOT NULL,
+    display_name VARCHAR(60) NOT NULL,
+    session_token_hash CHAR(64) UNIQUE NOT NULL,
+    workspace_id BIGINT,
+    workspace_access_token_hash CHAR(64) UNIQUE,
+    assignment_revision INTEGER NOT NULL DEFAULT 0 CHECK (assignment_revision >= 0),
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    assigned_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    PRIMARY KEY (class_id, participant_id),
+    FOREIGN KEY (class_id, workspace_id)
+      REFERENCES classroom_workspaces(class_id, workspace_id)
+      ON DELETE SET NULL
+  )`;
+  await sql`CREATE INDEX IF NOT EXISTS classroom_participants_class_idx
+    ON classroom_participants (class_id, joined_at)`;
+  await sql`CREATE INDEX IF NOT EXISTS classroom_participants_workspace_idx
+    ON classroom_participants (workspace_id)
+    WHERE workspace_id IS NOT NULL`;
 
   await sql`CREATE TABLE IF NOT EXISTS classroom_memberships (
     class_id BIGINT NOT NULL,
@@ -271,19 +332,154 @@ async function initializeClassroomRepository() {
     return rows[0] || null;
   }
 
+  async function classByJoinCode(joinCode) {
+    const rows = await sql`SELECT id AS internal_id, public_id AS id, title,
+        joins_enabled AS "joinsEnabled", expires_at AS "expiresAt"
+      FROM classroom_classes
+      WHERE student_join_code = ${joinCode}
+        AND joins_enabled = TRUE
+        AND revoked_at IS NULL
+        AND expires_at > NOW()`;
+    return rows[0] || null;
+  }
+
   return {
-    async createClass({ publicId, title, instructorHash, studentJoinHash, expiryDays }) {
+    async createClass({ publicId, title, instructorHash, studentJoinHash, studentJoinCode = null, expiryDays }) {
       const rows = await sql`INSERT INTO classroom_classes
-        (public_id, title, instructor_token_hash, student_join_token_hash, expires_at)
+        (public_id, title, instructor_token_hash, student_join_token_hash, student_join_code, expires_at)
         VALUES (
           ${publicId}::uuid,
           ${title},
           ${instructorHash},
           ${studentJoinHash},
+          ${studentJoinCode},
           NOW() + (${expiryDays} * INTERVAL '1 day')
         )
         RETURNING public_id AS id, title, joins_enabled AS "joinsEnabled", expires_at AS "expiresAt"`;
       return rows[0];
+    },
+
+    async getClassByJoinCode(joinCode) {
+      return classByJoinCode(joinCode);
+    },
+
+    async admitParticipant({ joinCode, participantId, displayName, sessionHash }) {
+      const classroom = await classByJoinCode(joinCode);
+      if (!classroom) return null;
+
+      const rows = await sql`INSERT INTO classroom_participants
+        (class_id, participant_id, display_name, session_token_hash)
+        VALUES (
+          ${classroom.internal_id},
+          ${participantId}::uuid,
+          ${displayName},
+          ${sessionHash}
+        )
+        ON CONFLICT (class_id, participant_id) DO UPDATE
+        SET display_name = EXCLUDED.display_name,
+            session_token_hash = EXCLUDED.session_token_hash,
+            updated_at = NOW()
+        WHERE classroom_participants.revoked_at IS NULL
+        RETURNING
+          participant_id AS id,
+          display_name AS "displayName",
+          workspace_id AS "workspaceInternalId",
+          assignment_revision AS "assignmentRevision",
+          joined_at AS "joinedAt",
+          updated_at AS "updatedAt"`;
+      const participant = rows[0];
+      if (!participant) return null;
+
+      let assignment = null;
+      if (participant.workspaceInternalId) {
+        const assignments = await sql`SELECT
+            public_id AS id,
+            workspace_kind AS kind,
+            label
+          FROM classroom_workspaces
+          WHERE class_id = ${classroom.internal_id}
+            AND workspace_id = ${participant.workspaceInternalId}
+            AND revoked_at IS NULL`;
+        assignment = assignments[0] || null;
+      }
+
+      return { classroom, participant, assignment };
+    },
+
+    async getParticipantBySession(sessionHash) {
+      const rows = await sql`SELECT
+          c.id AS "classInternalId",
+          c.public_id AS "classId",
+          c.title AS "classTitle",
+          c.expires_at AS "classExpiresAt",
+          cp.participant_id AS id,
+          cp.display_name AS "displayName",
+          cp.workspace_id AS "workspaceInternalId",
+          cp.assignment_revision AS "assignmentRevision",
+          cp.joined_at AS "joinedAt",
+          cw.public_id AS "workspaceId",
+          cw.workspace_kind AS "workspaceKind",
+          cw.label AS "workspaceLabel"
+        FROM classroom_participants cp
+        JOIN classroom_classes c ON c.id = cp.class_id
+        LEFT JOIN classroom_workspaces cw
+          ON cw.class_id = cp.class_id
+          AND cw.workspace_id = cp.workspace_id
+          AND cw.revoked_at IS NULL
+        WHERE cp.session_token_hash = ${sessionHash}
+          AND cp.revoked_at IS NULL
+          AND c.revoked_at IS NULL
+          AND c.expires_at > NOW()`;
+      const row = rows[0];
+      if (!row) return null;
+      return {
+        classroom: { id: row.classId, title: row.classTitle, expiresAt: row.classExpiresAt },
+        participant: {
+          id: row.id,
+          displayName: row.displayName,
+          assignmentRevision: row.assignmentRevision,
+          joinedAt: row.joinedAt
+        },
+        assignment: row.workspaceId
+          ? { id: row.workspaceId, kind: row.workspaceKind, label: row.workspaceLabel }
+          : null,
+        internal: { classId: row.classInternalId, workspaceId: row.workspaceInternalId || null }
+      };
+    },
+
+    async listParticipants(instructorHash) {
+      const classroom = await classByInstructor(instructorHash);
+      if (!classroom) return null;
+      const participants = await sql`SELECT
+          cp.participant_id AS id,
+          cp.display_name AS "displayName",
+          cp.assignment_revision AS "assignmentRevision",
+          cp.joined_at AS "joinedAt",
+          cp.updated_at AS "updatedAt",
+          cw.public_id AS "workspaceId",
+          cw.workspace_kind AS "workspaceKind",
+          cw.label AS "workspaceLabel"
+        FROM classroom_participants cp
+        LEFT JOIN classroom_workspaces cw
+          ON cw.class_id = cp.class_id
+          AND cw.workspace_id = cp.workspace_id
+          AND cw.revoked_at IS NULL
+        WHERE cp.class_id = ${classroom.internal_id}
+          AND cp.revoked_at IS NULL
+        ORDER BY cp.joined_at, cp.participant_id`;
+      return {
+        classroom,
+        participants: participants.map(participant => ({
+          id: participant.id,
+          displayName: participant.displayName,
+          assignmentRevision: participant.assignmentRevision,
+          joinedAt: participant.joinedAt,
+          updatedAt: participant.updatedAt,
+          assignment: participant.workspaceId
+            ? { id: participant.workspaceId, kind: participant.workspaceKind, label: participant.workspaceLabel }
+            : null
+        }))
+      };
     },
 
     async getClassByInstructor(instructorHash) {
