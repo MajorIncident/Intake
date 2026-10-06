@@ -284,7 +284,7 @@ export function createInstructorExerciseConsoleController({
         state.textContent = 'Released';
         row.append(state);
       } else {
-        const button = documentRef.createElement('button');
+        const button = documentRef.createElement('button'); // data-persistence="local-only" data-summary="exclude"
         button.type = 'button';
         button.className = 'btn-secondary';
         button.setAttribute('data-persistence', 'local-only');
@@ -330,7 +330,7 @@ export function createInstructorExerciseConsoleController({
     const wrapper = documentRef.createElement('div');
     wrapper.className = 'instructor-exercise-console__progress-list';
     rows.forEach(item => {
-      const button = documentRef.createElement('button');
+      const button = documentRef.createElement('button'); // data-persistence="local-only" data-summary="exclude"
       button.type = 'button';
       button.className = 'instructor-exercise-progress__row';
       button.setAttribute('data-persistence', 'local-only');
