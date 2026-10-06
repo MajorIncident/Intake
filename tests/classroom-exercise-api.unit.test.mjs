@@ -188,6 +188,25 @@ test('staged definition fingerprint is canonical across object key order', () =>
   assert.match(fingerprintStagedSimulation(STAGED_CASE.simulation), /^[a-f0-9]{64}$/u);
 });
 
+test('Instructor exercise GET discovers staged Case Studies without exposing simulation definitions', async () => {
+  const { classrooms, workspaceRepo } = await setupClass();
+  const handler = instructorHandler(classrooms, workspaceRepo);
+  const res = response();
+  await handler({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) }
+  }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.exercise, null);
+  assert.deepEqual(res.body.availableCaseStudies.map(item => item.id), [STAGED_CASE.id]);
+  assert.equal(res.body.availableCaseStudies[0].name, STAGED_CASE.name);
+  assert.equal('simulation' in res.body.availableCaseStudies[0], false);
+  assert.equal('state' in res.body.availableCaseStudies[0], false);
+  assert.equal(JSON.stringify(res.body.availableCaseStudies).includes('INSTRUCTOR ONLY'), false);
+  assert.equal(JSON.stringify(res.body.availableCaseStudies).includes('COMPLETE SOURCE'), false);
+});
+
 test('Instructor exercise creation is class-authorized, staged-only, idempotent, and definition-pinned', async () => {
   const { classrooms, workspaceRepo } = await setupClass();
   await admit(classrooms);
