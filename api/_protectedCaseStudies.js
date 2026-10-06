@@ -46,7 +46,8 @@ function createProtectedCaseStudyHandler({
   getRepository,
   manifest,
   authorize,
-  unauthorizedMessage
+  unauthorizedMessage,
+  blockPayload = null
 }) {
   return async (req, res) => {
     if (!['GET', 'POST'].includes(req.method)) return methodNotAllowed(res);
@@ -67,6 +68,12 @@ function createProtectedCaseStudyHandler({
 
       const caseStudy = requestedCaseStudy(manifest, req.body);
       if (!caseStudy) return send(res, 404, { error: 'Case Study not found.' });
+
+      if (blockPayload && await blockPayload(repository, context, caseStudy)) {
+        return send(res, 409, {
+          error: 'Case Study content is available only through the staged exercise.'
+        });
+      }
 
       return send(res, 200, {
         class: context.classroom,
@@ -118,6 +125,10 @@ export function studentCaseStudiesHandler({
     getRepository,
     manifest,
     authorize: (repository, tokenHash) => repository.getStudentContext(tokenHash),
-    unauthorizedMessage: 'Class resources not found.'
+    unauthorizedMessage: 'Class resources not found.',
+    blockPayload: async (repository, context, caseStudy) => {
+      if (!context.internal?.classId || !repository.hasExerciseForClassCase) return false;
+      return repository.hasExerciseForClassCase(context.internal.classId, caseStudy.id);
+    }
   });
 }
