@@ -293,7 +293,13 @@ Continue #295 on draft PR #307 from the current branch head.
   - The first run exposed a test-only assumption: a closed off-canvas drawer remains rendered and therefore Playwright-visible even though it is `aria-hidden` and `inert`. `1d181d22e77507e87377ac8b2798ed6b927c3b98` now asserts the actual closed-drawer interaction contract.
   - Browser E2E on `1d181d22...`: **14 passed, 4 intentionally project-scoped skips, 0 failed**.
   - Browser E2E, CI, CodeQL, Dependency Review, and Template Manifest Guard are all green on `1d181d22...`.
-- Exact next action: add deterministic browser coverage for invalid/expired/revoked Classroom credentials and unauthorized workspace enumeration attempts. Then finish the remaining collaboration/team coverage, documentation/stability review, and required-vs-advisory Browser E2E check decision before #308 is ready for review.
+- Negative authorization browser checkpoint:
+  - `0802e012bcc0f863d912304da2dabd1d286f1825` tightens the deterministic fixture so Instructor, class-join, and assignment credentials are distinct authorities rather than any syntactically valid 43-character token.
+  - `e7bc8ed4af04b8c1061c29a8d8e67c0a36bc5795` adds real-browser coverage proving an active Student workspace capability cannot enumerate the Instructor roster, well-formed non-Instructor authority cannot open an Instructor class, and an expired saved Student session is discarded before stale workspace content resumes.
+  - The tests intentionally assert durable authorization/recovery properties rather than requiring the current class+assignment-code Student UX, because #312 will replace that admission flow with Instructor-managed assignment.
+  - Browser E2E on `e7bc8ed...`: **20 passed, 4 intentionally project-scoped skips, 0 failed**.
+  - Browser E2E, CI, CodeQL, Dependency Review, and Template Manifest Guard are all green on `e7bc8ed...`.
+- Exact next action: finish the remaining individual/team collaboration browser coverage, then perform the Browser E2E stability/documentation review and decide required-vs-advisory CI status before #308 is ready for review. Keep #312 and #313 as post-#308 product follow-ons rather than expanding this PR.
 
 ## Approved Classroom follow-on direction
 
