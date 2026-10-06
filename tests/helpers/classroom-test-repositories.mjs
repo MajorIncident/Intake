@@ -163,7 +163,8 @@ export function createClassroomRepository() {
     id: item.id,
     title: item.title,
     joinsEnabled: item.joinsEnabled,
-    expiresAt: item.expiresAt
+    expiresAt: item.expiresAt,
+    joinCode: item.studentJoinCode || null
   } : null;
 
   return {
@@ -285,6 +286,64 @@ export function createClassroomRepository() {
                 : null
             };
           })
+      };
+    },
+    async issueParticipantWorkspaceAccess({ sessionHash, accessHash, workspaceRepository }) {
+      const participant = [...participants.values()].find(value => value.sessionHash === sessionHash && !value.revoked);
+      if (!participant) return null;
+      const item = classes.find(candidate => candidate.internalId === participant.classInternalId && !candidate.revoked);
+      if (!item) return null;
+      if (!participant.workspaceId) {
+        return {
+          classroom: publicClass(item),
+          participant: {
+            id: participant.participantId,
+            displayName: participant.displayName,
+            assignmentRevision: participant.assignmentRevision,
+            joinedAt: participant.joinedAt
+          },
+          assignment: null,
+          internal: { classId: item.internalId, workspaceId: null },
+          waiting: true
+        };
+      }
+      const workspace = workspaces.find(candidate => (
+        candidate.classInternalId === item.internalId
+        && candidate.workspaceId === participant.workspaceId
+        && !candidate.revoked
+      ));
+      if (!workspace) return null;
+
+      if (!await workspaceRepository.createCapability(
+        workspace.workspaceId,
+        accessHash,
+        'classroom-student',
+        item.expiresAt
+      )) throw new Error('Unable to create live capability');
+
+      const previous = participant.workspaceAccessHash;
+      participant.workspaceAccessHash = accessHash;
+      participant.updatedAt = 'updated';
+      if (previous && previous !== accessHash) {
+        await workspaceRepository.revokeCapability(previous);
+      }
+
+      return {
+        classroom: publicClass(item),
+        participant: {
+          id: participant.participantId,
+          displayName: participant.displayName,
+          assignmentRevision: participant.assignmentRevision,
+          joinedAt: participant.joinedAt
+        },
+        assignment: {
+          id: workspace.id,
+          kind: workspace.kind,
+          label: workspace.label,
+          expiresAt: item.expiresAt
+        },
+        internal: { classId: item.internalId, workspaceId: workspace.workspaceId },
+        waiting: false
       };
     },
     async rotateStudentJoin(instructorHash, nextHash) {
@@ -414,6 +473,23 @@ export function createClassroomRepository() {
       return { classroom: scope.classroom, workspace: scope.workspace, cleared, targetId };
     },
     async getStudentContext(accessHash) {
+      const live = [...participants.values()].find(value => value.workspaceAccessHash === accessHash && !value.revoked);
+      if (live) {
+        const item = classes.find(candidate => candidate.internalId === live.classInternalId && !candidate.revoked);
+        const workspace = item && workspaces.find(candidate => (
+          candidate.classInternalId === item.internalId
+          && candidate.workspaceId === live.workspaceId
+          && !candidate.revoked
+        ));
+        if (item && workspace) {
+          return {
+            classroom: publicClass(item),
+            workspace: { id: workspace.id, kind: workspace.kind, label: workspace.label },
+            internal: { classId: item.internalId, workspaceId: workspace.workspaceId }
+          };
+        }
+      }
+
       const member = [...memberships.values()].find(value => value.accessHash === accessHash);
       if (!member) return null;
       const item = classes.find(candidate => candidate.internalId === member.classInternalId && !candidate.revoked);
