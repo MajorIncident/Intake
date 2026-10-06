@@ -42,7 +42,7 @@ test('Student joins an assigned workspace, discards admission codes, and resumes
   const pageErrors = watchPageErrors(page);
   const suffix = testInfo.project.name === 'chromium-mobile' ? 'm' : 'd';
   const classCode = capability('c', suffix);
-  const assignmentCode = capability('a', suffix);
+  const assignmentCode = `a${'s'.repeat(40)}${testInfo.retry}${suffix}`;
   const expectedWorkspaceToken = workspaceTokenForAssignment(assignmentCode);
   const displayName = testInfo.project.name === 'chromium-mobile' ? 'Mobile Student' : 'Desktop Student';
 
