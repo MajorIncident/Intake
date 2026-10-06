@@ -32,6 +32,7 @@ test('Student workspace authority cannot enumerate the Instructor roster', async
   await page.getByRole('button', { name: /Join a class/ }).click();
   await page.locator('#studentDisplayName').fill('Authorization Student');
   await page.getByLabel('Class code').fill(classCode);
+  await page.locator('#studentLegacyJoin > summary').click();
   await page.getByLabel('Assignment code').fill(assignmentCode);
   await page.getByRole('button', { name: 'Join class' }).click();
 
