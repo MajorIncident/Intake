@@ -31,8 +31,10 @@ test('Students in one team share one Intake while another workspace remains isol
   test.skip(testInfo.project.name === 'chromium-mobile', 'Multi-browser collaboration contract is covered once on desktop; mobile Student entry already has dedicated smoke coverage.');
 
   const classCode = capability('c', 't');
-  const teamAssignment = capability('a', 'm');
-  const individualAssignment = capability('a', 'd');
+  // Use assignment capabilities unique to this spec so fully-parallel browser
+  // projects cannot mutate the Student workspaces used by coaching/resume tests.
+  const teamAssignment = `a${'g'.repeat(41)}m`;
+  const individualAssignment = `a${'n'.repeat(41)}d`;
 
   const contextOptions = { baseURL: testInfo.project.use.baseURL };
   const firstContext = await browser.newContext(contextOptions);
