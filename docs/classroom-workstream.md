@@ -439,7 +439,15 @@ Continue #295 on draft PR #307 from the current branch head.
   - Tranche 4 deliberately returns `editFreezeEnforced: false`; no security claim is made until collaboration PUT enforcement lands.
   - implementation/security-test checkpoint: `5afc0041db89348d97ca0986cab89491765d0e00`.
   - validation: repository quality **273 tests / 272 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
-- Exact next action: implement **Tranche 5 only — server-enforced Student editing policy**. Enforce the staged exercise editing policy in the `classroom-student` collaboration write path before revision mutation, keep GET/presence/coaching/readiness unaffected, preserve Standalone and no-exercise Classroom behavior, define a stable temporary-lock response contract, and add direct API regressions proving frozen writes cannot mutate snapshot/revision. Stop before Instructor/Student exercise UI.
+- Server-enforced Student editing-policy checkpoint:
+  - `9eea334b1a7ea791f3edf3d3330ac512b06bbb32` adds capability-kind-aware workspace write policy preflight; `6a8fb4f55b653ca5acc66954fcc8d28fe375ace4` resolves current Classroom exercise write policy; `1aec6a17647871ab23c36572ab339f2dd3e63350` wires the production session route.
+  - `96eab74f64838775f544990e495fe62a3319827f` / `4eb7f5e6b8a719add994c79acbff31c04a4ebcbb` apply authored debrief defaults, expose truthful enforcement state, and add revision-safe debrief `set-editing`.
+  - `507da02269336fb414d2ccc5390be4cbb26ed97c` hardens the real Neon `classroom-student` mutation with an atomic SQL freeze predicate so Instructor freeze racing a Student PUT fails closed.
+  - `f3304a2f470b8c96468de13c787cbe0378b8f8b9` makes Pause/Resume preserve the current edit policy instead of silently unlocking a frozen debrief.
+  - `d66eeeace6f9e41dade765b6b0331a69a40ebbb0` / `261b28d488538964ccd73132ed568d73628f6411` prove allowed work writes, 423 frozen-write rejection with zero snapshot/revision mutation, frozen GET availability, Standalone isolation, freeze persistence through Pause/Resume, and explicit unfreeze restoring writes.
+  - stable temporary-lock contract: HTTP **423 Locked**, `code: classroom-editing-locked`.
+  - validation on `261b28d...`: repository quality **274 tests / 273 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+- Exact next action: implement **Tranche 6 only — Instructor exercise console** inside the existing live Instructor dashboard. Add staged Case Study selection/draft creation, stage/facilitation display, accessible lifecycle/release/debrief/freeze/advance/complete controls, readiness/progress, conflict refresh, and existing observer/coaching navigation. Keep Student staged-case panel and production official-case staging deferred.
 
 ## Approved Classroom follow-on direction
 
