@@ -413,7 +413,15 @@ Continue #295 on draft PR #307 from the current branch head.
   - late join enters the current class stage; reassignment preserves class stage while destination team Intake/readiness wins;
   - Instructor lifecycle mutations use optimistic exercise revision so retries cannot double-advance.
 - Production stage content is intentionally **not authored yet**. Use synthetic deterministic staged content for infrastructure tests until authoritative case pages/evidence/facilitation material is supplied and reviewed.
-- Exact next action after this architecture tranche: extend Case Study authoring validation/server-only manifest with an **optional** `simulation` definition and focused tests for unique IDs/cross-references, Student-vs-Instructor content separation, public-manifest exclusion, and backward compatibility. Stop before exercise persistence/API/UI.
+- Staged Case Study authoring-schema checkpoint:
+  - `46109491808bedfbf5e778d0979859b3cd96b56c` adds version-1 server-side simulation validation/normalization;
+  - `1f716470cfdf95a64c00a8a99a62735133feae61` integrates optional `simulation` into the protected Case Study manifest build only;
+  - `9322cecabe9a487e072dd279519b5f358f089ebd` / `1e22806b8a1e50e94150a13ecf3b7083f0747667` add synthetic schema and public-boundary regression coverage;
+  - `af6b6f21a8e4f25f014a8362857a1c15e252775b` restores #313 API guardrails alongside real tests.
+  - Standard Templates cannot carry `simulation`; Student and Instructor content are separate, stable-ID/cross-reference validated namespaces; unsafe arbitrary fields/URLs are rejected; existing non-staged Case Studies remain unchanged.
+  - no official production case has been staged or guessed.
+  - validation on `af6b6f21...`: repository quality **260 tests / 259 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; Template Manifest Guard and Dependency Review green.
+- Exact next action: implement **Tranche 3 only** — additive exercise persistence/repository + deterministic in-memory parity: class exercise lifecycle state, optimistic revision, optional releases, workspace readiness, immutable idempotent debrief checkpoints, class/workspace scoping, and retention. Do not add HTTP exercise routes, collaboration freeze enforcement, or UI yet.
 
 ## Approved Classroom follow-on direction
 
