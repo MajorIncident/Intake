@@ -38,6 +38,98 @@ async function expectNoBlockingA11yViolations(page) {
   expect(blockingViolations, JSON.stringify(blockingViolations, null, 2)).toEqual([]);
 }
 
+test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta, and returns to Waiting', async ({ page }, testInfo) => {
+  const pageErrors = watchPageErrors(page);
+  const displayName = testInfo.project.name === 'chromium-mobile' ? 'Mobile Live Student' : 'Desktop Live Student';
+  const classCode = 'M7QR-T4P2';
+  const workspaceTokens = [];
+
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.pathname !== '/api/workspaces/session') return;
+    const header = request.headers().authorization || '';
+    const match = /^Bearer\s+(.+)$/u.exec(header);
+    if (match && !workspaceTokens.includes(match[1])) workspaceTokens.push(match[1]);
+  });
+
+  await startFresh(page);
+  await page.getByRole('button', { name: /Join a class/ }).click();
+
+  await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'student');
+  await expect(page.getByRole('heading', { name: 'Join your class' })).toBeVisible();
+  await expect(page.locator('#studentLegacyJoin')).not.toHaveAttribute('open', '');
+
+  await page.locator('#studentDisplayName').fill(displayName);
+  await page.getByLabel('Class code').fill(classCode);
+  await page.getByRole('button', { name: 'Join class' }).click();
+
+  await expect(page.locator('body')).toHaveAttribute('data-student-class-status', 'waiting');
+  await expect(page.locator('#studentClassWaitingPanel')).toBeVisible();
+  await expect(page.locator('#studentClassWaitingClass')).toHaveText('Browser Student Live Classroom');
+  await expect(page.locator('#studentClassWaitingIdentity')).toHaveText(displayName);
+  await expect(page.locator('.wrap')).toBeHidden();
+
+  const storedWaiting = await page.evaluate(key => JSON.parse(window.localStorage.getItem(key)), STUDENT_SESSION_STORAGE_KEY);
+  expect(storedWaiting.mode).toBe('live');
+  expect(storedWaiting.studentSessionToken).toBeTruthy();
+  expect(storedWaiting.assignment).toBeNull();
+  expect(storedWaiting.workspaceToken).toBeUndefined();
+  expect(JSON.stringify(storedWaiting)).not.toContain(classCode);
+
+  await expect(page.locator('body')).toHaveAttribute('data-student-class-status', 'connected', { timeout: 10000 });
+  await expect(page.locator('#studentClassWorkspace')).toHaveText('Team Alpha');
+  await expect(page.locator('#oneLine')).toHaveValue('Team Alpha destination Intake.');
+  expect(workspaceTokens.length).toBeGreaterThanOrEqual(1);
+
+  const alphaMarker = `${displayName} wrote in Team Alpha.`;
+  const alphaSave = page.waitForResponse(response => (
+    response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === '/api/workspaces/session'
+    && response.ok()
+  ));
+  await page.locator('#oneLine').fill(alphaMarker);
+  await page.locator('#oneLine').blur();
+  await alphaSave;
+
+  await page.reload();
+
+  await expect(page.locator('#experienceRoleGate')).toBeHidden();
+  await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'student');
+  await expect(page.locator('body')).toHaveAttribute('data-student-class-status', 'connected', { timeout: 10000 });
+  await expect(page.locator('#studentClassWorkspace')).toHaveText('Team Alpha');
+  await expect(page.locator('#oneLine')).toHaveValue(alphaMarker);
+  expect(workspaceTokens.length).toBeGreaterThanOrEqual(2);
+  const resumedAlphaToken = workspaceTokens.at(-1);
+
+  await expect(page.locator('#studentClassWorkspace')).toHaveText('Team Beta', { timeout: 10000 });
+  await expect(page.locator('#oneLine')).toHaveValue('Team Beta destination Intake.');
+  expect(workspaceTokens.length).toBeGreaterThanOrEqual(3);
+
+  const staleAlphaResponse = await page.request.get('/api/workspaces/session', {
+    headers: { Authorization: `Bearer ${resumedAlphaToken}` }
+  });
+  expect(staleAlphaResponse.status()).toBe(404);
+
+  const betaToken = workspaceTokens.at(-1);
+  await expect(page.locator('body')).toHaveAttribute('data-student-class-status', 'waiting', { timeout: 10000 });
+  await expect(page.locator('#studentClassWaitingPanel')).toBeVisible();
+  await expect(page.locator('.wrap')).toBeHidden();
+
+  const staleBetaResponse = await page.request.get('/api/workspaces/session', {
+    headers: { Authorization: `Bearer ${betaToken}` }
+  });
+  expect(staleBetaResponse.status()).toBe(404);
+
+  const storedAfterUnassign = await page.evaluate(key => JSON.parse(window.localStorage.getItem(key)), STUDENT_SESSION_STORAGE_KEY);
+  expect(storedAfterUnassign.mode).toBe('live');
+  expect(storedAfterUnassign.assignmentRevision).toBe(3);
+  expect(storedAfterUnassign.assignment).toBeNull();
+  expect(storedAfterUnassign.workspaceToken).toBeUndefined();
+
+  await expectNoBlockingA11yViolations(page);
+  expect(pageErrors).toEqual([]);
+});
+
 test('Student joins an assigned workspace, discards admission codes, and resumes shared work after reload', async ({ page }, testInfo) => {
   const pageErrors = watchPageErrors(page);
   const suffix = testInfo.project.name === 'chromium-mobile' ? 'm' : 'd';
@@ -54,6 +146,7 @@ test('Student joins an assigned workspace, discards admission codes, and resumes
 
   await page.locator('#studentDisplayName').fill(displayName);
   await page.getByLabel('Class code').fill(classCode);
+  await page.locator('#studentLegacyJoin > summary').click();
   await page.getByLabel('Assignment code').fill(assignmentCode);
   await page.getByRole('button', { name: 'Join class' }).click();
 
