@@ -749,12 +749,19 @@ export function createClassroomRepository() {
       exercisePublicId,
       stageId,
       ready,
-      workspaceRevision
+      workspaceRevision,
+      expectedWorkspaceInternalId = null
     }) {
       const context = await this.getParticipantBySession(sessionHash);
       if (!context) return null;
       if (!context.internal.workspaceId || !context.assignment) {
         return { status: 'waiting', ...context };
+      }
+      if (
+        expectedWorkspaceInternalId !== null
+        && Number(context.internal.workspaceId) !== Number(expectedWorkspaceInternalId)
+      ) {
+        return { status: 'conflict', ...context };
       }
       const exercise = exercises.find(candidate => (
         candidate.classInternalId === context.internal.classId
