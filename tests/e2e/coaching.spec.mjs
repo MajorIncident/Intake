@@ -37,7 +37,7 @@ test('Instructor feedback reaches only the assigned Student and becomes stale af
   const suffix = testInfo.project.name === 'chromium-mobile' ? 'm' : 'd';
   const instructorCode = capability('i', suffix);
   const classCode = capability('c', suffix);
-  const assignmentCode = capability('a', suffix);
+  const assignmentCode = `a${'f'.repeat(40)}${testInfo.retry}${suffix}`;
   const studentName = testInfo.project.name === 'chromium-mobile' ? 'Mobile Reviewed Student' : 'Desktop Reviewed Student';
   const expectedWorkspaceLabel = suffix === 'm' ? 'Team Beta' : 'Alex Student';
   const studentCoachingWrites = [];
