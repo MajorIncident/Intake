@@ -127,6 +127,8 @@ The database stores only SHA-256 capability hashes. `CLASS_EXPIRY_DAYS` optional
 
 See `docs/classroom-api.md` for the endpoint/capability matrix and `SECURITY.md` for the security boundary. Instructor observation is implemented through the separate GET-only `/api/classes/observe` path, authorized by the Instructor class capability after class/workspace ownership is proven. It never resolves through the editable workspace-alias path.
 
+#313 staged simulation is currently below the HTTP/UI layer. The protected Case Study manifest may carry an explicit server-only `simulation` definition, while additive Neon tables persist class exercise lifecycle, optional releases, workspace readiness, and immutable debrief checkpoints. Running exercises pin the staged definition version plus a definition fingerprint and inherit the owning class expiry. These tables do **not** duplicate live Intake state: collaboration workspaces remain the only live snapshot/revision source of truth. Exercise HTTP routes, Student write-freeze enforcement, and exercise UI are not yet active in this tranche.
+
 ### Conflict recovery and two-window testing
 
 Updates use optimistic revision control: each complete snapshot retains the revision observed when it was captured. Text edits wait about 300 ms so typing is responsive, blur flushes pending text, and completed select, checkbox, radio, and button-driven changes save immediately where the owning control is identifiable. Only one PUT is sent at a time; edits made during that request collapse to the latest snapshot and follow the successful response at its returned revision. A stale write receives HTTP 409 and cannot overwrite the newer row.
