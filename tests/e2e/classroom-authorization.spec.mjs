@@ -54,6 +54,7 @@ test('well-formed non-Instructor authority cannot open an Instructor class', asy
 
   await startFresh(page);
   await page.getByRole('button', { name: /Teach a class/ }).click();
+  await page.locator('#instructorExistingClass > summary').click();
   await page.getByLabel('Instructor access code').fill(wrongAuthority);
   await page.getByRole('button', { name: 'Open class' }).click();
 
