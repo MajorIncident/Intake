@@ -229,6 +229,76 @@ The build produces two generated resources:
 - `api/protected-case-studies.manifest.js` — server-only Case Study metadata and payloads.
 
 Authored `templates/*.json` files are excluded from Vercel uploads. Production functions consume the committed server-only manifest, while GitHub CI continues to validate all authored JSON and generated-file freshness.
+## Staged exercise orchestration (#313)
+
+#313 adds class-level exercise orchestration without changing collaboration authority.
+
+### `POST /api/classes/exercise`
+
+Requires the Instructor class capability.
+
+Body:
+- `caseStudyId` for a protected Case Study carrying an explicit server-only `simulation` definition.
+
+Creates the represented class's draft exercise when no non-completed exercise exists. The exercise pins the normalized simulation version plus canonical SHA-256 definition fingerprint. Repeating the same selection returns the existing exercise; selecting a different case while another exercise is open conflicts.
+
+### `GET /api/classes/exercise`
+
+Requires the Instructor class capability.
+
+Returns only the represented class's current non-completed exercise plus:
+- complete Instructor-authorized staged definition;
+- optional-content releases;
+- workspace readiness/progress state;
+- current-stage immutable debrief checkpoints.
+
+Every read fails closed if the pinned simulation version/fingerprint no longer matches the current protected definition.
+
+### `PATCH /api/classes/exercise`
+
+Requires the Instructor class capability and positive `expectedRevision`.
+
+Supported actions:
+- `start`;
+- `pause`;
+- `resume`;
+- `release-content` with current-stage optional `contentId`;
+- `begin-debrief`;
+- `advance`;
+- `complete`.
+
+Lifecycle changes use optimistic `exercise_revision`. Optional-content replay is idempotent; a stale request for a different release conflicts. `begin-debrief` captures immutable class/workspace-scoped snapshot/revision checkpoints before later live changes. Stage ordering comes from the pinned staged definition, never client-provided next-stage IDs.
+
+**Tranche 4 does not yet claim an edit freeze.** Responses expose `editFreezeEnforced: false`; server enforcement on Student collaboration PUT is the next dedicated tranche.
+
+### `GET /api/classes/exercise/student`
+
+Requires the stable Student **class-session** capability, not a workspace edit capability or human join code.
+
+Returns:
+- represented public class/participant/current assignment context;
+- public exercise identity/status/phase/revision;
+- current Student-visible stage title/objective;
+- cumulative released Student content through the current stage;
+- represented workspace readiness when assigned.
+
+It never returns future-stage metadata, Instructor content/IDs, complete Case Study `state`, another workspace's readiness, or workspace enumeration. Waiting Students can read the current class release safely.
+
+### `PUT /api/classes/exercise/student/ready`
+
+Requires the Student class-session capability.
+
+Body:
+- `ready: boolean`.
+
+When setting Ready, the server resolves the participant's current assigned workspace and records the collaboration revision observed server-side. Waiting is rejected. A reassignment race conflicts rather than attaching readiness to the old workspace.
+
+### Protected full-payload interaction
+
+When a class has a staged exercise record for Case Study X, Student `POST /api/classes/case-studies/student` must not return X's complete protected payload. The Student must use the staged exercise endpoint instead. This block remains after exercise completion; completing a simulation is not an implicit exemplar/model-answer release. Instructor full protected access remains class-scoped and unchanged, and unrelated protected resources keep their existing behavior.
+
+All exercise responses are private/no-store/no-referrer. Exercise state, releases, readiness, and checkpoints remain outside Intake serialization and collaboration revision state.
+
 ## Individual and group semantics
 
 ### Individual
