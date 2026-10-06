@@ -155,11 +155,16 @@ export function createWorkspaceRepository() {
 /** Create an in-memory classroom repository. @returns {object} Repository. */
 export function createClassroomRepository() {
   let nextInternalId = 1;
+  let nextExerciseInternalId = 1;
   const classes = [];
   const workspaces = [];
   const memberships = new Map();
   const participants = new Map();
   const coaching = new Map();
+  const exercises = [];
+  const exerciseReleases = new Map();
+  const exerciseWorkspaceState = new Map();
+  const exerciseCheckpoints = new Map();
 
   const activeByInstructor = hash => classes.find(item => item.instructorHash === hash && !item.revoked) || null;
   const activeByJoin = hash => classes.find(item => item.studentJoinHash === hash && item.joinsEnabled && !item.revoked) || null;
@@ -174,6 +179,21 @@ export function createClassroomRepository() {
     expiresAt: item.expiresAt,
     joinCode: item.studentJoinCode || null
   } : null;
+  const publicExercise = exercise => exercise ? {
+    id: exercise.id,
+    caseStudyId: exercise.caseStudyId,
+    status: exercise.status,
+    currentStageId: exercise.currentStageId,
+    stagePhase: exercise.stagePhase,
+    exerciseRevision: exercise.exerciseRevision,
+    studentEditingEnabled: exercise.studentEditingEnabled,
+    startedAt: exercise.startedAt,
+    completedAt: exercise.completedAt,
+    createdAt: exercise.createdAt,
+    updatedAt: exercise.updatedAt,
+    expiresAt: exercise.expiresAt
+  } : null;
+  const cloneValue = value => value == null ? value : JSON.parse(JSON.stringify(value));
 
   return {
     classes,
@@ -181,6 +201,10 @@ export function createClassroomRepository() {
     memberships,
     participants,
     coaching,
+    exercises,
+    exerciseReleases,
+    exerciseWorkspaceState,
+    exerciseCheckpoints,
     async createClass({ publicId, title, instructorHash, studentJoinHash, studentJoinCode = null }) {
       const item = {
         internalId: nextInternalId++,
@@ -433,6 +457,348 @@ export function createClassroomRepository() {
         },
         internal: { classId: item.internalId, workspaceId: workspace.workspaceId },
         waiting: false
+      };
+    },
+    async createExercise(instructorHash, { publicId, caseStudyId }) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      const existing = exercises.find(exercise => (
+        exercise.classInternalId === item.internalId
+        && exercise.status !== 'completed'
+      ));
+      if (existing) {
+        return {
+          status: 'exists',
+          classroom: publicClass(item),
+          exercise: publicExercise(existing)
+        };
+      }
+      if (exercises.some(exercise => exercise.id === publicId)) return null;
+
+      const exercise = {
+        internalId: nextExerciseInternalId++,
+        id: publicId,
+        classInternalId: item.internalId,
+        caseStudyId,
+        status: 'draft',
+        currentStageId: null,
+        stagePhase: 'work',
+        exerciseRevision: 1,
+        studentEditingEnabled: true,
+        startedAt: null,
+        completedAt: null,
+        createdAt: 'created',
+        updatedAt: 'created',
+        expiresAt: item.expiresAt
+      };
+      exercises.push(exercise);
+      return {
+        status: 'created',
+        classroom: publicClass(item),
+        exercise: publicExercise(exercise)
+      };
+    },
+    async getCurrentExerciseForInstructor(instructorHash) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      const exercise = exercises.find(candidate => (
+        candidate.classInternalId === item.internalId
+        && candidate.status !== 'completed'
+      ));
+      return exercise
+        ? { classroom: publicClass(item), exercise: publicExercise(exercise) }
+        : null;
+    },
+    async getExerciseForInstructor(instructorHash, exercisePublicId) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      const exercise = exercises.find(candidate => (
+        candidate.classInternalId === item.internalId
+        && candidate.id === exercisePublicId
+      ));
+      return exercise
+        ? { classroom: publicClass(item), exercise: publicExercise(exercise) }
+        : null;
+    },
+    async updateExerciseLifecycle(instructorHash, {
+      exercisePublicId,
+      expectedRevision,
+      status,
+      currentStageId,
+      stagePhase,
+      studentEditingEnabled
+    }) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      const exercise = exercises.find(candidate => (
+        candidate.classInternalId === item.internalId
+        && candidate.id === exercisePublicId
+      ));
+      if (!exercise) return null;
+      if (exercise.exerciseRevision !== expectedRevision) {
+        return {
+          status: 'conflict',
+          classroom: publicClass(item),
+          exercise: publicExercise(exercise)
+        };
+      }
+
+      exercise.status = status;
+      exercise.currentStageId = currentStageId;
+      exercise.stagePhase = stagePhase;
+      exercise.studentEditingEnabled = studentEditingEnabled;
+      exercise.exerciseRevision += 1;
+      if (status === 'active' && !exercise.startedAt) exercise.startedAt = 'started';
+      if (status === 'completed' && !exercise.completedAt) exercise.completedAt = 'completed';
+      exercise.updatedAt = 'updated';
+      return {
+        status: 'updated',
+        classroom: publicClass(item),
+        exercise: publicExercise(exercise)
+      };
+    },
+    async releaseExerciseContent(instructorHash, {
+      exercisePublicId,
+      expectedRevision,
+      stageId,
+      contentId
+    }) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      const exercise = exercises.find(candidate => (
+        candidate.classInternalId === item.internalId
+        && candidate.id === exercisePublicId
+      ));
+      if (!exercise) return null;
+
+      const key = exercise.internalId + ':' + stageId + ':' + contentId;
+      const existing = exerciseReleases.get(key);
+      if (existing) {
+        return {
+          status: 'unchanged',
+          classroom: publicClass(item),
+          exercise: publicExercise(exercise),
+          release: { ...existing }
+        };
+      }
+      if (exercise.exerciseRevision !== expectedRevision) {
+        return {
+          status: 'conflict',
+          classroom: publicClass(item),
+          exercise: publicExercise(exercise)
+        };
+      }
+
+      const release = { stageId, contentId, releasedAt: 'released' };
+      exerciseReleases.set(key, release);
+      exercise.exerciseRevision += 1;
+      exercise.updatedAt = 'updated';
+      return {
+        status: 'updated',
+        classroom: publicClass(item),
+        exercise: publicExercise(exercise),
+        release: { ...release }
+      };
+    },
+    async listExerciseReleasesForInstructor(instructorHash, exercisePublicId) {
+      const current = await this.getExerciseForInstructor(instructorHash, exercisePublicId);
+      if (!current) return null;
+      const exercise = exercises.find(candidate => (
+        candidate.classInternalId === current.classroom.internal_id
+        && candidate.id === exercisePublicId
+      ));
+      const prefix = exercise.internalId + ':';
+      return {
+        ...current,
+        releases: [...exerciseReleases.entries()]
+          .filter(([key]) => key.startsWith(prefix))
+          .map(([, value]) => ({ ...value }))
+          .sort((a, b) => (
+            a.stageId.localeCompare(b.stageId)
+            || a.contentId.localeCompare(b.contentId)
+          ))
+      };
+    },
+    async setExerciseWorkspaceReadinessBySession(sessionHash, {
+      exercisePublicId,
+      stageId,
+      ready,
+      workspaceRevision
+    }) {
+      const context = await this.getParticipantBySession(sessionHash);
+      if (!context) return null;
+      if (!context.internal.workspaceId || !context.assignment) {
+        return { status: 'waiting', ...context };
+      }
+      const exercise = exercises.find(candidate => (
+        candidate.classInternalId === context.internal.classId
+        && candidate.id === exercisePublicId
+        && candidate.currentStageId === stageId
+        && candidate.status !== 'completed'
+      ));
+      if (!exercise) return null;
+
+      const key = exercise.internalId + ':' + context.internal.workspaceId + ':' + stageId;
+      const previous = exerciseWorkspaceState.get(key);
+      const nextRevision = ready ? workspaceRevision : null;
+      if (previous
+        && previous.readyForDebrief === ready
+        && previous.readyWorkspaceRevision === nextRevision) {
+        return {
+          status: 'unchanged',
+          classroom: context.classroom,
+          participant: context.participant,
+          workspace: context.assignment,
+          exercise: publicExercise(exercise),
+          readiness: { ...previous }
+        };
+      }
+
+      const readiness = {
+        classInternalId: context.internal.classId,
+        exerciseInternalId: exercise.internalId,
+        workspaceInternalId: context.internal.workspaceId,
+        stageId,
+        readyForDebrief: ready,
+        readyAt: ready ? 'ready' : null,
+        readyWorkspaceRevision: nextRevision,
+        createdAt: previous?.createdAt || 'created',
+        updatedAt: 'updated'
+      };
+      exerciseWorkspaceState.set(key, readiness);
+      const {
+        classInternalId: _classInternalId,
+        exerciseInternalId: _exerciseInternalId,
+        workspaceInternalId: _workspaceInternalId,
+        ...publicReadiness
+      } = readiness;
+      return {
+        status: 'updated',
+        classroom: context.classroom,
+        participant: context.participant,
+        workspace: context.assignment,
+        exercise: publicExercise(exercise),
+        readiness: publicReadiness
+      };
+    },
+    async listExerciseWorkspaceStateForInstructor(instructorHash, exercisePublicId) {
+      const current = await this.getExerciseForInstructor(instructorHash, exercisePublicId);
+      if (!current) return null;
+      const exercise = exercises.find(candidate => (
+        candidate.classInternalId === current.classroom.internal_id
+        && candidate.id === exercisePublicId
+      ));
+      return {
+        ...current,
+        workspaceState: [...exerciseWorkspaceState.values()]
+          .filter(state => state.exerciseInternalId === exercise.internalId)
+          .map(state => {
+            const workspace = workspaces.find(candidate => (
+              candidate.classInternalId === current.classroom.internal_id
+              && candidate.workspaceId === state.workspaceInternalId
+              && !candidate.revoked
+            ));
+            if (!workspace) return null;
+            return {
+              workspaceId: workspace.id,
+              workspaceKind: workspace.kind,
+              workspaceLabel: workspace.label,
+              stageId: state.stageId,
+              readyForDebrief: state.readyForDebrief,
+              readyAt: state.readyAt,
+              readyWorkspaceRevision: state.readyWorkspaceRevision,
+              createdAt: state.createdAt,
+              updatedAt: state.updatedAt
+            };
+          })
+          .filter(Boolean)
+      };
+    },
+    async captureExerciseCheckpoint(instructorHash, {
+      exercisePublicId,
+      stageId,
+      workspacePublicId,
+      workspaceRevision,
+      snapshot
+    }) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      const exercise = exercises.find(candidate => (
+        candidate.classInternalId === item.internalId
+        && candidate.id === exercisePublicId
+      ));
+      if (!exercise) return null;
+      const workspace = workspaces.find(candidate => (
+        candidate.classInternalId === item.internalId
+        && candidate.id === workspacePublicId
+        && !candidate.revoked
+      ));
+      if (!workspace) return null;
+
+      const key = exercise.internalId + ':' + stageId + ':' + workspace.workspaceId;
+      const existing = exerciseCheckpoints.get(key);
+      if (existing) {
+        return {
+          status: 'unchanged',
+          classroom: publicClass(item),
+          workspace: { id: workspace.id },
+          checkpoint: cloneValue(existing)
+        };
+      }
+
+      const checkpoint = {
+        stageId,
+        workspaceRevision,
+        snapshot: cloneValue(snapshot),
+        capturedAt: 'captured',
+        classInternalId: item.internalId,
+        exerciseInternalId: exercise.internalId,
+        workspaceInternalId: workspace.workspaceId
+      };
+      exerciseCheckpoints.set(key, checkpoint);
+      const {
+        classInternalId: _classInternalId,
+        exerciseInternalId: _exerciseInternalId,
+        workspaceInternalId: _workspaceInternalId,
+        ...publicCheckpoint
+      } = checkpoint;
+      return {
+        status: 'captured',
+        classroom: publicClass(item),
+        workspace: { id: workspace.id },
+        checkpoint: cloneValue(publicCheckpoint)
+      };
+    },
+    async listExerciseCheckpointsForInstructor(instructorHash, exercisePublicId, stageId) {
+      const current = await this.getExerciseForInstructor(instructorHash, exercisePublicId);
+      if (!current) return null;
+      const exercise = exercises.find(candidate => (
+        candidate.classInternalId === current.classroom.internal_id
+        && candidate.id === exercisePublicId
+      ));
+      return {
+        ...current,
+        checkpoints: [...exerciseCheckpoints.values()]
+          .filter(checkpoint => (
+            checkpoint.exerciseInternalId === exercise.internalId
+            && checkpoint.stageId === stageId
+          ))
+          .map(checkpoint => {
+            const workspace = workspaces.find(candidate => (
+              candidate.classInternalId === current.classroom.internal_id
+              && candidate.workspaceId === checkpoint.workspaceInternalId
+            ));
+            return {
+              workspaceId: workspace?.id || null,
+              workspaceKind: workspace?.kind || null,
+              workspaceLabel: workspace?.label || null,
+              stageId: checkpoint.stageId,
+              workspaceRevision: checkpoint.workspaceRevision,
+              snapshot: cloneValue(checkpoint.snapshot),
+              capturedAt: checkpoint.capturedAt
+            };
+          })
+          .filter(checkpoint => checkpoint.workspaceId)
       };
     },
     async rotateStudentJoin(instructorHash, nextHash) {
