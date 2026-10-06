@@ -150,5 +150,9 @@ Rules:
 - beginning debrief must capture idempotent immutable workspace checkpoints before any optional post-debrief edits;
 - if Student editing is frozen, enforce it on the `classroom-student` collaboration write path; UI read-only projection alone is not authority;
 - late joiners receive only the current cumulative Student release; reassignment changes workspace Intake/readiness, not class exercise stage;
+- exercise persistence uses one non-completed exercise per class initially, optimistic `exercise_revision`, idempotent optional releases, workspace-scoped readiness, immutable first-write-wins debrief checkpoints, and class-bounded expiry;
+- every running exercise pins the staged simulation version plus a definition fingerprint; later API reads/mutations must fail closed if the current protected definition does not match;
+- checkpoint snapshots are facilitation evidence only and must never overwrite or become the live collaboration snapshot automatically;
+- do not expose `student_editing_enabled=false` as a security guarantee until the `classroom-student` collaboration PUT path enforces the lock server-side; edit-freeze enforcement belongs to the dedicated follow-on tranche;
 - do not create production stage definitions from guessed official case boundaries. Synthetic deterministic staged content is acceptable in tests until authoritative material is supplied.
 
