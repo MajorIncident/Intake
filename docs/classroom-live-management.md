@@ -167,6 +167,39 @@ Interpretation:
 
 Existing `classroom_memberships` remains valid for legacy sessions until a later explicit migration/removal.
 
+## Implementation checkpoint — additive persistence
+
+Completed on #314 before any Student UI cutover:
+
+- human join-code helpers enforce the eight-character unambiguous alphabet and normalize display separators/case;
+- `classroom_classes.student_join_code` is additive and uniquely indexed when present;
+- new `classroom_participants` persists admitted live-class participants separately from legacy `classroom_memberships`;
+- a participant may exist with `workspace_id = NULL` as a first-class waiting/unassigned state;
+- Student class-session capability hashes are independent from assignment-specific workspace-access hashes;
+- re-admitting the same participant may rotate the class-session capability and update display name without inventing a workspace assignment;
+- Instructor-scoped participant listing and Student-session lookup repository primitives are in place;
+- legacy two-code admission and `classroom_memberships` remain unchanged.
+
+Durable implementation commits:
+- `99c31f2e9c59180ed297db96512b62b310692b4c` — additive schema/repository primitives;
+- `fa6180ada0183dfc4b19790925e61deea60bdfbf` — participant composite FK preserves required class identity when a workspace is deleted;
+- `5665637e6f550bebb861c73109e991b6e96a73c9` — deterministic in-memory participant/session model;
+- `df3633d008bb7e352509e15c1964b7d27ebf441f` — focused join-code/waiting-roster/session-rotation tests.
+
+Validation on `df3633d...`:
+- canonical repository quality: **241 tests, 1 intentional skip**;
+- required Browser E2E: **22 passed, 6 intentional project-scoped skips, 0 failed**;
+- CodeQL, Dependency Review, and Template Manifest Guard: green.
+
+**Exact next tranche:** implement the new live-class HTTP layer around these primitives:
+- Start Class emits a generated human join code while preserving the legacy high-entropy join token for compatibility;
+- `POST /api/classes/admit` creates/rotates a waiting Student class session;
+- `GET /api/classes/student` returns only the represented Student's own assignment state;
+- `POST /api/classes/student/access` issues assignment-specific edit authority only when assigned;
+- `GET /api/classes/participants` gives only the Instructor their live roster.
+
+Do not implement assign/reassign UI or cut over the current Student client until these APIs and their authorization tests are green.
+
 ## API contract
 
 Names below are the intended #312 contract. Keep route files thin and handlers injectable.
