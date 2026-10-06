@@ -51,6 +51,7 @@ test('Instructor feedback reaches only the assigned Student and becomes stale af
 
   await startFresh(page);
   await page.getByRole('button', { name: /Teach a class/ }).click();
+  await page.locator('#instructorExistingClass > summary').click();
   await page.getByLabel('Instructor access code').fill(instructorCode);
   await page.getByRole('button', { name: 'Open class' }).click();
 
