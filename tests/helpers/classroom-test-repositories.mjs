@@ -529,6 +529,123 @@ export function createClassroomRepository() {
         ? { classroom: publicClass(item), exercise: publicExercise(exercise) }
         : null;
     },
+    async getCurrentExerciseByClassInternalId(classInternalId) {
+      const item = classes.find(candidate => candidate.internalId === Number(classInternalId) && !candidate.revoked);
+      if (!item) return null;
+      const exercise = exercises.find(candidate => (
+        candidate.classInternalId === item.internalId
+        && candidate.status !== 'completed'
+      ));
+      return publicExercise(exercise);
+    },
+    async hasExerciseForClassCase(classInternalId, caseStudyId) {
+      const item = classes.find(candidate => candidate.internalId === Number(classInternalId) && !candidate.revoked);
+      if (!item) return false;
+      return exercises.some(exercise => (
+        exercise.classInternalId === item.internalId
+        && exercise.caseStudyId === caseStudyId
+      ));
+    },
+    async getExerciseForStudentSession(sessionHash) {
+      const context = await this.getParticipantBySession(sessionHash);
+      if (!context) return null;
+      const exercise = exercises.find(candidate => (
+        candidate.classInternalId === context.internal.classId
+        && candidate.status !== 'completed'
+      ));
+      if (!exercise) return { ...context, exercise: null, releases: [], readiness: null };
+
+      const releasePrefix = exercise.internalId + ':';
+      const releases = [...exerciseReleases.entries()]
+        .filter(([key]) => key.startsWith(releasePrefix))
+        .map(([, value]) => ({ ...value }))
+        .sort((a, b) => (
+          a.releasedAt.localeCompare(b.releasedAt)
+          || a.stageId.localeCompare(b.stageId)
+          || a.contentId.localeCompare(b.contentId)
+        ));
+
+      let readiness = null;
+      if (context.internal.workspaceId && exercise.currentStageId) {
+        const key = exercise.internalId + ':' + context.internal.workspaceId + ':' + exercise.currentStageId;
+        const state = exerciseWorkspaceState.get(key);
+        if (state) {
+          const {
+            classInternalId: _classInternalId,
+            exerciseInternalId: _exerciseInternalId,
+            workspaceInternalId: _workspaceInternalId,
+            ...publicReadiness
+          } = state;
+          readiness = { ...publicReadiness };
+        }
+      }
+
+      return {
+        ...context,
+        exercise: publicExercise(exercise),
+        releases,
+        readiness
+      };
+    },
+    async beginExerciseDebrief(instructorHash, {
+      exercisePublicId,
+      expectedRevision,
+      stageId,
+      workspaceRepository
+    }) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      const exercise = exercises.find(candidate => (
+        candidate.classInternalId === item.internalId
+        && candidate.id === exercisePublicId
+      ));
+      if (!exercise) return null;
+      if (
+        exercise.exerciseRevision !== expectedRevision
+        || exercise.status !== 'active'
+        || exercise.currentStageId !== stageId
+        || exercise.stagePhase !== 'work'
+      ) {
+        return {
+          status: 'conflict',
+          classroom: publicClass(item),
+          exercise: publicExercise(exercise)
+        };
+      }
+
+      let capturedCount = 0;
+      for (const workspace of workspaces.filter(candidate => (
+        candidate.classInternalId === item.internalId && !candidate.revoked
+      ))) {
+        const key = exercise.internalId + ':' + stageId + ':' + workspace.workspaceId;
+        if (exerciseCheckpoints.has(key)) continue;
+        const observation = await workspaceRepository.observeById(workspace.workspaceId);
+        if (!observation) continue;
+        exerciseCheckpoints.set(key, {
+          stageId,
+          workspaceRevision: observation.revision,
+          snapshot: cloneValue(observation.snapshot),
+          capturedAt: 'captured',
+          classInternalId: item.internalId,
+          exerciseInternalId: exercise.internalId,
+          workspaceInternalId: workspace.workspaceId
+        });
+        capturedCount += 1;
+      }
+
+      exercise.stagePhase = 'debrief';
+      // Tranche 4 deliberately does not claim edit freeze; Tranche 5 will add the
+      // collaboration write guard before this policy can become authoritative.
+      exercise.studentEditingEnabled = true;
+      exercise.exerciseRevision += 1;
+      exercise.updatedAt = 'updated';
+      return {
+        status: 'updated',
+        classroom: publicClass(item),
+        exercise: publicExercise(exercise),
+        capturedCount
+      };
+    },
     async updateExerciseLifecycle(instructorHash, {
       exercisePublicId,
       expectedRevision,
