@@ -409,6 +409,27 @@ Anchors present:
           <button type="button" class="btn-secondary" id="instructorClassLeaveBtn" data-persistence="local-only" data-summary="exclude">Leave class</button>
         </div>
       </div>
+
+      <!-- [feature:instructor-exercise-console] start -->
+      <section class="instructor-exercise-console" id="instructorExerciseConsole" aria-labelledby="instructorExerciseTitle" data-persistence="local-only" data-summary="exclude" hidden>
+        <div class="instructor-exercise-console__heading">
+          <div>
+            <strong id="instructorExerciseTitle">Class exercise</strong>
+            <span id="instructorExerciseStatus" role="status" aria-live="polite">Not connected</span>
+          </div>
+          <button type="button" class="btn-secondary" id="instructorExerciseRefreshBtn" data-persistence="local-only" data-summary="exclude">Refresh</button>
+        </div>
+        <div class="instructor-exercise-console__summary">
+          <strong id="instructorExerciseCaseName">No staged exercise selected</strong>
+          <p id="instructorExerciseDetail">Staged Case Studies available to this class will appear here.</p>
+        </div>
+        <div class="instructor-exercise-console__available">
+          <span>Available staged Case Studies</span>
+          <ul id="instructorExerciseAvailableList" aria-live="polite"></ul>
+        </div>
+      </section>
+      <!-- [feature:instructor-exercise-console] end -->
+
       <section class="instructor-live-management" aria-labelledby="instructorLiveManagementTitle" data-persistence="local-only" data-summary="exclude">
         <div class="instructor-live-management__heading">
           <div>
