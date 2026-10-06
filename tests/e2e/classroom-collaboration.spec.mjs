@@ -34,9 +34,10 @@ test('Students in one team share one Intake while another workspace remains isol
   const teamAssignment = capability('a', 'm');
   const individualAssignment = capability('a', 'd');
 
-  const firstContext = await browser.newContext();
-  const secondContext = await browser.newContext();
-  const isolatedContext = await browser.newContext();
+  const contextOptions = { baseURL: testInfo.project.use.baseURL };
+  const firstContext = await browser.newContext(contextOptions);
+  const secondContext = await browser.newContext(contextOptions);
+  const isolatedContext = await browser.newContext(contextOptions);
 
   const first = await firstContext.newPage();
   const second = await secondContext.newPage();
