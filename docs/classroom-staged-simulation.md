@@ -693,30 +693,67 @@ Progressive-disclosure / security semantics:
 - Instructor and Student credentials are not interchangeable and the human join code has no exercise authority;
 - all staged responses remain `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
 
-Important deliberate boundary:
-- Tranche 4 reports `editFreezeEnforced: false` and Student-safe payloads continue to represent editing as effectively enabled;
-- `begin-debrief` persists debrief phase/checkpoints, but **server-enforced collaboration write freeze is not claimed yet**;
-- the actual `classroom-student` collaboration PUT guard belongs to Tranche 5.
+Tranche 4 implementation/security-test checkpoint: `5afc0041db89348d97ca0986cab89491765d0e00`.
 
-Implementation/security test checkpoint: `5afc0041db89348d97ca0986cab89491765d0e00`.
+Tranche 4 validation:
+- repository quality: **273 tests / 272 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **26 passed / 8 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
+
+## Implementation checkpoint — server-enforced Student editing policy
+
+Tranche 5 makes the staged editing policy an actual server authorization boundary rather than a UI convention.
+
+Write-path contract:
+- only snapshot mutation through `PUT /api/workspaces/session` is gated; ordinary GET, presence, observation, coaching, staged reads, and readiness remain available;
+- the collaboration repository first distinguishes an active `classroom-student` alias from a primary/Standalone workspace token;
+- Standalone/primary collaboration therefore does not depend on Classroom policy resolution;
+- a Classroom Student alias resolves its represented class/workspace and current non-completed staged exercise;
+- if `student_editing_enabled=false`, the PUT returns **HTTP 423 Locked** with stable code `classroom-editing-locked`;
+- a locked request does not change snapshot or collaboration revision;
+- the real Neon mutation repeats the lock predicate inside the SQL UPDATE itself, so an Instructor freeze racing an already-started Student save fails closed rather than slipping through after a preflight check;
+- both #312 live-participant aliases and legacy Classroom membership aliases are covered by the atomic scope lookup;
+- classes with no staged exercise remain writable exactly as before.
+
+Exercise-policy contract:
+- entering debrief applies the stage's explicit `defaultDebriefEditPolicy`: `frozen` sets Student editing false, `open` leaves it true;
+- Instructor `set-editing` is a revision-safe debrief-only server action for an explicit freeze/unfreeze override;
+- Pause and Resume preserve the current editing policy; pausing is not itself a freeze and resuming a frozen debrief does not silently unlock it;
+- advancing to the next work stage restores Student editing for work;
+- completing an exercise removes it from current-exercise policy lookup, so the staged lock no longer applies after completion;
+- staged Instructor/Student payloads may now truthfully expose `editFreezeEnforced: true` and the persisted `studentEditingEnabled` state.
+
+Focused regression proves:
+- Classroom Student write succeeds during work;
+- Stage 1 debrief defaults frozen;
+- direct frozen PUT returns 423;
+- snapshot and revision remain unchanged after the rejected write;
+- GET continues while frozen;
+- Standalone write continues while the class is frozen;
+- Pause -> Resume preserves the freeze;
+- Instructor unfreeze increments exercise revision and restores Student writes.
+
+Implementation checkpoint: `261b28d488538964ccd73132ed568d73628f6411`.
 
 Validation:
-- repository quality: **273 tests / 272 pass / 0 fail / 1 intentional skip**;
+- repository quality: **274 tests / 273 pass / 0 fail / 1 intentional skip**;
 - required Browser E2E: **26 passed / 8 intentional project-scoped skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
 
 ## Exact next implementation action
 
-Implement **Tranche 5 only — server-enforced Student editing policy**.
+Implement **Tranche 6 only — Instructor exercise console** on the now-enforced server contract.
 
-Required slice:
-- derive whether the represented `classroom-student` workspace belongs to a class whose current staged exercise forbids editing;
-- enforce that policy in the collaboration **write** path server-side before any snapshot revision mutation;
-- choose and document one stable temporary-lock HTTP response contract (prefer a distinct status such as 423 if it integrates cleanly with the current collaboration client);
-- do not block Instructor observation, presence heartbeats, coaching, Student stage reads/readiness, or ordinary GET collaboration reads;
-- do not affect Standalone collaboration or Classroom classes with no staged exercise;
-- make pause/debrief/edit-policy semantics explicit: no UI-only security;
-- add direct API tests proving a frozen Student PUT cannot mutate snapshot/revision, an allowed Student PUT still works, and Standalone/legacy collaboration remains unchanged;
-- mirror the policy in the deterministic repository/browser fixture only as needed for later UI/browser slices.
+Required product slice:
+- integrate staged exercise controls into the existing live Instructor dashboard rather than creating a second classroom shell;
+- list only protected Case Studies that carry an explicit staged `simulation` definition as startable simulations;
+- allow Instructor selection/create of a draft and show stage title/objective plus Instructor-only facilitation content;
+- provide accessible Start, Pause, Resume, optional-content Release, Begin debrief, Freeze/Unfreeze, Advance, and Complete controls with optimistic revision refresh/conflict handling;
+- show workspace/team readiness and current stage progress beside the existing roster/workspace navigation;
+- keep existing read-only observer/coaching one click away;
+- clearly distinguish exercise pause from Student editing freeze;
+- do not expose future Student content in Instructor-to-Student DOM/state accidentally; Instructor-only material may be shown only in Instructor experience;
+- retain same-device class resume: exercise state is server state and must be re-fetched, never persisted into Intake;
+- extend deterministic Instructor feature/browser fixtures only enough to prove the console lifecycle before cutting over Student staged-case UI.
 
-Stop before Instructor exercise-console UI or Student staged-case panel.
+Stop before the Student stage-aware case reference panel and before production official Case Study staging.
