@@ -269,7 +269,24 @@ Supported actions:
 
 Lifecycle changes use optimistic `exercise_revision`. Optional-content replay is idempotent; a stale request for a different release conflicts. `begin-debrief` captures immutable class/workspace-scoped snapshot/revision checkpoints before later live changes. Stage ordering comes from the pinned staged definition, never client-provided next-stage IDs.
 
-**Tranche 4 does not yet claim an edit freeze.** Responses expose `editFreezeEnforced: false`; server enforcement on Student collaboration PUT is the next dedicated tranche.
+`begin-debrief` also applies the current stage's authored `defaultDebriefEditPolicy`. During debrief, Instructor action `set-editing` with boolean `enabled` provides an explicit revision-safe freeze/unfreeze override. Pause/Resume preserve the current editing policy; pause is not synonymous with freeze.
+
+### Server-enforced Student editing lock
+
+For an active `classroom-student` workspace alias, `PUT /api/workspaces/session` enforces the current exercise's `student_editing_enabled` before any collaboration snapshot revision mutation.
+
+When editing is frozen:
+- the response is **423 Locked**;
+- body includes stable `code: "classroom-editing-locked"` plus current exercise context;
+- snapshot and collaboration revision remain unchanged;
+- GET workspace reads remain available;
+- presence, Instructor observation/coaching, Student exercise reads, and readiness are not blocked.
+
+The production mutation repeats the freeze predicate atomically inside the SQL UPDATE, rather than relying only on a preflight policy lookup. This closes the race where an Instructor freezes between a Student's permission check and snapshot write.
+
+Primary/Standalone collaboration tokens bypass Classroom policy entirely. Classroom classes with no current staged exercise remain writable. Both current live-participant and legacy Classroom membership `classroom-student` aliases are covered.
+
+Exercise responses now expose `editFreezeEnforced: true` and the authoritative `studentEditingEnabled` value.
 
 ### `GET /api/classes/exercise/student`
 
