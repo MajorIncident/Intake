@@ -408,6 +408,7 @@ body.experience-role-gate-open{overflow:hidden;}
   background:color-mix(in srgb,var(--accent) 6%,var(--panel));
 }
 .student-class-waiting>strong{display:block;color:var(--ink-strong);font-size:20px;}
+.student-class-waiting>.student-class-resume__eyebrow{color:var(--accent-text);}
 .student-class-waiting>p{max-width:720px;margin:8px 0 0;color:var(--muted);font-size:13px;line-height:1.6;}
 .student-class-waiting__meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
 .student-class-waiting__meta>span{padding:6px 9px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);font-size:11px;}
