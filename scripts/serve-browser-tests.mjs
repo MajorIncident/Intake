@@ -294,31 +294,37 @@ function instructorParticipants() {
   };
 }
 
-function liveInstructorRoster() {
+function managedInstructorRoster(token) {
+  const fixture = managedInstructorFixture(token);
+  if (!fixture) return null;
   return {
-    class: liveInstructorClass(),
-    workspaces: liveInstructorWorkspaces.map(workspace => ({
+    class: fixture.classContext,
+    workspaces: fixture.workspaces.map(workspace => ({
       ...workspace,
-      participantCount: liveInstructorParticipants.filter(participant => participant.assignment?.id === workspace.id).length,
+      participantCount: fixture.participants.filter(participant => participant.assignment?.id === workspace.id).length,
       activeParticipantCount: 0,
       editingParticipantCount: 0
     }))
   };
 }
 
-function liveInstructorParticipantRoster() {
+function managedInstructorParticipantRoster(token) {
+  const fixture = managedInstructorFixture(token);
+  if (!fixture) return null;
   return {
-    class: liveInstructorClass(),
-    participants: structuredClone(liveInstructorParticipants)
+    class: fixture.classContext,
+    participants: structuredClone(fixture.participants)
   };
 }
 
-function liveInstructorObservation(workspaceId) {
-  const workspace = liveInstructorWorkspaces.find(item => item.id === workspaceId);
-  const state = liveInstructorWorkspaceStates.get(workspaceId);
+function managedInstructorObservation(token, workspaceId) {
+  const fixture = managedInstructorFixture(token);
+  if (!fixture) return null;
+  const workspace = fixture.workspaces.find(item => item.id === workspaceId);
+  const state = fixture.workspaceStates.get(workspaceId);
   if (!workspace || !state) return null;
   return {
-    class: liveInstructorClass(),
+    class: fixture.classContext,
     workspace: {
       id: workspace.id,
       kind: workspace.kind,
@@ -328,7 +334,7 @@ function liveInstructorObservation(workspaceId) {
       expiresAt: CLASSROOM_EXPIRY,
       updatedAt: '2099-12-31T23:00:00.000Z'
     },
-    participants: liveInstructorParticipants
+    participants: fixture.participants
       .filter(participant => participant.assignment?.id === workspaceId)
       .map(participant => ({
         id: participant.id,
