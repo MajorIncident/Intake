@@ -6,7 +6,7 @@
  * collaboration workspace engine; they never duplicate snapshot/revision state.
  */
 
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import {
   DISPLAY_NAME_MAX_LENGTH,
   generateWorkspaceToken,
@@ -115,6 +115,19 @@ export function normalizeClassJoinCode(value) {
 export function formatClassJoinCode(value) {
   const normalized = normalizeClassJoinCode(value);
   return normalized ? `${normalized.slice(0, 4)}-${normalized.slice(4)}` : null;
+}
+
+/**
+ * Generate a random normalized human-facing Classroom join code.
+ *
+ * @returns {string} Eight-character unambiguous code.
+ */
+export function generateClassJoinCode() {
+  let code = '';
+  for (let index = 0; index < CLASS_JOIN_CODE_LENGTH; index += 1) {
+    code += CLASS_JOIN_CODE_ALPHABET[randomInt(CLASS_JOIN_CODE_ALPHABET.length)];
+  }
+  return code;
 }
 
 /**
@@ -313,6 +326,7 @@ async function initializeClassroomRepository() {
 
   async function classByInstructor(tokenHash) {
     const rows = await sql`SELECT id AS internal_id, public_id AS id, title,
+        student_join_code AS "joinCode",
         joins_enabled AS "joinsEnabled", expires_at AS "expiresAt"
       FROM classroom_classes
       WHERE instructor_token_hash = ${tokenHash}
@@ -479,6 +493,73 @@ async function initializeClassroomRepository() {
             ? { id: participant.workspaceId, kind: participant.workspaceKind, label: participant.workspaceLabel }
             : null
         }))
+      };
+    },
+
+    async issueParticipantWorkspaceAccess({ sessionHash, accessHash, workspaceRepository }) {
+      const context = await this.getParticipantBySession(sessionHash);
+      if (!context) return null;
+      if (!context.internal.workspaceId || !context.assignment) {
+        return { ...context, waiting: true };
+      }
+
+      const assignments = await sql`SELECT
+          cw.workspace_id AS "internalId",
+          cw.public_id AS id,
+          cw.workspace_kind AS kind,
+          cw.label,
+          w.expires_at AS "expiresAt"
+        FROM classroom_workspaces cw
+        JOIN collaboration_workspaces w ON w.id = cw.workspace_id
+        WHERE cw.class_id = ${context.internal.classId}
+          AND cw.workspace_id = ${context.internal.workspaceId}
+          AND cw.revoked_at IS NULL
+          AND w.expires_at > NOW()`;
+      const assignment = assignments[0];
+      if (!assignment) return null;
+
+      const previousRows = await sql`SELECT workspace_access_token_hash AS "accessHash"
+        FROM classroom_participants
+        WHERE session_token_hash = ${sessionHash}
+          AND revoked_at IS NULL`;
+      const previousHash = previousRows[0]?.accessHash || null;
+
+      const capabilityCreated = await workspaceRepository.createCapability(
+        assignment.internalId,
+        accessHash,
+        CLASSROOM_STUDENT_CAPABILITY_KIND,
+        context.classroom.expiresAt
+      );
+      if (!capabilityCreated) throw new Error('Unable to create live Student workspace capability');
+
+      const updated = await sql`UPDATE classroom_participants
+        SET workspace_access_token_hash = ${accessHash},
+            updated_at = NOW()
+        WHERE session_token_hash = ${sessionHash}
+          AND class_id = ${context.internal.classId}
+          AND workspace_id = ${context.internal.workspaceId}
+          AND assignment_revision = ${context.participant.assignmentRevision}
+          AND revoked_at IS NULL
+        RETURNING participant_id`;
+      if (!updated[0]) {
+        await workspaceRepository.revokeCapability(accessHash);
+        return null;
+      }
+
+      if (previousHash && previousHash !== accessHash) {
+        await workspaceRepository.revokeCapability(previousHash);
+      }
+
+      return {
+        classroom: context.classroom,
+        participant: context.participant,
+        assignment: {
+          id: assignment.id,
+          kind: assignment.kind,
+          label: assignment.label,
+          expiresAt: assignment.expiresAt
+        },
+        waiting: false
       };
     },
 
@@ -682,7 +763,7 @@ async function initializeClassroomRepository() {
     },
 
     async getStudentContext(accessHash) {
-      const rows = await sql`SELECT
+      const liveRows = await sql`SELECT
           c.id AS "classInternalId",
           c.public_id AS "classId",
           c.title AS "classTitle",
@@ -691,17 +772,42 @@ async function initializeClassroomRepository() {
           cw.public_id AS "workspaceId",
           cw.workspace_kind AS "workspaceKind",
           cw.label AS "workspaceLabel"
-        FROM classroom_memberships cm
-        JOIN classroom_classes c ON c.id = cm.class_id
+        FROM classroom_participants cp
+        JOIN classroom_classes c ON c.id = cp.class_id
         JOIN classroom_workspaces cw
-          ON cw.class_id = cm.class_id AND cw.workspace_id = cm.workspace_id
+          ON cw.class_id = cp.class_id AND cw.workspace_id = cp.workspace_id
         JOIN collaboration_workspaces w ON w.id = cw.workspace_id
-        WHERE cm.access_token_hash = ${accessHash}
+        WHERE cp.workspace_access_token_hash = ${accessHash}
+          AND cp.revoked_at IS NULL
           AND c.revoked_at IS NULL
           AND c.expires_at > NOW()
           AND cw.revoked_at IS NULL
           AND w.expires_at > NOW()`;
-      const scope = rows[0];
+      let scope = liveRows[0];
+
+      if (!scope) {
+        const legacyRows = await sql`SELECT
+            c.id AS "classInternalId",
+            c.public_id AS "classId",
+            c.title AS "classTitle",
+            c.expires_at AS "classExpiresAt",
+            cw.workspace_id AS "workspaceInternalId",
+            cw.public_id AS "workspaceId",
+            cw.workspace_kind AS "workspaceKind",
+            cw.label AS "workspaceLabel"
+          FROM classroom_memberships cm
+          JOIN classroom_classes c ON c.id = cm.class_id
+          JOIN classroom_workspaces cw
+            ON cw.class_id = cm.class_id AND cw.workspace_id = cm.workspace_id
+          JOIN collaboration_workspaces w ON w.id = cw.workspace_id
+          WHERE cm.access_token_hash = ${accessHash}
+            AND c.revoked_at IS NULL
+            AND c.expires_at > NOW()
+            AND cw.revoked_at IS NULL
+            AND w.expires_at > NOW()`;
+        scope = legacyRows[0];
+      }
+
       if (!scope) return null;
       return {
         classroom: { id: scope.classId, title: scope.classTitle, expiresAt: scope.classExpiresAt },
@@ -901,6 +1007,7 @@ function requireBearer(req) {
 export function classHandler({
   getRepository = getClassroomRepository,
   tokenFactory = generateWorkspaceToken,
+  joinCodeFactory = generateClassJoinCode,
   idFactory = randomUUID
 } = {}) {
   return async (req, res) => {
@@ -916,14 +1023,22 @@ export function classHandler({
         const repository = await getRepository();
         const instructorToken = tokenFactory();
         const studentJoinToken = tokenFactory();
+        const joinCode = normalizeClassJoinCode(joinCodeFactory());
+        if (!joinCode) throw new Error('Join-code generator returned an invalid code');
         const classroom = await repository.createClass({
           publicId: idFactory(),
           title,
           instructorHash: hashWorkspaceToken(instructorToken),
           studentJoinHash: hashWorkspaceToken(studentJoinToken),
+          studentJoinCode: joinCode,
           expiryDays: getClassExpiryDays()
         });
-        return send(res, 201, { class: classroom, instructorToken, studentJoinToken });
+        return send(res, 201, {
+          class: classroom,
+          instructorToken,
+          studentJoinToken,
+          joinCode: formatClassJoinCode(joinCode)
+        });
       }
 
       const authorization = requireBearer(req);
@@ -936,7 +1051,10 @@ export function classHandler({
       if (req.method === 'GET') {
         const classroom = await repository.getClassByInstructor(instructorHash);
         return classroom
-          ? send(res, 200, { class: classroom })
+          ? send(res, 200, {
+              class: classroom,
+              joinCode: formatClassJoinCode(classroom.joinCode)
+            })
           : send(res, 404, { error: 'Class not found.' });
       }
 
