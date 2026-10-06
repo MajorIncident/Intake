@@ -1009,7 +1009,8 @@ async function initializeClassroomRepository() {
     async beginExerciseDebrief(instructorHash, {
       exercisePublicId,
       expectedRevision,
-      stageId
+      stageId,
+      studentEditingEnabled
     }) {
       const classroom = await classByInstructor(instructorHash);
       if (!classroom) return null;
@@ -1017,7 +1018,7 @@ async function initializeClassroomRepository() {
       const rows = await sql`WITH target AS (
           UPDATE classroom_exercises e
           SET stage_phase = 'debrief',
-              student_editing_enabled = TRUE,
+              student_editing_enabled = ${studentEditingEnabled},
               exercise_revision = exercise_revision + 1,
               updated_at = NOW()
           WHERE e.class_id = ${classroom.internal_id}
