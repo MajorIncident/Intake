@@ -672,20 +672,51 @@ The first server changes should be additive:
 
 Do not make Standalone or ordinary Classroom assignment boot depend on an active exercise.
 
+## Implementation checkpoint — exercise APIs / authorization
+
+Tranche 4 is implemented on top of the additive exercise repository contract.
+
+Routes:
+- Instructor `POST /api/classes/exercise` creates/reuses the represented class's draft only for an explicitly staged protected Case Study and pins simulation version + canonical SHA-256 definition fingerprint;
+- Instructor `GET /api/classes/exercise` returns the represented class's current exercise, releases, workspace readiness, checkpoints, and the complete Instructor-authorized staged definition;
+- Instructor `PATCH /api/classes/exercise` supports `start`, `pause`, `resume`, `release-content`, `begin-debrief`, `advance`, and `complete`, all revision-safe and stage-order aware;
+- Student `GET /api/classes/exercise/student` authenticates with the stable Student class-session capability and returns only the represented learner's public class/assignment context plus cumulative Student-safe content released through the current stage;
+- Student `PUT /api/classes/exercise/student/ready` resolves the participant's current workspace server-side, records the server-observed collaboration revision when Ready is set, rejects Waiting, and fails closed if reassignment races the readiness write.
+
+Progressive-disclosure / security semantics:
+- every staged read or lifecycle mutation revalidates the pinned simulation version/fingerprint against the current protected definition and returns conflict on definition drift;
+- Student payload construction never returns future-stage metadata, Instructor content IDs/content, exemplar/model material, or the complete protected Case Study `state`;
+- optional content is released only for the current work phase and replay of the same release remains idempotent;
+- entering debrief captures immutable current-workspace snapshots/revisions before later live edits;
+- Student full protected Case Study retrieval is blocked for any class/case that has a staged exercise record, including after completion; completion is not an implicit exemplar reveal;
+- unrelated protected non-staged resources retain their existing behavior;
+- Instructor and Student credentials are not interchangeable and the human join code has no exercise authority;
+- all staged responses remain `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
+
+Important deliberate boundary:
+- Tranche 4 reports `editFreezeEnforced: false` and Student-safe payloads continue to represent editing as effectively enabled;
+- `begin-debrief` persists debrief phase/checkpoints, but **server-enforced collaboration write freeze is not claimed yet**;
+- the actual `classroom-student` collaboration PUT guard belongs to Tranche 5.
+
+Implementation/security test checkpoint: `5afc0041db89348d97ca0986cab89491765d0e00`.
+
+Validation:
+- repository quality: **273 tests / 272 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **26 passed / 8 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
+
 ## Exact next implementation action
 
-Implement **Tranche 4 only — exercise APIs and authorization** on top of the now-proven repository contract.
+Implement **Tranche 5 only — server-enforced Student editing policy**.
 
-Required server/API slice:
-- Instructor `POST /api/classes/exercise` selects/creates a draft only from a protected Case Study with a valid explicit `simulation` definition, computes/pins the normalized definition fingerprint, and refuses a definition mismatch;
-- Instructor `GET /api/classes/exercise` returns only the represented class's current exercise plus the complete Instructor-authorized staged definition;
-- Instructor lifecycle PATCH actions for start, pause, resume, optional-content release, begin-debrief, advance, and complete use `expectedRevision` and the immutable stage ordering from the pinned definition;
-- **do not expose a claimed edit-freeze guarantee yet**: temporary collaboration write-lock enforcement remains Tranche 5; begin-debrief may persist phase/checkpoints while editing remains effectively open until that guard lands;
-- begin-debrief captures each current class workspace's collaboration snapshot/revision exactly once through the immutable checkpoint primitive;
-- Student `GET /api/classes/exercise/student` uses the Student **class-session** capability and returns only current/cumulative released Student-safe content, never future stage metadata or Instructor content;
-- Student Ready route resolves the participant's current assignment server-side and records the server-observed workspace revision; Waiting cannot mark Ready;
-- close the active-staged-case bypass in Student protected Case Study full-payload retrieval so the complete `state` cannot be fetched while that case is the current non-completed staged exercise;
-- add a complete authorization/error matrix: wrong class, human join code, Instructor-vs-Student credential confusion, stale revision, non-staged case, definition drift, Waiting readiness, cross-class workspace/checkpoint attempts, and future/Instructor-content withholding;
-- keep all staged responses `no-store` / `no-referrer`.
+Required slice:
+- derive whether the represented `classroom-student` workspace belongs to a class whose current staged exercise forbids editing;
+- enforce that policy in the collaboration **write** path server-side before any snapshot revision mutation;
+- choose and document one stable temporary-lock HTTP response contract (prefer a distinct status such as 423 if it integrates cleanly with the current collaboration client);
+- do not block Instructor observation, presence heartbeats, coaching, Student stage reads/readiness, or ordinary GET collaboration reads;
+- do not affect Standalone collaboration or Classroom classes with no staged exercise;
+- make pause/debrief/edit-policy semantics explicit: no UI-only security;
+- add direct API tests proving a frozen Student PUT cannot mutate snapshot/revision, an allowed Student PUT still works, and Standalone/legacy collaboration remains unchanged;
+- mirror the policy in the deterministic repository/browser fixture only as needed for later UI/browser slices.
 
-Stop before Student collaboration PUT freeze/423 behavior and before Instructor/Student exercise UI.
+Stop before Instructor exercise-console UI or Student staged-case panel.
