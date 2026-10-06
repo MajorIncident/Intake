@@ -340,19 +340,19 @@ export function createInstructorClassroomController({
         : 'Waiting / unassigned';
       identity.append(name, status);
 
-      const select = documentRef.createElement('select');
+      const select = documentRef.createElement('select'); // data-persistence="local-only"
       select.setAttribute('aria-label', `Assignment for ${participant.displayName || 'student'}`);
       select.setAttribute('data-persistence', 'local-only');
       select.setAttribute('data-summary', 'exclude');
       select.disabled = busy;
 
-      const waitingOption = documentRef.createElement('option');
+      const waitingOption = documentRef.createElement('option'); // data-persistence="local-only"
       waitingOption.value = '';
       waitingOption.textContent = 'Waiting / unassigned';
       select.append(waitingOption);
 
       workspaces.forEach(workspace => {
-        const option = documentRef.createElement('option');
+        const option = documentRef.createElement('option'); // data-persistence="local-only"
         option.value = workspace.id;
         option.textContent = `${workspace.kind === 'group' ? 'Team' : 'Individual'} · ${workspace.label}`;
         select.append(option);
