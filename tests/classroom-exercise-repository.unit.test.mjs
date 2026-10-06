@@ -22,6 +22,7 @@ const WORKSPACE_A_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const WORKSPACE_B_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const WORKSPACE_C_ID = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const PARTICIPANT_A = '44444444-4444-4444-8444-444444444444';
+const SIMULATION_FINGERPRINT = 'a'.repeat(64);
 
 async function classPair(classrooms) {
   await classrooms.createClass({
@@ -69,17 +70,23 @@ test('exercise creation permits one open exercise per class and inherits class r
 
   const createdA = await classrooms.createExercise(testTokenHash('A'), {
     publicId: EXERCISE_A_ID,
-    caseStudyId: 'synthetic-staged-case'
+    caseStudyId: 'synthetic-staged-case',
+    simulationVersion: 1,
+    simulationFingerprint: SIMULATION_FINGERPRINT
   });
   assert.equal(createdA.status, 'created');
   assert.equal(createdA.exercise.status, 'draft');
+  assert.equal(createdA.exercise.simulationVersion, 1);
+  assert.equal(createdA.exercise.simulationFingerprint, SIMULATION_FINGERPRINT);
   assert.equal(createdA.exercise.exerciseRevision, 1);
   assert.equal(createdA.exercise.currentStageId, null);
   assert.equal(createdA.exercise.expiresAt, createdA.classroom.expiresAt);
 
   const duplicateOpen = await classrooms.createExercise(testTokenHash('A'), {
     publicId: EXERCISE_A2_ID,
-    caseStudyId: 'another-case'
+    caseStudyId: 'another-case',
+    simulationVersion: 1,
+    simulationFingerprint: SIMULATION_FINGERPRINT
   });
   assert.equal(duplicateOpen.status, 'exists');
   assert.equal(duplicateOpen.exercise.id, EXERCISE_A_ID);
@@ -87,7 +94,9 @@ test('exercise creation permits one open exercise per class and inherits class r
 
   const createdB = await classrooms.createExercise(testTokenHash('B'), {
     publicId: EXERCISE_B_ID,
-    caseStudyId: 'synthetic-staged-case'
+    caseStudyId: 'synthetic-staged-case',
+    simulationVersion: 1,
+    simulationFingerprint: SIMULATION_FINGERPRINT
   });
   assert.equal(createdB.status, 'created');
   assert.equal(createdB.classroom.id, CLASS_B_ID);
@@ -104,7 +113,9 @@ test('exercise lifecycle mutation is optimistic and completion permits a later e
   await classPair(classrooms);
   await classrooms.createExercise(testTokenHash('A'), {
     publicId: EXERCISE_A_ID,
-    caseStudyId: 'synthetic-staged-case'
+    caseStudyId: 'synthetic-staged-case',
+    simulationVersion: 1,
+    simulationFingerprint: SIMULATION_FINGERPRINT
   });
 
   const started = await classrooms.updateExerciseLifecycle(testTokenHash('A'), {
@@ -157,7 +168,9 @@ test('exercise lifecycle mutation is optimistic and completion permits a later e
 
   const next = await classrooms.createExercise(testTokenHash('A'), {
     publicId: EXERCISE_A2_ID,
-    caseStudyId: 'next-staged-case'
+    caseStudyId: 'next-staged-case',
+    simulationVersion: 1,
+    simulationFingerprint: SIMULATION_FINGERPRINT
   });
   assert.equal(next.status, 'created');
   assert.equal(next.exercise.id, EXERCISE_A2_ID);
@@ -168,7 +181,9 @@ test('optional release is idempotent and only a new release advances exercise re
   await classPair(classrooms);
   await classrooms.createExercise(testTokenHash('A'), {
     publicId: EXERCISE_A_ID,
-    caseStudyId: 'synthetic-staged-case'
+    caseStudyId: 'synthetic-staged-case',
+    simulationVersion: 1,
+    simulationFingerprint: SIMULATION_FINGERPRINT
   });
   await classrooms.updateExerciseLifecycle(testTokenHash('A'), {
     exercisePublicId: EXERCISE_A_ID,
@@ -259,7 +274,9 @@ test('readiness belongs to the current workspace and reassignment never carries 
   });
   await classrooms.createExercise(testTokenHash('A'), {
     publicId: EXERCISE_A_ID,
-    caseStudyId: 'synthetic-staged-case'
+    caseStudyId: 'synthetic-staged-case',
+    simulationVersion: 1,
+    simulationFingerprint: SIMULATION_FINGERPRINT
   });
   await classrooms.updateExerciseLifecycle(testTokenHash('A'), {
     exercisePublicId: EXERCISE_A_ID,
@@ -356,7 +373,9 @@ test('debrief checkpoints are class-scoped, immutable, idempotent, and snapshot-
   });
   await classrooms.createExercise(testTokenHash('A'), {
     publicId: EXERCISE_A_ID,
-    caseStudyId: 'synthetic-staged-case'
+    caseStudyId: 'synthetic-staged-case',
+    simulationVersion: 1,
+    simulationFingerprint: SIMULATION_FINGERPRINT
   });
 
   const sourceSnapshot = {
