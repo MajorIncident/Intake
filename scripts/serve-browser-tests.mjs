@@ -44,6 +44,25 @@ function validCapability(value) {
   return typeof value === 'string' && CAPABILITY_PATTERN.test(value);
 }
 
+function activeCapability(value, prefix) {
+  return validCapability(value)
+    && value.startsWith(prefix)
+    && !value.endsWith('e')
+    && !value.endsWith('r');
+}
+
+function activeInstructorCapability(value) {
+  return activeCapability(value, 'i');
+}
+
+function activeClassJoinCapability(value) {
+  return activeCapability(value, 'c');
+}
+
+function activeAssignmentCapability(value) {
+  return activeCapability(value, 'a');
+}
+
 function bearerToken(request) {
   const header = String(request.headers.authorization || '');
   const match = /^Bearer\s+([A-Za-z0-9_-]{43})$/u.exec(header);
@@ -201,7 +220,7 @@ async function handleClassroomApi(request, response, url) {
       return true;
     }
     const instructorToken = bearerToken(request);
-    if (!validCapability(instructorToken)) {
+    if (!activeInstructorCapability(instructorToken)) {
       sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
       return true;
     }
@@ -215,7 +234,7 @@ async function handleClassroomApi(request, response, url) {
       return true;
     }
     const instructorToken = bearerToken(request);
-    if (!validCapability(instructorToken)) {
+    if (!activeInstructorCapability(instructorToken)) {
       sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
       return true;
     }
@@ -230,7 +249,7 @@ async function handleClassroomApi(request, response, url) {
 
   if (url.pathname === '/api/classes/coaching') {
     const instructorToken = bearerToken(request);
-    if (!validCapability(instructorToken)) {
+    if (!activeInstructorCapability(instructorToken)) {
       sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
       return true;
     }
@@ -318,6 +337,10 @@ async function handleClassroomApi(request, response, url) {
       sendJson(response, 401, { error: 'Missing or invalid authorization.' });
       return true;
     }
+    if (!activeClassJoinCapability(classToken)) {
+      sendJson(response, 404, { error: 'Class assignment not found.' });
+      return true;
+    }
     let body;
     try {
       body = await readJson(request);
@@ -330,6 +353,10 @@ async function handleClassroomApi(request, response, url) {
     const displayName = typeof body?.displayName === 'string' ? body.displayName.trim() : '';
     if (!validCapability(assignmentToken) || !participantId || !displayName) {
       sendJson(response, 400, { error: 'Invalid classroom admission.' });
+      return true;
+    }
+    if (!activeAssignmentCapability(assignmentToken)) {
+      sendJson(response, 404, { error: 'Class assignment not found.' });
       return true;
     }
 
@@ -453,7 +480,7 @@ async function handleClassroomApi(request, response, url) {
     const token = bearerToken(request);
     const isInstructorRequest = url.pathname === '/api/classes/case-studies';
     const authorized = isInstructorRequest
-      ? validCapability(token) && token.startsWith('i')
+      ? activeInstructorCapability(token)
       : Boolean(getWorkspace(token));
 
     if (!authorized) {
