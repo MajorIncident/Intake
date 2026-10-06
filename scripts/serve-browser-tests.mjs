@@ -773,6 +773,71 @@ async function handleClassroomApi(request, response, url) {
       return true;
     }
 
+    if (request.method === 'PATCH') {
+      const body = await readJson(request).catch(() => null);
+      const exercise = classroomExercises.get(instructorToken) || null;
+      if (!exercise) {
+        sendJson(response, 404, { error: 'Exercise not found.' });
+        return true;
+      }
+      if (!Number.isInteger(body?.expectedRevision) || body.expectedRevision !== exercise.exerciseRevision) {
+        sendJson(response, 409, {
+          error: 'Exercise changed. Refresh and retry.',
+          exercise: structuredClone(exercise)
+        });
+        return true;
+      }
+
+      if (body.action === 'start') {
+        if (exercise.status !== 'draft' || exercise.currentStageId !== null) {
+          sendJson(response, 409, {
+            error: 'Exercise cannot be started from its current state.',
+            exercise: structuredClone(exercise)
+          });
+          return true;
+        }
+        exercise.status = 'active';
+        exercise.currentStageId = BROWSER_STAGED_CASE.simulation.stages[0].id;
+        exercise.stagePhase = 'work';
+        exercise.studentEditingEnabled = true;
+      } else if (body.action === 'pause') {
+        if (exercise.status !== 'active') {
+          sendJson(response, 409, {
+            error: 'Exercise is not active.',
+            exercise: structuredClone(exercise)
+          });
+          return true;
+        }
+        exercise.status = 'paused';
+      } else if (body.action === 'resume') {
+        if (exercise.status !== 'paused') {
+          sendJson(response, 409, {
+            error: 'Exercise is not paused.',
+            exercise: structuredClone(exercise)
+          });
+          return true;
+        }
+        exercise.status = 'active';
+      } else {
+        sendJson(response, 400, { error: 'Invalid exercise action.' });
+        return true;
+      }
+
+      exercise.exerciseRevision += 1;
+      classroomExercises.set(instructorToken, exercise);
+      sendJson(response, 200, {
+        class: classContext,
+        exercise: structuredClone(exercise),
+        caseStudy: structuredClone(BROWSER_STAGED_CASE),
+        releases: [],
+        workspaceState: [],
+        checkpoints: [],
+        editFreezeEnforced: true,
+        changed: true
+      });
+      return true;
+    }
+
     sendJson(response, 405, { error: 'Method not allowed.' });
     return true;
   }
