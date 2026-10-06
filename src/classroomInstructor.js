@@ -13,16 +13,30 @@ import { EXPERIENCE_ROLE_IDS } from './experienceRoles.js';
 
 export const INSTRUCTOR_SESSION_STORAGE_KEY = 'kt-classroom-instructor-session-v1';
 export const INSTRUCTOR_SESSION_VERSION = 1;
+export const INSTRUCTOR_CLASSES_ENDPOINT = '/api/classes';
 export const INSTRUCTOR_WORKSPACES_ENDPOINT = '/api/classes/workspaces';
+export const INSTRUCTOR_PARTICIPANTS_ENDPOINT = '/api/classes/participants';
 export const INSTRUCTOR_OBSERVE_ENDPOINT = '/api/classes/observe';
 
 const CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+const JOIN_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{8}$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ROSTER_POLL_MS = 5000;
 const OBSERVE_POLL_MS = 1200;
 
 export function validateInstructorCapability(value) {
   return typeof value === 'string' && CAPABILITY_PATTERN.test(value.trim());
+}
+
+export function normalizeInstructorJoinCode(value) {
+  if (typeof value !== 'string') return '';
+  const normalized = value.trim().toUpperCase().replace(/[\s-]+/gu, '');
+  return JOIN_CODE_PATTERN.test(normalized) ? normalized : '';
+}
+
+export function formatInstructorJoinCode(value) {
+  const normalized = normalizeInstructorJoinCode(value);
+  return normalized ? `${normalized.slice(0, 4)}-${normalized.slice(4)}` : '';
 }
 
 export function readInstructorSession(storage = globalThis.localStorage) {
@@ -35,6 +49,7 @@ export function readInstructorSession(storage = globalThis.localStorage) {
       || !validateInstructorCapability(parsed.instructorToken)
       || typeof parsed.class?.id !== 'string'
       || typeof parsed.class?.title !== 'string'
+      || (parsed.joinCode && !normalizeInstructorJoinCode(parsed.joinCode))
       || (parsed.selectedWorkspaceId && !UUID_PATTERN.test(parsed.selectedWorkspaceId))
     ) return null;
     return parsed;
@@ -109,6 +124,7 @@ export function createInstructorClassroomController({
 }) {
   let activeSession = null;
   let workspaces = [];
+  let participants = [];
   let selectedWorkspaceId = '';
   let rosterTimer = null;
   let observerTimer = null;
