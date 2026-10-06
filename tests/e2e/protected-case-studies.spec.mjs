@@ -95,7 +95,9 @@ test('protected Case Studies reject unauthenticated retrieval and an authorized 
 
   expect(payloadBody.caseStudy.id).toBe('microcomputer-cabinets');
   expect(payloadBody.caseStudy.state?.pre?.oneLine).toBe('Cabinets are being rejected');
-  await expect(page.locator('#templatesDrawer')).not.toBeVisible();
+  const closedDrawer = page.locator('#templatesDrawer');
+  await expect(closedDrawer).toHaveAttribute('aria-hidden', 'true');
+  await expect(closedDrawer).toHaveAttribute('inert', '');
   await expect(page.locator('#oneLine')).toHaveValue('Cabinets are being rejected');
 
   await expectNoBlockingA11yViolations(page);
