@@ -159,6 +159,43 @@ Instructor-only content may include:
 
 Instructor content IDs and payloads are omitted entirely from Student responses.
 
+## Implementation checkpoint — staged Case Study authoring schema
+
+Tranche 2 is implemented before exercise persistence/API/UI.
+
+Implemented:
+- `scripts/staged-simulation-schema.mjs` defines simulation version 1 validation and canonical normalization;
+- `scripts/build-templates-manifest.mjs` accepts optional `simulation` only on protected `case-study` resources and preserves it only in the server-only Case Study manifest;
+- existing Case Studies without `simulation` remain valid and unchanged;
+- Standard Templates are rejected if they attempt to carry `simulation`, protecting the public manifest boundary;
+- Student content and Instructor content are separate namespaces and their IDs may not collide;
+- stage IDs and content IDs must be stable lowercase slugs and unique;
+- stage Student release references must resolve only to Student content;
+- stage Instructor references must resolve only to Instructor content;
+- one content item cannot be both initial and optional release in the same stage;
+- orphan Student/Instructor content is rejected so protected material cannot silently ride along outside an explicit stage;
+- version-1 definitions reject unknown fields instead of silently widening the contract;
+- Student content kinds currently supported by the authoring contract are `narrative`, `prompt`, `evidence`, `image`, `table`, and `document-page`;
+- protected image/document references use stable `assetId` values rather than arbitrary URLs;
+- image/document blocks require accessible alternate text; table blocks require a rectangular string matrix;
+- Instructor content kinds are `facilitation`, `debrief`, and `exemplar`;
+- stage `defaultDebriefEditPolicy` is explicitly `open | frozen`.
+
+Durable implementation commits:
+- `46109491808bedfbf5e778d0979859b3cd96b56c` — version-1 staged simulation validator/normalizer;
+- `1f716470cfdf95a64c00a8a99a62735133feae61` — optional simulation integration into the protected manifest build;
+- `9322cecabe9a487e072dd279519b5f358f089ebd` — focused synthetic schema/cross-reference/security tests;
+- `1e22806b8a1e50e94150a13ecf3b7083f0747667` — public/protected manifest boundary regression;
+- `af6b6f21a8e4f25f014a8362857a1c15e252775b` — server-agent guardrails restored alongside real tests.
+
+Validation on `af6b6f21...`:
+- canonical repository quality: **260 tests / 259 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **26 passed / 8 intentional project-scoped skips / 0 failed**;
+- Template Manifest Guard and Dependency Review: green;
+- no production authored Case Study gained a staged definition, so existing generated protected/public resource behavior remains compatible.
+
+**Exact next tranche:** implement additive exercise persistence/repository primitives only: `classroom_exercises`, optional-content releases, per-workspace stage readiness, immutable debrief checkpoints, optimistic exercise revision, idempotent checkpoint/release behavior, class scoping, retention/expiry, and deterministic in-memory parity. Do not add HTTP exercise routes, edit-freeze enforcement, or Instructor/Student UI in that tranche.
+
 ## Exercise domain model
 
 Persist orchestration state separately from static Case Study definitions.
@@ -587,13 +624,22 @@ The first server changes should be additive:
 
 Do not make Standalone or ordinary Classroom assignment boot depend on an active exercise.
 
-## Exact first implementation action after this architecture tranche
+## Exact next implementation action
 
-Extend the authored Case Study schema and build validator with an **optional** server-only `simulation` definition, plus tests that prove:
-- Standard Templates cannot carry protected simulation definitions into the public manifest;
-- staged Case Study Student release and Instructor content are structurally distinct;
-- stable content/stage IDs are unique and cross-references are valid;
-- no existing Case Study is forced to become staged;
-- existing generated manifests remain compatible.
+Implement **Tranche 3 only**: additive exercise persistence/repository primitives and deterministic in-memory parity.
 
-Stop before persistence/API/UI work and return to a green gate.
+Required repository semantics:
+- create/select one draft exercise for one class from an already validated staged Case Study identity/version;
+- at most one non-completed exercise per class initially;
+- optimistic `exercise_revision` mutation;
+- current stage/status/phase/editing policy persistence;
+- idempotent optional content releases scoped to exercise + stage;
+- workspace-scoped Ready state that records workspace revision evidence;
+- immutable per-workspace debrief checkpoint capture that is idempotent for exercise + stage + workspace;
+- class/workspace ownership validation;
+- retention bounded by the owning class;
+- no Intake snapshot merge/copy during ordinary stage/assignment operations.
+
+Add deterministic in-memory repository parity and focused tests before any HTTP route consumes these methods.
+
+Stop before exercise HTTP handlers, collaboration edit-freeze enforcement, or Instructor/Student UI.
