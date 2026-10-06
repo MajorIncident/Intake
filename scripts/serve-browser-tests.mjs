@@ -27,6 +27,17 @@ const INSTRUCTOR_WORKSPACE_IDS = Object.freeze({
   INDIVIDUAL: '11111111-1111-4111-8111-111111111111',
   GROUP: '22222222-2222-4222-8222-222222222222'
 });
+const LIVE_INSTRUCTOR_TOKEN = `${'i'.repeat(42)}s`;
+const LIVE_JOIN_CODE = 'K7FM-P4Q2';
+const LIVE_WORKSPACE_IDS = Object.freeze([
+  '66666666-6666-4666-8666-666666666666',
+  '77777777-7777-4777-8777-777777777777',
+  '88888888-8888-4888-8888-888888888888'
+]);
+const LIVE_PARTICIPANT_ID = '99999999-9999-4999-8999-999999999999';
+let liveClassState = null;
+let liveInstructorWorkspaces = [];
+let liveInstructorParticipants = [];
 const classroomWorkspaces = new Map();
 const classroomCoachingFeedback = new Map();
 
@@ -100,6 +111,16 @@ function instructorClass() {
   return {
     id: 'browser-test-class',
     title: 'Browser Test Classroom',
+    joinCode: 'K7FMP4Q2',
+    expiresAt: CLASSROOM_EXPIRY
+  };
+}
+
+function liveInstructorClass() {
+  return liveClassState || {
+    id: 'browser-live-class',
+    title: 'Browser Live Classroom',
+    joinCode: 'K7FMP4Q2',
     expiresAt: CLASSROOM_EXPIRY
   };
 }
@@ -125,6 +146,75 @@ function instructorRoster() {
         editingParticipantCount: 0
       }
     ]
+  };
+}
+
+function instructorParticipants() {
+  return {
+    class: instructorClass(),
+    participants: [
+      {
+        id: '33333333-3333-4333-8333-333333333333',
+        displayName: 'Alex Student',
+        assignmentRevision: 1,
+        joinedAt: '2099-12-31T20:00:00.000Z',
+        updatedAt: '2099-12-31T20:00:00.000Z',
+        assignment: {
+          id: INSTRUCTOR_WORKSPACE_IDS.INDIVIDUAL,
+          kind: 'individual',
+          label: 'Alex Student'
+        }
+      },
+      {
+        id: '44444444-4444-4444-8444-444444444444',
+        displayName: 'Waiting Student',
+        assignmentRevision: 0,
+        joinedAt: '2099-12-31T20:01:00.000Z',
+        updatedAt: '2099-12-31T20:01:00.000Z',
+        assignment: null
+      }
+    ]
+  };
+}
+
+function liveInstructorRoster() {
+  return {
+    class: liveInstructorClass(),
+    workspaces: liveInstructorWorkspaces.map(workspace => ({
+      ...workspace,
+      participantCount: liveInstructorParticipants.filter(participant => participant.assignment?.id === workspace.id).length,
+      activeParticipantCount: 0,
+      editingParticipantCount: 0
+    }))
+  };
+}
+
+function liveInstructorParticipantRoster() {
+  return {
+    class: liveInstructorClass(),
+    participants: structuredClone(liveInstructorParticipants)
+  };
+}
+
+function liveInstructorObservation(workspaceId) {
+  const workspace = liveInstructorWorkspaces.find(item => item.id === workspaceId);
+  if (!workspace) return null;
+  const snapshot = freshClassroomSnapshot();
+  if (!snapshot.pre || typeof snapshot.pre !== 'object') snapshot.pre = {};
+  snapshot.pre.oneLine = `${workspace.label} live-class Intake.`;
+  return {
+    class: liveInstructorClass(),
+    workspace: {
+      id: workspace.id,
+      kind: workspace.kind,
+      label: workspace.label,
+      teamName: workspace.label,
+      revision: 1,
+      expiresAt: CLASSROOM_EXPIRY,
+      updatedAt: '2099-12-31T23:00:00.000Z'
+    },
+    participants: [],
+    snapshot
   };
 }
 
