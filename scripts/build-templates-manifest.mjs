@@ -8,6 +8,10 @@ import { fileURLToPath } from 'node:url';
 
 import { TEMPLATE_MODE_IDS } from '../src/templateModes.js';
 import { TEMPLATE_KINDS } from '../src/templateKinds.js';
+import {
+  normalizeStagedSimulation,
+  validateSimulationForResource
+} from './staged-simulation-schema.mjs';
 
 const templatesDir = new URL('../templates/', import.meta.url);
 const publicManifestPath = new URL('../src/templates.manifest.js', import.meta.url);
@@ -156,7 +160,7 @@ async function readTemplateFile(fileName) {
   if (!isRecord(data)) {
     throw new Error(`${fileName} must contain a JSON object`);
   }
-  const { id, name, description, supportedModes, templateKind, state } = data;
+  const { id, name, description, supportedModes, templateKind, state, simulation } = data;
   if (typeof id !== 'string' || !id.trim()) {
     errors.push('id must be a non-empty string');
   }
@@ -179,6 +183,10 @@ async function readTemplateFile(fileName) {
   }
   const stateErrors = validateSerializedAppState(state);
   errors.push(...stateErrors.map(message => `state invalid: ${message}`));
+
+  const simulationErrors = validateSimulationForResource({ templateKind, simulation });
+  errors.push(...simulationErrors.map(message => `simulation invalid: ${message}`));
+
   if (errors.length) {
     throw new Error(`${fileName} failed validation:\n- ${errors.join('\n- ')}`);
   }
@@ -188,7 +196,8 @@ async function readTemplateFile(fileName) {
     description: description.trim(),
     supportedModes: supportedModes.map(mode => mode.trim()),
     templateKind,
-    state
+    state,
+    ...(simulation === undefined ? {} : { simulation: normalizeStagedSimulation(simulation) })
   };
 }
 
