@@ -754,16 +754,35 @@ Foundation contract:
 
 Implementation checkpoint spans `2624f1e...` through `d20a303...`.
 
+## Implementation checkpoint — Tranche 6B staged Case Study selection and draft creation
+
+The console now creates the server-owned draft without adding lifecycle actions.
+
+Draft-setup contract:
+- the selector is populated only from the Instructor-authorized `availableCaseStudies` discovery list;
+- create sends only the selected `caseStudyId` in an authenticated POST body;
+- a successful create hydrates the returned draft and protected Instructor definition in memory, while public controller state exposes only the sanitized Case Study summary;
+- an idempotent `created: false` response is treated as the represented existing draft rather than an error;
+- once an exercise exists, selector/create controls are disabled;
+- a 409 never retries the stale create request; the client performs an authoritative GET and renders the current exercise;
+- draft setup releases no Student content and does not modify Intake/collaboration state;
+- exercise state remains server-owned and is re-fetched on Instructor class resume/reload;
+- deterministic browser coverage uses only a synthetic staged case in the browser fixture.
+
+Implementation spans `6a69426...` through `1035ed7...`, with synthetic fixture support at `c3440eb...`.
+
+Validation note carried from 6A: its repository quality gate passed, but the four-browser integration journey hit the old 30-second Playwright test timeout. Its immediately prior green runtime was 26.1 seconds, so the acceptance-specific budget is now 45 seconds rather than removing assertions or weakening behavior.
+
 ## Exact next implementation action
 
-Continue **Tranche 6B — staged Case Study selection and draft creation**.
+Implement **Tranche 6C — Start/Pause/Resume and current-stage Instructor context**.
 
 Required next slice:
-- add an accessible staged-case selector using the server-filtered discovery list;
-- create/reuse the selected draft through the existing Instructor POST contract;
-- render the created draft and its safe summary inside the existing console;
-- preserve one-open-exercise behavior and fail closed on conflicting existing exercise state;
-- keep exercise state server-owned and memory-only;
-- add focused DOM/API/browser coverage for selection, create, replay, and conflict refresh.
+- expose Start only for a draft and send the current `exerciseRevision`;
+- expose Pause only for an active exercise and Resume only for a paused exercise;
+- render current stage title, Student objective, suggested timing, and Instructor-only current-stage facilitation content after Start;
+- refresh authoritative exercise state on optimistic 409 conflicts rather than replaying lifecycle intent;
+- clearly distinguish pause state from editing freeze (freeze remains a later debrief slice);
+- add focused controller and real-browser coverage for Start -> Pause -> Resume plus reload/resume.
 
-Do **not** add Start/Pause/Resume/release/debrief/freeze/advance/complete controls in 6B; those follow after the draft-creation slice. Keep Student staged-case UI and production official Case Study staging deferred.
+Do **not** add optional evidence release, Begin Debrief, Freeze/Unfreeze, Advance, or Complete in 6C. Keep Student staged-case UI and production official Case Study staging deferred.
