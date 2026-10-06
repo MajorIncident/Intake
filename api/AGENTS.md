@@ -133,3 +133,22 @@ Rules:
 - assignment changes use optimistic `assignment_revision` checks; a conflicting update may leave old access revoked, but must never leave old access valid or remap it to a new workspace.
 - stale presence cleanup after reassignment uses internal workspace identity, not the revoked bearer token.
 - individual live workspaces remain single-participant; cross-class destination assignment is rejected generically.
+
+## #313 staged simulation direction
+
+Read `docs/classroom-staged-simulation.md` before modifying exercise/stage/protected-resource behavior.
+
+Rules:
+- exercise lifecycle is class-scoped Instructor authority and remains separate from Intake snapshots, collaboration revision, and coaching revision;
+- Student staged exercise reads authenticate with the stable Student class-session capability and return only the represented learner's class-level release/readiness context;
+- a Student class-session token still does **not** authorize collaboration edits;
+- future-stage material and Instructor-only facilitation/model/exemplar content must be omitted server-side from Student responses;
+- never ship a complete staged Case Study to the browser and rely on UI hiding for progressive disclosure;
+- existing protected Case Study `state` is complete source/exemplar material; when that case is the active staged exercise, the Student full-payload route must not bypass staged release;
+- optional content release, debrief, and stage advance are Instructor-only and optimistic-revision protected;
+- Student/team Ready state resolves the participant's current assignment server-side; stale pre-reassignment authority cannot mutate old-team exercise state;
+- beginning debrief must capture idempotent immutable workspace checkpoints before any optional post-debrief edits;
+- if Student editing is frozen, enforce it on the `classroom-student` collaboration write path; UI read-only projection alone is not authority;
+- late joiners receive only the current cumulative Student release; reassignment changes workspace Intake/readiness, not class exercise stage;
+- do not create production stage definitions from guessed official case boundaries. Synthetic deterministic staged content is acceptable in tests until authoritative material is supplied.
+
