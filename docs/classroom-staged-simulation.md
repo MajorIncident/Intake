@@ -774,16 +774,31 @@ Implementation spans `6a69426...` through `5f3fb56...`, with synthetic fixture s
 
 Validation note carried from 6A: its repository quality gate passed, but the four-browser integration journey hit the old 30-second Playwright test timeout. Its immediately prior green runtime was 26.1 seconds, so the acceptance-specific budget is now 45 seconds rather than removing assertions or weakening behavior.
 
+## Implementation checkpoint — Tranche 6C Start/Pause/Resume and current-stage Instructor context
+
+Lifecycle/pacing contract:
+- Start is exposed only for a draft with no current stage and PATCHes `{ action: "start", expectedRevision }`;
+- Pause is exposed only for an active exercise and Resume only for a paused exercise;
+- every lifecycle mutation uses the currently observed positive `exerciseRevision`;
+- a 409 mutation conflict performs one authoritative GET and renders that state; stale lifecycle intent is never automatically replayed;
+- after Start, the console renders only the current stage's title, Student objective, suggested minutes, and Instructor content referenced by that stage's `instructorContentIds`;
+- current-stage facilitation remains Instructor-only and memory-only;
+- Pause is described as class pacing, explicitly distinct from the Student editing freeze policy that belongs to debrief;
+- exercise state remains server-owned and is restored by GET on same-device Instructor resume/reload;
+- deterministic browser acceptance uses the synthetic staged case only and proves Start -> Pause -> Resume -> reload.
+
+Implementation spans `53ce2b7...` through `2888beb...`.
+
 ## Exact next implementation action
 
-Implement **Tranche 6C — Start/Pause/Resume and current-stage Instructor context**.
+Implement **Tranche 6D — optional evidence release and team readiness/progress signals**.
 
 Required next slice:
-- expose Start only for a draft and send the current `exerciseRevision`;
-- expose Pause only for an active exercise and Resume only for a paused exercise;
-- render current stage title, Student objective, suggested timing, and Instructor-only current-stage facilitation content after Start;
-- refresh authoritative exercise state on optimistic 409 conflicts rather than replaying lifecycle intent;
-- clearly distinguish pause state from editing freeze (freeze remains a later debrief slice);
-- add focused controller and real-browser coverage for Start -> Pause -> Resume plus reload/resume.
+- render current-stage optional Student content to the Instructor as unreleased/released controls without exposing future-stage content;
+- PATCH `release-content` with the current exercise revision and selected current-stage content ID;
+- preserve release idempotency and 409 authoritative-refresh behavior;
+- show current-stage per-workspace readiness/working state from the existing Instructor exercise payload;
+- make progress rows useful for existing observer/coaching navigation without creating a second observer;
+- extend the synthetic staged browser case with deterministic optional evidence/readiness only as needed for acceptance.
 
-Do **not** add optional evidence release, Begin Debrief, Freeze/Unfreeze, Advance, or Complete in 6C. Keep Student staged-case UI and production official Case Study staging deferred.
+Do **not** add Begin Debrief, Freeze/Unfreeze, Advance, or Complete in 6D. Keep Student staged-case UI and production official Case Study staging deferred.
