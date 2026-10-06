@@ -423,6 +423,16 @@ Anchors present:
           <strong id="instructorExerciseCaseName">No staged exercise selected</strong>
           <p id="instructorExerciseDetail">Staged Case Studies available to this class will appear here.</p>
         </div>
+        <form class="instructor-exercise-console__setup" id="instructorExerciseSetupForm" autocomplete="off">
+          <label for="instructorExerciseCaseSelect">Staged Case Study</label>
+          <div class="instructor-exercise-console__setup-row">
+            <select id="instructorExerciseCaseSelect" data-persistence="local-only" data-summary="exclude">
+              <option value="">Select a staged Case Study</option>
+            </select>
+            <button type="submit" class="btn-secondary" id="instructorExerciseCreateBtn" data-persistence="local-only" data-summary="exclude" disabled>Create draft</button>
+          </div>
+          <small id="instructorExerciseSetupHelp">Choose an explicitly staged Case Study. Creating a draft does not release anything to Students.</small>
+        </form>
         <div class="instructor-exercise-console__available">
           <span>Available staged Case Studies</span>
           <ul id="instructorExerciseAvailableList" aria-live="polite"></ul>
