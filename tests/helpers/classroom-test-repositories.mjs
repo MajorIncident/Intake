@@ -492,9 +492,15 @@ export function createClassroomRepository() {
             kind: workspace.kind,
             label: workspace.label,
             createdAt: workspace.createdAt,
-            participantCount: [...memberships.values()].filter(member => (
-              member.classInternalId === item.internalId && member.workspaceId === workspace.workspaceId
-            )).length,
+            participantCount:
+              [...memberships.values()].filter(member => (
+                member.classInternalId === item.internalId && member.workspaceId === workspace.workspaceId
+              )).length
+              + [...participants.values()].filter(participant => (
+                participant.classInternalId === item.internalId
+                && participant.workspaceId === workspace.workspaceId
+                && !participant.revoked
+              )).length,
             activeParticipantCount: 0,
             editingParticipantCount: 0,
             lastSeenAt: null
