@@ -12,7 +12,7 @@ import {
   persistExperienceRolePreference
 } from '../src/experienceRoleController.js';
 import { EXPERIENCE_ROLE_IDS } from '../src/experienceRoles.js';
-import { initTemplatesDrawer } from '../src/templatesDrawer.js';
+import { closeTemplatesDrawer, initTemplatesDrawer, openTemplatesDrawer } from '../src/templatesDrawer.js';
 import { getTemplatePayload, TEMPLATE_MODE_IDS } from '../src/templates.js';
 import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
 
@@ -75,6 +75,20 @@ function resourceKinds() {
   return [...dom.window.document.querySelectorAll('#templatesList [data-template-kind]')]
     .map(element => element.dataset.templateKind);
 }
+
+test('closed Templates drawer is inert and opening restores interaction', () => {
+  const drawer = dom.window.document.getElementById('templatesDrawer');
+  assert.equal(drawer.getAttribute('aria-hidden'), 'true');
+  assert.equal(drawer.hasAttribute('inert'), true);
+
+  openTemplatesDrawer();
+  assert.equal(drawer.getAttribute('aria-hidden'), 'false');
+  assert.equal(drawer.hasAttribute('inert'), false);
+
+  closeTemplatesDrawer({ skipFocus: true });
+  assert.equal(drawer.getAttribute('aria-hidden'), 'true');
+  assert.equal(drawer.hasAttribute('inert'), true);
+});
 
 test('drawer projects normal resources across Standalone, Student, and Instructor', () => {
   assert.ok(resourceKinds().includes('standard'));
