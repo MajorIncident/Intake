@@ -127,6 +127,7 @@ test('Instructor opens a class, observes work read-only, switches workspaces, an
   await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'instructor');
   await expect(page.locator('#instructorClassEntryCard')).toBeVisible();
 
+  await page.locator('#instructorExistingClass > summary').click();
   await page.getByLabel('Instructor access code').fill(instructorCode);
   await page.getByRole('button', { name: 'Open class' }).click();
 
