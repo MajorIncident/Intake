@@ -498,14 +498,30 @@ test('server-enforced debrief freeze blocks Classroom Student PUT without mutati
   assert.equal(standaloneWrite.statusCode, 200);
   assert.equal(standaloneWrite.body.revision, 2);
 
+  const paused = await patchExercise(instructor, {
+    action: 'pause',
+    expectedRevision: 3
+  });
+  assert.equal(paused.statusCode, 200);
+  assert.equal(paused.body.exercise.studentEditingEnabled, false);
+  assert.equal(paused.body.exercise.exerciseRevision, 4);
+
+  const resumed = await patchExercise(instructor, {
+    action: 'resume',
+    expectedRevision: 4
+  });
+  assert.equal(resumed.statusCode, 200);
+  assert.equal(resumed.body.exercise.studentEditingEnabled, false);
+  assert.equal(resumed.body.exercise.exerciseRevision, 5);
+
   const unfreeze = await patchExercise(instructor, {
     action: 'set-editing',
-    expectedRevision: 3,
+    expectedRevision: 5,
     enabled: true
   });
   assert.equal(unfreeze.statusCode, 200);
   assert.equal(unfreeze.body.exercise.studentEditingEnabled, true);
-  assert.equal(unfreeze.body.exercise.exerciseRevision, 4);
+  assert.equal(unfreeze.body.exercise.exerciseRevision, 6);
 
   const afterUnfreeze = response();
   await session({
