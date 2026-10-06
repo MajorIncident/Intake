@@ -1,11 +1,11 @@
 /**
  * @module classroomExerciseInstructor
- * @summary Owns Instructor staged-exercise discovery, draft setup, and console state.
+ * @summary Owns Instructor staged-exercise discovery, draft setup, lifecycle, and console state.
  * @description
  *   Receives the active Instructor capability from the class lifecycle, keeps it
  *   in memory only, and reads/writes the Instructor-authorized exercise endpoint.
- *   Tranche 6B adds staged Case Study selection plus draft create/reuse only;
- *   lifecycle actions remain deferred to later Tranche 6 slices.
+ *   Tranche 6C adds revision-safe Start/Pause/Resume plus current-stage
+ *   Instructor facilitation context; later debrief/release actions remain deferred.
  */
 
 export const INSTRUCTOR_EXERCISE_ENDPOINT = '/api/classes/exercise';
