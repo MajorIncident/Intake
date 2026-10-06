@@ -901,6 +901,195 @@ async function initializeClassroomRepository() {
       return rows[0] ? { classroom, exercise: rows[0] } : null;
     },
 
+    async getCurrentExerciseByClassInternalId(classInternalId) {
+      const rows = await sql`SELECT
+          e.public_id AS id,
+          e.case_study_id AS "caseStudyId",
+          e.simulation_version AS "simulationVersion",
+          e.simulation_fingerprint AS "simulationFingerprint",
+          e.status,
+          e.current_stage_id AS "currentStageId",
+          e.stage_phase AS "stagePhase",
+          e.exercise_revision AS "exerciseRevision",
+          e.student_editing_enabled AS "studentEditingEnabled",
+          e.started_at AS "startedAt",
+          e.completed_at AS "completedAt",
+          e.created_at AS "createdAt",
+          e.updated_at AS "updatedAt",
+          e.expires_at AS "expiresAt"
+        FROM classroom_exercises e
+        JOIN classroom_classes c ON c.id = e.class_id
+        WHERE e.class_id = ${classInternalId}
+          AND e.status <> 'completed'
+          AND e.expires_at > NOW()
+          AND c.revoked_at IS NULL
+          AND c.expires_at > NOW()
+        ORDER BY e.created_at DESC, e.id DESC
+        LIMIT 1`;
+      return rows[0] || null;
+    },
+
+    async hasExerciseForClassCase(classInternalId, caseStudyId) {
+      const rows = await sql`SELECT 1 AS found
+        FROM classroom_exercises e
+        JOIN classroom_classes c ON c.id = e.class_id
+        WHERE e.class_id = ${classInternalId}
+          AND e.case_study_id = ${caseStudyId}
+          AND e.expires_at > NOW()
+          AND c.revoked_at IS NULL
+          AND c.expires_at > NOW()
+        LIMIT 1`;
+      return Boolean(rows[0]);
+    },
+
+    async getExerciseForStudentSession(sessionHash) {
+      const context = await this.getParticipantBySession(sessionHash);
+      if (!context) return null;
+
+      const rows = await sql`SELECT
+          id AS "internalId",
+          public_id AS id,
+          case_study_id AS "caseStudyId",
+          simulation_version AS "simulationVersion",
+          simulation_fingerprint AS "simulationFingerprint",
+          status,
+          current_stage_id AS "currentStageId",
+          stage_phase AS "stagePhase",
+          exercise_revision AS "exerciseRevision",
+          student_editing_enabled AS "studentEditingEnabled",
+          started_at AS "startedAt",
+          completed_at AS "completedAt",
+          created_at AS "createdAt",
+          updated_at AS "updatedAt",
+          expires_at AS "expiresAt"
+        FROM classroom_exercises
+        WHERE class_id = ${context.internal.classId}
+          AND status <> 'completed'
+          AND expires_at > NOW()
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1`;
+      const exercise = rows[0] || null;
+      if (!exercise) {
+        return { ...context, exercise: null, releases: [], readiness: null };
+      }
+
+      const releases = await sql`SELECT
+          stage_id AS "stageId",
+          content_id AS "contentId",
+          released_at AS "releasedAt"
+        FROM classroom_exercise_releases
+        WHERE exercise_id = ${exercise.internalId}
+        ORDER BY released_at, stage_id, content_id`;
+
+      let readiness = null;
+      if (context.internal.workspaceId && exercise.currentStageId) {
+        const states = await sql`SELECT
+            stage_id AS "stageId",
+            ready_for_debrief AS "readyForDebrief",
+            ready_at AS "readyAt",
+            ready_workspace_revision AS "readyWorkspaceRevision",
+            created_at AS "createdAt",
+            updated_at AS "updatedAt"
+          FROM classroom_exercise_workspace_state
+          WHERE exercise_id = ${exercise.internalId}
+            AND workspace_id = ${context.internal.workspaceId}
+            AND stage_id = ${exercise.currentStageId}`;
+        readiness = states[0] || null;
+      }
+
+      const { internalId: _internalId, ...publicExercise } = exercise;
+      return {
+        ...context,
+        exercise: publicExercise,
+        releases,
+        readiness
+      };
+    },
+
+    async beginExerciseDebrief(instructorHash, {
+      exercisePublicId,
+      expectedRevision,
+      stageId
+    }) {
+      const classroom = await classByInstructor(instructorHash);
+      if (!classroom) return null;
+
+      const rows = await sql`WITH target AS (
+          UPDATE classroom_exercises e
+          SET stage_phase = 'debrief',
+              student_editing_enabled = TRUE,
+              exercise_revision = exercise_revision + 1,
+              updated_at = NOW()
+          WHERE e.class_id = ${classroom.internal_id}
+            AND e.public_id = ${exercisePublicId}::uuid
+            AND e.exercise_revision = ${expectedRevision}
+            AND e.status = 'active'
+            AND e.current_stage_id = ${stageId}
+            AND e.stage_phase = 'work'
+            AND e.expires_at > NOW()
+          RETURNING
+            e.id AS internal_id,
+            e.class_id,
+            e.public_id AS id,
+            e.case_study_id AS "caseStudyId",
+            e.simulation_version AS "simulationVersion",
+            e.simulation_fingerprint AS "simulationFingerprint",
+            e.status,
+            e.current_stage_id AS "currentStageId",
+            e.stage_phase AS "stagePhase",
+            e.exercise_revision AS "exerciseRevision",
+            e.student_editing_enabled AS "studentEditingEnabled",
+            e.started_at AS "startedAt",
+            e.completed_at AS "completedAt",
+            e.created_at AS "createdAt",
+            e.updated_at AS "updatedAt",
+            e.expires_at AS "expiresAt"
+        ),
+        captured AS (
+          INSERT INTO classroom_exercise_checkpoints
+            (
+              class_id, exercise_id, stage_id, workspace_id,
+              workspace_revision, snapshot
+            )
+          SELECT
+            t.class_id,
+            t.internal_id,
+            t."currentStageId",
+            cw.workspace_id,
+            w.revision,
+            w.snapshot_json
+          FROM target t
+          JOIN classroom_workspaces cw
+            ON cw.class_id = t.class_id
+            AND cw.revoked_at IS NULL
+          JOIN collaboration_workspaces w
+            ON w.id = cw.workspace_id
+            AND w.expires_at > NOW()
+          ON CONFLICT DO NOTHING
+          RETURNING workspace_id
+        )
+        SELECT
+          t.*,
+          (SELECT COUNT(*)::int FROM captured) AS "capturedCount"
+        FROM target t`;
+
+      if (rows[0]) {
+        const row = rows[0];
+        const {
+          internal_id: _internalId,
+          class_id: _classId,
+          capturedCount,
+          ...exercise
+        } = row;
+        return { status: 'updated', classroom, exercise, capturedCount };
+      }
+
+      const current = await this.getExerciseForInstructor(instructorHash, exercisePublicId);
+      return current
+        ? { status: 'conflict', classroom: current.classroom, exercise: current.exercise }
+        : null;
+    },
+
     async updateExerciseLifecycle(instructorHash, {
       exercisePublicId,
       expectedRevision,
