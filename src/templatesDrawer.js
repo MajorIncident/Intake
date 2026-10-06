@@ -603,6 +603,7 @@ function setTemplatesDrawer(open, { skipFocus = false } = {}) {
   if (templatesDrawer) {
     templatesDrawer.classList.toggle('is-open', shouldOpen);
     templatesDrawer.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+    templatesDrawer.toggleAttribute('inert', !shouldOpen);
   }
   if (templatesBackdrop) {
     templatesBackdrop.classList.toggle('is-open', shouldOpen);
@@ -754,6 +755,7 @@ export function initTemplatesDrawer({ protectedCaseStudies = null } = {}) {
     launcher.setAttribute('aria-expanded', 'false');
   });
   templatesDrawer.setAttribute('aria-hidden', 'true');
+  templatesDrawer.setAttribute('inert', '');
   templatesBackdrop.setAttribute('aria-hidden', 'true');
 
   renderModes();
