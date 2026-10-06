@@ -128,6 +128,86 @@ export function createInstructorExerciseConsoleController({
     }
   };
 
+  const currentStageContext = () => {
+    if (!exercise?.currentStageId || !caseStudy?.simulation) return null;
+    const stages = Array.isArray(caseStudy.simulation.stages) ? caseStudy.simulation.stages : [];
+    const stage = stages.find(item => item.id === exercise.currentStageId) || null;
+    if (!stage) return null;
+    const instructorBlocks = new Map(
+      (Array.isArray(caseStudy.simulation.instructorContent) ? caseStudy.simulation.instructorContent : [])
+        .map(item => [item.id, item])
+    );
+    return {
+      stage,
+      instructorContent: (Array.isArray(stage.instructorContentIds) ? stage.instructorContentIds : [])
+        .map(id => instructorBlocks.get(id))
+        .filter(Boolean)
+    };
+  };
+
+  const renderLifecycle = () => {
+    const lifecycle = element('instructorExerciseLifecycle');
+    const start = element('instructorExerciseStartBtn');
+    const pause = element('instructorExercisePauseBtn');
+    const resume = element('instructorExerciseResumeBtn');
+    if (!lifecycle) return;
+
+    lifecycle.hidden = !exercise;
+    const canStart = exercise?.status === 'draft' && !exercise.currentStageId;
+    const canPause = exercise?.status === 'active';
+    const canResume = exercise?.status === 'paused';
+
+    if (start) {
+      start.hidden = !canStart;
+      start.disabled = loading || !canStart;
+    }
+    if (pause) {
+      pause.hidden = !canPause;
+      pause.disabled = loading || !canPause;
+    }
+    if (resume) {
+      resume.hidden = !canResume;
+      resume.disabled = loading || !canResume;
+    }
+  };
+
+  const renderStage = () => {
+    const panel = element('instructorExerciseStagePanel');
+    if (!panel) return;
+    const context = currentStageContext();
+    panel.hidden = !context;
+    if (!context) return;
+
+    const { stage, instructorContent } = context;
+    if (element('instructorExerciseStageTitle')) {
+      element('instructorExerciseStageTitle').textContent = stage.title || 'Current stage';
+    }
+    if (element('instructorExerciseStageObjective')) {
+      element('instructorExerciseStageObjective').textContent = stage.studentObjective || '';
+    }
+    if (element('instructorExerciseStageTiming')) {
+      element('instructorExerciseStageTiming').textContent = Number.isFinite(stage.suggestedMinutes)
+        ? `Suggested time: ${stage.suggestedMinutes} min`
+        : '';
+    }
+
+    const facilitation = element('instructorExerciseFacilitation');
+    const list = element('instructorExerciseFacilitationList');
+    if (facilitation) facilitation.hidden = instructorContent.length === 0;
+    if (list) {
+      list.replaceChildren();
+      instructorContent.forEach(item => {
+        const block = documentRef.createElement('article');
+        const title = documentRef.createElement('strong');
+        title.textContent = item.title || 'Instructor note';
+        const body = documentRef.createElement('p');
+        body.textContent = item.body || '';
+        block.append(title, body);
+        list.append(block);
+      });
+    }
+  };
+
   const render = () => {
     const panel = element('instructorExerciseConsole');
     const status = element('instructorExerciseStatus');
@@ -170,6 +250,8 @@ export function createInstructorExerciseConsoleController({
         : 'The console is connected; no staged Case Study definition is currently available.';
     }
     renderSetup();
+    renderLifecycle();
+    renderStage();
     renderAvailable();
   };
 
@@ -308,6 +390,90 @@ export function createInstructorExerciseConsoleController({
     }
   };
 
+  const mutateLifecycle = async action => {
+    if (
+      destroyed
+      || !capability
+      || !exercise
+      || loading
+      || typeof fetchImpl !== 'function'
+    ) return false;
+
+    const expectedRevision = Number(exercise.exerciseRevision);
+    if (!Number.isInteger(expectedRevision) || expectedRevision < 1) {
+      lastError = 'Exercise revision is unavailable. Refresh and retry.';
+      lastNotice = '';
+      render();
+      return false;
+    }
+
+    const allowed = (
+      (action === 'start' && exercise.status === 'draft' && !exercise.currentStageId)
+      || (action === 'pause' && exercise.status === 'active')
+      || (action === 'resume' && exercise.status === 'paused')
+    );
+    if (!allowed) return false;
+
+    const localCapability = capability;
+    const localEpoch = epoch;
+    loading = true;
+    lastError = '';
+    lastNotice = '';
+    render();
+
+    try {
+      const response = await fetchImpl(INSTRUCTOR_EXERCISE_ENDPOINT, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${localCapability}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action, expectedRevision })
+      });
+      const body = await response.json().catch(() => ({}));
+      if (destroyed || localEpoch !== epoch || capability !== localCapability) return false;
+
+      if (response.status === 409) {
+        loading = false;
+        const reloaded = await refresh();
+        if (reloaded && !destroyed && localEpoch === epoch) {
+          lastNotice = 'current state reloaded';
+          render();
+        } else if (!lastError) {
+          lastError = typeof body.error === 'string' ? body.error : 'Exercise changed. Refresh and retry.';
+          render();
+        }
+        return false;
+      }
+
+      if (!response.ok) {
+        lastError = response.status === 401 || response.status === 404
+          ? 'Exercise access is no longer available.'
+          : typeof body.error === 'string' && body.error
+            ? body.error
+            : 'Could not update the exercise.';
+        return false;
+      }
+
+      applyPayload(body);
+      lastNotice = action === 'start'
+        ? 'exercise started'
+        : action === 'pause'
+          ? 'exercise paused'
+          : 'exercise resumed';
+      return true;
+    } catch {
+      if (destroyed || localEpoch !== epoch) return false;
+      lastError = 'Could not update the exercise.';
+      return false;
+    } finally {
+      if (!destroyed && localEpoch === epoch) {
+        loading = false;
+        render();
+      }
+    }
+  };
+
   const connectInstructor = async token => {
     if (!validCapability(token) || destroyed) return false;
     epoch += 1;
@@ -335,10 +501,16 @@ export function createInstructorExerciseConsoleController({
     event.preventDefault();
     void createDraft();
   };
+  const handleStart = () => { void mutateLifecycle('start'); };
+  const handlePause = () => { void mutateLifecycle('pause'); };
+  const handleResume = () => { void mutateLifecycle('resume'); };
 
   element('instructorExerciseRefreshBtn')?.addEventListener('click', handleRefresh);
   element('instructorExerciseCaseSelect')?.addEventListener('change', handleSelect);
   element('instructorExerciseSetupForm')?.addEventListener('submit', handleSetupSubmit);
+  element('instructorExerciseStartBtn')?.addEventListener('click', handleStart);
+  element('instructorExercisePauseBtn')?.addEventListener('click', handlePause);
+  element('instructorExerciseResumeBtn')?.addEventListener('click', handleResume);
   render();
 
   return {
@@ -346,6 +518,9 @@ export function createInstructorExerciseConsoleController({
     disconnect,
     refresh,
     createDraft,
+    start: () => mutateLifecycle('start'),
+    pause: () => mutateLifecycle('pause'),
+    resume: () => mutateLifecycle('resume'),
     getState: () => ({
       connected: Boolean(capability),
       loading,
@@ -362,6 +537,9 @@ export function createInstructorExerciseConsoleController({
       element('instructorExerciseRefreshBtn')?.removeEventListener('click', handleRefresh);
       element('instructorExerciseCaseSelect')?.removeEventListener('change', handleSelect);
       element('instructorExerciseSetupForm')?.removeEventListener('submit', handleSetupSubmit);
+      element('instructorExerciseStartBtn')?.removeEventListener('click', handleStart);
+      element('instructorExercisePauseBtn')?.removeEventListener('click', handlePause);
+      element('instructorExerciseResumeBtn')?.removeEventListener('click', handleResume);
       disconnect();
       destroyed = true;
     }
