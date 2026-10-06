@@ -767,9 +767,10 @@ Draft-setup contract:
 - a 409 never retries the stale create request; the client performs an authoritative GET and renders the current exercise;
 - draft setup releases no Student content and does not modify Intake/collaboration state;
 - exercise state remains server-owned and is re-fetched on Instructor class resume/reload;
+- selector/label/option controls are explicitly local-only and summary-excluded so repository guards do not force Classroom exercise state into Intake persistence or Copy & Paste Summary;
 - deterministic browser coverage uses only a synthetic staged case in the browser fixture.
 
-Implementation spans `6a69426...` through `1035ed7...`, with synthetic fixture support at `c3440eb...`.
+Implementation spans `6a69426...` through `5f3fb56...`, with synthetic fixture support at `c3440eb...`.
 
 Validation note carried from 6A: its repository quality gate passed, but the four-browser integration journey hit the old 30-second Playwright test timeout. Its immediately prior green runtime was 26.1 seconds, so the acceptance-specific budget is now 45 seconds rather than removing assertions or weakening behavior.
 
