@@ -24,7 +24,11 @@ const INDEX_HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8
 const JOIN_TOKEN = 'c'.repeat(43);
 const ASSIGNMENT_TOKEN = 'x'.repeat(43);
 const WORKSPACE_TOKEN = 's'.repeat(43);
+const WORKSPACE_TOKEN_B = 't'.repeat(43);
+const LIVE_SESSION_TOKEN = 'l'.repeat(43);
 const PARTICIPANT_ID = '11111111-1111-4111-8111-111111111111';
+const WORKSPACE_A = '22222222-2222-4222-8222-222222222222';
+const WORKSPACE_B = '33333333-3333-4333-8333-333333333333';
 
 let dom = null;
 
@@ -50,7 +54,8 @@ function mount({
   terminal = false,
   fetchImpl,
   onClassConnected = () => {},
-  onClassDisconnected = () => {}
+  onClassDisconnected = () => {},
+  fakeTimers = false
 } = {}) {
   dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
   persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.STUDENT, dom.window.localStorage);
@@ -64,7 +69,7 @@ function mount({
     location: dom.window.location
   });
 
-  const calls = { connect: [], leave: [], apply: [], save: [], fetch: [] };
+  const calls = { connect: [], leave: [], apply: [], save: [], fetch: [], timers: [] };
   const collaborationState = {
     profile: { participantId: PARTICIPANT_ID, displayName: '' },
     sessionKind: 'local',
@@ -106,7 +111,14 @@ function mount({
     now: () => Date.parse('2026-10-01T00:00:00Z'),
     toast: () => {},
     onClassConnected,
-    onClassDisconnected
+    onClassDisconnected,
+    setTimeoutImpl: fakeTimers
+      ? fn => {
+          calls.timers.push(fn);
+          return calls.timers.length;
+        }
+      : undefined,
+    clearTimeoutImpl: fakeTimers ? () => {} : undefined
   });
   controller.init();
   return { controller, calls, collaborationState };
@@ -120,6 +132,153 @@ async function settle() {
 afterEach(() => {
   dom?.window.close();
   dom = null;
+});
+
+test('Student one-code admission persists only the class session and waits without collaboration access', async () => {
+  const requests = [];
+  const env = mount({
+    fakeTimers: true,
+    fetchImpl: async (url, options = {}) => {
+      requests.push([url, options]);
+      if (url === '/api/classes/admit') {
+        const sent = JSON.parse(options.body);
+        assert.deepEqual(sent, {
+          joinCode: 'K7FMP4Q2',
+          participantId: PARTICIPANT_ID,
+          displayName: 'Alex'
+        });
+        return response(200, {
+          class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
+          participant: {
+            id: PARTICIPANT_ID,
+            displayName: 'Alex',
+            assignmentRevision: 0
+          },
+          assignment: null,
+          studentSessionToken: LIVE_SESSION_TOKEN
+        });
+      }
+      if (url === '/api/classes/student') {
+        assert.equal(options.headers.Authorization, `Bearer ${LIVE_SESSION_TOKEN}`);
+        return response(200, {
+          class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
+          participant: {
+            id: PARTICIPANT_ID,
+            displayName: 'Alex',
+            assignmentRevision: 0
+          },
+          assignment: null
+        });
+      }
+      return response(500, {});
+    }
+  });
+  await settle();
+
+  assert.equal(await env.controller.join({
+    classCode: 'K7FM-P4Q2',
+    displayName: 'Alex'
+  }), true);
+
+  const stored = JSON.parse(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY));
+  assert.equal(stored.mode, 'live');
+  assert.equal(stored.studentSessionToken, LIVE_SESSION_TOKEN);
+  assert.equal(stored.assignmentRevision, 0);
+  assert.equal(stored.assignment, null);
+  assert.equal('workspaceToken' in stored, false);
+  assert.equal(JSON.stringify(stored).includes('K7FM-P4Q2'), false);
+  assert.equal(env.calls.connect.length, 0);
+  assert.equal(dom.window.document.body.dataset.studentClassStatus, 'waiting');
+  assert.equal(dom.window.document.getElementById('studentClassWaitingPanel').hidden, false);
+  assert.equal(dom.window.document.getElementById('studentClassWaitingClass').textContent, 'Problem Solving 101');
+  assert.equal(dom.window.document.getElementById('studentClassWaitingIdentity').textContent, 'Alex');
+  assert.equal(dom.window.document.querySelector('.wrap').hidden, true);
+  assert.equal(requests.some(([url]) => url === '/api/classes/student/access'), false);
+  assert.ok(env.calls.timers.length >= 1, 'waiting state schedules own-status polling');
+});
+
+test('live Student assignment, reassignment, and unassign rotate workspace authority without merging local state', async () => {
+  let assignment = {
+    id: WORKSPACE_A,
+    kind: 'group',
+    label: 'Team Alpha'
+  };
+  let revision = 1;
+  const accessTokens = [WORKSPACE_TOKEN, WORKSPACE_TOKEN_B];
+  const connected = [];
+  let disconnected = 0;
+
+  const env = mount({
+    fakeTimers: true,
+    onClassConnected: token => connected.push(token),
+    onClassDisconnected: () => { disconnected += 1; },
+    fetchImpl: async (url, options = {}) => {
+      if (url === '/api/classes/admit') {
+        return response(200, {
+          class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
+          participant: { id: PARTICIPANT_ID, displayName: 'Alex', assignmentRevision: revision },
+          assignment,
+          studentSessionToken: LIVE_SESSION_TOKEN
+        });
+      }
+      if (url === '/api/classes/student') {
+        return response(200, {
+          class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
+          participant: { id: PARTICIPANT_ID, displayName: 'Alex', assignmentRevision: revision },
+          assignment
+        });
+      }
+      if (url === '/api/classes/student/access') {
+        if (!assignment) {
+          return response(409, {
+            status: 'waiting',
+            class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
+            participant: { id: PARTICIPANT_ID, displayName: 'Alex', assignmentRevision: revision },
+            assignment: null
+          });
+        }
+        return response(200, {
+          class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
+          participant: { id: PARTICIPANT_ID, displayName: 'Alex', assignmentRevision: revision },
+          assignment,
+          workspaceToken: accessTokens.shift()
+        });
+      }
+      return response(500, {});
+    }
+  });
+  await settle();
+
+  assert.equal(await env.controller.join({ classCode: 'K7FM-P4Q2', displayName: 'Alex' }), true);
+  assert.deepEqual(env.calls.connect.at(-1), [WORKSPACE_TOKEN, { displayName: 'Alex', classroom: true }]);
+  assert.equal(dom.window.document.body.dataset.studentClassStatus, 'connected');
+  assert.equal(dom.window.document.getElementById('studentClassWorkspace').textContent, 'Team Alpha');
+
+  assignment = { id: WORKSPACE_B, kind: 'group', label: 'Team Beta' };
+  revision = 2;
+  assert.equal(await env.controller.refreshStatus(), true);
+  assert.deepEqual(env.calls.leave.at(-1), { silent: true });
+  assert.deepEqual(env.calls.connect.at(-1), [WORKSPACE_TOKEN_B, { displayName: 'Alex', classroom: true }]);
+  assert.equal(dom.window.document.getElementById('studentClassWorkspace').textContent, 'Team Beta');
+  assert.deepEqual(connected, [WORKSPACE_TOKEN, WORKSPACE_TOKEN_B]);
+  assert.ok(disconnected >= 1, 'old classroom integration is disconnected before destination access');
+
+  const storedAfterMove = JSON.parse(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY));
+  assert.equal(storedAfterMove.assignment.id, WORKSPACE_B);
+  assert.equal(storedAfterMove.assignmentRevision, 2);
+  assert.equal('workspaceToken' in storedAfterMove, false);
+  assert.equal(JSON.stringify(storedAfterMove).includes(WORKSPACE_TOKEN), false);
+  assert.equal(JSON.stringify(storedAfterMove).includes(WORKSPACE_TOKEN_B), false);
+
+  assignment = null;
+  revision = 3;
+  assert.equal(await env.controller.refreshStatus(), true);
+  assert.equal(dom.window.document.body.dataset.studentClassStatus, 'waiting');
+  assert.equal(env.controller.getState().activeWorkspaceToken, '');
+  assert.equal(dom.window.document.querySelector('.wrap').hidden, true);
+  const storedWaiting = JSON.parse(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY));
+  assert.equal(storedWaiting.assignment, null);
+  assert.equal(storedWaiting.assignmentRevision, 3);
 });
 
 test('Student join uses one-time class and assignment codes then attaches the issued workspace capability', async () => {
