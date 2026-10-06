@@ -346,7 +346,15 @@ Continue #295 on draft PR #307 from the current branch head.
   - `04f95f24dd63d2ce75260034d75c9c514d07e84e` adds the focused authorization matrix.
   - validation: repository quality **244 tests / 243 pass / 0 fail / 1 intentional skip**; required Browser E2E **22 passed / 6 intentional skips / 0 failed**; CodeQL, Dependency Review, and Template Manifest Guard green.
   - current Student UI remains on the legacy two-code path; no live team-management UI has been cut over yet.
-- Exact next action: implement Instructor assign/reassign/unassign semantics with old-workspace capability revocation, cross-class rejection, assignment-revision increments, and no snapshot merge. Prove the server race/security contract before building Instructor drag/drop/team UI or Student automatic reassignment.
+- Assign/reassign/unassign authority checkpoint:
+  - `742240e92156a9d43a96752a2cb6acc5908f4172` adds server-only stale-presence cleanup by internal workspace ID;
+  - `2c1d6fdf6872eb1390424503f08692a581da6322` mirrors that cleanup in the deterministic workspace harness;
+  - `b48e6bbb71c2d6ec818ca1f69b656b3bffbed473` adds Instructor-only assignment transitions, optimistic revision protection, individual-workspace occupancy enforcement, old-authority revocation before assignment mutation, and active-alias validation for live Student coaching/resource context;
+  - `a382acad42de25f4fa1ae217acf34d69a047606b` mirrors live assignment transitions in the deterministic Classroom repository;
+  - `7bfd662e2dcbe5511a4065b7b19222129485d08a` proves Waiting -> Team A -> Team B -> Waiting, idempotent same-team assignment, cross-class rejection, stale-token write rejection, old-presence cleanup, no snapshot merge, and individual-workspace single occupancy.
+  - validation: repository quality **246 tests / 245 pass / 0 fail / 1 intentional skip**; required Browser E2E **22 passed / 6 intentional skips / 0 failed**; CodeQL, Dependency Review, and Template Manifest Guard green.
+  - current Instructor and Student UIs are still on the pre-#312 experience; the new management surface has not been cut over.
+- Exact next action: build the Instructor live-management client on the proven server contract: Start Class, same-device Instructor resume, human join-code display/copy, Waiting roster, team/individual workspace creation, accessible assign/reassign/unassign controls, and observer/coaching navigation. Extend the deterministic browser fixture and real-browser Instructor journey in the same tranche. Keep drag-and-drop optional and do not cut over the Student one-code/reassignment client until the Instructor surface is browser-green.
 
 ## Approved Classroom follow-on direction
 
