@@ -22,6 +22,10 @@ const PUBLIC_DIRECTORIES = new Set(['src', 'components']);
 const PUBLIC_DOCS = new Set(['docs/eula.md']);
 const CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const CLASSROOM_EXPIRY = '2099-12-31T23:59:59.000Z';
+const INSTRUCTOR_WORKSPACE_IDS = Object.freeze({
+  INDIVIDUAL: '11111111-1111-4111-8111-111111111111',
+  GROUP: '22222222-2222-4222-8222-222222222222'
+});
 const classroomWorkspaces = new Map();
 
 const CONTENT_TYPES = Object.freeze({
@@ -71,6 +75,80 @@ function ensureWorkspace(workspaceToken) {
   return workspace;
 }
 
+function instructorClass() {
+  return {
+    id: 'browser-test-class',
+    title: 'Browser Test Classroom',
+    expiresAt: CLASSROOM_EXPIRY
+  };
+}
+
+function instructorRoster() {
+  return {
+    class: instructorClass(),
+    workspaces: [
+      {
+        id: INSTRUCTOR_WORKSPACE_IDS.INDIVIDUAL,
+        kind: 'individual',
+        label: 'Alex Student',
+        participantCount: 1,
+        activeParticipantCount: 1,
+        editingParticipantCount: 1
+      },
+      {
+        id: INSTRUCTOR_WORKSPACE_IDS.GROUP,
+        kind: 'group',
+        label: 'Team Beta',
+        participantCount: 3,
+        activeParticipantCount: 2,
+        editingParticipantCount: 0
+      }
+    ]
+  };
+}
+
+function instructorObservation(workspaceId) {
+  const roster = instructorRoster().workspaces;
+  const workspaceMeta = roster.find(item => item.id === workspaceId);
+  if (!workspaceMeta) return null;
+  const snapshot = freshClassroomSnapshot();
+  if (!snapshot.pre || typeof snapshot.pre !== 'object') snapshot.pre = {};
+  snapshot.pre.oneLine = workspaceId === INSTRUCTOR_WORKSPACE_IDS.INDIVIDUAL
+    ? 'Alex Student observed browser-test Intake.'
+    : 'Team Beta observed browser-test Intake.';
+  return {
+    class: instructorClass(),
+    workspace: {
+      id: workspaceMeta.id,
+      kind: workspaceMeta.kind,
+      label: workspaceMeta.label,
+      teamName: workspaceMeta.label,
+      revision: workspaceId === INSTRUCTOR_WORKSPACE_IDS.INDIVIDUAL ? 7 : 11,
+      expiresAt: CLASSROOM_EXPIRY,
+      updatedAt: '2099-12-31T23:00:00.000Z'
+    },
+    participants: workspaceId === INSTRUCTOR_WORKSPACE_IDS.INDIVIDUAL
+      ? [{
+          id: '33333333-3333-4333-8333-333333333333',
+          displayName: 'Alex Student',
+          activityState: 'editing'
+        }]
+      : [
+          {
+            id: '44444444-4444-4444-8444-444444444444',
+            displayName: 'Team Member One',
+            activityState: 'focused'
+          },
+          {
+            id: '55555555-5555-4555-8555-555555555555',
+            displayName: 'Team Member Two',
+            activityState: 'active'
+          }
+        ],
+    snapshot
+  };
+}
+
 async function readJson(request) {
   const chunks = [];
   let total = 0;
@@ -109,6 +187,39 @@ function classroomContext(workspaceToken) {
 }
 
 async function handleClassroomApi(request, response, url) {
+  if (url.pathname === '/api/classes/workspaces') {
+    if (request.method !== 'GET') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const instructorToken = bearerToken(request);
+    if (!validCapability(instructorToken)) {
+      sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
+      return true;
+    }
+    sendJson(response, 200, instructorRoster());
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/observe') {
+    if (request.method !== 'GET') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const instructorToken = bearerToken(request);
+    if (!validCapability(instructorToken)) {
+      sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
+      return true;
+    }
+    const observation = instructorObservation(url.searchParams.get('workspaceId') || '');
+    if (!observation) {
+      sendJson(response, 404, { error: 'Workspace not found.' });
+      return true;
+    }
+    sendJson(response, 200, observation);
+    return true;
+  }
+
   if (url.pathname === '/api/classes/join') {
     if (request.method !== 'POST') {
       sendJson(response, 405, { error: 'Method not allowed.' });
