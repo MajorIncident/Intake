@@ -1,11 +1,11 @@
 /**
  * @module classroomExerciseInstructor
- * @summary Owns Instructor staged-exercise discovery and the read-only console foundation.
+ * @summary Owns Instructor staged-exercise discovery, draft setup, and console state.
  * @description
  *   Receives the active Instructor capability from the class lifecycle, keeps it
- *   in memory only, and reads /api/classes/exercise. Tranche 6A deliberately
- *   exposes no exercise mutation actions; later Tranche 6 slices extend this
- *   controller with revision-safe lifecycle controls.
+ *   in memory only, and reads/writes the Instructor-authorized exercise endpoint.
+ *   Tranche 6B adds staged Case Study selection plus draft create/reuse only;
+ *   lifecycle actions remain deferred to later Tranche 6 slices.
  */
 
 export const INSTRUCTOR_EXERCISE_ENDPOINT = '/api/classes/exercise';
@@ -46,12 +46,23 @@ export function createInstructorExerciseConsoleController({
   let destroyed = false;
   let loading = false;
   let lastError = '';
+  let lastNotice = '';
   let classroom = null;
   let exercise = null;
   let caseStudy = null;
   let availableCaseStudies = [];
+  let selectedCaseStudyId = '';
 
   const element = id => documentRef?.getElementById?.(id) || null;
+
+  const currentPhaseLabel = () => {
+    if (!exercise) return '';
+    if (exercise.status === 'draft') return 'Draft';
+    if (exercise.status === 'paused') return 'Paused';
+    if (exercise.stagePhase === 'debrief') return 'Debrief';
+    if (exercise.status === 'completed') return 'Completed';
+    return 'In progress';
+  };
 
   const renderAvailable = () => {
     const list = element('instructorExerciseAvailableList');
@@ -78,6 +89,45 @@ export function createInstructorExerciseConsoleController({
     });
   };
 
+  const renderSetup = () => {
+    const select = element('instructorExerciseCaseSelect');
+    const createButton = element('instructorExerciseCreateBtn');
+    const help = element('instructorExerciseSetupHelp');
+    if (!select) return;
+
+    const requestedSelection = exercise?.caseStudyId || selectedCaseStudyId;
+    select.replaceChildren();
+
+    const placeholder = documentRef.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = availableCaseStudies.length
+      ? 'Select a staged Case Study'
+      : 'No staged Case Studies available';
+    select.append(placeholder);
+
+    availableCaseStudies.forEach(item => {
+      const option = documentRef.createElement('option');
+      option.value = item.id;
+      option.textContent = item.name;
+      select.append(option);
+    });
+
+    const selectionExists = availableCaseStudies.some(item => item.id === requestedSelection);
+    selectedCaseStudyId = selectionExists ? requestedSelection : '';
+    select.value = selectedCaseStudyId;
+    select.disabled = loading || Boolean(exercise) || availableCaseStudies.length === 0;
+
+    if (createButton) {
+      createButton.disabled = loading || Boolean(exercise) || !selectedCaseStudyId;
+      createButton.textContent = loading ? 'Working…' : 'Create draft';
+    }
+    if (help) {
+      help.textContent = exercise
+        ? 'This class already has an open exercise. Lifecycle controls will be added in the next console slices.'
+        : 'Choose an explicitly staged Case Study. Creating a draft does not release anything to Students.';
+    }
+  };
+
   const render = () => {
     const panel = element('instructorExerciseConsole');
     const status = element('instructorExerciseStatus');
@@ -95,21 +145,14 @@ export function createInstructorExerciseConsoleController({
     } else if (lastError) {
       if (status) status.textContent = lastError;
     } else if (exercise) {
-      const phase = exercise.status === 'draft'
-        ? 'Draft'
-        : exercise.status === 'paused'
-          ? 'Paused'
-          : exercise.stagePhase === 'debrief'
-            ? 'Debrief'
-            : exercise.status === 'completed'
-              ? 'Completed'
-              : 'In progress';
-      if (status) status.textContent = phase;
+      const phase = currentPhaseLabel();
+      if (status) status.textContent = lastNotice ? `${phase} · ${lastNotice}` : phase;
     } else {
       const count = availableCaseStudies.length;
-      if (status) status.textContent = count === 1
+      const availability = count === 1
         ? '1 staged Case Study available'
         : `${count} staged Case Studies available`;
+      if (status) status.textContent = lastNotice ? `${availability} · ${lastNotice}` : availability;
     }
 
     if (exercise && caseStudy) {
@@ -119,23 +162,41 @@ export function createInstructorExerciseConsoleController({
         : null;
       if (detail) detail.textContent = stage
         ? `${stage.title} · ${stage.studentObjective}`
-        : 'Draft exercise — no stage has started.';
+        : 'Draft exercise — no stage has started and nothing has been released to Students.';
     } else {
       if (caseName) caseName.textContent = 'No staged exercise selected';
       if (detail) detail.textContent = availableCaseStudies.length
-        ? 'Staged Case Studies are available. Exercise setup will be enabled in the next console slice.'
+        ? 'Choose a staged Case Study below to create the class exercise draft.'
         : 'The console is connected; no staged Case Study definition is currently available.';
     }
+    renderSetup();
     renderAvailable();
   };
 
   const resetState = () => {
     loading = false;
     lastError = '';
+    lastNotice = '';
     classroom = null;
     exercise = null;
     caseStudy = null;
     availableCaseStudies = [];
+    selectedCaseStudyId = '';
+  };
+
+  const applyPayload = body => {
+    classroom = body?.class && typeof body.class === 'object' ? body.class : null;
+    exercise = body?.exercise && typeof body.exercise === 'object' ? body.exercise : null;
+    caseStudy = body?.caseStudy && typeof body.caseStudy === 'object' ? body.caseStudy : null;
+    if (Array.isArray(body?.availableCaseStudies)) {
+      availableCaseStudies = body.availableCaseStudies
+        .map(sanitizeCaseStudySummary)
+        .filter(Boolean);
+    }
+    if (exercise?.caseStudyId) selectedCaseStudyId = exercise.caseStudyId;
+    if (!exercise && selectedCaseStudyId && !availableCaseStudies.some(item => item.id === selectedCaseStudyId)) {
+      selectedCaseStudyId = '';
+    }
   };
 
   const refresh = async () => {
@@ -144,6 +205,7 @@ export function createInstructorExerciseConsoleController({
     const localEpoch = epoch;
     loading = true;
     lastError = '';
+    lastNotice = '';
     render();
     try {
       const response = await fetchImpl(INSTRUCTOR_EXERCISE_ENDPOINT, {
@@ -158,16 +220,85 @@ export function createInstructorExerciseConsoleController({
           : 'Could not load the class exercise.';
         return false;
       }
-      classroom = body.class && typeof body.class === 'object' ? body.class : null;
-      exercise = body.exercise && typeof body.exercise === 'object' ? body.exercise : null;
-      caseStudy = body.caseStudy && typeof body.caseStudy === 'object' ? body.caseStudy : null;
-      availableCaseStudies = Array.isArray(body.availableCaseStudies)
-        ? body.availableCaseStudies.map(sanitizeCaseStudySummary).filter(Boolean)
-        : [];
+      applyPayload(body);
       return true;
     } catch {
       if (destroyed || localEpoch !== epoch) return false;
       lastError = 'Could not load the class exercise.';
+      return false;
+    } finally {
+      if (!destroyed && localEpoch === epoch) {
+        loading = false;
+        render();
+      }
+    }
+  };
+
+  const createDraft = async (caseStudyId = selectedCaseStudyId) => {
+    if (
+      destroyed
+      || !capability
+      || exercise
+      || loading
+      || typeof fetchImpl !== 'function'
+    ) return false;
+
+    const requestedId = typeof caseStudyId === 'string' ? caseStudyId.trim() : '';
+    if (!availableCaseStudies.some(item => item.id === requestedId)) {
+      lastError = 'Choose a staged Case Study.';
+      lastNotice = '';
+      render();
+      return false;
+    }
+
+    const localCapability = capability;
+    const localEpoch = epoch;
+    selectedCaseStudyId = requestedId;
+    loading = true;
+    lastError = '';
+    lastNotice = '';
+    render();
+
+    try {
+      const response = await fetchImpl(INSTRUCTOR_EXERCISE_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${localCapability}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ caseStudyId: requestedId })
+      });
+      const body = await response.json().catch(() => ({}));
+      if (destroyed || localEpoch !== epoch || capability !== localCapability) return false;
+
+      if (response.status === 409) {
+        loading = false;
+        const reloaded = await refresh();
+        if (reloaded && !destroyed && localEpoch === epoch) {
+          lastNotice = 'current state reloaded';
+          render();
+        } else if (!lastError) {
+          lastError = typeof body.error === 'string' ? body.error : 'Exercise changed. Refresh and retry.';
+          render();
+        }
+        return false;
+      }
+
+      if (!response.ok) {
+        lastError = response.status === 401 || response.status === 404
+          ? 'Exercise access is no longer available.'
+          : typeof body.error === 'string' && body.error
+            ? body.error
+            : 'Could not create the exercise draft.';
+        return false;
+      }
+
+      applyPayload(body);
+      lastNotice = body.created === false ? 'existing draft reused' : 'draft created';
+      return true;
+    } catch {
+      if (destroyed || localEpoch !== epoch) return false;
+      lastError = 'Could not create the exercise draft.';
       return false;
     } finally {
       if (!destroyed && localEpoch === epoch) {
@@ -194,25 +325,43 @@ export function createInstructorExerciseConsoleController({
   };
 
   const handleRefresh = () => { void refresh(); };
+  const handleSelect = event => {
+    selectedCaseStudyId = typeof event?.target?.value === 'string' ? event.target.value : '';
+    lastError = '';
+    lastNotice = '';
+    render();
+  };
+  const handleSetupSubmit = event => {
+    event.preventDefault();
+    void createDraft();
+  };
+
   element('instructorExerciseRefreshBtn')?.addEventListener('click', handleRefresh);
+  element('instructorExerciseCaseSelect')?.addEventListener('change', handleSelect);
+  element('instructorExerciseSetupForm')?.addEventListener('submit', handleSetupSubmit);
   render();
 
   return {
     connectInstructor,
     disconnect,
     refresh,
+    createDraft,
     getState: () => ({
       connected: Boolean(capability),
       loading,
       lastError,
+      lastNotice,
       classroom,
       exercise,
+      selectedCaseStudyId,
       caseStudy: caseStudy ? sanitizeCaseStudySummary(caseStudy) : null,
       availableCaseStudies: availableCaseStudies.map(item => ({ ...item }))
     }),
     destroy: () => {
       if (destroyed) return;
       element('instructorExerciseRefreshBtn')?.removeEventListener('click', handleRefresh);
+      element('instructorExerciseCaseSelect')?.removeEventListener('change', handleSelect);
+      element('instructorExerciseSetupForm')?.removeEventListener('submit', handleSetupSubmit);
       disconnect();
       destroyed = true;
     }
