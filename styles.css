@@ -395,7 +395,23 @@ body.experience-role-gate-open{overflow:hidden;}
   grid-template-columns:minmax(0,.8fr) repeat(2,minmax(0,1.1fr));
   gap:16px;
 }
-.student-class-form input[type="password"]{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.02em;}
+.student-class-form__grid--live{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);}
+#studentClassCode,.student-class-form input[type="password"]{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.02em;}
+.student-legacy-join{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);}
+.student-legacy-join>summary{cursor:pointer;color:var(--muted);font-size:12px;font-weight:750;}
+.student-legacy-join[open]>summary{color:var(--ink-strong);}
+.student-legacy-join .field{max-width:680px;margin-top:12px;}
+.student-class-waiting{
+  padding:22px;
+  border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));
+  border-radius:16px;
+  background:color-mix(in srgb,var(--accent) 6%,var(--panel));
+}
+.student-class-waiting>strong{display:block;color:var(--ink-strong);font-size:20px;}
+.student-class-waiting>p{max-width:720px;margin:8px 0 0;color:var(--muted);font-size:13px;line-height:1.6;}
+.student-class-waiting__meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+.student-class-waiting__meta>span{padding:6px 9px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);font-size:11px;}
+.student-class-waiting__meta strong{display:inline;color:var(--ink-strong);font-size:11px;}
 .student-class-form__privacy{
   margin:16px 0 0;
   color:var(--muted);
