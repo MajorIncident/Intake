@@ -2382,7 +2382,7 @@ body.dialog-open{overflow:hidden;}
   border: 1px solid transparent;
   border-radius: 0.6rem;
   cursor: pointer;
-  background: var(--accent);
+  background: var(--accent-text);
   color: var(--accent-contrast);
   box-shadow: var(--accent-shadow);
 }
