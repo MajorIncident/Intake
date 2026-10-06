@@ -435,6 +435,61 @@ Validation on `7bfd662...`:
 
 Do not implement Student one-code waiting/automatic reassignment UI until the Instructor management surface is browser-green.
 
+## Implementation checkpoint — Instructor live-management client
+
+Completed on #314 after the server assignment-authority tranche and before Student UI cutover.
+
+Implemented:
+- Instructor entry now makes **Start a class** the primary path while retaining **Open an existing class** as a collapsed recovery/advanced path;
+- Start Class creates the class from a title, persists only the Instructor capability plus public class/join-code context for same-device resume, and enters the dashboard immediately;
+- the dashboard displays the human Student join code with a copy affordance;
+- live polling combines class workspaces with the Instructor-only participant roster;
+- Waiting/Unassigned Students are visible before they have any workspace authority;
+- Instructor can create Team or Individual workspaces from the management panel;
+- accessible per-Student assignment selectors support assign, reassign, and unassign without requiring drag-and-drop;
+- workspace cards count live `classroom_participants` as well as legacy memberships;
+- selecting a workspace continues to use the existing server-enforced read-only observer and coaching integration;
+- the Instructor client ignores the legacy workspace `assignmentToken` returned for compatibility and never stores or reuses it;
+- same-device reload resumes the live class, current join code, participant roster, assignment state, and selected observer workspace;
+- the old existing-class recovery path remains covered and explicitly opens its disclosure before accepting the Instructor capability;
+- dynamic management controls are explicitly marked local-only so they never enter Intake persistence/export state.
+
+Browser fixture / regression coverage:
+- deterministic fixture now supports Start Class, live workspaces, live participant roster, assignment PATCH, and live observation;
+- real-browser journey proves: Start Class -> join-code display -> Waiting Student -> create Team Alpha -> assign Student -> read-only observe Team Alpha -> reload/resume;
+- the journey asserts no legacy `/api/classes/join` use and no Instructor request body contains an assignment token;
+- serious/critical axe violations and uncaught browser errors remain fatal;
+- existing Instructor observer/coaching/negative-authorization journeys continue through the intentional collapsed existing-class recovery path.
+
+Durable implementation commits:
+- `0d004552db82660dc723fd37a79ef4e46d197083` — live Instructor shell / primary Start Class UX;
+- `9c26bdf1a546428092af44dcf342cb2eae0d44a4` — live-management layout and responsive controls;
+- `f2306021eaa4cb95fd34e72940233fc0a99bcb3e` through `a2ae981e0a902f3c143446fec2fa1e77ef346d1f` — join-code/session, live roster, Start Class, workspace creation, assignment, copy, and lifecycle controller logic;
+- `40f6ece94c47d026ac201e0f434f51329d38c604` + `8fe9e4438b18684377382c7e7cadd68208da1c53` — count live participants in server/deterministic workspace rosters;
+- `09daa729f4b2a32e0c913985b741771ace34dc5f` + `709cd910de22189b1d362f58aa58c3c5abbf2642` — Instructor feature/unit coverage;
+- `2a76541675217aff46f90c255c33e40968db718f` + `e23b4cd8cf998b313418706bc36b7cf2d175b1db` — live-management browser fixture;
+- `692c81aa9c0007d94f2d91fe36bb34160ff9173c` — live Instructor Playwright journey;
+- `6122ba21719ae6823095331f429e9c337bf3713d` — source-level local-only annotations required by the persistence guard;
+- `205b0edc504e9978eb23e7f637ab14d811d9f088` through `d3e2a397cd76fc75e62516ed63ad76231bb4812c` — legacy Instructor browser journeys explicitly use the advanced existing-class recovery disclosure.
+
+Validation on `d3e2a397...`:
+- repository quality: **248 tests / 247 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **23 passed / 7 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
+
+**Exact next tranche:** cut the Student client over additively to the live class-session model:
+1. Student normal join becomes display name + one human class code;
+2. `POST /api/classes/admit` mints/persists only the Student class-session capability plus public context;
+3. an admitted unassigned Student shows Waiting and does not connect collaboration;
+4. poll only `GET /api/classes/student` for own assignment revision/state;
+5. when assigned, exchange the class-session token through `POST /api/classes/student/access`, then connect the existing collaboration controller with the returned assignment-specific token;
+6. on assignment revision change, disconnect/discard the old workspace token before requesting destination access and render destination snapshot as authoritative;
+7. on unassign, disconnect collaboration and return to Waiting while keeping the class-session capability;
+8. preserve the legacy two-code resume/admission path during migration;
+9. extend deterministic browser fixture + real-browser tests for one-code join, waiting, late assignment, A -> B reassignment, unassign, and stale-old-token cutoff.
+
+Do not remove legacy Student sessions/routes in this tranche, and do not add #313 staged exercise state yet.
+
 ## Student client lifecycle
 
 ### Waiting
