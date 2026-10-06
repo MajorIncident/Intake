@@ -295,6 +295,32 @@ Continue #295 on draft PR #307 from the current branch head.
   - Browser E2E, CI, CodeQL, Dependency Review, and Template Manifest Guard are all green on `1d181d22...`.
 - Exact next action: add deterministic browser coverage for invalid/expired/revoked Classroom credentials and unauthorized workspace enumeration attempts. Then finish the remaining collaboration/team coverage, documentation/stability review, and required-vs-advisory Browser E2E check decision before #308 is ready for review.
 
+## Approved Classroom follow-on direction
+
+The current #288 program establishes the secure Classroom foundation, but it is **not** the final Instructor-led teaching experience.
+
+- **#312 — Instructor-run live class, roster, and dynamic team management**
+  - normal Instructor path becomes **Start a class**, not manually supplying a pre-existing secret;
+  - one human-friendly Student join code/link for class admission;
+  - late joiners can enter an unassigned/waiting roster after an exercise has begun;
+  - Instructor creates teams/individual workspaces and assigns/reassigns Students live;
+  - accessible drag/drop-style grouping may be offered, with keyboard/button alternatives;
+  - moving a Student changes the server-authoritative workspace they synchronize with, without merging old/new team Intake snapshots;
+  - old team edit authority must not remain indefinitely after reassignment;
+  - Instructor dashboard should expose team membership, activity/progress/coaching signals, and fast observer/coaching navigation.
+
+- **#313 — Instructor-orchestrated case simulation and staged debrief**
+  - builds on #312 rather than expanding PR #308;
+  - Instructor selects/starts a Case Study and controls exercise stage;
+  - Student sees only case pages/evidence released for the current stage, ideally referenceable beside Intake;
+  - future-stage material and Instructor-only facilitation/model-answer material remain server-gated;
+  - teams document their reasoning/results continuously in Intake;
+  - Instructor can pause for debrief, review team work, coach, and then advance the class together;
+  - late join and team reassignment must preserve current-stage authorization;
+  - progressive disclosure, shared pacing, preserved Student work, and debrief-before-exemplar are the target simulation principles.
+
+#296/#279 should finish the present real-browser quality layer without encoding the current class+assignment-code Student admission UI as the permanent product contract. Negative authorization tests should protect credential isolation and non-enumeration in ways that remain valid when #312 replaces the current admission UX.
+
 ## Known risks / watch items
 
 - Existing collaboration secret links grant equal edit access and have no administrator role; classroom authorization must layer over rather than silently reinterpret those links.
