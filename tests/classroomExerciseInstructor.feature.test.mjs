@@ -196,6 +196,168 @@ test('Instructor draft conflict reloads authoritative current exercise instead o
   controller.destroy();
 });
 
+test('Instructor lifecycle sends optimistic revisions and renders current-stage facilitation context', async () => {
+  dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  const requests = [];
+  let exerciseState = {
+    id: 'exercise-1',
+    caseStudyId: 'staged-a',
+    status: 'draft',
+    stagePhase: 'work',
+    exerciseRevision: 1,
+    currentStageId: null
+  };
+  const caseStudy = {
+    id: 'staged-a',
+    name: 'Staged Case A',
+    description: 'Instructor simulation.',
+    supportedModes: ['full'],
+    simulation: {
+      stages: [{
+        id: 'stage-1',
+        title: 'Clarify the situation',
+        studentObjective: 'Frame the initial problem.',
+        suggestedMinutes: 7,
+        instructorContentIds: ['teach-1']
+      }],
+      instructorContent: [{
+        id: 'teach-1',
+        kind: 'facilitation',
+        title: 'Facilitation cue',
+        body: 'Keep teams focused on the deviation.'
+      }]
+    }
+  };
+
+  const controller = createInstructorExerciseConsoleController({
+    documentRef: dom.window.document,
+    fetchImpl: async (_url, options) => {
+      requests.push({
+        method: options.method,
+        body: options.body ? JSON.parse(options.body) : null
+      });
+      if (options.method === 'GET') {
+        return response(200, {
+          class: { id: 'class-1', title: 'PSDM Class' },
+          exercise: { ...exerciseState },
+          caseStudy,
+          availableCaseStudies: discoveryBody().availableCaseStudies
+        });
+      }
+      if (options.method === 'PATCH') {
+        const body = JSON.parse(options.body);
+        assert.equal(body.expectedRevision, exerciseState.exerciseRevision);
+        if (body.action === 'start') {
+          exerciseState = { ...exerciseState, status: 'active', currentStageId: 'stage-1', exerciseRevision: 2 };
+        } else if (body.action === 'pause') {
+          exerciseState = { ...exerciseState, status: 'paused', exerciseRevision: 3 };
+        } else if (body.action === 'resume') {
+          exerciseState = { ...exerciseState, status: 'active', exerciseRevision: 4 };
+        }
+        return response(200, {
+          class: { id: 'class-1', title: 'PSDM Class' },
+          exercise: { ...exerciseState },
+          caseStudy,
+          releases: [],
+          workspaceState: [],
+          checkpoints: [],
+          editFreezeEnforced: true,
+          changed: true
+        });
+      }
+      return response(405, {});
+    }
+  });
+
+  assert.equal(await controller.connectInstructor(TOKEN), true);
+  assert.equal(dom.window.document.getElementById('instructorExerciseStartBtn').hidden, false);
+
+  assert.equal(await controller.start(), true);
+  assert.deepEqual(requests.at(-1), {
+    method: 'PATCH',
+    body: { action: 'start', expectedRevision: 1 }
+  });
+  assert.equal(controller.getState().exercise.exerciseRevision, 2);
+  assert.equal(dom.window.document.getElementById('instructorExerciseStatus').textContent, 'In progress · exercise started');
+  assert.equal(dom.window.document.getElementById('instructorExerciseStageTitle').textContent, 'Clarify the situation');
+  assert.equal(dom.window.document.getElementById('instructorExerciseStageObjective').textContent, 'Frame the initial problem.');
+  assert.equal(dom.window.document.getElementById('instructorExerciseStageTiming').textContent, 'Suggested time: 7 min');
+  assert.equal(dom.window.document.getElementById('instructorExerciseFacilitationList').textContent.includes('Facilitation cue'), true);
+  assert.equal(dom.window.document.getElementById('instructorExerciseFacilitationList').textContent.includes('Keep teams focused on the deviation.'), true);
+  assert.equal(dom.window.document.getElementById('instructorExercisePauseBtn').hidden, false);
+
+  assert.equal(await controller.pause(), true);
+  assert.deepEqual(requests.at(-1), {
+    method: 'PATCH',
+    body: { action: 'pause', expectedRevision: 2 }
+  });
+  assert.equal(controller.getState().exercise.status, 'paused');
+  assert.equal(dom.window.document.getElementById('instructorExerciseResumeBtn').hidden, false);
+
+  assert.equal(await controller.resume(), true);
+  assert.deepEqual(requests.at(-1), {
+    method: 'PATCH',
+    body: { action: 'resume', expectedRevision: 3 }
+  });
+  assert.equal(controller.getState().exercise.status, 'active');
+  assert.equal(controller.getState().exercise.exerciseRevision, 4);
+  controller.destroy();
+});
+
+test('Instructor lifecycle conflict refreshes authoritative state without replaying stale intent', async () => {
+  dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  const requests = [];
+  let getCount = 0;
+  const draft = draftBody({ created: false });
+
+  const controller = createInstructorExerciseConsoleController({
+    documentRef: dom.window.document,
+    fetchImpl: async (_url, options) => {
+      requests.push(options.method);
+      if (options.method === 'GET') {
+        getCount += 1;
+        if (getCount === 1) {
+          return response(200, {
+            ...draft,
+            availableCaseStudies: discoveryBody().availableCaseStudies
+          });
+        }
+        return response(200, {
+          ...draft,
+          exercise: {
+            ...draft.exercise,
+            status: 'active',
+            currentStageId: 'stage-1',
+            exerciseRevision: 2
+          },
+          availableCaseStudies: discoveryBody().availableCaseStudies
+        });
+      }
+      if (options.method === 'PATCH') {
+        return response(409, {
+          error: 'Exercise changed. Refresh and retry.',
+          exercise: {
+            ...draft.exercise,
+            status: 'active',
+            currentStageId: 'stage-1',
+            exerciseRevision: 2
+          }
+        });
+      }
+      return response(405, {});
+    }
+  });
+
+  await controller.connectInstructor(TOKEN);
+  assert.equal(await controller.start(), false);
+  assert.deepEqual(requests, ['GET', 'PATCH', 'GET']);
+  assert.equal(controller.getState().exercise.status, 'active');
+  assert.equal(controller.getState().exercise.exerciseRevision, 2);
+  assert.equal(dom.window.document.getElementById('instructorExerciseStatus').textContent, 'In progress · current state reloaded');
+  assert.equal(dom.window.document.getElementById('instructorExercisePauseBtn').hidden, false);
+  controller.destroy();
+});
+
 test('Instructor exercise console keeps a connected shell on transient read failure and can refresh', async () => {
   dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
   let attempt = 0;
