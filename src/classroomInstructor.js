@@ -607,6 +607,7 @@ export function createInstructorClassroomController({
     clearInstructorSession(storage);
     activeSession = null;
     workspaces = [];
+    participants = [];
     selectedWorkspaceId = '';
     restoreLocal();
     renderEntry();
@@ -678,16 +679,34 @@ export function createInstructorClassroomController({
   async function refreshRoster() {
     if (!activeSession || destroyed) return false;
     try {
-      const { response, body } = await fetchRoster(activeSession.instructorToken);
-      if (response.status === 404 || response.status === 401) {
+      const {
+        workspaceResponse,
+        workspaceBody,
+        participantResponse,
+        participantBody
+      } = await fetchRoster(activeSession.instructorToken);
+      if (
+        [workspaceResponse.status, participantResponse.status].some(status => status === 404 || status === 401)
+      ) {
         return terminalClass('This instructor class is no longer available. Use the current Instructor access code.');
       }
-      if (!response.ok || !acceptRoster(body)) {
+      if (
+        !workspaceResponse.ok
+        || !participantResponse.ok
+        || !acceptRoster(workspaceBody, participantBody)
+      ) {
         setError('Could not refresh the class roster. Live observation will keep retrying.');
         scheduleRoster();
         return false;
       }
-      activeSession.class = { id: body.class.id, title: body.class.title, expiresAt: body.class.expiresAt || null };
+      activeSession.class = {
+        id: workspaceBody.class.id,
+        title: workspaceBody.class.title,
+        expiresAt: workspaceBody.class.expiresAt || null
+      };
+      activeSession.joinCode = formatInstructorJoinCode(
+        workspaceBody.class.joinCode || activeSession.joinCode || ''
+      );
       if (selectedWorkspaceId && !workspaces.some(item => item.id === selectedWorkspaceId)) {
         selectedWorkspaceId = '';
         latestObservation = null;
@@ -695,6 +714,7 @@ export function createInstructorClassroomController({
       }
       saveSession();
       renderDashboard();
+      renderParticipants();
       renderRoster();
       if (!selectedWorkspaceId && workspaces[0]) await selectWorkspace(workspaces[0].id);
       scheduleRoster();
@@ -711,18 +731,29 @@ export function createInstructorClassroomController({
     if (state.token) collaboration?.leave?.({ silent: true });
   };
 
-  const activateClass = async (token, preferredWorkspaceId = '') => {
+  const activateClass = async (token, preferredWorkspaceId = '', sessionHints = {}) => {
     onClassDisconnected();
     disconnectStandaloneCollaboration();
     setBusy(true);
     setStatus('connecting');
     setError('');
     try {
-      const { response, body } = await fetchRoster(token);
-      if (response.status === 404 || response.status === 401) {
+      const {
+        workspaceResponse,
+        workspaceBody,
+        participantResponse,
+        participantBody
+      } = await fetchRoster(token);
+      if (
+        [workspaceResponse.status, participantResponse.status].some(status => status === 404 || status === 401)
+      ) {
         return terminalClass('The Instructor access code was not accepted or has expired.');
       }
-      if (!response.ok || !acceptRoster(body)) {
+      if (
+        !workspaceResponse.ok
+        || !participantResponse.ok
+        || !acceptRoster(workspaceBody, participantBody)
+      ) {
         setError('The class service is unavailable right now. Your local Intake is unchanged.');
         renderEntry({ retry: Boolean(activeSession), message: 'The class service is unavailable right now.' });
         return false;
@@ -730,9 +761,19 @@ export function createInstructorClassroomController({
       activeSession = {
         version: INSTRUCTOR_SESSION_VERSION,
         instructorToken: token,
-        class: { id: body.class.id, title: body.class.title, expiresAt: body.class.expiresAt || null },
+        joinCode: formatInstructorJoinCode(
+          sessionHints.joinCode
+          || workspaceBody.class.joinCode
+          || activeSession?.joinCode
+          || ''
+        ),
+        class: {
+          id: workspaceBody.class.id,
+          title: workspaceBody.class.title,
+          expiresAt: workspaceBody.class.expiresAt || null
+        },
         selectedWorkspaceId: null,
-        openedAt: new Date(now()).toISOString()
+        openedAt: sessionHints.openedAt || activeSession?.openedAt || new Date(now()).toISOString()
       };
       selectedWorkspaceId = workspaces.some(item => item.id === preferredWorkspaceId)
         ? preferredWorkspaceId
@@ -740,15 +781,17 @@ export function createInstructorClassroomController({
       saveSession();
       onClassConnected(token);
       renderDashboard();
+      renderParticipants();
       renderRoster();
       if (element('instructorClassCode')) element('instructorClassCode').value = '';
+      if (element('instructorClassTitleInput')) element('instructorClassTitleInput').value = '';
       if (selectedWorkspaceId) await selectWorkspace(selectedWorkspaceId);
       else restoreLocal();
       scheduleRoster();
       return true;
     } catch {
       setError('Could not reach the class service. Your local Intake is unchanged.');
-      renderEntry({ retry: Boolean(activeSession), message: 'Could not reach the class service.' });
+      renderEntry({ retry: Boolean(activeSession), message: 'The class service is unavailable right now.' });
       return false;
     } finally {
       setBusy(false);
