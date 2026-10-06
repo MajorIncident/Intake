@@ -156,8 +156,18 @@ export function createInstructorClassroomController({
   };
   const setBusy = value => {
     busy = value;
-    if (element('instructorClassOpenBtn')) element('instructorClassOpenBtn').disabled = value;
-    if (element('instructorClassRetryBtn')) element('instructorClassRetryBtn').disabled = value;
+    [
+      'instructorClassStartBtn',
+      'instructorClassOpenBtn',
+      'instructorClassRetryBtn',
+      'instructorWorkspaceCreateBtn',
+      'instructorCopyJoinCodeBtn'
+    ].forEach(id => {
+      if (element(id)) element(id).disabled = value;
+    });
+    element('instructorParticipantList')?.querySelectorAll?.('select')?.forEach(select => {
+      select.disabled = value;
+    });
   };
   const abort = controller => { try { controller?.abort?.(); } catch {} };
   const clearTimer = timer => {
@@ -194,7 +204,9 @@ export function createInstructorClassroomController({
     setStatus(retry ? 'retry' : 'disconnected');
     if (element('instructorClassEntryCard')) element('instructorClassEntryCard').hidden = false;
     if (element('instructorClassDashboard')) element('instructorClassDashboard').hidden = true;
-    if (element('instructorClassForm')) element('instructorClassForm').hidden = retry;
+    if (element('instructorClassStartForm')) element('instructorClassStartForm').hidden = retry;
+    if (element('instructorExistingClass')) element('instructorExistingClass').hidden = retry;
+    if (element('instructorClassForm')) element('instructorClassForm').hidden = false;
     if (element('instructorClassResumePanel')) element('instructorClassResumePanel').hidden = !retry;
     if (element('instructorClassResumeTitle')) {
       element('instructorClassResumeTitle').textContent = activeSession?.class?.title || 'Saved instructor class';
@@ -218,6 +230,9 @@ export function createInstructorClassroomController({
     if (element('instructorClassDashboard')) element('instructorClassDashboard').hidden = false;
     if (element('instructorClassTitle')) element('instructorClassTitle').textContent = activeSession.class.title;
     renderExpiry(activeSession.class.expiresAt);
+    const joinCode = formatInstructorJoinCode(activeSession.joinCode || activeSession.class?.joinCode || '');
+    if (element('instructorJoinCode')) element('instructorJoinCode').textContent = joinCode || 'Unavailable';
+    if (element('instructorCopyJoinCodeBtn')) element('instructorCopyJoinCodeBtn').disabled = !joinCode || busy;
     setError('');
   };
 
