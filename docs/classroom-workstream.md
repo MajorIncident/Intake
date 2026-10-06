@@ -447,7 +447,15 @@ Continue #295 on draft PR #307 from the current branch head.
   - `d66eeeace6f9e41dade765b6b0331a69a40ebbb0` / `261b28d488538964ccd73132ed568d73628f6411` prove allowed work writes, 423 frozen-write rejection with zero snapshot/revision mutation, frozen GET availability, Standalone isolation, freeze persistence through Pause/Resume, and explicit unfreeze restoring writes.
   - stable temporary-lock contract: HTTP **423 Locked**, `code: classroom-editing-locked`.
   - validation on `261b28d...`: repository quality **274 tests / 273 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
-- Exact next action: implement **Tranche 6 only — Instructor exercise console** inside the existing live Instructor dashboard. Add staged Case Study selection/draft creation, stage/facilitation display, accessible lifecycle/release/debrief/freeze/advance/complete controls, readiness/progress, conflict refresh, and existing observer/coaching navigation. Keep Student staged-case panel and production official-case staging deferred.
+- Tranche 6A — Instructor exercise console foundation:
+  - implementation spans `2624f1e...` through `d20a303...`;
+  - `GET /api/classes/exercise` now returns `availableCaseStudies` containing **only** staged Case Study summaries; full `simulation` definitions and protected source `state` are not used for discovery;
+  - new `src/classroomExerciseInstructor.js` owns an in-memory Instructor exercise client and read-only console foundation;
+  - the existing Instructor dashboard now includes a `[feature:instructor-exercise-console]` section for current exercise status, staged availability, and explicit refresh;
+  - Instructor capability and exercise context remain outside Intake persistence, summaries, exports, URLs, and public manifests;
+  - no exercise mutations were added in 6A; selection/create and Start/Pause/Debrief controls remain intentionally deferred to the next slice;
+  - focused API/client tests cover staged-only discovery, absence of protected simulation/source material in the discovery list, capability non-persistence, draft rendering, disconnect cleanup, and transient refresh recovery.
+- Exact next action: continue **Tranche 6B — staged Case Study selection and draft creation** inside the existing console. Add an accessible staged-case selector/create action, preserve one-open-exercise and optimistic revision semantics, render the resulting draft, and add focused DOM/browser coverage. Do not add Start/Pause/Resume/debrief lifecycle controls until the following slice; keep Student staged-case UI and production official-case staging deferred.
 
 ## Approved Classroom follow-on direction
 
