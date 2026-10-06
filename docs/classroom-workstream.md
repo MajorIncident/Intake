@@ -475,7 +475,17 @@ Continue #295 on draft PR #307 from the current branch head.
   - deterministic browser fixture now implements matching Start/Pause/Resume revision semantics against the synthetic staged case;
   - focused controller coverage proves revision progression, stage/facilitation rendering, state-specific controls, and 409 refresh; real-browser Instructor acceptance proves Start -> Pause -> Resume -> reload;
   - the unrelated four-browser acceptance timeout is raised narrowly from 30s to 45s after the previous run completed product assertions but timed out during teardown; no behavioral assertion was removed.
-- Exact next action: implement **Tranche 6D — optional evidence release and team readiness/progress signals**. Add current-work-stage optional release controls using revision-safe `release-content`, show already-released state, render per-workspace Ready/working signals from `workspaceState`, and connect team rows to existing observer navigation where practical. Do not add Begin Debrief, Freeze/Unfreeze, Advance, or Complete yet; keep Student staged-case UI and production official-case staging deferred.
+- Tranche 6D — optional evidence release and team readiness/progress:
+  - implementation spans `1de00a1...` through green implementation head `2c8145b...`;
+  - the console renders optional Student evidence only from the **current stage's** explicit `optionalReleaseIds`; future-stage optional content is not projected into the Instructor release UI;
+  - **Release to Students** PATCHes `release-content` with the currently observed `exerciseRevision`; a genuinely new stale release 409 refreshes authoritative state and never replays stale intent;
+  - an already-recorded release remains idempotent and renders **Released** without a second revision bump;
+  - current-stage `workspaceState` rows render Ready/Working progress and progress buttons reuse the existing Instructor `selectWorkspace()` observer/coaching path rather than creating a second observer;
+  - exercise releases/readiness/progress remain memory-only and local-only / summary-excluded;
+  - deterministic browser coverage uses only synthetic optional evidence/readiness and proves release, persisted release after reload, Ready progress, and one-click observer navigation;
+  - the prior four-browser failure was traced to nested scrolling in the expanded Instructor rail, not product authorization; the rail layout now lets the outer dashboard own scrolling so workspace buttons remain genuinely clickable without forced test clicks;
+  - validation on `2c8145b...`: repository quality **285 tests / 284 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+- Exact next action: implement **Tranche 6E — Begin Debrief, checkpoint review, and Freeze/Allow Editing**. Add revision-safe Begin Debrief, render captured immutable current-stage checkpoint status/revision per workspace, expose explicit Freeze / Allow Editing only during debrief with authoritative `studentEditingEnabled` state, and preserve 409 authoritative-refresh/no-replay behavior. Keep Advance/Complete deferred to 6F; keep Student staged-case UI and production official-case staging deferred.
 
 ## Approved Classroom follow-on direction
 
