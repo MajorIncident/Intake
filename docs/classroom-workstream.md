@@ -354,7 +354,16 @@ Continue #295 on draft PR #307 from the current branch head.
   - `7bfd662e2dcbe5511a4065b7b19222129485d08a` proves Waiting -> Team A -> Team B -> Waiting, idempotent same-team assignment, cross-class rejection, stale-token write rejection, old-presence cleanup, no snapshot merge, and individual-workspace single occupancy.
   - validation: repository quality **246 tests / 245 pass / 0 fail / 1 intentional skip**; required Browser E2E **22 passed / 6 intentional skips / 0 failed**; CodeQL, Dependency Review, and Template Manifest Guard green.
   - current Instructor and Student UIs are still on the pre-#312 experience; the new management surface has not been cut over.
-- Exact next action: build the Instructor live-management client on the proven server contract: Start Class, same-device Instructor resume, human join-code display/copy, Waiting roster, team/individual workspace creation, accessible assign/reassign/unassign controls, and observer/coaching navigation. Extend the deterministic browser fixture and real-browser Instructor journey in the same tranche. Keep drag-and-drop optional and do not cut over the Student one-code/reassignment client until the Instructor surface is browser-green.
+- Instructor live-management client checkpoint:
+  - `0d004552db82660dc723fd37a79ef4e46d197083` / `9c26bdf1a546428092af44dcf342cb2eae0d44a4` establish the primary Start Class shell, join-code panel, live roster/team controls, and responsive layout while keeping Open existing class as recovery.
+  - `f2306021eaa4cb95fd34e72940233fc0a99bcb3e` through `a2ae981e0a902f3c143446fec2fa1e77ef346d1f` wire Instructor session/join-code state, combined workspace+participant polling, Start Class, workspace creation, assignment, copy, resume, and observer lifecycle.
+  - `40f6ece94c47d026ac201e0f434f51329d38c604` / `8fe9e4438b18684377382c7e7cadd68208da1c53` make live participants count in workspace member totals.
+  - `09daa729f4b2a32e0c913985b741771ace34dc5f` / `709cd910de22189b1d362f58aa58c3c5abbf2642` add Instructor feature/unit coverage.
+  - `2a76541675217aff46f90c255c33e40968db718f` / `e23b4cd8cf998b313418706bc36b7cf2d175b1db` extend the deterministic browser fixture; `692c81aa9c0007d94f2d91fe36bb34160ff9173c` adds the real-browser Start Class -> Waiting -> create Team -> assign -> observe -> reload/resume journey.
+  - the first browser run exposed only an intentional-UX test mismatch: old Instructor tests tried to type into the now-collapsed existing-class recovery disclosure. `205b0edc...` through `d3e2a397cd76fc75e62516ed63ad76231bb4812c` update those journeys to explicitly open recovery first.
+  - validation on `d3e2a397...`: repository quality **248 tests / 247 pass / 0 fail / 1 intentional skip**; required Browser E2E **23 passed / 7 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+  - the normal Instructor flow no longer depends on exposing legacy Student join/assignment capabilities; compatibility routes remain intact.
+- Exact next action: implement the additive Student live-class client: one-code admission, waiting state, own-status polling, assignment-specific access exchange, automatic safe A -> B reassignment/unassign, and same-device class-session resume. Extend the deterministic fixture and real-browser coverage through late assignment/reassignment while keeping the legacy two-code Student path available and keeping #313 staged simulation out of this PR.
 
 ## Approved Classroom follow-on direction
 
