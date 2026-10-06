@@ -98,7 +98,7 @@ export function createInstructorExerciseConsoleController({
     const requestedSelection = exercise?.caseStudyId || selectedCaseStudyId;
     select.replaceChildren();
 
-    const placeholder = documentRef.createElement('option');
+    const placeholder = documentRef.createElement('option'); // data-persistence="local-only"
     placeholder.value = '';
     placeholder.textContent = availableCaseStudies.length
       ? 'Select a staged Case Study'
@@ -106,7 +106,7 @@ export function createInstructorExerciseConsoleController({
     select.append(placeholder);
 
     availableCaseStudies.forEach(item => {
-      const option = documentRef.createElement('option');
+      const option = documentRef.createElement('option'); // data-persistence="local-only"
       option.value = item.id;
       option.textContent = item.name;
       select.append(option);
