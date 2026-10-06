@@ -269,7 +269,7 @@ async function initializeClassroomRepository() {
     PRIMARY KEY (class_id, participant_id),
     FOREIGN KEY (class_id, workspace_id)
       REFERENCES classroom_workspaces(class_id, workspace_id)
-      ON DELETE SET NULL
+      ON DELETE SET NULL (workspace_id)
   )`;
   await sql`CREATE INDEX IF NOT EXISTS classroom_participants_class_idx
     ON classroom_participants (class_id, joined_at)`;
