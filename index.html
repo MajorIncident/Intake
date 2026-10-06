@@ -328,20 +328,37 @@ Anchors present:
   <main class="experience-shell instructor-shell" id="instructorExperienceShell" data-experience-surface="instructor-shell" aria-labelledby="instructorExperienceTitle" data-persistence="local-only" data-summary="exclude" hidden>
     <section class="experience-shell__card instructor-entry-card" id="instructorClassEntryCard">
       <span class="experience-shell__eyebrow">Instructor</span>
-      <h2 id="instructorExperienceTitle">Open your class</h2>
-      <p>Use the Instructor access code created with the class. It authorizes the roster and read-only observation only; it never becomes a Student workspace credential.</p>
-      <form class="instructor-class-form" id="instructorClassForm" autocomplete="off">
+      <h2 id="instructorExperienceTitle">Run a class</h2>
+      <p>Start a new live class, or open an existing class from an Instructor access code. Instructor authority manages the class and observes work; it never becomes a Student workspace credential.</p>
+
+      <form class="instructor-class-form instructor-class-start-form" id="instructorClassStartForm" autocomplete="off">
         <div class="field" data-persistence="local-only" data-summary="exclude">
-          <label for="instructorClassCode" data-persistence="local-only" data-summary="exclude">Instructor access code</label>
-          <input id="instructorClassCode" name="instructorClassCode" type="password" autocomplete="off" spellcheck="false" placeholder="Paste Instructor access code" data-persistence="local-only" data-summary="exclude" />
-          <small>Your access code is stored only on this device for class resume and never enters Intake case data.</small>
+          <label for="instructorClassTitleInput" data-persistence="local-only" data-summary="exclude">Class title</label>
+          <input id="instructorClassTitleInput" name="instructorClassTitleInput" type="text" maxlength="120" autocomplete="off" placeholder="PSDM workshop — October 6" data-persistence="local-only" data-summary="exclude" />
+          <small>Students will join with one short class code after you start.</small>
         </div>
-        <p class="student-class-form__error" id="instructorClassError" role="alert" aria-live="polite" hidden></p>
         <div class="experience-shell__actions">
-          <button type="submit" class="btn" id="instructorClassOpenBtn" data-persistence="local-only" data-summary="exclude">Open class</button>
+          <button type="submit" class="btn" id="instructorClassStartBtn" data-persistence="local-only" data-summary="exclude">Start class</button>
           <button type="button" class="btn-secondary" data-open-experience-role-chooser data-persistence="local-only" data-summary="exclude">Change experience</button>
         </div>
       </form>
+
+      <details class="instructor-existing-class" id="instructorExistingClass">
+        <summary>Open an existing class</summary>
+        <form class="instructor-class-form" id="instructorClassForm" autocomplete="off">
+          <div class="field" data-persistence="local-only" data-summary="exclude">
+            <label for="instructorClassCode" data-persistence="local-only" data-summary="exclude">Instructor access code</label>
+            <input id="instructorClassCode" name="instructorClassCode" type="password" autocomplete="off" spellcheck="false" placeholder="Paste Instructor access code" data-persistence="local-only" data-summary="exclude" />
+            <small>Your access code is stored only on this device for class resume and never enters Intake case data.</small>
+          </div>
+          <div class="experience-shell__actions">
+            <button type="submit" class="btn-secondary" id="instructorClassOpenBtn" data-persistence="local-only" data-summary="exclude">Open class</button>
+          </div>
+        </form>
+      </details>
+
+      <p class="student-class-form__error" id="instructorClassError" role="alert" aria-live="polite" hidden></p>
+
       <section class="student-class-resume" id="instructorClassResumePanel" aria-live="polite" hidden>
         <span class="student-class-resume__eyebrow">Saved instructor class</span>
         <strong id="instructorClassResumeTitle">Instructor class</strong>
@@ -359,6 +376,11 @@ Anchors present:
           <span class="experience-shell__eyebrow">Instructor class</span>
           <h2 id="instructorClassTitle">Class</h2>
           <p id="instructorClassExpiry">Instructor-managed class</p>
+          <div class="instructor-join-code" id="instructorJoinCodePanel" data-persistence="local-only" data-summary="exclude">
+            <span>Student join code</span>
+            <strong id="instructorJoinCode">—</strong>
+            <button type="button" class="btn-secondary" id="instructorCopyJoinCodeBtn" data-persistence="local-only" data-summary="exclude">Copy code</button>
+          </div>
         </div>
         <div class="instructor-dashboard__actions">
           <button type="button" class="btn-secondary" id="instructorTeachingResourcesBtn" data-open-templates-drawer aria-haspopup="dialog" aria-controls="templatesDrawer" aria-expanded="false" data-persistence="local-only" data-summary="exclude">
@@ -367,6 +389,32 @@ Anchors present:
           <button type="button" class="btn-secondary" id="instructorClassLeaveBtn" data-persistence="local-only" data-summary="exclude">Leave class</button>
         </div>
       </div>
+      <section class="instructor-live-management" aria-labelledby="instructorLiveManagementTitle" data-persistence="local-only" data-summary="exclude">
+        <div class="instructor-live-management__heading">
+          <div>
+            <strong id="instructorLiveManagementTitle">Live class management</strong>
+            <span id="instructorParticipantSummary" aria-live="polite">0 students</span>
+          </div>
+        </div>
+
+        <form class="instructor-workspace-create" id="instructorWorkspaceCreateForm" autocomplete="off">
+          <label class="visually-hidden" for="instructorWorkspaceLabel" data-persistence="local-only" data-summary="exclude">Workspace name</label>
+          <input id="instructorWorkspaceLabel" type="text" maxlength="80" placeholder="Team Alpha" data-persistence="local-only" data-summary="exclude" />
+          <label class="visually-hidden" for="instructorWorkspaceKind" data-persistence="local-only" data-summary="exclude">Workspace type</label>
+          <select id="instructorWorkspaceKind" data-persistence="local-only" data-summary="exclude">
+            <option value="group" data-persistence="local-only" data-summary="exclude">Team</option>
+            <option value="individual" data-persistence="local-only" data-summary="exclude">Individual</option>
+          </select>
+          <button type="submit" class="btn-secondary" id="instructorWorkspaceCreateBtn" data-persistence="local-only" data-summary="exclude">Create workspace</button>
+        </form>
+
+        <div class="instructor-participant-heading">
+          <strong>Students</strong>
+          <span>Assign with the selector; Waiting leaves the student unassigned.</span>
+        </div>
+        <div class="instructor-participant-list" id="instructorParticipantList" aria-live="polite"></div>
+      </section>
+
       <div class="instructor-roster-controls" data-persistence="local-only" data-summary="exclude">
         <label class="visually-hidden" for="instructorWorkspaceSearch" data-persistence="local-only" data-summary="exclude">Search student or team workspaces</label>
         <input id="instructorWorkspaceSearch" type="search" placeholder="Search students or teams" autocomplete="off" data-persistence="local-only" data-summary="exclude" />
