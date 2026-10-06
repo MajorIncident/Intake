@@ -421,7 +421,15 @@ Continue #295 on draft PR #307 from the current branch head.
   - Standard Templates cannot carry `simulation`; Student and Instructor content are separate, stable-ID/cross-reference validated namespaces; unsafe arbitrary fields/URLs are rejected; existing non-staged Case Studies remain unchanged.
   - no official production case has been staged or guessed.
   - validation on `af6b6f21...`: repository quality **260 tests / 259 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; Template Manifest Guard and Dependency Review green.
-- Exact next action: implement **Tranche 3 only** — additive exercise persistence/repository + deterministic in-memory parity: class exercise lifecycle state, optimistic revision, optional releases, workspace readiness, immutable idempotent debrief checkpoints, class/workspace scoping, and retention. Do not add HTTP exercise routes, collaboration freeze enforcement, or UI yet.
+- Staged exercise persistence/repository checkpoint:
+  - `ea964de7afc002ca307a903db7e1493d56837f13` adds additive exercise, optional-release, workspace-readiness, and immutable-checkpoint tables with class/workspace foreign-key scoping and one-open-exercise-per-class enforcement.
+  - `3e519b8f4ab136404ade550376af0c80e06574f1` adds real repository primitives for draft creation, optimistic lifecycle mutation, release replay/idempotency, Student-session/current-workspace readiness, class-scoped checkpoint capture/listing, and class-bounded expiry.
+  - `8595e1ec1072b365e82f759494ea0edb25001a4c` mirrors those semantics in the deterministic repository.
+  - `f7c1e580ca8fdc5e818e1f6974af374850f6d3a6` proves one-open-exercise, optimistic conflict, completion/history, release idempotency, readiness staying with teams through reassignment, Waiting rejection, immutable snapshot-isolated checkpoints, and cross-class rejection.
+  - `09ffaa6c...` through `c01dfff2f2bd1f9d7625901860210cc00eee7051` additionally pin simulation version + definition fingerprint on each exercise and keep those columns migration-safe so later APIs can fail closed on definition drift.
+  - pre-hardening validation on `f7c1e58...`: repository quality **265 tests / 264 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+  - no exercise HTTP route, Student collaboration write lock, or exercise UI exists yet.
+- Exact next action: implement **Tranche 4 only — exercise APIs/authorization**: Instructor create/read/lifecycle/release/debrief/checkpoint/advance/complete, Student class-session current release + workspace readiness, pinned-definition drift checks, and active-staged-case full-payload bypass closure. Build the complete credential/class/future-content authorization matrix. Do **not** claim or expose server-enforced editing freeze until Tranche 5, and do not add Instructor/Student exercise UI yet.
 
 ## Approved Classroom follow-on direction
 
