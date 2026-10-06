@@ -334,6 +334,14 @@ async function initializeRepository() {
         WHERE token_hash = ${tokenHash} AND revoked_at IS NULL
         RETURNING token_hash`;
       return rows.length > 0;
+    },
+    async getCapabilityKind(tokenHash) {
+      const rows = await sql`SELECT capability_kind AS kind
+        FROM collaboration_workspace_capabilities
+        WHERE token_hash = ${tokenHash}
+          AND revoked_at IS NULL
+          AND (expires_at IS NULL OR expires_at > NOW())`;
+      return rows[0]?.kind || null;
     }
   };
 }
@@ -413,7 +421,10 @@ export function presenceHandler({ getRepository = getWorkspaceRepository } = {})
 }
 
 /** Creates a Vercel load/update handler. @param {object} [dependencies] Dependencies. @returns {Function} Handler. */
-export function workspaceHandler({ getRepository = getWorkspaceRepository } = {}) {
+export function workspaceHandler({
+  getRepository = getWorkspaceRepository,
+  getWritePolicy = null
+} = {}) {
   return async (req, res) => {
     const authorization = req.headers?.authorization;
     if (authorization === undefined) return send(res, 401, { error: 'Authorization required.' });
@@ -439,7 +450,24 @@ export function workspaceHandler({ getRepository = getWorkspaceRepository } = {}
       const validation = validateSnapshot(req.body?.snapshot);
       if (!validation.ok) return send(res, validation.status, { error: validation.status === 413 ? 'Snapshot is too large.' : 'Invalid request.' });
       if (!Number.isInteger(req.body?.revision) || req.body.revision < 1) return send(res, 400, { error: 'Invalid request.' });
-      const result = await repository.update(hashWorkspaceToken(token), req.body.snapshot, req.body.revision);
+
+      const tokenHash = hashWorkspaceToken(token);
+      if (getWritePolicy && repository.getCapabilityKind) {
+        const capabilityKind = await repository.getCapabilityKind(tokenHash);
+        if (capabilityKind === 'classroom-student') {
+          const policy = await getWritePolicy(tokenHash);
+          if (!policy) return send(res, 404, { error: 'Workspace not found.' });
+          if (policy.allowed === false) {
+            return send(res, 423, {
+              error: 'Student editing is temporarily locked by the Instructor.',
+              code: 'classroom-editing-locked',
+              exercise: policy.exercise || null
+            });
+          }
+        }
+      }
+
+      const result = await repository.update(tokenHash, req.body.snapshot, req.body.revision);
       if (result.status === 'conflict') return send(res, 409, { error: 'Revision conflict.', revision: result.revision });
       if (result.status === 'missing') return send(res, 404, { error: 'Workspace not found.' });
       return send(res, 200, result.workspace);
