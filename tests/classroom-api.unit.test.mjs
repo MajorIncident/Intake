@@ -10,11 +10,15 @@ import {
   CLASS_TITLE_MAX_LENGTH,
   CLASS_WORKSPACE_LABEL_MAX_LENGTH,
   COACHING_NOTE_MAX_LENGTH,
+  classAdmitHandler,
   classCoachingHandler,
   classHandler,
   classJoinHandler,
+  classParticipantsHandler,
   classObserveHandler,
+  classStudentAccessHandler,
   classStudentCoachingHandler,
+  classStudentHandler,
   classWorkspacesHandler,
   formatClassJoinCode,
   normalizeClassJoinCode,
@@ -157,6 +161,7 @@ test('class creation returns raw capabilities once and stores only hashes', asyn
   const handler = classHandler({
     getRepository: async () => classrooms,
     tokenFactory: tokenFactory(['I', 'J']),
+    joinCodeFactory: () => 'K7FMP4Q2',
     idFactory: () => CLASS_A_ID
   });
 
@@ -167,10 +172,233 @@ test('class creation returns raw capabilities once and stores only hashes', asyn
   assert.equal(res.body.class.title, 'Fall Workshop');
   assert.equal(res.body.instructorToken, 'I'.repeat(43));
   assert.equal(res.body.studentJoinToken, 'J'.repeat(43));
+  assert.equal(res.body.joinCode, 'K7FM-P4Q2');
+  assert.equal(classrooms.classes[0].studentJoinCode, 'K7FMP4Q2');
   assert.equal(classrooms.classes[0].instructorHash, testTokenHash('I'));
   assert.equal(classrooms.classes[0].studentJoinHash, testTokenHash('J'));
   assert.equal(res.headers['Cache-Control'], 'no-store');
   assert.equal(res.headers['Referrer-Policy'], 'no-referrer');
+});
+
+test('one-code admission creates a waiting Student class session without workspace edit authority', async () => {
+  const classrooms = createClassroomRepository();
+  const workspaceRepo = createWorkspaceRepository();
+  await classrooms.createClass({
+    publicId: CLASS_A_ID,
+    title: 'Class A',
+    instructorHash: testTokenHash('A'),
+    studentJoinHash: testTokenHash('C'),
+    studentJoinCode: 'K7FMP4Q2'
+  });
+
+  const admit = classAdmitHandler({
+    getRepository: async () => classrooms,
+    tokenFactory: tokenFactory(['S'])
+  });
+  const admitted = response();
+  await admit({
+    method: 'POST',
+    body: {
+      joinCode: ' k7fm-p4q2 ',
+      participantId: PARTICIPANT_A,
+      displayName: '  Alex  '
+    }
+  }, admitted);
+
+  assert.equal(admitted.statusCode, 200);
+  assert.equal(admitted.body.class.id, CLASS_A_ID);
+  assert.equal(admitted.body.participant.displayName, 'Alex');
+  assert.equal(admitted.body.participant.assignmentRevision, 0);
+  assert.equal(admitted.body.assignment, null);
+  assert.equal(admitted.body.studentSessionToken, 'S'.repeat(43));
+
+  const directWorkspace = response();
+  await workspaceHandler({ getRepository: async () => workspaceRepo })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + admitted.body.studentSessionToken }
+  }, directWorkspace);
+  assert.equal(directWorkspace.statusCode, 404, 'class-session authority is not collaboration edit authority');
+
+  const invalid = response();
+  await classAdmitHandler({
+    getRepository: async () => classrooms,
+    tokenFactory: tokenFactory(['T'])
+  })({
+    method: 'POST',
+    body: {
+      joinCode: 'M8RN-Q5W3',
+      participantId: PARTICIPANT_B,
+      displayName: 'Blair'
+    }
+  }, invalid);
+  assert.equal(invalid.statusCode, 404);
+  assert.deepEqual(invalid.body, { error: 'Class not available.' });
+});
+
+test('Instructor participant roster is class-scoped while Student status returns only self', async () => {
+  const classrooms = createClassroomRepository();
+  await classrooms.createClass({
+    publicId: CLASS_A_ID,
+    title: 'Class A',
+    instructorHash: testTokenHash('A'),
+    studentJoinHash: testTokenHash('C'),
+    studentJoinCode: 'K7FMP4Q2'
+  });
+
+  await classrooms.admitParticipant({
+    joinCode: 'K7FMP4Q2',
+    participantId: PARTICIPANT_A,
+    displayName: 'Alex',
+    sessionHash: testTokenHash('S')
+  });
+  await classrooms.admitParticipant({
+    joinCode: 'K7FMP4Q2',
+    participantId: PARTICIPANT_B,
+    displayName: 'Blair',
+    sessionHash: testTokenHash('T')
+  });
+
+  const rosterHandler = classParticipantsHandler({ getRepository: async () => classrooms });
+  const roster = response();
+  await rosterHandler({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) }
+  }, roster);
+  assert.equal(roster.statusCode, 200);
+  assert.deepEqual(roster.body.participants.map(item => item.displayName), ['Alex', 'Blair']);
+
+  const studentCannotEnumerate = response();
+  await rosterHandler({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) }
+  }, studentCannotEnumerate);
+  assert.equal(studentCannotEnumerate.statusCode, 404);
+
+  const statusHandler = classStudentHandler({ getRepository: async () => classrooms });
+  const alex = response();
+  await statusHandler({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) }
+  }, alex);
+  assert.equal(alex.statusCode, 200);
+  assert.equal(alex.body.participant.id, PARTICIPANT_A);
+  assert.equal(alex.body.participant.displayName, 'Alex');
+  assert.equal(alex.body.assignment, null);
+  assert.equal('participants' in alex.body, false);
+  assert.equal('workspaceToken' in alex.body, false);
+});
+
+test('Student workspace access waits while unassigned and rotates assignment-specific edit authority', async () => {
+  const classrooms = createClassroomRepository();
+  const workspaceRepo = createWorkspaceRepository();
+  await classrooms.createClass({
+    publicId: CLASS_A_ID,
+    title: 'Class A',
+    instructorHash: testTokenHash('A'),
+    studentJoinHash: testTokenHash('C'),
+    studentJoinCode: 'K7FMP4Q2'
+  });
+  const workspace = await workspaceRepo.create(
+    testTokenHash('P'),
+    { pre: { oneLine: 'Team A current Intake' } },
+    30,
+    'Team A'
+  );
+  await classrooms.addWorkspace(testTokenHash('A'), {
+    publicId: WORKSPACE_A_ID,
+    workspaceId: workspace.id,
+    kind: 'group',
+    label: 'Team A',
+    claimHash: testTokenHash('X')
+  });
+  await classrooms.admitParticipant({
+    joinCode: 'K7FMP4Q2',
+    participantId: PARTICIPANT_A,
+    displayName: 'Alex',
+    sessionHash: testTokenHash('S')
+  });
+
+  const waitingHandler = classStudentAccessHandler({
+    getRepository: async () => classrooms,
+    getWorkspaceRepo: async () => workspaceRepo,
+    tokenFactory: tokenFactory(['W'])
+  });
+  const waiting = response();
+  await waitingHandler({
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) }
+  }, waiting);
+  assert.equal(waiting.statusCode, 409);
+  assert.equal(waiting.body.status, 'waiting');
+  assert.equal(waiting.body.assignment, null);
+  assert.equal('workspaceToken' in waiting.body, false);
+
+  const participant = [...classrooms.participants.values()][0];
+  participant.workspaceId = workspace.id;
+  participant.assignmentRevision = 1;
+
+  const firstAccess = response();
+  await classStudentAccessHandler({
+    getRepository: async () => classrooms,
+    getWorkspaceRepo: async () => workspaceRepo,
+    tokenFactory: tokenFactory(['W'])
+  })({
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) }
+  }, firstAccess);
+  assert.equal(firstAccess.statusCode, 200);
+  assert.equal(firstAccess.body.assignment.id, WORKSPACE_A_ID);
+  assert.equal(firstAccess.body.participant.assignmentRevision, 1);
+  assert.equal(firstAccess.body.workspaceToken, 'W'.repeat(43));
+
+  const firstLoad = response();
+  await workspaceHandler({ getRepository: async () => workspaceRepo })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'W'.repeat(43) }
+  }, firstLoad);
+  assert.equal(firstLoad.statusCode, 200);
+  assert.equal(firstLoad.body.snapshot.pre.oneLine, 'Team A current Intake');
+
+  await classrooms.upsertFeedback(testTokenHash('A'), WORKSPACE_A_ID, {
+    targetId: 'problem.one-line',
+    status: 'meets-standard',
+    note: 'Clear',
+    reviewedWorkspaceRevision: 1,
+    reviewedFieldFingerprint: 'v1-0123456789abcdef'
+  });
+  const liveCoaching = response();
+  await classStudentCoachingHandler({ getRepository: async () => classrooms })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'W'.repeat(43) }
+  }, liveCoaching);
+  assert.equal(liveCoaching.statusCode, 200);
+  assert.deepEqual(liveCoaching.body.feedback.map(item => item.targetId), ['problem.one-line']);
+
+  const rotated = response();
+  await classStudentAccessHandler({
+    getRepository: async () => classrooms,
+    getWorkspaceRepo: async () => workspaceRepo,
+    tokenFactory: tokenFactory(['V'])
+  })({
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) }
+  }, rotated);
+  assert.equal(rotated.statusCode, 200);
+  assert.equal(rotated.body.workspaceToken, 'V'.repeat(43));
+
+  const oldLoad = response();
+  await workspaceHandler({ getRepository: async () => workspaceRepo })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'W'.repeat(43) }
+  }, oldLoad);
+  assert.equal(oldLoad.statusCode, 404);
+
+  const newLoad = response();
+  await workspaceHandler({ getRepository: async () => workspaceRepo })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'V'.repeat(43) }
+  }, newLoad);
+  assert.equal(newLoad.statusCode, 200);
 });
 
 test('class admin rejects missing or malformed authorization before repository access', async () => {
