@@ -331,7 +331,14 @@ Continue #295 on draft PR #307 from the current branch head.
   - reassignment never merges snapshots; destination team state wins;
   - legacy two-code admission remains supported during additive migration.
 - Critical race protection: never remap one active workspace edit token from Team A to Team B. Old edit capability is revoked; Student obtains fresh destination access after assignment revision changes.
-- Exact next action after this architecture checkpoint: implement the additive join-code + `classroom_participants` schema and repository methods with API tests, while leaving the existing Student UI and legacy `/api/classes/join` path unchanged.
+- Persistence/repository checkpoint:
+  - `99c31f2e9c59180ed297db96512b62b310692b4c` adds the human join-code column and additive `classroom_participants` model plus live participant/session repository primitives;
+  - `fa6180ada0183dfc4b19790925e61deea60bdfbf` corrects the participant/workspace FK deletion behavior so required class identity is preserved;
+  - `5665637e6f550bebb861c73109e991b6e96a73c9` mirrors the model in the deterministic test repository;
+  - `df3633d008bb7e352509e15c1964b7d27ebf441f` adds focused join-code normalization, waiting-roster, class-scoping, and class-session-rotation tests.
+  - validation: canonical quality **241 tests / 1 intentional skip**; required Browser E2E **22 passed / 6 intentional skips / 0 failed**; CodeQL, Dependency Review, and Template Manifest Guard green.
+  - current Student UI and legacy `POST /api/classes/join` remain unchanged.
+- Exact next action: implement the live-class HTTP admission/status/access layer on top of these primitives (Start Class join code, `POST /api/classes/admit`, Instructor participant roster, Student own-status, Student current-workspace access), with authorization tests before any UI cutover or assignment/reassignment UI.
 
 ## Approved Classroom follow-on direction
 
