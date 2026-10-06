@@ -789,16 +789,37 @@ Lifecycle/pacing contract:
 
 Implementation spans `53ce2b7...` through `2888beb...`.
 
+## Implementation checkpoint — Tranche 6D optional evidence release and team readiness/progress
+
+Release/progress contract:
+- optional release UI is derived only from the current stage's explicit `optionalReleaseIds` and the protected Instructor-authorized staged definition; future-stage optional Student content is not rendered as a release control;
+- a new optional release PATCHes `{ action: "release-content", expectedRevision, contentId }` only while the represented exercise is active/current-stage work;
+- an already-recorded release is idempotent and renders **Released** without a duplicate revision increment;
+- a genuinely new stale release returns conflict and the client performs one authoritative GET; stale release intent is never automatically replayed;
+- current-stage team progress is derived only from Instructor-authorized `workspaceState`; represented rows show Ready/Working while absence of a readiness row is reported honestly as no readiness signal yet;
+- progress buttons reuse the existing Instructor `selectWorkspace()` observer/coaching flow rather than minting any new workspace authority or observer path;
+- release/progress controls are local-only and summary-excluded; staged content, readiness, and capabilities remain outside Intake persistence/exports;
+- deterministic browser acceptance uses only synthetic optional evidence/readiness and proves release -> Released, Ready progress, observer navigation, and server-backed state after reload;
+- expansion of the Instructor console exposed a real nested-scroll usability bug in the rail. The inner workspace list no longer owns a competing scroll region, so the outer dashboard keeps workspace rows reachable/clickable without force-click workarounds.
+
+Implementation spans `1de00a1...` through `2c8145b...`.
+
+Validation on `2c8145b31f96403f59ff3b41d9396fd2a3ac86ed`:
+- repository quality: **285 tests / 284 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **26 passed / 8 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
+
 ## Exact next implementation action
 
-Implement **Tranche 6D — optional evidence release and team readiness/progress signals**.
+Implement **Tranche 6E — Begin Debrief, checkpoint review, and Freeze/Allow Editing**.
 
 Required next slice:
-- render current-stage optional Student content to the Instructor as unreleased/released controls without exposing future-stage content;
-- PATCH `release-content` with the current exercise revision and selected current-stage content ID;
-- preserve release idempotency and 409 authoritative-refresh behavior;
-- show current-stage per-workspace readiness/working state from the existing Instructor exercise payload;
-- make progress rows useful for existing observer/coaching navigation without creating a second observer;
-- extend the synthetic staged browser case with deterministic optional evidence/readiness only as needed for acceptance.
+- expose Begin Debrief only for an active current-stage work phase and send the current `exerciseRevision`;
+- after Begin Debrief, render authoritative current-stage checkpoint capture status/revision for represented workspaces without replacing live Intake;
+- render the authoritative `studentEditingEnabled` policy separately from Pause state;
+- expose explicit **Freeze editing** / **Allow editing** only in active current-stage debrief and PATCH revision-safe `set-editing`;
+- preserve the server-enforced 423 boundary already implemented in Tranche 5;
+- every 409 lifecycle/edit-policy conflict must authoritative-refresh rather than replay stale intent;
+- extend focused and synthetic-browser coverage for work -> debrief checkpoint capture -> freeze/unfreeze while observer/coaching remains available.
 
-Do **not** add Begin Debrief, Freeze/Unfreeze, Advance, or Complete in 6D. Keep Student staged-case UI and production official Case Study staging deferred.
+Do **not** add Advance or Complete in 6E; reserve those for Tranche 6F. Keep Student staged-case UI and production official Case Study staging deferred.
