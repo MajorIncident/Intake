@@ -35,7 +35,7 @@ See `docs/REPOSITORY-OPERATIONS.md#delivery-resilience-for-ai-assisted-work` for
 
 ## Long-running Classroom Program
 
-The Standalone / Student / Instructor program is tracked by #288. Any work touching experience roles, classes, classroom workspaces, instructor observation, coaching, or protected Case Studies must read `docs/classroom-architecture.md`, `docs/classroom-roadmap.md`, and `docs/classroom-workstream.md` before editing. Class/API authorization work must additionally read `docs/classroom-api.md` and `api/AGENTS.md`.
+The Standalone / Student / Instructor program is tracked by #288. Any work touching experience roles, classes, classroom workspaces, instructor observation, coaching, or protected Case Studies must read `docs/classroom-architecture.md`, `docs/classroom-roadmap.md`, and `docs/classroom-workstream.md` before editing. Class/API authorization work must additionally read `docs/classroom-api.md` and `api/AGENTS.md`. Staged exercise/debrief work under #313 must also read `docs/classroom-staged-simulation.md`.
 
 Classroom invariants:
 
@@ -48,6 +48,7 @@ Classroom invariants:
 - student credentials never provide class/workspace enumeration;
 - Case Study unlock passwords are pedagogy, not authentication;
 - protected Case Study metadata/payloads are server-gated, absent from public browser/static assets, and authored `templates/*.json` remains excluded from Vercel deployment; `src/templates.manifest.js` is Standard-only and browser code must never import `api/protected-case-studies.manifest.js`.
+- staged simulation content follows `docs/classroom-staged-simulation.md`: future-stage and Instructor-only material are server-withheld, complete protected Case Study `state` cannot bypass an active staged release, and exercise/checkpoint state never enters Intake serialization;
 - public Vercel static output comes only from generated `dist/`; never set `outputDirectory` back to `.` or otherwise expose repository docs/tests/scripts/AGENTS/authoring files. `scripts/build-vercel-public.mjs` owns the allowlisted browser bundle and is part of the canonical quality gate.
 
 Every classroom PR must update `docs/classroom-workstream.md` before handoff with its issue, PR/base dependency, current HEAD, completed/incomplete work, validation, risks, and exact next action. For stacked PRs, state the merge order and never describe an unmerged dependent PR as independently mergeable.
