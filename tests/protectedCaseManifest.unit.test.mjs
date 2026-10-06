@@ -8,6 +8,7 @@ import { test } from 'node:test';
 import { PROTECTED_CASE_STUDY_MANIFEST } from '../api/protected-case-studies.manifest.js';
 import { TEMPLATE_MANIFEST } from '../src/templates.manifest.js';
 import { TEMPLATE_KINDS } from '../src/templateKinds.js';
+import { validateStagedSimulation } from '../scripts/staged-simulation-schema.mjs';
 
 test('public manifest contains only Standard Templates while protected cases stay server-side', async () => {
   assert.ok(TEMPLATE_MANIFEST.length > 0, 'at least one public Standard Template should exist');
@@ -22,8 +23,20 @@ test('public manifest contains only Standard Templates while protected cases sta
     'server-only manifest must contain only Case Studies'
   );
 
+  assert.ok(
+    TEMPLATE_MANIFEST.every(entry => !Object.hasOwn(entry, 'simulation')),
+    'public Standard Template manifest must never contain staged simulation definitions'
+  );
+
   const publicIds = new Set(TEMPLATE_MANIFEST.map(entry => entry.id));
   for (const caseStudy of PROTECTED_CASE_STUDY_MANIFEST) {
+    if (caseStudy.simulation !== undefined) {
+      assert.deepEqual(
+        validateStagedSimulation(caseStudy.simulation),
+        [],
+        `${caseStudy.id} staged simulation should remain valid in the server-only manifest`
+      );
+    }
     assert.equal(publicIds.has(caseStudy.id), false, `${caseStudy.id} must not be public`);
   }
 
