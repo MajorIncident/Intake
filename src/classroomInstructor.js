@@ -807,6 +807,171 @@ export function createInstructorClassroomController({
     return activateClass(token);
   };
 
+  const startClass = async titleValue => {
+    const title = typeof titleValue === 'string' ? titleValue.trim() : '';
+    if (!title || title.length > 120) {
+      setError('Enter a class title before starting the class.');
+      return false;
+    }
+    if (!fetchImpl) {
+      setError('The class service is unavailable right now.');
+      return false;
+    }
+
+    setBusy(true);
+    setStatus('creating');
+    setError('');
+    disconnectStandaloneCollaboration();
+    try {
+      const response = await fetchImpl(INSTRUCTOR_CLASSES_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title })
+      });
+      const body = await responseJson(response);
+      if (
+        response.status !== 201
+        || !validateInstructorCapability(body.instructorToken)
+        || typeof body.class?.id !== 'string'
+        || typeof body.class?.title !== 'string'
+      ) {
+        setError(body.error || 'Could not start the class.');
+        return false;
+      }
+
+      const createdSession = {
+        version: INSTRUCTOR_SESSION_VERSION,
+        instructorToken: body.instructorToken,
+        joinCode: formatInstructorJoinCode(body.joinCode || ''),
+        class: {
+          id: body.class.id,
+          title: body.class.title,
+          expiresAt: body.class.expiresAt || null
+        },
+        selectedWorkspaceId: null,
+        openedAt: new Date(now()).toISOString()
+      };
+      activeSession = createdSession;
+      saveSession();
+
+      return activateClass(body.instructorToken, '', {
+        joinCode: createdSession.joinCode,
+        openedAt: createdSession.openedAt
+      });
+    } catch {
+      setError('Could not start the class. Check your connection.');
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const createWorkspace = async (kindValue, labelValue) => {
+    if (!activeSession || busy) return false;
+    const kind = ['group', 'individual'].includes(kindValue) ? kindValue : '';
+    const label = typeof labelValue === 'string' ? labelValue.trim() : '';
+    if (!kind || !label || label.length > 80) {
+      setError('Enter a workspace name and choose Team or Individual.');
+      return false;
+    }
+
+    setBusy(true);
+    setError('');
+    try {
+      const response = await fetchImpl(INSTRUCTOR_WORKSPACES_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${activeSession.instructorToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ kind, label, snapshot: {} })
+      });
+      const body = await responseJson(response);
+      if (!response.ok || !validWorkspace(body.workspace)) {
+        setError(body.error || 'Could not create the workspace.');
+        return false;
+      }
+      if (element('instructorWorkspaceLabel')) element('instructorWorkspaceLabel').value = '';
+      toast(`${kind === 'group' ? 'Team' : 'Individual workspace'} created.`);
+      await refreshRoster();
+      return true;
+    } catch {
+      setError('Could not create the workspace. Check your connection.');
+      return false;
+    } finally {
+      setBusy(false);
+      renderParticipants();
+    }
+  };
+
+  const assignParticipant = async (participantId, workspaceId) => {
+    if (!activeSession || busy || !UUID_PATTERN.test(participantId || '')) return false;
+    if (workspaceId !== null && !workspaces.some(workspace => workspace.id === workspaceId)) {
+      renderParticipants();
+      return false;
+    }
+
+    setBusy(true);
+    setError('');
+    try {
+      const response = await fetchImpl(INSTRUCTOR_PARTICIPANTS_ENDPOINT, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${activeSession.instructorToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ participantId, workspaceId })
+      });
+      const body = await responseJson(response);
+      if (!response.ok) {
+        setError(body.error || 'Could not update the Student assignment.');
+        renderParticipants();
+        return false;
+      }
+      toast(body.changed === false
+        ? 'Student assignment is already current.'
+        : workspaceId
+          ? 'Student assignment updated.'
+          : 'Student returned to Waiting.');
+      await refreshRoster();
+      return true;
+    } catch {
+      setError('Could not update the Student assignment. Check your connection.');
+      renderParticipants();
+      return false;
+    } finally {
+      setBusy(false);
+      renderParticipants();
+    }
+  };
+
+  const copyJoinCode = async () => {
+    const joinCode = formatInstructorJoinCode(activeSession?.joinCode || '');
+    if (!joinCode) return false;
+    try {
+      if (windowRef?.navigator?.clipboard?.writeText) {
+        await windowRef.navigator.clipboard.writeText(joinCode);
+        toast('Student join code copied.');
+        return true;
+      }
+      const temporary = documentRef?.createElement?.('textarea');
+      if (!temporary) return false;
+      temporary.value = joinCode;
+      temporary.setAttribute('readonly', '');
+      temporary.style.position = 'fixed';
+      temporary.style.opacity = '0';
+      documentRef.body?.append(temporary);
+      temporary.select();
+      const copied = documentRef.execCommand?.('copy') === true;
+      temporary.remove();
+      if (copied) toast('Student join code copied.');
+      return copied;
+    } catch {
+      toast(`Student join code: ${joinCode}`);
+      return false;
+    }
+  };
+
   const resume = async () => {
     if (destroyed || getActiveExperienceRole() !== EXPERIENCE_ROLE_IDS.INSTRUCTOR) return false;
     const stored = readInstructorSession(storage);
