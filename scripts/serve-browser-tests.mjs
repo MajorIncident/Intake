@@ -443,7 +443,7 @@ async function handleClassroomApi(request, response, url) {
       ? body.joinCode.trim().toUpperCase().replace(/[\s-]+/gu, '')
       : '';
     const isolatedCode = STUDENT_LIVE_JOIN_CODE.replace('-', '');
-    const integratedCode = LIVE_JOIN_CODE.replace('-', '');
+    const integratedCode = INTEGRATED_JOIN_CODE.replace('-', '');
     const participantId = typeof body?.participantId === 'string' ? body.participantId : '';
     const displayName = typeof body?.displayName === 'string' ? body.displayName.trim() : '';
     if (![isolatedCode, integratedCode].includes(joinCode) || !participantId || !displayName) {
@@ -455,20 +455,20 @@ async function handleClassroomApi(request, response, url) {
     const studentSessionToken = fixtureCapability('l', sequence);
     let session;
 
-    if (joinCode === integratedCode && liveClassState) {
+    if (joinCode === integratedCode && integratedClassState) {
       session = {
         participantId,
         displayName,
         assignmentRevision: 0,
         assignment: null,
-        workspaceStates: liveInstructorWorkspaceStates,
-        classContext: liveInstructorClass(),
+        workspaceStates: integratedInstructorWorkspaceStates,
+        classContext: integratedInstructorClass(),
         integrated: true,
         statusReads: 0,
         accessCount: 0,
         activeWorkspaceToken: ''
       };
-      liveInstructorParticipants.push({
+      integratedInstructorParticipants.push({
         id: participantId,
         displayName,
         assignmentRevision: 0,
@@ -596,10 +596,29 @@ async function handleClassroomApi(request, response, url) {
       sendJson(response, 400, { error: 'Invalid class title.' });
       return true;
     }
+    if (title === 'Integrated Browser Classroom') {
+      integratedClassState = {
+        id: 'browser-integrated-class',
+        title,
+        joinCode: INTEGRATED_JOIN_CODE.replace('-', ''),
+        expiresAt: CLASSROOM_EXPIRY
+      };
+      integratedInstructorWorkspaces = [];
+      integratedInstructorWorkspaceStates.clear();
+      integratedInstructorParticipants = [];
+      sendJson(response, 201, {
+        class: integratedInstructorClass(),
+        instructorToken: INTEGRATED_INSTRUCTOR_TOKEN,
+        studentJoinToken: `${'c'.repeat(42)}t`,
+        joinCode: INTEGRATED_JOIN_CODE
+      });
+      return true;
+    }
+
     liveClassState = {
       id: 'browser-live-class',
       title,
-      joinCode: 'K7FMP4Q2',
+      joinCode: LIVE_JOIN_CODE.replace('-', ''),
       expiresAt: CLASSROOM_EXPIRY
     };
     liveInstructorWorkspaces = [];
@@ -629,13 +648,13 @@ async function handleClassroomApi(request, response, url) {
     }
 
     if (request.method === 'GET') {
-      sendJson(response, 200, instructorToken === LIVE_INSTRUCTOR_TOKEN
-        ? liveInstructorRoster()
-        : instructorRoster());
+      const managedRoster = managedInstructorRoster(instructorToken);
+      sendJson(response, 200, managedRoster || instructorRoster());
       return true;
     }
 
-    if (request.method === 'POST' && instructorToken === LIVE_INSTRUCTOR_TOKEN) {
+    const managedFixture = managedInstructorFixture(instructorToken);
+    if (request.method === 'POST' && managedFixture) {
       const body = await readJson(request).catch(() => null);
       const kind = ['group', 'individual'].includes(body?.kind) ? body.kind : '';
       const label = typeof body?.label === 'string' ? body.label.trim() : '';
@@ -643,7 +662,7 @@ async function handleClassroomApi(request, response, url) {
         sendJson(response, 400, { error: 'Invalid workspace request.' });
         return true;
       }
-      const id = LIVE_WORKSPACE_IDS[liveInstructorWorkspaces.length];
+      const id = managedFixture.workspaceIds[managedFixture.workspaces.length];
       if (!id) {
         sendJson(response, 409, { error: 'Browser fixture workspace limit reached.' });
         return true;
@@ -657,11 +676,11 @@ async function handleClassroomApi(request, response, url) {
         activeParticipantCount: 0,
         editingParticipantCount: 0
       };
-      liveInstructorWorkspaces.push(workspace);
+      managedFixture.workspaces.push(workspace);
       const snapshot = freshClassroomSnapshot();
       if (!snapshot.pre || typeof snapshot.pre !== 'object') snapshot.pre = {};
       snapshot.pre.oneLine = `${workspace.label} live-class Intake.`;
-      liveInstructorWorkspaceStates.set(workspace.id, {
+      managedFixture.workspaceStates.set(workspace.id, {
         snapshot,
         revision: 1,
         teamName: workspace.label,
@@ -669,7 +688,7 @@ async function handleClassroomApi(request, response, url) {
       });
       sendJson(response, 201, {
         workspace,
-        assignmentToken: `${'a'.repeat(42)}${String(liveInstructorWorkspaces.length).slice(-1)}`
+        assignmentToken: `${'a'.repeat(42)}${String(managedFixture.workspaces.length).slice(-1)}`
       });
       return true;
     }
@@ -686,18 +705,18 @@ async function handleClassroomApi(request, response, url) {
     }
 
     if (request.method === 'GET') {
-      sendJson(response, 200, instructorToken === LIVE_INSTRUCTOR_TOKEN
-        ? liveInstructorParticipantRoster()
-        : instructorParticipants());
+      const managedRoster = managedInstructorParticipantRoster(instructorToken);
+      sendJson(response, 200, managedRoster || instructorParticipants());
       return true;
     }
 
-    if (request.method === 'PATCH' && instructorToken === LIVE_INSTRUCTOR_TOKEN) {
+    const managedFixture = managedInstructorFixture(instructorToken);
+    if (request.method === 'PATCH' && managedFixture) {
       const body = await readJson(request).catch(() => null);
-      const participant = liveInstructorParticipants.find(item => item.id === body?.participantId);
+      const participant = managedFixture.participants.find(item => item.id === body?.participantId);
       const workspace = body?.workspaceId === null
         ? null
-        : liveInstructorWorkspaces.find(item => item.id === body?.workspaceId);
+        : managedFixture.workspaces.find(item => item.id === body?.workspaceId);
       if (!participant || (body?.workspaceId !== null && !workspace)) {
         sendJson(response, 404, { error: 'Participant or workspace not found.' });
         return true;
@@ -722,7 +741,7 @@ async function handleClassroomApi(request, response, url) {
         }
       }
       sendJson(response, 200, {
-        class: liveInstructorClass(),
+        class: managedFixture.classContext,
         participant: structuredClone(participant),
         assignment: structuredClone(participant.assignment),
         changed: !unchanged
@@ -745,9 +764,8 @@ async function handleClassroomApi(request, response, url) {
       return true;
     }
     const workspaceId = url.searchParams.get('workspaceId') || '';
-    const observation = instructorToken === LIVE_INSTRUCTOR_TOKEN
-      ? liveInstructorObservation(workspaceId)
-      : instructorObservation(workspaceId);
+    const observation = managedInstructorObservation(instructorToken, workspaceId)
+      || instructorObservation(workspaceId);
     if (!observation) {
       sendJson(response, 404, { error: 'Workspace not found.' });
       return true;
@@ -764,9 +782,8 @@ async function handleClassroomApi(request, response, url) {
     }
     const workspaceId = url.searchParams.get('workspaceId') || '';
     const legacyWorkspace = instructorRoster().workspaces.find(item => item.id === workspaceId) || null;
-    const liveWorkspace = instructorToken === LIVE_INSTRUCTOR_TOKEN
-      ? liveInstructorWorkspaces.find(item => item.id === workspaceId) || null
-      : null;
+    const managedFixture = managedInstructorFixture(instructorToken);
+    const liveWorkspace = managedFixture?.workspaces.find(item => item.id === workspaceId) || null;
     const workspace = liveWorkspace || legacyWorkspace;
     if (!workspace) {
       sendJson(response, 404, { error: 'Workspace not found.' });
@@ -776,7 +793,7 @@ async function handleClassroomApi(request, response, url) {
 
     if (request.method === 'GET') {
       sendJson(response, 200, {
-        class: liveWorkspace ? liveInstructorClass() : instructorClass(),
+        class: liveWorkspace ? managedFixture.classContext : instructorClass(),
         workspace,
         feedback: [...workspaceFeedback.values()]
       });
