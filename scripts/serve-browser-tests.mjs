@@ -48,6 +48,44 @@ const STUDENT_LIVE_CLASS = Object.freeze({
   title: 'Browser Student Live Classroom',
   expiresAt: CLASSROOM_EXPIRY
 });
+const BROWSER_STAGED_CASE = Object.freeze({
+  id: 'browser-staged-simulation',
+  name: 'Browser Staged Simulation',
+  description: 'Synthetic staged Case Study used only by deterministic browser acceptance.',
+  supportedModes: ['full'],
+  simulation: {
+    version: 1,
+    studentContent: [
+      {
+        id: 'browser-brief-1',
+        kind: 'narrative',
+        title: 'Initial browser briefing',
+        body: 'Synthetic Student-safe browser briefing.'
+      }
+    ],
+    instructorContent: [
+      {
+        id: 'browser-teach-1',
+        kind: 'facilitation',
+        title: 'Browser facilitation note',
+        body: 'Synthetic Instructor-only browser facilitation.'
+      }
+    ],
+    stages: [
+      {
+        id: 'browser-stage-1',
+        title: 'Clarify the browser case',
+        studentObjective: 'Capture the initial situation in Intake.',
+        initialReleaseIds: ['browser-brief-1'],
+        optionalReleaseIds: [],
+        intakeTargetIds: ['problem.one-line'],
+        suggestedMinutes: 5,
+        instructorContentIds: ['browser-teach-1'],
+        defaultDebriefEditPolicy: 'frozen'
+      }
+    ]
+  }
+});
 let liveClassState = null;
 let liveInstructorWorkspaces = [];
 let liveInstructorParticipants = [];
@@ -61,6 +99,7 @@ const studentLiveSessions = new Map();
 const studentLiveAccessContexts = new Map();
 const classroomWorkspaces = new Map();
 const classroomCoachingFeedback = new Map();
+const classroomExercises = new Map();
 
 const CONTENT_TYPES = Object.freeze({
   '.css': 'text/css; charset=utf-8',
@@ -606,6 +645,7 @@ async function handleClassroomApi(request, response, url) {
       integratedInstructorWorkspaces = [];
       integratedInstructorWorkspaceStates.clear();
       integratedInstructorParticipants = [];
+      classroomExercises.delete(INTEGRATED_INSTRUCTOR_TOKEN);
       sendJson(response, 201, {
         class: integratedInstructorClass(),
         instructorToken: INTEGRATED_INSTRUCTOR_TOKEN,
@@ -623,6 +663,7 @@ async function handleClassroomApi(request, response, url) {
     };
     liveInstructorWorkspaces = [];
     liveInstructorWorkspaceStates.clear();
+    classroomExercises.delete(LIVE_INSTRUCTOR_TOKEN);
     liveInstructorParticipants = [{
       id: LIVE_PARTICIPANT_ID,
       displayName: 'Waiting Student',
@@ -637,6 +678,102 @@ async function handleClassroomApi(request, response, url) {
       studentJoinToken: `${'c'.repeat(42)}s`,
       joinCode: LIVE_JOIN_CODE
     });
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/exercise') {
+    const instructorToken = bearerToken(request);
+    if (!activeInstructorCapability(instructorToken)) {
+      sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
+      return true;
+    }
+
+    const managedFixture = managedInstructorFixture(instructorToken);
+    const classContext = managedFixture?.classContext || instructorClass();
+    const availableCaseStudies = [{
+      id: BROWSER_STAGED_CASE.id,
+      name: BROWSER_STAGED_CASE.name,
+      description: BROWSER_STAGED_CASE.description,
+      supportedModes: [...BROWSER_STAGED_CASE.supportedModes]
+    }];
+
+    if (request.method === 'GET') {
+      const exercise = classroomExercises.get(instructorToken) || null;
+      sendJson(response, 200, exercise
+        ? {
+            class: classContext,
+            exercise: structuredClone(exercise),
+            caseStudy: structuredClone(BROWSER_STAGED_CASE),
+            releases: [],
+            workspaceState: [],
+            checkpoints: [],
+            editFreezeEnforced: true,
+            availableCaseStudies
+          }
+        : {
+            class: classContext,
+            exercise: null,
+            availableCaseStudies
+          });
+      return true;
+    }
+
+    if (request.method === 'POST') {
+      const body = await readJson(request).catch(() => null);
+      const caseStudyId = typeof body?.caseStudyId === 'string' ? body.caseStudyId.trim() : '';
+      if (caseStudyId !== BROWSER_STAGED_CASE.id) {
+        sendJson(response, 404, { error: 'Staged Case Study not found.' });
+        return true;
+      }
+
+      const existing = classroomExercises.get(instructorToken);
+      if (existing) {
+        if (existing.caseStudyId !== caseStudyId) {
+          sendJson(response, 409, {
+            error: 'Another exercise is already open for this class.',
+            exercise: structuredClone(existing)
+          });
+          return true;
+        }
+        sendJson(response, 200, {
+          class: classContext,
+          exercise: structuredClone(existing),
+          caseStudy: structuredClone(BROWSER_STAGED_CASE),
+          releases: [],
+          workspaceState: [],
+          checkpoints: [],
+          editFreezeEnforced: true,
+          created: false
+        });
+        return true;
+      }
+
+      const exercise = {
+        id: `browser-exercise-${instructorToken.slice(-1)}`,
+        caseStudyId,
+        status: 'draft',
+        currentStageId: null,
+        stagePhase: 'work',
+        studentEditingEnabled: true,
+        exerciseRevision: 1,
+        simulationVersion: BROWSER_STAGED_CASE.simulation.version,
+        simulationFingerprint: 'b'.repeat(64)
+      };
+      classroomExercises.set(instructorToken, exercise);
+      sendJson(response, 201, {
+        class: classContext,
+        exercise: structuredClone(exercise),
+        caseStudy: structuredClone(BROWSER_STAGED_CASE),
+        releases: [],
+        workspaceState: [],
+        checkpoints: [],
+        editFreezeEnforced: true,
+        created: true
+      });
+      return true;
+    }
+
+    sendJson(response, 405, { error: 'Method not allowed.' });
     return true;
   }
 
