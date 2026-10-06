@@ -329,6 +329,8 @@ async function initializeClassroomRepository() {
     public_id UUID UNIQUE NOT NULL,
     class_id BIGINT NOT NULL REFERENCES classroom_classes(id) ON DELETE CASCADE,
     case_study_id VARCHAR(160) NOT NULL,
+    simulation_version INTEGER NOT NULL CHECK (simulation_version > 0),
+    simulation_fingerprint CHAR(64) NOT NULL,
     status VARCHAR(16) NOT NULL DEFAULT 'draft'
       CHECK (status IN ('draft', 'active', 'paused', 'completed')),
     current_stage_id VARCHAR(80),
@@ -764,22 +766,34 @@ async function initializeClassroomRepository() {
       return classByInstructor(instructorHash);
     },
 
-    async createExercise(instructorHash, { publicId, caseStudyId }) {
+    async createExercise(instructorHash, {
+      publicId,
+      caseStudyId,
+      simulationVersion,
+      simulationFingerprint
+    }) {
       const classroom = await classByInstructor(instructorHash);
       if (!classroom) return null;
 
       const rows = await sql`INSERT INTO classroom_exercises
-        (public_id, class_id, case_study_id, expires_at)
+        (
+          public_id, class_id, case_study_id,
+          simulation_version, simulation_fingerprint, expires_at
+        )
         VALUES (
           ${publicId}::uuid,
           ${classroom.internal_id},
           ${caseStudyId},
+          ${simulationVersion},
+          ${simulationFingerprint},
           ${classroom.expiresAt}::timestamptz
         )
         ON CONFLICT DO NOTHING
         RETURNING
           public_id AS id,
           case_study_id AS "caseStudyId",
+          simulation_version AS "simulationVersion",
+          simulation_fingerprint AS "simulationFingerprint",
           status,
           current_stage_id AS "currentStageId",
           stage_phase AS "stagePhase",
@@ -798,6 +812,8 @@ async function initializeClassroomRepository() {
       const existing = await sql`SELECT
           public_id AS id,
           case_study_id AS "caseStudyId",
+          simulation_version AS "simulationVersion",
+          simulation_fingerprint AS "simulationFingerprint",
           status,
           current_stage_id AS "currentStageId",
           stage_phase AS "stagePhase",
@@ -826,6 +842,8 @@ async function initializeClassroomRepository() {
       const rows = await sql`SELECT
           public_id AS id,
           case_study_id AS "caseStudyId",
+          simulation_version AS "simulationVersion",
+          simulation_fingerprint AS "simulationFingerprint",
           status,
           current_stage_id AS "currentStageId",
           stage_phase AS "stagePhase",
@@ -851,6 +869,8 @@ async function initializeClassroomRepository() {
       const rows = await sql`SELECT
           public_id AS id,
           case_study_id AS "caseStudyId",
+          simulation_version AS "simulationVersion",
+          simulation_fingerprint AS "simulationFingerprint",
           status,
           current_stage_id AS "currentStageId",
           stage_phase AS "stagePhase",
@@ -901,6 +921,8 @@ async function initializeClassroomRepository() {
         RETURNING
           public_id AS id,
           case_study_id AS "caseStudyId",
+          simulation_version AS "simulationVersion",
+          simulation_fingerprint AS "simulationFingerprint",
           status,
           current_stage_id AS "currentStageId",
           stage_phase AS "stagePhase",
@@ -951,6 +973,8 @@ async function initializeClassroomRepository() {
             e.id AS internal_id,
             e.public_id AS id,
             e.case_study_id AS "caseStudyId",
+            e.simulation_version AS "simulationVersion",
+            e.simulation_fingerprint AS "simulationFingerprint",
             e.status,
             e.current_stage_id AS "currentStageId",
             e.stage_phase AS "stagePhase",
@@ -1042,6 +1066,8 @@ async function initializeClassroomRepository() {
           id AS "internalId",
           public_id AS id,
           case_study_id AS "caseStudyId",
+          simulation_version AS "simulationVersion",
+          simulation_fingerprint AS "simulationFingerprint",
           status,
           current_stage_id AS "currentStageId",
           stage_phase AS "stagePhase",
