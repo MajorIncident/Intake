@@ -7,6 +7,31 @@ This project relies on automated tests to keep the zero-backend KT Intake experi
 - **DOM integration tests**: Add a DOM integration test whenever behaviour spans multiple modules, updates UI anchors, or mutates the application state through user-like interactions. These tests can render snippets of the DOM, exercise event listeners, and verify that state snapshots align with expectations.
 - **Mixed updates**: If a change affects both a pure helper and the UI wiring, cover each side in the appropriate suite. A unit test should confirm the helper’s contract while a DOM integration test proves the end-to-end user workflow.
 
+## Real-browser Playwright and accessibility gate
+
+Use Playwright for behavior that jsdom cannot prove reliably: browser persistence/reload, downloads/uploads, responsive entry flows, cross-browser-context collaboration, real focus/ARIA behavior, and integration across the mounted application.
+
+- Browser specs live under `tests/e2e/*.spec.mjs`.
+- Run locally with `npm run test:browser`; use `npm run test:browser:headed` only when interactive diagnosis is useful.
+- `playwright.config.mjs` starts `scripts/serve-browser-tests.mjs`, a deterministic local HTTP/API fixture. Normal browser CI must not depend on Vercel previews, production data, Neon credentials, or build quota.
+- Desktop Chromium and Pixel 7 projects are canonical. Scope a journey to one project only when the interaction contract is genuinely project-specific; document every intentional skip.
+- Covered accessibility journeys use `@axe-core/playwright` and fail on serious/critical violations. Keep explicit focus/keyboard assertions when they protect a specific interaction contract.
+- Uncaught `pageerror` events should fail critical journeys.
+- Traces/screenshots are retained only on failure.
+- The branch-protected `tests` CI status is the required merge gate: it runs `npm run quality`, installs Chromium, then runs `npm run test:browser`. A browser regression therefore fails the existing required check without a separate repository-settings rule.
+- `.github/workflows/browser-e2e.yml` is manual-only and exists for focused browser reruns/diagnostics.
+
+### Deterministic Classroom fixture rules
+
+The browser fixture is shared by fully-parallel specs, so stateful test identities must not collide.
+
+- Give stateful Classroom assignment/workspace capabilities a namespace unique to the spec/project.
+- If a test can mutate server fixture state and CI retries are enabled, include `testInfo.retry` (or an equivalent deterministic retry marker) in its fixture capability.
+- Preserve semantic token distinctions used by the fixture (Instructor vs class join vs assignment vs Student workspace).
+- Do not weaken authorization in the fixture merely to make a browser journey convenient.
+- Multi-context collaboration tests should create separate browser contexts to prove independent local storage/profile identity.
+- Prefer asserting semantic state (`hidden` / `aria-hidden` / `inert`, persisted data, HTTP method/status) over assumptions about off-canvas CSS visibility.
+
 ## Working with `collectAppState()` and `applyAppState()`
 The application exposes snapshot helpers that make DOM integration tests reliable:
 

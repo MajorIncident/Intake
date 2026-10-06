@@ -19,9 +19,9 @@ This is the live restart document for the Classroom Experience program (#288).
 | Student join/resume | #292 | Complete | PR #302 / `feature/classroom-student-experience` | 194 tests: 193 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Instructor observer | #293 | Complete | PR #305 merged | 208 tests: 207 pass, 0 fail, 1 skip; repository gates green |
 | Coaching | #294 | Complete | PR #306 merged | 224 tests: 223 pass, 0 fail, 1 skip; all repository gates green; production deployment READY |
-| Protected cases | #295 | In progress | draft PR #307 / `feature/classroom-protected-cases` | Runtime/security implementation complete; final docs/gates and deployment verification remain |
-| Browser E2E/CI | #296 | In progress (stacked) | draft PR #308 / `feature/classroom-browser-e2e` | Playwright/axe foundation green; Standalone browser journeys under stabilization |
-| Browser test foundation | #279 | In progress via #296 | draft PR #308 | Shared Playwright/accessibility foundation; deterministic local HTTP CI |
+| Protected cases | #295 | Complete | PR #307 merged | Protected catalog/payload delivery, minimal `dist/` public boundary, deployment controls, and production verification complete |
+| Browser E2E/CI | #296 | In progress — final stabilization | draft PR #308 / `feature/classroom-browser-e2e` | Critical Standalone/Student/Instructor/security journeys complete; Playwright now runs inside required `tests` CI gate |
+| Browser test foundation | #279 | In progress — final stabilization via #296 | draft PR #308 | Deterministic local HTTP + Playwright/axe complete; focused Browser E2E workflow retained as manual diagnostic |
 
 ## Current architecture decisions
 
@@ -299,7 +299,19 @@ Continue #295 on draft PR #307 from the current branch head.
   - The tests intentionally assert durable authorization/recovery properties rather than requiring the current class+assignment-code Student UX, because #312 will replace that admission flow with Instructor-managed assignment.
   - Browser E2E on `e7bc8ed...`: **20 passed, 4 intentionally project-scoped skips, 0 failed**.
   - Browser E2E, CI, CodeQL, Dependency Review, and Template Manifest Guard are all green on `e7bc8ed...`.
-- Exact next action: finish the remaining individual/team collaboration browser coverage, then perform the Browser E2E stability/documentation review and decide required-vs-advisory CI status before #308 is ready for review. Keep #312 and #313 as post-#308 product follow-ons rather than expanding this PR.
+- Team collaboration / isolation checkpoint:
+  - `94ab842b09301ef95114522636de81538017f620` adds a real three-browser journey: two Students in one group converge on one Intake while a Student in a different workspace remains isolated.
+  - The first fully-parallel run exposed deterministic-fixture cross-test contamination rather than a product defect. Student, coaching, and collaboration assignment capabilities are now isolated by spec/project/retry; final isolation head `bfaf307e80b4c014646080834fbef475c52204f2` restored a clean **21 passed, 5 intentional skips, 0 failed** Browser E2E run.
+- File / workflow-mode checkpoint:
+  - `5e4ea9bb2a35bc7f8ee013471a91d3944c13499a` covers a real Standalone **Save to File → mutate → Load from File** round trip and proves the exported Major Incident workflow mode and mode-controlled sections restore with the Intake.
+  - Browser E2E on that head: **22 passed, 6 intentionally project-scoped skips, 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+- Required CI decision:
+  - Browser E2E is **required**, not advisory.
+  - `c9b03f30bd300cc5528ebf36e7ca07f1ed0575d5` keeps the existing branch-protected `tests` status context and extends it to run `npm run quality`, install Chromium, and execute `npm run test:browser`.
+  - This avoids a repository-settings migration: the existing required `tests` rule now fails if browser regression fails.
+  - The separate Browser E2E workflow is retained as **manual-only** for focused reruns and failure diagnostics rather than duplicating every PR run.
+  - First required-gate validation on `c9b03f30...`: repository quality succeeded and browser regression reported **22 passed, 6 intentional skips**; CodeQL, Dependency Review, and Template Manifest Guard also green.
+- Exact next action: synchronize final docs/PR/issues, review the complete `main → #308` diff and unresolved review/security state, then make #308 ready for review/merge if the documented head remains green. After #308 / #296 / #279 close, begin #312 as the next product slice; #313 follows on the live-class/team-management substrate.
 
 ## Approved Classroom follow-on direction
 

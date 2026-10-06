@@ -136,6 +136,10 @@ function boot() {
 ```
 
 ## Testing & QA Notes
+- The real-browser layer is required in CI. The protected `tests` status runs the canonical `npm run quality` gate and then `npm run test:browser`; do not treat Playwright as optional advisory evidence for merge.
+- Browser specs live under `tests/e2e/`, use `playwright.config.mjs`, and target the deterministic HTTP/API fixture in `scripts/serve-browser-tests.mjs`. Normal PR validation must not depend on Vercel preview availability.
+- Keep stateful Classroom browser fixtures unique by spec/project/retry so fully-parallel tests cannot share mutable workspace/coaching state accidentally.
+- `.github/workflows/browser-e2e.yml` is manual-only for focused diagnostics; failure traces/screenshots are retained only when a browser run fails.
 - Always run a manual smoke test by opening `index.html` in a modern browser, entering sample data, generating a summary, and refreshing to confirm persistence.
 - Automated suites should rely on `collectAppState()` / `applyAppState()` for deterministic state setup and on `generateSummary()` for output verification.
 - Core local intake workflows can still run browser-first, but collaboration uses Vercel Functions under `api/` and Neon persistence. Use a deployed/HTTP environment with the required database variable when testing shared sessions; do not infer collaboration health from a `file://` smoke test.
