@@ -1,6 +1,6 @@
 # Classroom API and Capability Contract
 
-This document is the canonical server contract for Classroom Experience slices #291–#295. It complements `docs/classroom-architecture.md` so future human or AI sessions can extend Student, Instructor, coaching, and protected Case Study work without reconstructing authorization decisions from code.
+This document is the canonical server contract for Classroom Experience slices #291–#295 and the #312 live-class management layer. It complements `docs/classroom-architecture.md` so future human or AI sessions can extend Student, Instructor, coaching, protected Case Study, live roster, and staged-simulation work without reconstructing authorization decisions from code.
 
 ## Core model
 
@@ -20,12 +20,13 @@ The classroom tables contain organization, assignment, retention, and authorizat
 
 | Capability | Purpose | Workspace enumeration | Server persistence |
 | --- | --- | --- | --- |
-| Instructor class capability | Administer one class and list that class's workspaces | Yes, own class only | SHA-256 hash |
-| Student join capability | Admit a join attempt into one class | **No** | SHA-256 hash |
-| Assignment capability | Select one individual/group assignment inside the admitted class | **No** | SHA-256 hash |
-| Student workspace capability | Edit/sync the resolved collaboration workspace | N/A | SHA-256 alias hash |
+| Instructor class capability | Administer one class, roster, assignments, observation, coaching, and protected teaching resources | Yes, own class only | SHA-256 hash |
+| Human Student join code | Admission locator for the normal #312 live path; never edit authority | **No** | normalized code on class row |
+| Student class-session capability | Resume one admitted participant and read only that participant's current assignment | **No** | SHA-256 hash |
+| Student workspace capability | Edit/sync only the participant's currently assigned collaboration workspace | N/A | SHA-256 alias hash |
+| Legacy Student join capability | Compatibility admission into one class for the older two-code path | **No** | SHA-256 hash |
+| Legacy assignment capability | Compatibility selector for one individual/group workspace | **No** | SHA-256 hash |
 | Legacy Standalone workspace capability | Existing secret-link collaboration | N/A | SHA-256 hash |
-| Instructor class capability | Read-only live observation and coaching administration for its class | Yes, own class only | SHA-256 hash |
 
 Possession of a capability is authority. Display name is not identity.
 
@@ -254,7 +255,7 @@ This prevents a future `classroom-observer` token from accidentally inheriting P
 
 ## Additive Neon schema
 
-Slice #291 adds:
+Slices #291–#294 establish:
 
 - `collaboration_workspace_capabilities`
 - `classroom_classes`
@@ -262,9 +263,11 @@ Slice #291 adds:
 - `classroom_memberships`
 - `classroom_coaching_feedback`
 
-The membership table has a composite foreign key to `classroom_workspaces(class_id, workspace_id)`, so class/workspace isolation is enforced by the database as well as by handler authorization.
+#312 adds the live-class participant/session layer through additive columns plus `classroom_participants`. The participant record is class-scoped and carries the current optional workspace assignment, monotonic `assignment_revision`, Student class-session capability hash, and current assignment-specific workspace-access hash. A participant may therefore exist safely in Waiting with no workspace authority.
 
-Existing collaboration tables and secret links remain valid.
+The legacy membership table remains supported for two-code compatibility. Live assignment does not copy or merge collaboration snapshots; `classroom_workspaces` still points at the existing collaboration workspace that owns snapshot/revision/presence state.
+
+Database foreign keys and handler authorization jointly enforce class/workspace isolation. Existing collaboration tables, Standalone secret links, and the legacy Classroom path remain valid.
 
 No classroom credential is stored in browser Intake state.
 
