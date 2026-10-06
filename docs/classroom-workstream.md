@@ -455,7 +455,17 @@ Continue #295 on draft PR #307 from the current branch head.
   - Instructor capability and exercise context remain outside Intake persistence, summaries, exports, URLs, and public manifests;
   - no exercise mutations were added in 6A; selection/create and Start/Pause/Debrief controls remain intentionally deferred to the next slice;
   - focused API/client tests cover staged-only discovery, absence of protected simulation/source material in the discovery list, capability non-persistence, draft rendering, disconnect cleanup, and transient refresh recovery.
-- Exact next action: continue **Tranche 6B — staged Case Study selection and draft creation** inside the existing console. Add an accessible staged-case selector/create action, preserve one-open-exercise and optimistic revision semantics, render the resulting draft, and add focused DOM/browser coverage. Do not add Start/Pause/Resume/debrief lifecycle controls until the following slice; keep Student staged-case UI and production official-case staging deferred.
+- Tranche 6B — staged Case Study selection and draft creation:
+  - implementation spans `6a69426...` through `1035ed7...`, with deterministic browser fixture support at `c3440eb...`;
+  - the console now exposes an accessible staged Case Study selector and **Create draft** action only when no exercise is open;
+  - POST sends only the selected server-discovered `caseStudyId`; successful create and idempotent existing-draft reuse both hydrate the represented server exercise without persisting it locally;
+  - once an exercise exists, selector/create are disabled so the UI cannot imply a second simultaneous exercise;
+  - a 409 create conflict is never blindly retried: the controller performs an authoritative GET and renders the current exercise, with a visible "current state reloaded" status;
+  - public controller state continues to sanitize the protected Case Study to summary fields and never exposes the Instructor capability or Instructor-only simulation content;
+  - deterministic browser acceptance now uses a synthetic staged case owned only by `scripts/serve-browser-tests.mjs`; no official production case content was staged or guessed;
+  - the live Instructor browser journey proves draft create, server-backed reload/resume, disabled duplicate-create control, and no local exercise persistence;
+  - 6A final-head repository quality was green, but the existing four-browser integration acceptance exceeded its 30s global timeout (historical green runtime was already 26.1s). 6B raises only that test budget to 45s; no failing product assertion was suppressed.
+- Exact next action: implement **Tranche 6C — Start/Pause/Resume and current-stage Instructor context**. Add revision-safe Start/Pause/Resume controls to the existing console, render current stage title/objective plus Instructor-only facilitation material after Start, handle 409 mutation conflicts by authoritative refresh, and add focused DOM/browser coverage. Do not add optional evidence release, Begin Debrief, Freeze/Unfreeze, Advance, or Complete until subsequent slices; keep Student staged-case UI and production official-case staging deferred.
 
 ## Approved Classroom follow-on direction
 
