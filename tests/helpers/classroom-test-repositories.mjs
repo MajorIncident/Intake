@@ -296,6 +296,87 @@ export function createClassroomRepository() {
           })
       };
     },
+    async assignParticipant(instructorHash, { participantId, workspacePublicId, workspaceRepository }) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      const participant = participants.get(item.internalId + ':' + participantId);
+      if (!participant || participant.revoked) return null;
+
+      const destination = workspacePublicId === null
+        ? null
+        : workspaces.find(candidate => (
+            candidate.classInternalId === item.internalId
+            && candidate.id === workspacePublicId
+            && !candidate.revoked
+          ));
+      if (workspacePublicId !== null && !destination) return null;
+
+      if (destination?.kind === 'individual') {
+        if (destination.individualParticipantId && destination.individualParticipantId !== participantId) {
+          return { status: 'occupied', classroom: publicClass(item) };
+        }
+        destination.individualParticipantId = participantId;
+      }
+
+      const nextWorkspaceId = destination?.workspaceId || null;
+      if ((participant.workspaceId || null) === nextWorkspaceId) {
+        return {
+          status: 'unchanged',
+          classroom: publicClass(item),
+          participant: {
+            id: participant.participantId,
+            displayName: participant.displayName,
+            assignmentRevision: participant.assignmentRevision,
+            joinedAt: participant.joinedAt,
+            updatedAt: participant.updatedAt
+          },
+          assignment: destination
+            ? { id: destination.id, kind: destination.kind, label: destination.label }
+            : null
+        };
+      }
+
+      const previousWorkspaceId = participant.workspaceId;
+      if (participant.workspaceAccessHash) {
+        await workspaceRepository.revokeCapability(participant.workspaceAccessHash);
+      }
+      if (previousWorkspaceId) {
+        await workspaceRepository.removePresenceByWorkspaceId(previousWorkspaceId, participantId);
+      }
+
+      const previousWorkspace = previousWorkspaceId
+        ? workspaces.find(candidate => (
+            candidate.classInternalId === item.internalId
+            && candidate.workspaceId === previousWorkspaceId
+          ))
+        : null;
+
+      participant.workspaceId = nextWorkspaceId;
+      participant.workspaceAccessHash = null;
+      participant.assignmentRevision += 1;
+      participant.updatedAt = 'updated';
+
+      if (previousWorkspace?.kind === 'individual'
+        && previousWorkspace.workspaceId !== nextWorkspaceId
+        && previousWorkspace.individualParticipantId === participantId) {
+        previousWorkspace.individualParticipantId = null;
+      }
+
+      return {
+        status: 'updated',
+        classroom: publicClass(item),
+        participant: {
+          id: participant.participantId,
+          displayName: participant.displayName,
+          assignmentRevision: participant.assignmentRevision,
+          joinedAt: participant.joinedAt,
+          updatedAt: participant.updatedAt
+        },
+        assignment: destination
+          ? { id: destination.id, kind: destination.kind, label: destination.label }
+          : null
+      };
+    },
     async issueParticipantWorkspaceAccess({ sessionHash, accessHash, workspaceRepository }) {
       const participant = [...participants.values()].find(value => value.sessionHash === sessionHash && !value.revoked);
       if (!participant) return null;
