@@ -284,26 +284,32 @@ Anchors present:
     <div class="student-class-entry__card">
       <div class="student-class-entry__intro">
         <span class="experience-shell__eyebrow">Student</span>
-        <h2 id="studentClassEntryTitle">Join your class workspace</h2>
-        <p>Enter the class and assignment codes your instructor gave you. Intake uses both codes only to resolve your assigned individual or team workspace; they are not stored after a successful join.</p>
+        <h2 id="studentClassEntryTitle">Join your class</h2>
+        <p>Enter your name and the short class code from your instructor. You can join before a team is assigned; Intake will move you into the right workspace automatically.</p>
       </div>
 
       <form class="student-class-form" id="studentClassJoinForm" autocomplete="off">
-        <div class="student-class-form__grid" data-persistence="local-only" data-summary="exclude">
+        <div class="student-class-form__grid student-class-form__grid--live" data-persistence="local-only" data-summary="exclude">
           <div class="field" data-persistence="local-only" data-summary="exclude">
             <label for="studentDisplayName" data-persistence="local-only" data-summary="exclude">Your name</label>
             <input id="studentDisplayName" name="studentDisplayName" type="text" maxlength="60" autocomplete="name" placeholder="Alex" data-persistence="local-only" data-summary="exclude" />
           </div>
           <div class="field" data-persistence="local-only" data-summary="exclude">
             <label for="studentClassCode" data-persistence="local-only" data-summary="exclude">Class code</label>
-            <input id="studentClassCode" name="studentClassCode" type="password" autocomplete="off" spellcheck="false" placeholder="Paste class code" data-persistence="local-only" data-summary="exclude" />
+            <input id="studentClassCode" name="studentClassCode" type="text" maxlength="64" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7FM-P4Q2" data-persistence="local-only" data-summary="exclude" />
           </div>
+        </div>
+
+        <details class="student-legacy-join" id="studentLegacyJoin" data-persistence="local-only" data-summary="exclude">
+          <summary>Use legacy two-code access</summary>
           <div class="field" data-persistence="local-only" data-summary="exclude">
             <label for="studentAssignmentCode" data-persistence="local-only" data-summary="exclude">Assignment code</label>
             <input id="studentAssignmentCode" name="studentAssignmentCode" type="password" autocomplete="off" spellcheck="false" placeholder="Paste assignment code" data-persistence="local-only" data-summary="exclude" />
+            <small>Only use this when your instructor gave you separate long class and assignment codes.</small>
           </div>
-        </div>
-        <p class="student-class-form__privacy">Your class codes are used for this join request and then discarded. Only the issued workspace capability is kept on this device for resume.</p>
+        </details>
+
+        <p class="student-class-form__privacy">The human class code is discarded after admission. This device keeps a private class-session capability so assignment changes can happen without asking you to join again.</p>
         <p class="student-class-form__error" id="studentClassJoinError" role="alert" aria-live="polite" hidden></p>
         <div class="student-class-form__actions">
           <button type="submit" class="btn" id="studentClassJoinSubmit" data-persistence="local-only" data-summary="exclude">Join class</button>
@@ -311,10 +317,24 @@ Anchors present:
         </div>
       </form>
 
+      <section class="student-class-waiting" id="studentClassWaitingPanel" aria-labelledby="studentClassWaitingTitle" aria-live="polite" hidden>
+        <span class="student-class-resume__eyebrow">Joined class</span>
+        <strong id="studentClassWaitingTitle">Waiting for your instructor</strong>
+        <p id="studentClassWaitingMessage">You are in the class. Your instructor has not assigned you to a team or individual workspace yet.</p>
+        <div class="student-class-waiting__meta">
+          <span>Class <strong id="studentClassWaitingClass">Student class</strong></span>
+          <span>You <strong id="studentClassWaitingIdentity">Student</strong></span>
+        </div>
+        <div class="student-class-form__actions">
+          <button type="button" class="btn-secondary" id="studentClassWaitingLeaveBtn" data-persistence="local-only" data-summary="exclude">Leave class</button>
+          <button type="button" class="btn-secondary" data-open-experience-role-chooser data-persistence="local-only" data-summary="exclude">Change experience</button>
+        </div>
+      </section>
+
       <section class="student-class-resume" id="studentClassResumePanel" aria-live="polite" hidden>
         <span class="student-class-resume__eyebrow">Saved class</span>
-        <strong id="studentClassResumeTitle">Your class workspace</strong>
-        <p id="studentClassResumeMessage">Reconnecting to your saved class workspace…</p>
+        <strong id="studentClassResumeTitle">Your class</strong>
+        <p id="studentClassResumeMessage">Reconnecting to your saved class…</p>
         <div class="student-class-form__actions">
           <button type="button" class="btn" id="studentClassRetryBtn" data-persistence="local-only" data-summary="exclude">Retry connection</button>
           <button type="button" class="btn-secondary" data-open-experience-role-chooser data-persistence="local-only" data-summary="exclude">Change experience</button>
