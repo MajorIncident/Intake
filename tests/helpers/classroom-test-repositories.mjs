@@ -182,6 +182,8 @@ export function createClassroomRepository() {
   const publicExercise = exercise => exercise ? {
     id: exercise.id,
     caseStudyId: exercise.caseStudyId,
+    simulationVersion: exercise.simulationVersion,
+    simulationFingerprint: exercise.simulationFingerprint,
     status: exercise.status,
     currentStageId: exercise.currentStageId,
     stagePhase: exercise.stagePhase,
@@ -459,7 +461,12 @@ export function createClassroomRepository() {
         waiting: false
       };
     },
-    async createExercise(instructorHash, { publicId, caseStudyId }) {
+    async createExercise(instructorHash, {
+      publicId,
+      caseStudyId,
+      simulationVersion,
+      simulationFingerprint
+    }) {
       const item = activeByInstructor(instructorHash);
       if (!item) return null;
       const existing = exercises.find(exercise => (
@@ -480,6 +487,8 @@ export function createClassroomRepository() {
         id: publicId,
         classInternalId: item.internalId,
         caseStudyId,
+        simulationVersion,
+        simulationFingerprint,
         status: 'draft',
         currentStageId: null,
         stagePhase: 'work',
