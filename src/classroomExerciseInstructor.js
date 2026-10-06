@@ -31,6 +31,37 @@ function sanitizeCaseStudySummary(value) {
   };
 }
 
+function sanitizeRelease(value) {
+  if (!value || typeof value !== 'object') return null;
+  const stageId = typeof value.stageId === 'string' ? value.stageId.trim() : '';
+  const contentId = typeof value.contentId === 'string' ? value.contentId.trim() : '';
+  if (!stageId || !contentId) return null;
+  return {
+    stageId,
+    contentId,
+    releasedAt: typeof value.releasedAt === 'string' ? value.releasedAt : null
+  };
+}
+
+function sanitizeWorkspaceState(value) {
+  if (!value || typeof value !== 'object') return null;
+  const workspaceId = typeof value.workspaceId === 'string' ? value.workspaceId.trim() : '';
+  const workspaceLabel = typeof value.workspaceLabel === 'string' ? value.workspaceLabel.trim() : '';
+  const stageId = typeof value.stageId === 'string' ? value.stageId.trim() : '';
+  if (!workspaceId || !workspaceLabel || !stageId) return null;
+  return {
+    workspaceId,
+    workspaceKind: typeof value.workspaceKind === 'string' ? value.workspaceKind : '',
+    workspaceLabel,
+    stageId,
+    readyForDebrief: value.readyForDebrief === true,
+    readyAt: typeof value.readyAt === 'string' ? value.readyAt : null,
+    readyWorkspaceRevision: Number.isInteger(value.readyWorkspaceRevision)
+      ? value.readyWorkspaceRevision
+      : null
+  };
+}
+
 /**
  * Create the Instructor exercise console controller.
  *
@@ -39,7 +70,8 @@ function sanitizeCaseStudySummary(value) {
  */
 export function createInstructorExerciseConsoleController({
   fetchImpl = globalThis.fetch?.bind(globalThis),
-  documentRef = globalThis.document
+  documentRef = globalThis.document,
+  onSelectWorkspace = () => {}
 } = {}) {
   let capability = '';
   let epoch = 0;
@@ -52,6 +84,8 @@ export function createInstructorExerciseConsoleController({
   let caseStudy = null;
   let availableCaseStudies = [];
   let selectedCaseStudyId = '';
+  let releases = [];
+  let workspaceState = [];
 
   const element = id => documentRef?.getElementById?.(id) || null;
 
@@ -137,10 +171,25 @@ export function createInstructorExerciseConsoleController({
       (Array.isArray(caseStudy.simulation.instructorContent) ? caseStudy.simulation.instructorContent : [])
         .map(item => [item.id, item])
     );
+    const studentBlocks = new Map(
+      (Array.isArray(caseStudy.simulation.studentContent) ? caseStudy.simulation.studentContent : [])
+        .map(item => [item.id, item])
+    );
+    const stageReleases = new Map(
+      releases
+        .filter(item => item.stageId === stage.id)
+        .map(item => [item.contentId, item])
+    );
     return {
       stage,
       instructorContent: (Array.isArray(stage.instructorContentIds) ? stage.instructorContentIds : [])
         .map(id => instructorBlocks.get(id))
+        .filter(Boolean),
+      optionalContent: (Array.isArray(stage.optionalReleaseIds) ? stage.optionalReleaseIds : [])
+        .map(id => {
+          const content = studentBlocks.get(id);
+          return content ? { content, release: stageReleases.get(id) || null } : null;
+        })
         .filter(Boolean)
     };
   };
@@ -208,6 +257,103 @@ export function createInstructorExerciseConsoleController({
     }
   };
 
+  const renderReleases = () => {
+    const panel = element('instructorExerciseReleasePanel');
+    const list = element('instructorExerciseReleaseList');
+    if (!panel || !list) return;
+    const context = currentStageContext();
+    const optionalContent = context?.optionalContent || [];
+    panel.hidden = optionalContent.length === 0;
+    list.replaceChildren();
+    if (!optionalContent.length) return;
+
+    const canRelease = exercise?.status === 'active' && exercise?.stagePhase === 'work' && !loading;
+    optionalContent.forEach(item => {
+      const row = documentRef.createElement('article');
+      row.setAttribute('data-persistence', 'local-only');
+      row.setAttribute('data-summary', 'exclude');
+      const title = documentRef.createElement('strong');
+      title.textContent = item.content.title || 'Optional evidence';
+      const body = documentRef.createElement('p');
+      body.textContent = item.content.body || '';
+      row.append(title, body);
+
+      if (item.release) {
+        const state = documentRef.createElement('span');
+        state.className = 'instructor-exercise-console__release-state';
+        state.textContent = 'Released';
+        row.append(state);
+      } else {
+        const button = documentRef.createElement('button');
+        button.type = 'button';
+        button.className = 'btn-secondary';
+        button.setAttribute('data-persistence', 'local-only');
+        button.setAttribute('data-summary', 'exclude');
+        button.textContent = canRelease ? 'Release to Students' : 'Resume to release';
+        button.disabled = !canRelease;
+        button.setAttribute('aria-label', `Release ${item.content.title || 'optional evidence'} to Students`);
+        button.addEventListener('click', () => { void releaseContent(item.content.id); });
+        row.append(button);
+      }
+      list.append(row);
+    });
+  };
+
+  const renderProgress = () => {
+    const panel = element('instructorExerciseProgressPanel');
+    const list = element('instructorExerciseProgressList');
+    const summary = element('instructorExerciseProgressSummary');
+    if (!panel || !list) return;
+    const stageId = exercise?.currentStageId || '';
+    panel.hidden = !stageId;
+    list.replaceChildren();
+    if (!stageId) {
+      if (summary) summary.textContent = '';
+      return;
+    }
+
+    const rows = workspaceState.filter(item => item.stageId === stageId);
+    const readyCount = rows.filter(item => item.readyForDebrief).length;
+    const workingCount = rows.length - readyCount;
+    if (summary) summary.textContent = rows.length
+      ? `${readyCount} ready · ${workingCount} working`
+      : 'No readiness signals yet';
+
+    if (!rows.length) {
+      const empty = documentRef.createElement('p');
+      empty.className = 'instructor-exercise-progress__empty';
+      empty.textContent = 'Waiting for teams to report readiness.';
+      list.append(empty);
+      return;
+    }
+
+    const wrapper = documentRef.createElement('div');
+    wrapper.className = 'instructor-exercise-console__progress-list';
+    rows.forEach(item => {
+      const button = documentRef.createElement('button');
+      button.type = 'button';
+      button.className = 'instructor-exercise-progress__row';
+      button.setAttribute('data-persistence', 'local-only');
+      button.setAttribute('data-summary', 'exclude');
+      button.setAttribute(
+        'aria-label',
+        `Observe ${item.workspaceLabel}, ${item.readyForDebrief ? 'Ready' : 'Working'}`
+      );
+      const label = documentRef.createElement('span');
+      label.textContent = item.workspaceLabel;
+      const state = documentRef.createElement('span');
+      state.className = 'instructor-exercise-progress__state'
+        + (item.readyForDebrief ? ' instructor-exercise-progress__state--ready' : '');
+      state.textContent = item.readyForDebrief ? 'Ready' : 'Working';
+      button.append(label, state);
+      button.addEventListener('click', () => {
+        Promise.resolve(onSelectWorkspace(item.workspaceId)).catch(() => {});
+      });
+      wrapper.append(button);
+    });
+    list.append(wrapper);
+  };
+
   const render = () => {
     const panel = element('instructorExerciseConsole');
     const status = element('instructorExerciseStatus');
@@ -252,6 +398,8 @@ export function createInstructorExerciseConsoleController({
     renderSetup();
     renderLifecycle();
     renderStage();
+    renderReleases();
+    renderProgress();
     renderAvailable();
   };
 
@@ -264,12 +412,20 @@ export function createInstructorExerciseConsoleController({
     caseStudy = null;
     availableCaseStudies = [];
     selectedCaseStudyId = '';
+    releases = [];
+    workspaceState = [];
   };
 
   const applyPayload = body => {
     classroom = body?.class && typeof body.class === 'object' ? body.class : null;
     exercise = body?.exercise && typeof body.exercise === 'object' ? body.exercise : null;
     caseStudy = body?.caseStudy && typeof body.caseStudy === 'object' ? body.caseStudy : null;
+    releases = Array.isArray(body?.releases)
+      ? body.releases.map(sanitizeRelease).filter(Boolean)
+      : exercise ? releases : [];
+    workspaceState = Array.isArray(body?.workspaceState)
+      ? body.workspaceState.map(sanitizeWorkspaceState).filter(Boolean)
+      : exercise ? workspaceState : [];
     if (Array.isArray(body?.availableCaseStudies)) {
       availableCaseStudies = body.availableCaseStudies
         .map(sanitizeCaseStudySummary)
@@ -474,6 +630,95 @@ export function createInstructorExerciseConsoleController({
     }
   };
 
+  const releaseContent = async contentId => {
+    if (
+      destroyed
+      || !capability
+      || !exercise
+      || loading
+      || typeof fetchImpl !== 'function'
+    ) return false;
+
+    const context = currentStageContext();
+    const requestedId = typeof contentId === 'string' ? contentId.trim() : '';
+    const optional = context?.optionalContent?.find(item => item.content.id === requestedId) || null;
+    if (!optional) return false;
+    if (optional.release) {
+      lastError = '';
+      lastNotice = 'content already released';
+      render();
+      return true;
+    }
+    if (exercise.status !== 'active' || exercise.stagePhase !== 'work') return false;
+
+    const expectedRevision = Number(exercise.exerciseRevision);
+    if (!Number.isInteger(expectedRevision) || expectedRevision < 1) {
+      lastError = 'Exercise revision is unavailable. Refresh and retry.';
+      lastNotice = '';
+      render();
+      return false;
+    }
+
+    const localCapability = capability;
+    const localEpoch = epoch;
+    loading = true;
+    lastError = '';
+    lastNotice = '';
+    render();
+
+    try {
+      const response = await fetchImpl(INSTRUCTOR_EXERCISE_ENDPOINT, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${localCapability}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'release-content',
+          expectedRevision,
+          contentId: requestedId
+        })
+      });
+      const body = await response.json().catch(() => ({}));
+      if (destroyed || localEpoch !== epoch || capability !== localCapability) return false;
+
+      if (response.status === 409) {
+        loading = false;
+        const reloaded = await refresh();
+        if (reloaded && !destroyed && localEpoch === epoch) {
+          lastNotice = 'current state reloaded';
+          render();
+        } else if (!lastError) {
+          lastError = typeof body.error === 'string' ? body.error : 'Exercise changed. Refresh and retry.';
+          render();
+        }
+        return false;
+      }
+
+      if (!response.ok) {
+        lastError = response.status === 401 || response.status === 404
+          ? 'Exercise access is no longer available.'
+          : typeof body.error === 'string' && body.error
+            ? body.error
+            : 'Could not release the Student evidence.';
+        return false;
+      }
+
+      applyPayload(body);
+      lastNotice = body.changed === false ? 'content already released' : 'content released';
+      return true;
+    } catch {
+      if (destroyed || localEpoch !== epoch) return false;
+      lastError = 'Could not release the Student evidence.';
+      return false;
+    } finally {
+      if (!destroyed && localEpoch === epoch) {
+        loading = false;
+        render();
+      }
+    }
+  };
+
   const connectInstructor = async token => {
     if (!validCapability(token) || destroyed) return false;
     epoch += 1;
@@ -521,6 +766,7 @@ export function createInstructorExerciseConsoleController({
     start: () => mutateLifecycle('start'),
     pause: () => mutateLifecycle('pause'),
     resume: () => mutateLifecycle('resume'),
+    releaseContent,
     getState: () => ({
       connected: Boolean(capability),
       loading,
@@ -530,7 +776,9 @@ export function createInstructorExerciseConsoleController({
       exercise,
       selectedCaseStudyId,
       caseStudy: caseStudy ? sanitizeCaseStudySummary(caseStudy) : null,
-      availableCaseStudies: availableCaseStudies.map(item => ({ ...item }))
+      availableCaseStudies: availableCaseStudies.map(item => ({ ...item })),
+      releases: releases.map(item => ({ ...item })),
+      workspaceState: workspaceState.map(item => ({ ...item }))
     }),
     destroy: () => {
       if (destroyed) return;
