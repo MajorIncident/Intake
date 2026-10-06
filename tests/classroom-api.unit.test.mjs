@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  CLASS_JOIN_CODE_ALPHABET,
+  CLASS_JOIN_CODE_LENGTH,
   CLASS_TITLE_MAX_LENGTH,
   CLASS_WORKSPACE_LABEL_MAX_LENGTH,
   COACHING_NOTE_MAX_LENGTH,
@@ -14,6 +16,8 @@ import {
   classObserveHandler,
   classStudentCoachingHandler,
   classWorkspacesHandler,
+  formatClassJoinCode,
+  normalizeClassJoinCode,
   normalizeClassroomLabel,
   normalizeCoachingNote,
   normalizeCoachingStatus,
@@ -46,6 +50,106 @@ test('classroom labels, kinds, and public IDs validate conservatively', () => {
   assert.equal(normalizeClassroomWorkspaceKind('other'), null);
   assert.equal(validateClassroomId(CLASS_A_ID), true);
   assert.equal(validateClassroomId('not-an-id'), false);
+});
+
+test('live Classroom join codes normalize to an unambiguous eight-character contract', () => {
+  assert.equal(CLASS_JOIN_CODE_LENGTH, 8);
+  assert.equal(CLASS_JOIN_CODE_ALPHABET.includes('0'), false);
+  assert.equal(CLASS_JOIN_CODE_ALPHABET.includes('O'), false);
+  assert.equal(CLASS_JOIN_CODE_ALPHABET.includes('1'), false);
+  assert.equal(CLASS_JOIN_CODE_ALPHABET.includes('I'), false);
+  assert.equal(normalizeClassJoinCode(' k7fm-p4q2 '), 'K7FMP4Q2');
+  assert.equal(formatClassJoinCode('k7fmp4q2'), 'K7FM-P4Q2');
+  assert.equal(normalizeClassJoinCode('K7F0-P4Q2'), null);
+  assert.equal(normalizeClassJoinCode('too-short'), null);
+});
+
+test('live participant admission creates a waiting Student and rotates only the class-session capability', async () => {
+  const classrooms = createClassroomRepository();
+
+  await classrooms.createClass({
+    publicId: CLASS_A_ID,
+    title: 'Class A',
+    instructorHash: testTokenHash('A'),
+    studentJoinHash: testTokenHash('C'),
+    studentJoinCode: 'K7FMP4Q2'
+  });
+
+  const first = await classrooms.admitParticipant({
+    joinCode: 'K7FMP4Q2',
+    participantId: PARTICIPANT_A,
+    displayName: 'Alex',
+    sessionHash: testTokenHash('S')
+  });
+
+  assert.equal(first.classroom.id, CLASS_A_ID);
+  assert.equal(first.participant.id, PARTICIPANT_A);
+  assert.equal(first.participant.displayName, 'Alex');
+  assert.equal(first.participant.assignmentRevision, 0);
+  assert.equal(first.assignment, null);
+
+  const firstSession = await classrooms.getParticipantBySession(testTokenHash('S'));
+  assert.equal(firstSession.classroom.id, CLASS_A_ID);
+  assert.equal(firstSession.assignment, null);
+
+  const readmission = await classrooms.admitParticipant({
+    joinCode: 'K7FMP4Q2',
+    participantId: PARTICIPANT_A,
+    displayName: 'Alex Updated',
+    sessionHash: testTokenHash('T')
+  });
+
+  assert.equal(readmission.participant.displayName, 'Alex Updated');
+  assert.equal(readmission.participant.assignmentRevision, 0);
+  assert.equal(await classrooms.getParticipantBySession(testTokenHash('S')), null);
+  assert.equal((await classrooms.getParticipantBySession(testTokenHash('T'))).participant.displayName, 'Alex Updated');
+
+  const roster = await classrooms.listParticipants(testTokenHash('A'));
+  assert.equal(roster.classroom.id, CLASS_A_ID);
+  assert.deepEqual(roster.participants.map(item => ({
+    id: item.id,
+    assignment: item.assignment
+  })), [{ id: PARTICIPANT_A, assignment: null }]);
+});
+
+test('live participant admission is class-scoped and invalid join codes do not create roster entries', async () => {
+  const classrooms = createClassroomRepository();
+
+  await classrooms.createClass({
+    publicId: CLASS_A_ID,
+    title: 'Class A',
+    instructorHash: testTokenHash('A'),
+    studentJoinHash: testTokenHash('C'),
+    studentJoinCode: 'K7FMP4Q2'
+  });
+  await classrooms.createClass({
+    publicId: CLASS_B_ID,
+    title: 'Class B',
+    instructorHash: testTokenHash('B'),
+    studentJoinHash: testTokenHash('D'),
+    studentJoinCode: 'M8RNQ5W3'
+  });
+
+  const denied = await classrooms.admitParticipant({
+    joinCode: 'ZZZZZZZZ',
+    participantId: PARTICIPANT_A,
+    displayName: 'Alex',
+    sessionHash: testTokenHash('S')
+  });
+  assert.equal(denied, null);
+
+  await classrooms.admitParticipant({
+    joinCode: 'M8RNQ5W3',
+    participantId: PARTICIPANT_B,
+    displayName: 'Blair',
+    sessionHash: testTokenHash('T')
+  });
+
+  const classA = await classrooms.listParticipants(testTokenHash('A'));
+  const classB = await classrooms.listParticipants(testTokenHash('B'));
+  assert.deepEqual(classA.participants, []);
+  assert.deepEqual(classB.participants.map(item => item.id), [PARTICIPANT_B]);
+  assert.equal(await classrooms.listParticipants(testTokenHash('C')), null);
 });
 
 test('class creation returns raw capabilities once and stores only hashes', async () => {
