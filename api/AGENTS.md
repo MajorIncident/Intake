@@ -17,26 +17,35 @@ These rules apply to all server-only modules below `api/`.
 
 Read `docs/classroom-api.md` and `docs/classroom-architecture.md` before modifying classroom endpoints.
 
-The classroom authorization chain is:
+The primary #312 classroom authorization chain is:
 
 ```text
 Instructor class capability
-  -> class administration + class-scoped workspace listing
+  -> class administration + class-scoped roster/workspace listing
+  -> read-only observation + coaching
 
-Student join capability + assignment capability
-  -> one authorized individual/group workspace
-  -> newly minted per-participant editable workspace capability
+human Student join code
+  -> admission only
+  -> high-entropy Student class-session capability
+  -> own assignment state only
+  -> fresh assignment-specific classroom-student workspace capability
+  -> existing collaboration edit APIs
 ```
+
+The legacy `Student join capability + assignment capability` chain remains an explicit two-code compatibility path.
 
 Rules:
 
-- Student join capability alone must never enumerate classroom workspaces.
-- Assignment capability must resolve only within the active class represented by the Student join capability.
+- Human join code and Student class-session capability must never enumerate classroom workspaces.
+- Student class-session capability must never edit collaboration directly.
+- Legacy Student join capability alone must never enumerate classroom workspaces.
+- Legacy assignment capability must resolve only within the active class represented by the Student join capability.
 - Instructor workspace listing must be scoped to exactly the class represented by the Instructor capability.
 - Classroom workspaces reuse `collaboration_workspaces`; do not create a parallel snapshot/revision/presence engine.
 - Raw bearer capabilities are returned only at creation/rotation. Persist only SHA-256 hashes.
 - Classroom credentials never enter `kt-intake-full-v2`, exported Intake files, summaries, templates, or Case Study payloads.
 - Individual assignment ownership uses the opaque participant UUID, never the display name.
+- Live participants may be Waiting with no workspace authority; assignment is a separate server-authoritative state.
 
 ## Editable workspace alias rule
 
@@ -80,16 +89,20 @@ Any runtime change under `api/` is included in the repository test-change guard.
 
 Classroom API changes must preserve automated coverage for:
 
-- class-scoped Instructor listing;
-- Student non-enumeration;
+- class-scoped Instructor roster/workspace listing;
+- Student non-enumeration and own-status-only reads;
+- Waiting participant with zero workspace edit authority;
 - cross-class assignment rejection;
-- individual claim-once vs group sharing;
+- individual occupancy vs group sharing;
+- assignment revision/idempotency semantics;
+- reassignment/unassign revoking old workspace authority before destination access;
+- stale old-team token rejection and no Intake snapshot merge;
 - credential rotation and revocation;
-- classroom workspace token reuse through the existing collaboration session API;
+- live and legacy classroom workspace tokens through the existing collaboration session API;
 - edit-capability kind restrictions;
-- legacy Standalone collaboration behavior.
-- coaching class scoping, independent feedback revisions, Student read-only access, and zero Student snapshot-revision changes.
-- protected Case Study Instructor class scoping, Student membership-bound access, rejection of legacy collaboration capabilities, metadata-only catalogs, POST-only payload selection, and private response headers.
+- legacy two-code Classroom and Standalone collaboration behavior;
+- coaching class scoping, independent feedback revisions, Student read-only access, and zero Student snapshot-revision changes;
+- protected Case Study Instructor class scoping, Student membership-bound access, rejection of legacy Standalone collaboration capabilities, metadata-only catalogs, POST-only payload selection, and private response headers.
 
 
 ## #312 live-class capability direction
