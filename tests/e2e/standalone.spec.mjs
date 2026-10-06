@@ -99,8 +99,10 @@ test('Standalone file export/import round trip restores Intake data and workflow
 
   await page.locator('#intakeModeSelect').selectOption('majorIncident');
   await expect(page.locator('body')).toHaveAttribute('data-intake-mode', 'majorIncident');
-  await expect(page.locator('#commsBtn')).toBeVisible();
-  await expect(page.locator('#stepsBtn')).toBeVisible();
+  await expect(page.locator('#commsBtn')).not.toHaveAttribute('hidden', '');
+  await expect(page.locator('#commsBtn')).toHaveAttribute('aria-hidden', 'false');
+  await expect(page.locator('#stepsBtn')).not.toHaveAttribute('hidden', '');
+  await expect(page.locator('#stepsBtn')).toHaveAttribute('aria-hidden', 'false');
 
   await page.getByRole('button', { name: 'File' }).click();
   const downloadPromise = page.waitForEvent('download');
@@ -114,8 +116,10 @@ test('Standalone file export/import round trip restores Intake data and workflow
   await page.locator('#oneLine').blur();
   await page.locator('#intakeModeSelect').selectOption('general');
   await expect(page.locator('body')).toHaveAttribute('data-intake-mode', 'general');
-  await expect(page.locator('#commsBtn')).toBeHidden();
-  await expect(page.locator('#stepsBtn')).toBeHidden();
+  await expect(page.locator('#commsBtn')).toHaveAttribute('hidden', '');
+  await expect(page.locator('#commsBtn')).toHaveAttribute('aria-hidden', 'true');
+  await expect(page.locator('#stepsBtn')).toHaveAttribute('hidden', '');
+  await expect(page.locator('#stepsBtn')).toHaveAttribute('aria-hidden', 'true');
 
   await page.getByRole('button', { name: 'File' }).click();
   const chooserPromise = page.waitForEvent('filechooser');
@@ -126,8 +130,10 @@ test('Standalone file export/import round trip restores Intake data and workflow
   await expect(page.locator('#oneLine')).toHaveValue(exportedProblem);
   await expect(page.locator('#intakeModeSelect')).toHaveValue('majorIncident');
   await expect(page.locator('body')).toHaveAttribute('data-intake-mode', 'majorIncident');
-  await expect(page.locator('#commsBtn')).toBeVisible();
-  await expect(page.locator('#stepsBtn')).toBeVisible();
+  await expect(page.locator('#commsBtn')).not.toHaveAttribute('hidden', '');
+  await expect(page.locator('#commsBtn')).toHaveAttribute('aria-hidden', 'false');
+  await expect(page.locator('#stepsBtn')).not.toHaveAttribute('hidden', '');
+  await expect(page.locator('#stepsBtn')).toHaveAttribute('aria-hidden', 'false');
 
   expect(pageErrors).toEqual([]);
 });
