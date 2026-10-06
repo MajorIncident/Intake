@@ -84,7 +84,12 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.locator('#instructorExerciseStageTiming')).toHaveText('Suggested time: 5 min');
   await expect(page.locator('#instructorExerciseFacilitation')).toContainText('Browser facilitation note');
   await expect(page.locator('#instructorExerciseFacilitation')).toContainText('Synthetic Instructor-only browser facilitation.');
+  await expect(page.locator('#instructorExerciseReleasePanel')).toContainText('Optional browser evidence');
   await expect(page.locator('#instructorExercisePauseBtn')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Release Optional browser evidence to Students' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('In progress · content released');
+  await expect(page.locator('#instructorExerciseReleaseList')).toContainText('Released');
 
   await page.getByRole('button', { name: 'Pause exercise' }).click();
   await expect(page.locator('#instructorExerciseStatus')).toHaveText('Paused · exercise paused');
@@ -115,10 +120,16 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(assignment).not.toHaveValue('');
   await expect(page.locator('[data-participant-id="99999999-9999-4999-8999-999999999999"]')).toContainText('Team · Team Alpha');
 
+  await page.locator('#instructorExerciseRefreshBtn').click();
+  await expect(page.locator('#instructorExerciseProgressSummary')).toHaveText('1 ready · 0 working');
+  await expect(page.getByRole('button', { name: 'Observe Team Alpha, Ready' })).toBeVisible();
+  await page.getByRole('button', { name: 'Observe Team Alpha, Ready' }).click();
+  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
+
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes')).toBe(true);
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes/workspaces')).toBe(true);
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes/exercise')).toBe(true);
-  expect(classroomRequests.filter(request => request.method === 'PATCH' && request.pathname === '/api/classes/exercise')).toHaveLength(3);
+  expect(classroomRequests.filter(request => request.method === 'PATCH' && request.pathname === '/api/classes/exercise')).toHaveLength(4);
   expect(classroomRequests.some(request => request.method === 'PATCH' && request.pathname === '/api/classes/participants')).toBe(true);
   expect(classroomRequests.some(request => request.pathname === '/api/classes/join')).toBe(false);
   expect(classroomRequests.some(request => request.body.includes('assignmentToken'))).toBe(false);
@@ -137,6 +148,8 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.getByLabel('Staged Case Study')).toHaveValue('browser-staged-simulation');
   await expect(page.locator('#instructorExerciseCreateBtn')).toBeDisabled();
   await expect(page.locator('#instructorExerciseStageTitle')).toHaveText('Clarify the browser case');
+  await expect(page.locator('#instructorExerciseReleaseList')).toContainText('Released');
+  await expect(page.locator('#instructorExerciseProgressSummary')).toHaveText('1 ready · 0 working');
   await expect(page.locator('#instructorExercisePauseBtn')).toBeVisible();
 
   await expectNoBlockingA11yViolations(page);
