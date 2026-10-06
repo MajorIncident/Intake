@@ -740,20 +740,30 @@ Validation:
 - required Browser E2E: **26 passed / 8 intentional project-scoped skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
 
+## Implementation checkpoint — Tranche 6A Instructor console foundation
+
+The first Instructor-console slice is implemented without adding lifecycle mutations yet.
+
+Foundation contract:
+- `GET /api/classes/exercise` returns an Instructor-authorized `availableCaseStudies` list containing only protected Case Studies with explicit staged `simulation` definitions;
+- discovery items are summaries only: id/name/description/supported modes, with no `simulation`, protected source `state`, future Student content, or Instructor facilitation content;
+- `src/classroomExerciseInstructor.js` owns the in-memory Instructor exercise client and reads the current exercise/discovery state on class connect;
+- the controller never exposes the raw Instructor capability through public state and persists no exercise/capability data;
+- the existing Instructor dashboard owns the new `[feature:instructor-exercise-console]` shell; Tranche 6A exposes status/current case/staged availability plus Refresh only;
+- disconnect clears the console immediately; transient read errors keep the shell recoverable through explicit refresh.
+
+Implementation checkpoint spans `2624f1e...` through `d20a303...`.
+
 ## Exact next implementation action
 
-Implement **Tranche 6 only — Instructor exercise console** on the now-enforced server contract.
+Continue **Tranche 6B — staged Case Study selection and draft creation**.
 
-Required product slice:
-- integrate staged exercise controls into the existing live Instructor dashboard rather than creating a second classroom shell;
-- list only protected Case Studies that carry an explicit staged `simulation` definition as startable simulations;
-- allow Instructor selection/create of a draft and show stage title/objective plus Instructor-only facilitation content;
-- provide accessible Start, Pause, Resume, optional-content Release, Begin debrief, Freeze/Unfreeze, Advance, and Complete controls with optimistic revision refresh/conflict handling;
-- show workspace/team readiness and current stage progress beside the existing roster/workspace navigation;
-- keep existing read-only observer/coaching one click away;
-- clearly distinguish exercise pause from Student editing freeze;
-- do not expose future Student content in Instructor-to-Student DOM/state accidentally; Instructor-only material may be shown only in Instructor experience;
-- retain same-device class resume: exercise state is server state and must be re-fetched, never persisted into Intake;
-- extend deterministic Instructor feature/browser fixtures only enough to prove the console lifecycle before cutting over Student staged-case UI.
+Required next slice:
+- add an accessible staged-case selector using the server-filtered discovery list;
+- create/reuse the selected draft through the existing Instructor POST contract;
+- render the created draft and its safe summary inside the existing console;
+- preserve one-open-exercise behavior and fail closed on conflicting existing exercise state;
+- keep exercise state server-owned and memory-only;
+- add focused DOM/API/browser coverage for selection, create, replay, and conflict refresh.
 
-Stop before the Student stage-aware case reference panel and before production official Case Study staging.
+Do **not** add Start/Pause/Resume/release/debrief/freeze/advance/complete controls in 6B; those follow after the draft-creation slice. Keep Student staged-case UI and production official Case Study staging deferred.
