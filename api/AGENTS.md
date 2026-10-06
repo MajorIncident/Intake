@@ -115,3 +115,8 @@ Rules:
 - no assignment operation copies or merges Intake snapshots;
 - keep legacy `/api/classes/join` and `classroom_memberships` working during the additive migration;
 - Student status endpoints return only that Student's assignment; they never enumerate classmates/workspaces.
+- `PATCH /api/classes/participants` must revoke any existing assignment-specific workspace capability before changing the participant's workspace assignment; destination access is issued only later through `POST /api/classes/student/access`.
+- live Student coaching/protected-resource authorization must validate that the participant's stored workspace-access hash still corresponds to an active, unrevoked `classroom-student` collaboration capability; the stored hash alone is not sufficient authority.
+- assignment changes use optimistic `assignment_revision` checks; a conflicting update may leave old access revoked, but must never leave old access valid or remap it to a new workspace.
+- stale presence cleanup after reassignment uses internal workspace identity, not the revoked bearer token.
+- individual live workspaces remain single-participant; cross-class destination assignment is rejected generically.
