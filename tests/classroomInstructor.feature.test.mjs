@@ -21,6 +21,8 @@ const INDEX_HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8
 const TOKEN = 'i'.repeat(43);
 const W1 = '11111111-1111-4111-8111-111111111111';
 const W2 = '22222222-2222-4222-8222-222222222222';
+const P1 = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const P2 = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
 let dom = null;
 
@@ -30,11 +32,41 @@ function response(status, body) {
 
 function rosterBody() {
   return {
-    class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
+    class: {
+      id: 'class-1',
+      title: 'Problem Solving 101',
+      joinCode: 'K7FMP4Q2',
+      expiresAt: '2099-01-01T00:00:00Z'
+    },
     workspaces: [
       { id: W1, kind: 'individual', label: 'Alex', participantCount: 1, activeParticipantCount: 1, editingParticipantCount: 0 },
       { id: W2, kind: 'group', label: 'Team Beta', participantCount: 3, activeParticipantCount: 2, editingParticipantCount: 1 }
     ]
+  };
+}
+
+function participantBody(overrides = {}) {
+  return {
+    class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
+    participants: [
+      {
+        id: P1,
+        displayName: 'Alex',
+        assignmentRevision: 1,
+        joinedAt: '2026-10-01T00:00:00Z',
+        updatedAt: '2026-10-01T00:00:00Z',
+        assignment: { id: W1, kind: 'individual', label: 'Alex' }
+      },
+      {
+        id: P2,
+        displayName: 'Blair',
+        assignmentRevision: 0,
+        joinedAt: '2026-10-01T00:01:00Z',
+        updatedAt: '2026-10-01T00:01:00Z',
+        assignment: null
+      }
+    ],
+    ...overrides
   };
 }
 
@@ -122,6 +154,7 @@ test('Instructor opens one class, renders roster, and observes through the GET-o
   const env = setup(async (url, options) => {
     requests.push([url, options]);
     if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
     if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
     return response(404, {});
   });
@@ -134,6 +167,9 @@ test('Instructor opens one class, renders roster, and observes through the GET-o
   assert.equal(stored.selectedWorkspaceId, W1);
   assert.equal(dom.window.document.body.classList.contains('instructor-class-connected'), true);
   assert.equal(dom.window.document.querySelectorAll('.instructor-workspace-item').length, 2);
+  assert.equal(dom.window.document.querySelectorAll('.instructor-participant-row').length, 2);
+  assert.equal(dom.window.document.getElementById('instructorParticipantSummary').textContent, '2 students · 1 waiting');
+  assert.equal(dom.window.document.getElementById('instructorJoinCode').textContent, 'K7FM-P4Q2');
   assert.equal(dom.window.document.getElementById('oneLine').value, 'First');
   assert.equal(dom.window.document.getElementById('oneLine').readOnly, true);
   assert.equal(dom.window.document.querySelector('.wrap').hasAttribute('aria-readonly'), false);
@@ -144,11 +180,142 @@ test('Instructor opens one class, renders roster, and observes through the GET-o
   assert.equal(dom.window.document.getElementById('instructorObservedWorkspace').textContent, 'Alex');
 });
 
+test('Instructor starts a live class, creates a team, and assigns a waiting Student without exposing assignment secrets', async () => {
+  const workspaces = [];
+  const participants = [{
+    id: P2,
+    displayName: 'Blair',
+    assignmentRevision: 0,
+    joinedAt: '2026-10-01T00:01:00Z',
+    updatedAt: '2026-10-01T00:01:00Z',
+    assignment: null
+  }];
+  const requests = [];
+
+  const env = setup(async (url, options = {}) => {
+    requests.push([url, options]);
+    if (url === '/api/classes' && options.method === 'POST') {
+      return response(201, {
+        class: {
+          id: 'class-1',
+          title: 'Live PSDM Class',
+          expiresAt: '2099-01-01T00:00:00Z'
+        },
+        instructorToken: TOKEN,
+        studentJoinToken: 'j'.repeat(43),
+        joinCode: 'K7FM-P4Q2'
+      });
+    }
+    if (url === '/api/classes/workspaces' && options.method === 'GET') {
+      return response(200, {
+        class: {
+          id: 'class-1',
+          title: 'Live PSDM Class',
+          joinCode: 'K7FMP4Q2',
+          expiresAt: '2099-01-01T00:00:00Z'
+        },
+        workspaces
+      });
+    }
+    if (url === '/api/classes/participants' && options.method === 'GET') {
+      return response(200, {
+        class: { id: 'class-1', title: 'Live PSDM Class', expiresAt: '2099-01-01T00:00:00Z' },
+        participants
+      });
+    }
+    if (url === '/api/classes/workspaces' && options.method === 'POST') {
+      const body = JSON.parse(options.body);
+      const workspace = {
+        id: W1,
+        kind: body.kind,
+        label: body.label,
+        participantCount: 0,
+        activeParticipantCount: 0,
+        editingParticipantCount: 0
+      };
+      workspaces.push(workspace);
+      return response(201, { workspace, assignmentToken: 'x'.repeat(43) });
+    }
+    if (url === '/api/classes/participants' && options.method === 'PATCH') {
+      const body = JSON.parse(options.body);
+      participants[0] = {
+        ...participants[0],
+        assignmentRevision: 1,
+        assignment: { id: W1, kind: 'group', label: 'Team Alpha' }
+      };
+      return response(200, {
+        class: { id: 'class-1', title: 'Live PSDM Class', expiresAt: '2099-01-01T00:00:00Z' },
+        participant: participants[0],
+        assignment: participants[0].assignment,
+        changed: true
+      });
+    }
+    if (String(url).includes('/api/classes/observe')) {
+      return response(200, {
+        class: { id: 'class-1', title: 'Live PSDM Class', expiresAt: '2099-01-01T00:00:00Z' },
+        workspace: {
+          id: W1,
+          kind: 'group',
+          label: 'Team Alpha',
+          revision: 1,
+          expiresAt: '2099-01-01T00:00:00Z'
+        },
+        participants: [],
+        snapshot: {}
+      });
+    }
+    return response(404, {});
+  });
+
+  assert.equal(await env.controller.startClass('Live PSDM Class'), true);
+  assert.equal(dom.window.document.getElementById('instructorClassTitle').textContent, 'Live PSDM Class');
+  assert.equal(dom.window.document.getElementById('instructorJoinCode').textContent, 'K7FM-P4Q2');
+  assert.equal(dom.window.document.getElementById('instructorParticipantSummary').textContent, '1 student · 1 waiting');
+
+  const stored = JSON.parse(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY));
+  assert.equal(stored.instructorToken, TOKEN);
+  assert.equal(stored.joinCode, 'K7FM-P4Q2');
+  assert.equal(JSON.stringify(stored).includes('studentJoinToken'), false);
+
+  assert.equal(await env.controller.createWorkspace('group', 'Team Alpha'), true);
+  assert.equal(dom.window.document.querySelectorAll('.instructor-workspace-item').length, 1);
+  assert.equal(dom.window.document.getElementById('instructorWorkspaceLabel').value, '');
+
+  assert.equal(await env.controller.assignParticipant(P2, W1), true);
+  const assignmentSelect = dom.window.document.querySelector('[data-participant-id="' + P2 + '"] select');
+  assert.equal(assignmentSelect.value, W1);
+  assert.equal(dom.window.document.getElementById('instructorParticipantSummary').textContent, '1 student · 0 waiting');
+
+  const createRequest = requests.find(([url, options]) => (
+    url === '/api/classes/workspaces' && options.method === 'POST'
+  ));
+  assert.deepEqual(JSON.parse(createRequest[1].body), {
+    kind: 'group',
+    label: 'Team Alpha',
+    snapshot: {}
+  });
+
+  const assignRequest = requests.find(([url, options]) => (
+    url === '/api/classes/participants' && options.method === 'PATCH'
+  ));
+  assert.deepEqual(JSON.parse(assignRequest[1].body), {
+    participantId: P2,
+    workspaceId: W1
+  });
+
+  assert.equal(
+    JSON.stringify(requests).includes('assignmentToken'),
+    false,
+    'Instructor client never persists or reuses the legacy assignment secret'
+  );
+});
+
 test('rapid Instructor workspace switching aborts/stales the previous observer and keeps the newest snapshot', async () => {
   let resolveFirst;
   let firstSignal = null;
   const env = setup(async (url, options) => {
     if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
     if (url.includes(W1)) {
       firstSignal = options.signal;
       return new Promise(resolve => { resolveFirst = resolve; });
@@ -173,6 +340,7 @@ test('rapid Instructor workspace switching aborts/stales the previous observer a
 test('Instructor search and kind filter narrow the roster without changing authorization', async () => {
   const env = setup(async url => {
     if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
     if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
     return response(404, {});
   });
@@ -196,6 +364,7 @@ test('Instructor search and kind filter narrow the roster without changing autho
 test('switching away from Instructor restores local Intake and keeps same-device class resume', async () => {
   const env = setup(async url => {
     if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
     if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
     return response(404, {});
   });
@@ -213,6 +382,7 @@ test('switching away from Instructor restores local Intake and keeps same-device
 test('Leave class clears Instructor resume and restores local Intake', async () => {
   const env = setup(async url => {
     if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
     if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
     return response(404, {});
   });
@@ -242,6 +412,7 @@ test('Instructor observer lifecycle emits coaching integration hooks without gra
   let ended = 0;
   const env = setup(async url => {
     if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
     if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
     return response(404, {});
   }, {
@@ -268,6 +439,7 @@ test('Instructor class lifecycle exposes protected-resource capability hooks', a
   let disconnected = 0;
   const env = setup(async url => {
     if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
     if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
     return response(404, {});
   }, {

@@ -41,33 +41,43 @@ Do not collapse these concepts into one mode.
 Class
   id
   title
-  instructor capability(s)
-  student join capability / join code policy
+  instructor capability hash
+  human Student join code
+  legacy Student join capability hash
   status / expiry / retention metadata
-  case-study assignments (later)
 
-  -> Classroom Workspace [1..n]
+  -> Classroom Participant [0..n]
+       opaque participant id + display name
+       Student class-session capability hash
+       current workspace assignment (optional / Waiting)
+       assignment revision
+       current assignment-specific workspace-access hash (optional)
+
+  -> Classroom Workspace [0..n]
        id
        kind: individual | group
-       display name
+       display label
        existing collaboration workspace reference
-       membership / assignment metadata
+       legacy assignment capability hash
 
-       -> Participant [1..n]
-            device/profile identity + display name
-            existing collaboration presence/activity
+       -> existing collaboration snapshot / revision / presence
 
-       -> Coaching Feedback [0..n]
-            coachable target id
-            status
-            note
-            reviewed workspace revision
-            reviewed field fingerprint
-            independent feedback revision
-            created/updated metadata
+  -> Coaching Feedback [0..n]
+       class + workspace + coachable target id
+       status / note
+       reviewed workspace revision
+       reviewed field fingerprint
+       independent feedback revision
+       created/updated metadata
+
+  -> Classroom Exercise / Stage State [future #313]
+       selected protected Case Study
+       exercise status / current stage
+       released Student content
+       Instructor-only facilitation/debrief material
 ```
 
-The **Classroom Workspace** should reference or extend the existing collaboration workspace rather than duplicate its snapshot, revision, participant, or presence model.
+The **Classroom Workspace** references the existing collaboration workspace rather than duplicating its snapshot, revision, participant, or presence engine. #312 deliberately separates stable class participation from mutable workspace assignment so a Student can wait unassigned, move between teams, or be unassigned again without changing identity or merging team Intake state.
 
 ## Experience role lifecycle
 
@@ -99,18 +109,20 @@ Standalone is the compatibility anchor.
 
 Student mode adds class context around the normal Intake.
 
-Slice #292 implements a join gate before the Student Intake becomes editable. A Student supplies a **class join capability + assignment capability + display name**. The client never lists classes/workspaces; the server resolves exactly one authorized individual/team workspace.
+The normal #312 path is **display name + one human class code**. The code is admission-only: `POST /api/classes/admit` resolves one active class and mints a high-entropy Student class-session capability for exactly one participant. The client never lists classes, classmates, teams, or workspaces.
 
-After successful admission:
-- the class join and assignment capabilities are discarded;
-- the returned per-participant workspace capability is persisted under `kt-classroom-student-session-v1` for same-device resume;
-- that capability is attached programmatically to the existing collaboration controller and never placed in `?workspace=`;
-- class/workspace/participant context is rendered as local-only Student chrome;
-- a pre-class local snapshot is retained separately under `kt-classroom-student-local-recovery-v1` so **Leave class** can restore prior local work.
+A Student may be admitted while **Waiting / unassigned**. In that state:
+- `kt-classroom-student-session-v1` stores only the Student class-session capability plus public class/participant/current-assignment context;
+- there is no collaboration workspace token and Intake remains hidden;
+- the browser polls only its own assignment state.
 
-Switching away from Student disconnects live classroom presence/sync but keeps the resume envelope. Switching back resumes the same authorized workspace. Terminal invalid/expired/revoked workspace access clears the resume capability and restores the pre-class local recovery.
+When assigned, the Student exchanges the class-session capability through `POST /api/classes/student/access` for a fresh assignment-specific editable workspace capability. That workspace capability is memory-only, is attached programmatically to the existing collaboration controller, and is never placed in `?workspace=` or persisted in the live resume envelope.
 
-Student workspace editing continues through the existing collaboration synchronization engine. No classroom metadata or capability belongs in the Intake snapshot.
+On assignment revision change, the client leaves/discards old collaboration authority before requesting destination access. The destination team's current Intake is authoritative; old local/team work is never merged into it. Unassign disconnects collaboration and returns the Student to Waiting while retaining the stable class session.
+
+A pre-class local snapshot remains separately recoverable under `kt-classroom-student-local-recovery-v1`. Terminal invalid/expired class-session access clears Classroom credentials and restores local recovery where appropriate.
+
+The #292 **class join capability + assignment capability** flow remains available only as explicit legacy/recovery compatibility. No classroom metadata or capability belongs in the Intake snapshot.
 
 ### Instructor
 
@@ -136,36 +148,42 @@ Field-specific fingerprints, not whole-workspace revision comparisons, determine
 
 ## Authentication and capability model
 
-The current collaboration model is capability-based: possession of a secret workspace token grants access, and only a hash is persisted server-side. Slice #291 preserves that simplicity while separating privileges.
+The collaboration/Classroom model is capability-based: possession of the correct secret grants only the authority represented by that capability, while raw secrets are never persisted where a hash suffices.
 
-Implemented credential types:
+Primary #312 credential chain:
 
-- **Instructor class capability** — administers exactly one class and may enumerate that class's classroom workspace metadata.
-- **Student class join capability** — admits a join attempt into one class but cannot enumerate assignments/workspaces.
-- **Assignment capability** — identifies exactly one individual/group workspace inside the admitted class.
-- **Student workspace capability** — minted after successful join and accepted by the existing editable collaboration session/presence APIs.
-- **Case Study unlock password** — instructional gating only; never authentication.
+- **Instructor class capability** — administers exactly one class; may list that class's roster/workspaces, assign/reassign Students, observe read-only, coach, and access Instructor-scoped protected teaching resources.
+- **Human Student join code** — low-entropy admission locator only; cannot enumerate or edit anything.
+- **Student class-session capability** — high-entropy stable participant credential; may read only that Student's assignment state and request current assignment access.
+- **Student workspace capability** — assignment-specific `classroom-student` editable alias into exactly one collaboration workspace; revoked/rotated on reassignment or unassign.
+- **Case Study unlock password** — instructional progression control only; never server authentication.
 
-A Student must present the matching **class join + assignment** pair. Cross-class pairs fail generically.
+Legacy compatibility chain:
+- **Student class join capability + assignment capability** still authorize the older two-code admission endpoint and mint a per-participant editable workspace capability.
 
-Raw bearer capabilities are never persisted where a hash suffices. Capabilities travel in Authorization headers or request bodies as appropriate, not API query strings. Responses remain no-store/no-referrer.
+The Student class-session capability is never accepted by collaboration edit, Instructor observer, or Instructor coaching endpoints. The human join code is never accepted outside admission. Cross-class assignment attempts fail generically.
 
-`collaboration_workspace_capabilities` is deliberately an **editable alias** path. Only explicitly allowed edit kinds may resolve there; slice #291 allows `classroom-student` only. Slice #293 keeps the Instructor class capability outside that alias table and authorizes observation through the separate GET-only `/api/classes/observe` path so Instructor access cannot inherit snapshot PUT/PATCH capability.
+Raw bearer capabilities travel in Authorization headers or request bodies as appropriate, never API query strings. Private responses remain no-store/no-referrer.
+
+`collaboration_workspace_capabilities` is deliberately an **editable alias** path. Only explicitly allowed edit kinds may resolve there; `classroom-student` is the Classroom edit kind. Instructor authority stays outside that alias table and uses separate server-enforced administration/GET-only observation paths so Instructor access cannot inherit snapshot PUT/PATCH capability.
 
 ## Student assignment
 
-The API, not the client, decides which workspace a student may join.
+The server, not the browser, owns live assignment.
 
-Slice #291 implements:
+#312 models assignment on the class participant separately from admission:
+- an admitted Student may have `workspace_id = null` and remain Waiting;
+- Instructor `PATCH /api/classes/participants` assigns, reassigns, or unassigns only within the represented class;
+- `assignment_revision` increments only on a real assignment change and gives the Student a monotonic change signal;
+- old assignment-specific workspace authority is revoked before assignment metadata changes;
+- destination access is minted only later when the Student requests current access;
+- a stale old-team token must fail rather than being remapped to the destination workspace;
+- no assignment operation reads, copies, or merges Intake snapshots;
+- individual live workspaces remain single-participant; group workspaces support multiple distinct participant capabilities.
 
-- individual: the first opaque participant UUID to claim an assignment binds that assignment; another participant UUID cannot claim it;
-- group: multiple participants can use the same assignment capability and receive distinct editable workspace capabilities for one shared collaboration workspace.
+The Student own-status endpoint has no roster/workspace enumeration. Display name remains presentation metadata, not identity.
 
-The class join endpoint has no list operation. A Student receives workspace metadata only after the matching class-join and assignment capabilities authorize one workspace.
-
-Display name remains presentation metadata, not identity. This is still a capability system: deliberately sharing an already-issued workspace capability delegates that capability.
-
-Slice #292 makes that resume contract concrete: the browser retains only the issued Student workspace capability plus public class/workspace context and participant display metadata. Student join and assignment capabilities are not retained after success. Resume/recovery keys stay outside `kt-intake-full-v2`, file export, templates, and summaries.
+The legacy #291/#292 assignment-capability semantics remain supported behind the explicit two-code recovery path. Resume/recovery keys for both models stay outside `kt-intake-full-v2`, file export, templates, and summaries.
 
 ## Instructor observation
 
@@ -233,16 +251,18 @@ Implemented state (#295):
 
 Continue the existing Neon/Vercel approach unless evidence justifies a platform migration.
 
-Slice #291 adds these domain tables:
+The Classroom persistence model is additive:
 
-- `collaboration_workspace_capabilities` for explicitly editable aliases into existing collaboration workspaces;
-- `classroom_classes` for class metadata, retention, Instructor capability hash, and Student-join capability hash;
-- `classroom_workspaces` for individual/group assignment metadata and assignment capability hashes;
-- `classroom_memberships` for participant-to-workspace membership and per-participant workspace capability hashes.
+- `collaboration_workspace_capabilities` — explicitly editable aliases into existing collaboration workspaces;
+- `classroom_classes` — class metadata/retention, Instructor capability hash, legacy Student-join hash, and #312 human join code;
+- `classroom_workspaces` — individual/group workspace metadata plus legacy assignment capability hashes;
+- `classroom_memberships` — legacy two-code participant-to-workspace compatibility;
+- `classroom_participants` — #312 live participant identity, optional current assignment, `assignment_revision`, Student class-session capability hash, and current workspace-access capability hash;
+- `classroom_coaching_feedback` — separate class/workspace/target coaching channel.
 
-Slice #294 adds `classroom_coaching_feedback` as a separate class/workspace/target channel. Slice #295 adds no new database table: protected Case Study access reuses the existing Instructor class capability and Student classroom membership capability. Case-level assignment metadata remains a possible future narrowing layer.
+Protected Case Study delivery (#295) adds no public/browser data table and remains server-gated. #313 should add exercise/stage state separately from Intake snapshots and from participant authorization; it must not overload collaboration revision or coaching state.
 
-Schema initialization/migration must be idempotent and documented. Avoid making browser boot depend on schema creation for Standalone.
+Schema initialization/migration must remain idempotent and documented. Browser boot for Standalone must never depend on Classroom schema creation.
 
 ## Security boundaries
 

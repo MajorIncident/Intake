@@ -51,6 +51,7 @@ test('Instructor feedback reaches only the assigned Student and becomes stale af
 
   await startFresh(page);
   await page.getByRole('button', { name: /Teach a class/ }).click();
+  await page.locator('#instructorExistingClass > summary').click();
   await page.getByLabel('Instructor access code').fill(instructorCode);
   await page.getByRole('button', { name: 'Open class' }).click();
 
@@ -87,6 +88,7 @@ test('Instructor feedback reaches only the assigned Student and becomes stale af
   await page.getByRole('button', { name: /Join a class/ }).click();
   await page.locator('#studentDisplayName').fill(studentName);
   await page.getByLabel('Class code').fill(classCode);
+  await page.locator('#studentLegacyJoin > summary').click();
   await page.getByLabel('Assignment code').fill(assignmentCode);
   await page.getByRole('button', { name: 'Join class' }).click();
 

@@ -313,6 +313,74 @@ Continue #295 on draft PR #307 from the current branch head.
   - First required-gate validation on `c9b03f30...`: repository quality succeeded and browser regression reported **22 passed, 6 intentional skips**; CodeQL, Dependency Review, and Template Manifest Guard also green.
 - Exact next action: synchronize final docs/PR/issues, review the complete `main → #308` diff and unresolved review/security state, then make #308 ready for review/merge if the documented head remains green. After #308 / #296 / #279 close, begin #312 as the next product slice; #313 follows on the live-class/team-management substrate.
 
+## Active #312 implementation
+
+- Issue: #312.
+- Branch: `feature/classroom-live-management`.
+- Base: `main` at #308 merge `6c58336ac1677764641c09eadb201abcad8eeac1`.
+- First tranche: architecture + server contract only; no schema/runtime mutation until the admission/assignment/reassignment security contract is documented.
+- Canonical design: `docs/classroom-live-management.md`.
+- Decided model:
+  - Instructor normal path is **Start a class**;
+  - one human-friendly Student join code;
+  - join code is admission-only, not workspace authority;
+  - admission mints a stable high-entropy Student class-session capability;
+  - Students may wait unassigned;
+  - workspace edit capabilities are assignment-specific and revoked on move/unassign;
+  - Student polls only own assignment status and never receives workspace lists;
+  - reassignment never merges snapshots; destination team state wins;
+  - legacy two-code admission remains supported during additive migration.
+- Critical race protection: never remap one active workspace edit token from Team A to Team B. Old edit capability is revoked; Student obtains fresh destination access after assignment revision changes.
+- Persistence/repository checkpoint:
+  - `99c31f2e9c59180ed297db96512b62b310692b4c` adds the human join-code column and additive `classroom_participants` model plus live participant/session repository primitives;
+  - `fa6180ada0183dfc4b19790925e61deea60bdfbf` corrects the participant/workspace FK deletion behavior so required class identity is preserved;
+  - `5665637e6f550bebb861c73109e991b6e96a73c9` mirrors the model in the deterministic test repository;
+  - `df3633d008bb7e352509e15c1964b7d27ebf441f` adds focused join-code normalization, waiting-roster, class-scoping, and class-session-rotation tests.
+  - validation: canonical quality **241 tests / 1 intentional skip**; required Browser E2E **22 passed / 6 intentional skips / 0 failed**; CodeQL, Dependency Review, and Template Manifest Guard green.
+  - current Student UI and legacy `POST /api/classes/join` remain unchanged.
+- HTTP admission/status/access checkpoint:
+  - `746559e67620aab3457b6cda90e42168d5350dde` adds Start Class join-code return, race-safe live workspace-access issuance, and live/legacy Student-context resolution;
+  - `1b81d4a4c80a7fe16cee5523d6c13811f51f20b3` mirrors live access in the deterministic repository;
+  - `2d6f92d05c693c35818e4457685c311c66a65807` adds one-code admission, Instructor participant roster, Student own-status, and Student current-workspace access handlers;
+  - route entrypoints land in `11a83da6...` through `dc698c110...`;
+  - `04f95f24dd63d2ce75260034d75c9c514d07e84e` adds the focused authorization matrix.
+  - validation: repository quality **244 tests / 243 pass / 0 fail / 1 intentional skip**; required Browser E2E **22 passed / 6 intentional skips / 0 failed**; CodeQL, Dependency Review, and Template Manifest Guard green.
+  - current Student UI remains on the legacy two-code path; no live team-management UI has been cut over yet.
+- Assign/reassign/unassign authority checkpoint:
+  - `742240e92156a9d43a96752a2cb6acc5908f4172` adds server-only stale-presence cleanup by internal workspace ID;
+  - `2c1d6fdf6872eb1390424503f08692a581da6322` mirrors that cleanup in the deterministic workspace harness;
+  - `b48e6bbb71c2d6ec818ca1f69b656b3bffbed473` adds Instructor-only assignment transitions, optimistic revision protection, individual-workspace occupancy enforcement, old-authority revocation before assignment mutation, and active-alias validation for live Student coaching/resource context;
+  - `a382acad42de25f4fa1ae217acf34d69a047606b` mirrors live assignment transitions in the deterministic Classroom repository;
+  - `7bfd662e2dcbe5511a4065b7b19222129485d08a` proves Waiting -> Team A -> Team B -> Waiting, idempotent same-team assignment, cross-class rejection, stale-token write rejection, old-presence cleanup, no snapshot merge, and individual-workspace single occupancy.
+  - validation: repository quality **246 tests / 245 pass / 0 fail / 1 intentional skip**; required Browser E2E **22 passed / 6 intentional skips / 0 failed**; CodeQL, Dependency Review, and Template Manifest Guard green.
+  - current Instructor and Student UIs are still on the pre-#312 experience; the new management surface has not been cut over.
+- Instructor live-management client checkpoint:
+  - `0d004552db82660dc723fd37a79ef4e46d197083` / `9c26bdf1a546428092af44dcf342cb2eae0d44a4` establish the primary Start Class shell, join-code panel, live roster/team controls, and responsive layout while keeping Open existing class as recovery.
+  - `f2306021eaa4cb95fd34e72940233fc0a99bcb3e` through `a2ae981e0a902f3c143446fec2fa1e77ef346d1f` wire Instructor session/join-code state, combined workspace+participant polling, Start Class, workspace creation, assignment, copy, resume, and observer lifecycle.
+  - `40f6ece94c47d026ac201e0f434f51329d38c604` / `8fe9e4438b18684377382c7e7cadd68208da1c53` make live participants count in workspace member totals.
+  - `09daa729f4b2a32e0c913985b741771ace34dc5f` / `709cd910de22189b1d362f58aa58c3c5abbf2642` add Instructor feature/unit coverage.
+  - `2a76541675217aff46f90c255c33e40968db718f` / `e23b4cd8cf998b313418706bc36b7cf2d175b1db` extend the deterministic browser fixture; `692c81aa9c0007d94f2d91fe36bb34160ff9173c` adds the real-browser Start Class -> Waiting -> create Team -> assign -> observe -> reload/resume journey.
+  - the first browser run exposed only an intentional-UX test mismatch: old Instructor tests tried to type into the now-collapsed existing-class recovery disclosure. `205b0edc...` through `d3e2a397cd76fc75e62516ed63ad76231bb4812c` update those journeys to explicitly open recovery first.
+  - validation on `d3e2a397...`: repository quality **248 tests / 247 pass / 0 fail / 1 intentional skip**; required Browser E2E **23 passed / 7 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+  - the normal Instructor flow no longer depends on exposing legacy Student join/assignment capabilities; compatibility routes remain intact.
+- Student live-class client checkpoint:
+  - `47485439c34fc7237c28f93619924e2da87b084a` / `73792b71db9ec7965c36c2b905ebc09bb699ea78` make display name + human class code the normal Student path, add Waiting, and retain the legacy assignment code under an explicit recovery disclosure.
+  - `d32c7ec331daa5010f9617c6b332756e9395d35b` implements live admission, own-status polling, class-session resume, memory-only workspace access, safe reassignment, unassign, and terminal recovery while preserving the legacy controller path.
+  - `db54b1aa84dc4d43802aa568b811b6974a84c02c` / `a3d520655c928abbeb4cb63e592593a38a969cd8` prove the live resume envelope never persists assignment-specific workspace authority and cover Waiting -> A -> B -> Waiting.
+  - `8485b2ca1a5ba59fb98d4aae0398a9052fab91b6` / `2fd0d53c0fd8e4e4cac0298aca9f5ed7ad930a94` add an isolated live Student browser fixture with canonical Team A/B state and revocable fresh workspace aliases.
+  - `50f6260a251793c0794945d941ad4ac1c97d4e8d` adds desktop/mobile one-code -> Waiting -> Team Alpha -> edit -> reload/resume -> Team Beta -> Waiting, including stale-token 404 checks and no snapshot merge.
+  - the first browser run exposed two bounded issues: four older tests needed to open the intentional legacy recovery disclosure, and the Waiting eyebrow inherited a 3.72:1 blue-on-pale-blue contrast. `30dbb0d...` through `1b90c0f...` update the legacy journeys; `0c8692c7486ecb50c730d0757c41426b81830250` applies the existing accessible accent-text foreground.
+  - validation on `0c8692c...`: repository quality **252 tests / 251 pass / 0 fail / 1 intentional skip**; required Browser E2E **25 passed / 7 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+  - live same-device resume persists the stable Student class-session capability, never the current team workspace token; reload/move reacquires fresh server-authorized access.
+- Integrated live-class acceptance checkpoint:
+  - `5f1404921eeec8b2aba3103672be547af35b6865` / `4f36af2d5221234a9ebf35d574f287f7aa52bb39` share managed Instructor workspace state with live Student collaboration and bind one-code admission to the same Instructor-owned class.
+  - `e7b8d06111b8dbda6ba6a27372956b3d012899c3` carries existing field-level coaching across managed live workspaces.
+  - `2262490c9de7da5a9b675932fda2c84475977168` adds the four-browser acceptance journey: displayed Instructor join code -> two Waiting Students -> Team Alpha shared sync -> late Student -> Team Beta isolation -> Instructor observe/coach -> A -> B move -> stale-A 404 -> unassign -> stale-B 404.
+  - before accepting the gate, `971898cb4eca725ad079be5c8ba5c97484fdab2f` / `6c712e47383079d5aa50869be4e9d9a26def28e9` / `9315210dd15ed583cfbd3201302699d025ded3a1` isolate the integrated class capability/join-code/workspace namespace so fully parallel Playwright specs cannot reset one another.
+  - validation on `9315210...`: repository quality **252 tests / 251 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+  - #312 browser acceptance now covers the complete live-class lifecycle without adding #313 staged simulation state.
+- Exact next action: perform the final #312 docs/security/merge-readiness review: reconcile API/architecture docs with the implemented one-code lifecycle, review the full `main -> #314` diff and unresolved review/security state, confirm additive rollback/legacy compatibility, and move #314 out of draft only if the final documented head remains green. Keep #313 as the next separate product slice.
+
 ## Approved Classroom follow-on direction
 
 The current #288 program establishes the secure Classroom foundation, but it is **not** the final Instructor-led teaching experience.

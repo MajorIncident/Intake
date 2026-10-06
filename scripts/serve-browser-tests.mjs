@@ -27,6 +27,38 @@ const INSTRUCTOR_WORKSPACE_IDS = Object.freeze({
   INDIVIDUAL: '11111111-1111-4111-8111-111111111111',
   GROUP: '22222222-2222-4222-8222-222222222222'
 });
+const LIVE_INSTRUCTOR_TOKEN = `${'i'.repeat(42)}s`;
+const LIVE_JOIN_CODE = 'K7FM-P4Q2';
+const LIVE_WORKSPACE_IDS = Object.freeze([
+  '66666666-6666-4666-8666-666666666666',
+  '77777777-7777-4777-8777-777777777777',
+  '88888888-8888-4888-8888-888888888888'
+]);
+const INTEGRATED_INSTRUCTOR_TOKEN = `${'i'.repeat(42)}t`;
+const INTEGRATED_JOIN_CODE = 'J8NP-C5R3';
+const INTEGRATED_WORKSPACE_IDS = Object.freeze([
+  'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+  'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+  'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'
+]);
+const LIVE_PARTICIPANT_ID = '99999999-9999-4999-8999-999999999999';
+const STUDENT_LIVE_JOIN_CODE = 'M7QR-T4P2';
+const STUDENT_LIVE_CLASS = Object.freeze({
+  id: 'browser-student-live-class',
+  title: 'Browser Student Live Classroom',
+  expiresAt: CLASSROOM_EXPIRY
+});
+let liveClassState = null;
+let liveInstructorWorkspaces = [];
+let liveInstructorParticipants = [];
+const liveInstructorWorkspaceStates = new Map();
+let integratedClassState = null;
+let integratedInstructorWorkspaces = [];
+let integratedInstructorParticipants = [];
+const integratedInstructorWorkspaceStates = new Map();
+let studentLiveCounter = 0;
+const studentLiveSessions = new Map();
+const studentLiveAccessContexts = new Map();
 const classroomWorkspaces = new Map();
 const classroomCoachingFeedback = new Map();
 
@@ -73,6 +105,71 @@ function workspaceTokenForAssignment(assignmentToken) {
   return `w${assignmentToken.slice(1)}`;
 }
 
+function fixtureCapability(prefix, counter) {
+  const suffix = counter.toString(36).padStart(6, '0');
+  return `${prefix}${'x'.repeat(42 - suffix.length)}${suffix}`;
+}
+
+function studentLiveWorkspaceId(counter, teamNumber) {
+  const tail = String(counter * 10 + teamNumber).padStart(12, '0');
+  return `${teamNumber === 1 ? 'aaaaaaaa' : 'bbbbbbbb'}-${teamNumber === 1 ? 'aaaa' : 'bbbb'}-4${teamNumber === 1 ? 'aaa' : 'bbb'}-8${teamNumber === 1 ? 'aaa' : 'bbb'}-${tail}`;
+}
+
+function revokeStudentLiveAccess(session) {
+  if (!session?.activeWorkspaceToken) return;
+  classroomWorkspaces.delete(session.activeWorkspaceToken);
+  studentLiveAccessContexts.delete(session.activeWorkspaceToken);
+  session.activeWorkspaceToken = '';
+}
+
+function setStudentLiveAssignment(session, assignment, revision) {
+  const previousId = session.assignment?.id || null;
+  const nextId = assignment?.id || null;
+  if (previousId !== nextId) revokeStudentLiveAccess(session);
+  session.assignment = assignment;
+  session.assignmentRevision = revision;
+}
+
+function studentLiveStatus(session) {
+  session.statusReads += 1;
+  if (!session.integrated) {
+    if (session.assignmentRevision === 0 && session.statusReads >= 2) {
+      setStudentLiveAssignment(session, session.teamA, 1);
+    } else if (session.assignment?.id === session.teamA.id && session.accessCount >= 2) {
+      setStudentLiveAssignment(session, session.teamB, 2);
+    } else if (session.assignment?.id === session.teamB.id && session.accessCount >= 3) {
+      setStudentLiveAssignment(session, null, 3);
+    }
+  }
+  return {
+    class: session.classContext || STUDENT_LIVE_CLASS,
+    participant: {
+      id: session.participantId,
+      displayName: session.displayName,
+      assignmentRevision: session.assignmentRevision
+    },
+    assignment: session.assignment ? structuredClone(session.assignment) : null
+  };
+}
+
+function issueStudentLiveAccess(session) {
+  revokeStudentLiveAccess(session);
+  session.accessCount += 1;
+  const workspaceToken = fixtureCapability('u', ++studentLiveCounter);
+  const assignment = session.assignment;
+  const workspaceState = session.workspaceStates.get(assignment.id);
+  classroomWorkspaces.set(workspaceToken, workspaceState);
+  studentLiveAccessContexts.set(workspaceToken, {
+    class: session.classContext || STUDENT_LIVE_CLASS,
+    workspace: {
+      ...assignment,
+      expiresAt: CLASSROOM_EXPIRY
+    }
+  });
+  session.activeWorkspaceToken = workspaceToken;
+  return workspaceToken;
+}
+
 function freshClassroomSnapshot() {
   const template = TEMPLATE_MANIFEST.find(entry => entry.id === 'checkout-latency');
   return structuredClone(template?.state || {});
@@ -100,8 +197,49 @@ function instructorClass() {
   return {
     id: 'browser-test-class',
     title: 'Browser Test Classroom',
+    joinCode: 'K7FMP4Q2',
     expiresAt: CLASSROOM_EXPIRY
   };
+}
+
+function liveInstructorClass() {
+  return liveClassState || {
+    id: 'browser-live-class',
+    title: 'Browser Live Classroom',
+    joinCode: 'K7FMP4Q2',
+    expiresAt: CLASSROOM_EXPIRY
+  };
+}
+
+function integratedInstructorClass() {
+  return integratedClassState || {
+    id: 'browser-integrated-class',
+    title: 'Integrated Browser Classroom',
+    joinCode: 'J8NPC5R3',
+    expiresAt: CLASSROOM_EXPIRY
+  };
+}
+
+function managedInstructorFixture(token) {
+  if (token === INTEGRATED_INSTRUCTOR_TOKEN) {
+    return {
+      classContext: integratedInstructorClass(),
+      workspaces: integratedInstructorWorkspaces,
+      participants: integratedInstructorParticipants,
+      workspaceStates: integratedInstructorWorkspaceStates,
+      workspaceIds: INTEGRATED_WORKSPACE_IDS
+    };
+  }
+  if (token === LIVE_INSTRUCTOR_TOKEN) {
+    return {
+      classContext: liveInstructorClass(),
+      workspaces: liveInstructorWorkspaces,
+      participants: liveInstructorParticipants,
+      workspaceStates: liveInstructorWorkspaceStates,
+      workspaceIds: LIVE_WORKSPACE_IDS
+    };
+  }
+  return null;
 }
 
 function instructorRoster() {
@@ -125,6 +263,85 @@ function instructorRoster() {
         editingParticipantCount: 0
       }
     ]
+  };
+}
+
+function instructorParticipants() {
+  return {
+    class: instructorClass(),
+    participants: [
+      {
+        id: '33333333-3333-4333-8333-333333333333',
+        displayName: 'Alex Student',
+        assignmentRevision: 1,
+        joinedAt: '2099-12-31T20:00:00.000Z',
+        updatedAt: '2099-12-31T20:00:00.000Z',
+        assignment: {
+          id: INSTRUCTOR_WORKSPACE_IDS.INDIVIDUAL,
+          kind: 'individual',
+          label: 'Alex Student'
+        }
+      },
+      {
+        id: '44444444-4444-4444-8444-444444444444',
+        displayName: 'Waiting Student',
+        assignmentRevision: 0,
+        joinedAt: '2099-12-31T20:01:00.000Z',
+        updatedAt: '2099-12-31T20:01:00.000Z',
+        assignment: null
+      }
+    ]
+  };
+}
+
+function managedInstructorRoster(token) {
+  const fixture = managedInstructorFixture(token);
+  if (!fixture) return null;
+  return {
+    class: fixture.classContext,
+    workspaces: fixture.workspaces.map(workspace => ({
+      ...workspace,
+      participantCount: fixture.participants.filter(participant => participant.assignment?.id === workspace.id).length,
+      activeParticipantCount: 0,
+      editingParticipantCount: 0
+    }))
+  };
+}
+
+function managedInstructorParticipantRoster(token) {
+  const fixture = managedInstructorFixture(token);
+  if (!fixture) return null;
+  return {
+    class: fixture.classContext,
+    participants: structuredClone(fixture.participants)
+  };
+}
+
+function managedInstructorObservation(token, workspaceId) {
+  const fixture = managedInstructorFixture(token);
+  if (!fixture) return null;
+  const workspace = fixture.workspaces.find(item => item.id === workspaceId);
+  const state = fixture.workspaceStates.get(workspaceId);
+  if (!workspace || !state) return null;
+  return {
+    class: fixture.classContext,
+    workspace: {
+      id: workspace.id,
+      kind: workspace.kind,
+      label: workspace.label,
+      teamName: state.teamName,
+      revision: state.revision,
+      expiresAt: CLASSROOM_EXPIRY,
+      updatedAt: '2099-12-31T23:00:00.000Z'
+    },
+    participants: fixture.participants
+      .filter(participant => participant.assignment?.id === workspaceId)
+      .map(participant => ({
+        id: participant.id,
+        displayName: participant.displayName,
+        activityState: 'active'
+      })),
+    snapshot: structuredClone(state.snapshot)
   };
 }
 
@@ -197,6 +414,8 @@ function instructorWorkspaceIdForToken(workspaceToken) {
 }
 
 function classroomContext(workspaceToken) {
+  const liveContext = studentLiveAccessContexts.get(workspaceToken);
+  if (liveContext) return structuredClone(liveContext);
   const suffix = workspaceToken.slice(-8);
   return {
     class: {
@@ -214,17 +433,323 @@ function classroomContext(workspaceToken) {
 }
 
 async function handleClassroomApi(request, response, url) {
-  if (url.pathname === '/api/classes/workspaces') {
+  if (url.pathname === '/api/classes/admit') {
+    if (request.method !== 'POST') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const body = await readJson(request).catch(() => null);
+    const joinCode = typeof body?.joinCode === 'string'
+      ? body.joinCode.trim().toUpperCase().replace(/[\s-]+/gu, '')
+      : '';
+    const isolatedCode = STUDENT_LIVE_JOIN_CODE.replace('-', '');
+    const integratedCode = INTEGRATED_JOIN_CODE.replace('-', '');
+    const participantId = typeof body?.participantId === 'string' ? body.participantId : '';
+    const displayName = typeof body?.displayName === 'string' ? body.displayName.trim() : '';
+    if (![isolatedCode, integratedCode].includes(joinCode) || !participantId || !displayName) {
+      sendJson(response, 404, { error: 'Class not available.' });
+      return true;
+    }
+
+    const sequence = ++studentLiveCounter;
+    const studentSessionToken = fixtureCapability('l', sequence);
+    let session;
+
+    if (joinCode === integratedCode && integratedClassState) {
+      session = {
+        participantId,
+        displayName,
+        assignmentRevision: 0,
+        assignment: null,
+        workspaceStates: integratedInstructorWorkspaceStates,
+        classContext: integratedInstructorClass(),
+        integrated: true,
+        statusReads: 0,
+        accessCount: 0,
+        activeWorkspaceToken: ''
+      };
+      integratedInstructorParticipants.push({
+        id: participantId,
+        displayName,
+        assignmentRevision: 0,
+        joinedAt: '2099-12-31T20:05:00.000Z',
+        updatedAt: '2099-12-31T20:05:00.000Z',
+        assignment: null
+      });
+    } else if (joinCode === isolatedCode) {
+      const teamA = {
+        id: studentLiveWorkspaceId(sequence, 1),
+        kind: 'group',
+        label: 'Team Alpha'
+      };
+      const teamB = {
+        id: studentLiveWorkspaceId(sequence, 2),
+        kind: 'group',
+        label: 'Team Beta'
+      };
+      const makeWorkspaceState = label => {
+        const snapshot = freshClassroomSnapshot();
+        if (!snapshot.pre || typeof snapshot.pre !== 'object') snapshot.pre = {};
+        snapshot.pre.oneLine = `${label} destination Intake.`;
+        return {
+          snapshot,
+          revision: 1,
+          teamName: label,
+          participants: new Map()
+        };
+      };
+      session = {
+        participantId,
+        displayName,
+        assignmentRevision: 0,
+        assignment: null,
+        teamA,
+        teamB,
+        workspaceStates: new Map([
+          [teamA.id, makeWorkspaceState(teamA.label)],
+          [teamB.id, makeWorkspaceState(teamB.label)]
+        ]),
+        statusReads: 0,
+        accessCount: 0,
+        activeWorkspaceToken: ''
+      };
+    } else {
+      sendJson(response, 404, { error: 'Class not available.' });
+      return true;
+    }
+
+    studentLiveSessions.set(studentSessionToken, session);
+    sendJson(response, 200, {
+      class: session.classContext || STUDENT_LIVE_CLASS,
+      participant: {
+        id: participantId,
+        displayName,
+        assignmentRevision: 0
+      },
+      assignment: null,
+      studentSessionToken
+    });
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/student') {
     if (request.method !== 'GET') {
       sendJson(response, 405, { error: 'Method not allowed.' });
       return true;
     }
+    const studentSessionToken = bearerToken(request);
+    const session = studentLiveSessions.get(studentSessionToken);
+    if (!session) {
+      sendJson(response, 404, { error: 'Student class session not found.' });
+      return true;
+    }
+    sendJson(response, 200, studentLiveStatus(session));
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/student/access') {
+    if (request.method !== 'POST') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const studentSessionToken = bearerToken(request);
+    const session = studentLiveSessions.get(studentSessionToken);
+    if (!session) {
+      sendJson(response, 404, { error: 'Student class session not found.' });
+      return true;
+    }
+    if (!session.assignment) {
+      sendJson(response, 409, {
+        status: 'waiting',
+        class: session.classContext || STUDENT_LIVE_CLASS,
+        participant: {
+          id: session.participantId,
+          displayName: session.displayName,
+          assignmentRevision: session.assignmentRevision
+        },
+        assignment: null
+      });
+      return true;
+    }
+    const workspaceToken = issueStudentLiveAccess(session);
+    sendJson(response, 200, {
+      class: session.classContext || STUDENT_LIVE_CLASS,
+      participant: {
+        id: session.participantId,
+        displayName: session.displayName,
+        assignmentRevision: session.assignmentRevision
+      },
+      assignment: structuredClone(session.assignment),
+      workspaceToken
+    });
+    return true;
+  }
+
+  if (url.pathname === '/api/classes') {
+    if (request.method !== 'POST') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const body = await readJson(request).catch(() => null);
+    const title = typeof body?.title === 'string' ? body.title.trim() : '';
+    if (!title) {
+      sendJson(response, 400, { error: 'Invalid class title.' });
+      return true;
+    }
+    if (title === 'Integrated Browser Classroom') {
+      integratedClassState = {
+        id: 'browser-integrated-class',
+        title,
+        joinCode: INTEGRATED_JOIN_CODE.replace('-', ''),
+        expiresAt: CLASSROOM_EXPIRY
+      };
+      integratedInstructorWorkspaces = [];
+      integratedInstructorWorkspaceStates.clear();
+      integratedInstructorParticipants = [];
+      sendJson(response, 201, {
+        class: integratedInstructorClass(),
+        instructorToken: INTEGRATED_INSTRUCTOR_TOKEN,
+        studentJoinToken: `${'c'.repeat(42)}t`,
+        joinCode: INTEGRATED_JOIN_CODE
+      });
+      return true;
+    }
+
+    liveClassState = {
+      id: 'browser-live-class',
+      title,
+      joinCode: LIVE_JOIN_CODE.replace('-', ''),
+      expiresAt: CLASSROOM_EXPIRY
+    };
+    liveInstructorWorkspaces = [];
+    liveInstructorWorkspaceStates.clear();
+    liveInstructorParticipants = [{
+      id: LIVE_PARTICIPANT_ID,
+      displayName: 'Waiting Student',
+      assignmentRevision: 0,
+      joinedAt: '2099-12-31T20:00:00.000Z',
+      updatedAt: '2099-12-31T20:00:00.000Z',
+      assignment: null
+    }];
+    sendJson(response, 201, {
+      class: liveInstructorClass(),
+      instructorToken: LIVE_INSTRUCTOR_TOKEN,
+      studentJoinToken: `${'c'.repeat(42)}s`,
+      joinCode: LIVE_JOIN_CODE
+    });
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/workspaces') {
     const instructorToken = bearerToken(request);
     if (!activeInstructorCapability(instructorToken)) {
       sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
       return true;
     }
-    sendJson(response, 200, instructorRoster());
+
+    if (request.method === 'GET') {
+      const managedRoster = managedInstructorRoster(instructorToken);
+      sendJson(response, 200, managedRoster || instructorRoster());
+      return true;
+    }
+
+    const managedFixture = managedInstructorFixture(instructorToken);
+    if (request.method === 'POST' && managedFixture) {
+      const body = await readJson(request).catch(() => null);
+      const kind = ['group', 'individual'].includes(body?.kind) ? body.kind : '';
+      const label = typeof body?.label === 'string' ? body.label.trim() : '';
+      if (!kind || !label || !body?.snapshot || typeof body.snapshot !== 'object') {
+        sendJson(response, 400, { error: 'Invalid workspace request.' });
+        return true;
+      }
+      const id = managedFixture.workspaceIds[managedFixture.workspaces.length];
+      if (!id) {
+        sendJson(response, 409, { error: 'Browser fixture workspace limit reached.' });
+        return true;
+      }
+      const workspace = {
+        id,
+        kind,
+        label,
+        createdAt: '2099-12-31T21:00:00.000Z',
+        participantCount: 0,
+        activeParticipantCount: 0,
+        editingParticipantCount: 0
+      };
+      managedFixture.workspaces.push(workspace);
+      const snapshot = freshClassroomSnapshot();
+      if (!snapshot.pre || typeof snapshot.pre !== 'object') snapshot.pre = {};
+      snapshot.pre.oneLine = `${workspace.label} live-class Intake.`;
+      managedFixture.workspaceStates.set(workspace.id, {
+        snapshot,
+        revision: 1,
+        teamName: workspace.label,
+        participants: new Map()
+      });
+      sendJson(response, 201, {
+        workspace,
+        assignmentToken: `${'a'.repeat(42)}${String(managedFixture.workspaces.length).slice(-1)}`
+      });
+      return true;
+    }
+
+    sendJson(response, 405, { error: 'Method not allowed.' });
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/participants') {
+    const instructorToken = bearerToken(request);
+    if (!activeInstructorCapability(instructorToken)) {
+      sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
+      return true;
+    }
+
+    if (request.method === 'GET') {
+      const managedRoster = managedInstructorParticipantRoster(instructorToken);
+      sendJson(response, 200, managedRoster || instructorParticipants());
+      return true;
+    }
+
+    const managedFixture = managedInstructorFixture(instructorToken);
+    if (request.method === 'PATCH' && managedFixture) {
+      const body = await readJson(request).catch(() => null);
+      const participant = managedFixture.participants.find(item => item.id === body?.participantId);
+      const workspace = body?.workspaceId === null
+        ? null
+        : managedFixture.workspaces.find(item => item.id === body?.workspaceId);
+      if (!participant || (body?.workspaceId !== null && !workspace)) {
+        sendJson(response, 404, { error: 'Participant or workspace not found.' });
+        return true;
+      }
+      const unchanged = (participant.assignment?.id || null) === (workspace?.id || null);
+      if (!unchanged) {
+        participant.assignmentRevision += 1;
+        participant.assignment = workspace
+          ? { id: workspace.id, kind: workspace.kind, label: workspace.label }
+          : null;
+        participant.updatedAt = '2099-12-31T22:00:00.000Z';
+
+        const liveSession = [...studentLiveSessions.values()].find(session => (
+          session.integrated && session.participantId === participant.id
+        ));
+        if (liveSession) {
+          setStudentLiveAssignment(
+            liveSession,
+            participant.assignment ? structuredClone(participant.assignment) : null,
+            participant.assignmentRevision
+          );
+        }
+      }
+      sendJson(response, 200, {
+        class: managedFixture.classContext,
+        participant: structuredClone(participant),
+        assignment: structuredClone(participant.assignment),
+        changed: !unchanged
+      });
+      return true;
+    }
+
+    sendJson(response, 405, { error: 'Method not allowed.' });
     return true;
   }
 
@@ -238,7 +763,9 @@ async function handleClassroomApi(request, response, url) {
       sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
       return true;
     }
-    const observation = instructorObservation(url.searchParams.get('workspaceId') || '');
+    const workspaceId = url.searchParams.get('workspaceId') || '';
+    const observation = managedInstructorObservation(instructorToken, workspaceId)
+      || instructorObservation(workspaceId);
     if (!observation) {
       sendJson(response, 404, { error: 'Workspace not found.' });
       return true;
@@ -254,7 +781,11 @@ async function handleClassroomApi(request, response, url) {
       return true;
     }
     const workspaceId = url.searchParams.get('workspaceId') || '';
-    if (!Object.values(INSTRUCTOR_WORKSPACE_IDS).includes(workspaceId)) {
+    const legacyWorkspace = instructorRoster().workspaces.find(item => item.id === workspaceId) || null;
+    const managedFixture = managedInstructorFixture(instructorToken);
+    const liveWorkspace = managedFixture?.workspaces.find(item => item.id === workspaceId) || null;
+    const workspace = liveWorkspace || legacyWorkspace;
+    if (!workspace) {
       sendJson(response, 404, { error: 'Workspace not found.' });
       return true;
     }
@@ -262,8 +793,8 @@ async function handleClassroomApi(request, response, url) {
 
     if (request.method === 'GET') {
       sendJson(response, 200, {
-        class: instructorClass(),
-        workspace: instructorRoster().workspaces.find(item => item.id === workspaceId),
+        class: liveWorkspace ? managedFixture.classContext : instructorClass(),
+        workspace,
         feedback: [...workspaceFeedback.values()]
       });
       return true;

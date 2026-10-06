@@ -11,6 +11,7 @@ import {
   clearStudentSession,
   isStudentSessionExpired,
   normalizeStudentDisplayName,
+  normalizeStudentJoinCode,
   persistStudentSession,
   readStudentSession,
   validateStudentCapability
@@ -30,12 +31,49 @@ function validSession(overrides = {}) {
   };
 }
 
+function validLiveSession(overrides = {}) {
+  return {
+    version: STUDENT_SESSION_VERSION,
+    mode: 'live',
+    class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
+    participant: { id: '11111111-1111-4111-8111-111111111111', displayName: 'Alex' },
+    studentSessionToken: TOKEN,
+    assignmentRevision: 0,
+    assignment: null,
+    joinedAt: '2026-10-01T00:00:00Z',
+    ...overrides
+  };
+}
+
 test('Student capability and display-name validation reject malformed values', () => {
   assert.equal(validateStudentCapability(TOKEN), true);
   assert.equal(validateStudentCapability('short'), false);
   assert.equal(normalizeStudentDisplayName('  Alex   Chen  '), 'Alex Chen');
   assert.equal(normalizeStudentDisplayName(''), null);
   assert.equal(normalizeStudentDisplayName('x'.repeat(61)), null);
+});
+
+test('Student human join codes normalize to the live eight-character contract', () => {
+  assert.equal(normalizeStudentJoinCode(' k7fm-p4q2 '), 'K7FMP4Q2');
+  assert.equal(normalizeStudentJoinCode('K7F0-P4Q2'), '');
+  assert.equal(normalizeStudentJoinCode('short'), '');
+});
+
+test('live Student resume retains the class session but never persists assignment-specific workspace authority', () => {
+  const dom = new JSDOM('', { url: 'https://intake.test/' });
+  const session = validLiveSession({
+    assignmentRevision: 2,
+    assignment: { id: 'workspace-2', kind: 'group', label: 'Team Beta' }
+  });
+
+  assert.equal(persistStudentSession(dom.window.localStorage, session), true);
+  const restored = readStudentSession(dom.window.localStorage);
+
+  assert.deepEqual(restored, session);
+  assert.equal(restored.studentSessionToken, TOKEN);
+  assert.equal('workspaceToken' in restored, false);
+  assert.equal(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY).includes('workspaceToken'), false);
+  dom.window.close();
 });
 
 test('Student resume envelope round-trips only the issued workspace capability and context', () => {
@@ -58,6 +96,10 @@ test('Student resume envelope round-trips only the issued workspace capability a
 test('Student resume envelope rejects invalid capabilities and detects expiry', () => {
   const dom = new JSDOM('', { url: 'https://intake.test/' });
   dom.window.localStorage.setItem(STUDENT_SESSION_STORAGE_KEY, JSON.stringify(validSession({ workspaceToken: 'bad' })));
+  assert.equal(readStudentSession(dom.window.localStorage), null);
+  dom.window.localStorage.setItem(STUDENT_SESSION_STORAGE_KEY, JSON.stringify(validLiveSession({ studentSessionToken: 'bad' })));
+  assert.equal(readStudentSession(dom.window.localStorage), null);
+  dom.window.localStorage.setItem(STUDENT_SESSION_STORAGE_KEY, JSON.stringify(validLiveSession({ workspaceToken: TOKEN })));
   assert.equal(readStudentSession(dom.window.localStorage), null);
 
   assert.equal(isStudentSessionExpired(validSession(), Date.parse('2026-10-01T00:00:00Z')), false);

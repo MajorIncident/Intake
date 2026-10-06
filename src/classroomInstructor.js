@@ -13,16 +13,30 @@ import { EXPERIENCE_ROLE_IDS } from './experienceRoles.js';
 
 export const INSTRUCTOR_SESSION_STORAGE_KEY = 'kt-classroom-instructor-session-v1';
 export const INSTRUCTOR_SESSION_VERSION = 1;
+export const INSTRUCTOR_CLASSES_ENDPOINT = '/api/classes';
 export const INSTRUCTOR_WORKSPACES_ENDPOINT = '/api/classes/workspaces';
+export const INSTRUCTOR_PARTICIPANTS_ENDPOINT = '/api/classes/participants';
 export const INSTRUCTOR_OBSERVE_ENDPOINT = '/api/classes/observe';
 
 const CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+const JOIN_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{8}$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ROSTER_POLL_MS = 5000;
 const OBSERVE_POLL_MS = 1200;
 
 export function validateInstructorCapability(value) {
   return typeof value === 'string' && CAPABILITY_PATTERN.test(value.trim());
+}
+
+export function normalizeInstructorJoinCode(value) {
+  if (typeof value !== 'string') return '';
+  const normalized = value.trim().toUpperCase().replace(/[\s-]+/gu, '');
+  return JOIN_CODE_PATTERN.test(normalized) ? normalized : '';
+}
+
+export function formatInstructorJoinCode(value) {
+  const normalized = normalizeInstructorJoinCode(value);
+  return normalized ? `${normalized.slice(0, 4)}-${normalized.slice(4)}` : '';
 }
 
 export function readInstructorSession(storage = globalThis.localStorage) {
@@ -35,6 +49,7 @@ export function readInstructorSession(storage = globalThis.localStorage) {
       || !validateInstructorCapability(parsed.instructorToken)
       || typeof parsed.class?.id !== 'string'
       || typeof parsed.class?.title !== 'string'
+      || (parsed.joinCode && !normalizeInstructorJoinCode(parsed.joinCode))
       || (parsed.selectedWorkspaceId && !UUID_PATTERN.test(parsed.selectedWorkspaceId))
     ) return null;
     return parsed;
@@ -109,6 +124,7 @@ export function createInstructorClassroomController({
 }) {
   let activeSession = null;
   let workspaces = [];
+  let participants = [];
   let selectedWorkspaceId = '';
   let rosterTimer = null;
   let observerTimer = null;
@@ -140,8 +156,18 @@ export function createInstructorClassroomController({
   };
   const setBusy = value => {
     busy = value;
-    if (element('instructorClassOpenBtn')) element('instructorClassOpenBtn').disabled = value;
-    if (element('instructorClassRetryBtn')) element('instructorClassRetryBtn').disabled = value;
+    [
+      'instructorClassStartBtn',
+      'instructorClassOpenBtn',
+      'instructorClassRetryBtn',
+      'instructorWorkspaceCreateBtn',
+      'instructorCopyJoinCodeBtn'
+    ].forEach(id => {
+      if (element(id)) element(id).disabled = value;
+    });
+    element('instructorParticipantList')?.querySelectorAll?.('select')?.forEach(select => {
+      select.disabled = value;
+    });
   };
   const abort = controller => { try { controller?.abort?.(); } catch {} };
   const clearTimer = timer => {
@@ -178,7 +204,9 @@ export function createInstructorClassroomController({
     setStatus(retry ? 'retry' : 'disconnected');
     if (element('instructorClassEntryCard')) element('instructorClassEntryCard').hidden = false;
     if (element('instructorClassDashboard')) element('instructorClassDashboard').hidden = true;
-    if (element('instructorClassForm')) element('instructorClassForm').hidden = retry;
+    if (element('instructorClassStartForm')) element('instructorClassStartForm').hidden = retry;
+    if (element('instructorExistingClass')) element('instructorExistingClass').hidden = retry;
+    if (element('instructorClassForm')) element('instructorClassForm').hidden = false;
     if (element('instructorClassResumePanel')) element('instructorClassResumePanel').hidden = !retry;
     if (element('instructorClassResumeTitle')) {
       element('instructorClassResumeTitle').textContent = activeSession?.class?.title || 'Saved instructor class';
@@ -202,6 +230,9 @@ export function createInstructorClassroomController({
     if (element('instructorClassDashboard')) element('instructorClassDashboard').hidden = false;
     if (element('instructorClassTitle')) element('instructorClassTitle').textContent = activeSession.class.title;
     renderExpiry(activeSession.class.expiresAt);
+    const joinCode = formatInstructorJoinCode(activeSession.joinCode || activeSession.class?.joinCode || '');
+    if (element('instructorJoinCode')) element('instructorJoinCode').textContent = joinCode || 'Unavailable';
+    if (element('instructorCopyJoinCodeBtn')) element('instructorCopyJoinCodeBtn').disabled = !joinCode || busy;
     setError('');
   };
 
@@ -277,6 +308,68 @@ export function createInstructorClassroomController({
       empty.textContent = workspaces.length
         ? 'No workspaces match this filter.'
         : 'No student or team workspaces have been created yet.';
+      list.append(empty);
+    }
+  };
+
+  const renderParticipants = () => {
+    const list = element('instructorParticipantList');
+    if (!list) return;
+    list.replaceChildren();
+
+    if (element('instructorParticipantSummary')) {
+      const waiting = participants.filter(participant => !participant.assignment).length;
+      element('instructorParticipantSummary').textContent =
+        `${participants.length} student${participants.length === 1 ? '' : 's'} · ${waiting} waiting`;
+    }
+
+    participants.forEach(participant => {
+      const row = documentRef.createElement('div');
+      row.className = 'instructor-participant-row';
+      row.dataset.participantId = participant.id;
+      row.setAttribute('data-persistence', 'local-only');
+      row.setAttribute('data-summary', 'exclude');
+
+      const identity = documentRef.createElement('div');
+      identity.className = 'instructor-participant-row__identity';
+      const name = documentRef.createElement('strong');
+      name.textContent = participant.displayName || 'Student';
+      const status = documentRef.createElement('span');
+      status.textContent = participant.assignment
+        ? `${participant.assignment.kind === 'group' ? 'Team' : 'Individual'} · ${participant.assignment.label}`
+        : 'Waiting / unassigned';
+      identity.append(name, status);
+
+      const select = documentRef.createElement('select'); // data-persistence="local-only"
+      select.setAttribute('aria-label', `Assignment for ${participant.displayName || 'student'}`);
+      select.setAttribute('data-persistence', 'local-only');
+      select.setAttribute('data-summary', 'exclude');
+      select.disabled = busy;
+
+      const waitingOption = documentRef.createElement('option'); // data-persistence="local-only"
+      waitingOption.value = '';
+      waitingOption.textContent = 'Waiting / unassigned';
+      select.append(waitingOption);
+
+      workspaces.forEach(workspace => {
+        const option = documentRef.createElement('option'); // data-persistence="local-only"
+        option.value = workspace.id;
+        option.textContent = `${workspace.kind === 'group' ? 'Team' : 'Individual'} · ${workspace.label}`;
+        select.append(option);
+      });
+      select.value = participant.assignment?.id || '';
+      select.addEventListener('change', event => {
+        void assignParticipant(participant.id, event.target.value || null);
+      });
+
+      row.append(identity, select);
+      list.append(row);
+    });
+
+    if (!participants.length) {
+      const empty = documentRef.createElement('p');
+      empty.className = 'instructor-participant-empty';
+      empty.textContent = 'No students have joined yet. Share the Student join code; late arrivals will appear here automatically.';
       list.append(empty);
     }
   };
@@ -437,14 +530,21 @@ export function createInstructorClassroomController({
   const fetchRoster = async token => {
     abort(rosterAbort);
     rosterAbort = typeof AbortControllerImpl === 'function' ? new AbortControllerImpl() : null;
-    const response = await fetchImpl(INSTRUCTOR_WORKSPACES_ENDPOINT, {
+    const options = {
       method: 'GET',
       headers: { Authorization: `Bearer ${token}` },
       signal: rosterAbort?.signal
-    });
-    const body = await responseJson(response);
+    };
+    const [workspaceResponse, participantResponse] = await Promise.all([
+      fetchImpl(INSTRUCTOR_WORKSPACES_ENDPOINT, options),
+      fetchImpl(INSTRUCTOR_PARTICIPANTS_ENDPOINT, options)
+    ]);
+    const [workspaceBody, participantBody] = await Promise.all([
+      responseJson(workspaceResponse),
+      responseJson(participantResponse)
+    ]);
     rosterAbort = null;
-    return { response, body };
+    return { workspaceResponse, workspaceBody, participantResponse, participantBody };
   };
 
   const validWorkspace = workspace => (
@@ -454,11 +554,32 @@ export function createInstructorClassroomController({
     && typeof workspace.label === 'string'
   );
 
-  const acceptRoster = body => {
-    if (typeof body.class?.id !== 'string' || typeof body.class?.title !== 'string' || !Array.isArray(body.workspaces)) {
+  const validParticipant = participant => (
+    participant
+    && UUID_PATTERN.test(participant.id || '')
+    && typeof participant.displayName === 'string'
+    && Number.isInteger(participant.assignmentRevision)
+    && (
+      participant.assignment === null
+      || (
+        validWorkspace(participant.assignment)
+      )
+    )
+  );
+
+  const acceptRoster = (workspaceBody, participantBody) => {
+    if (
+      typeof workspaceBody.class?.id !== 'string'
+      || typeof workspaceBody.class?.title !== 'string'
+      || !Array.isArray(workspaceBody.workspaces)
+      || typeof participantBody.class?.id !== 'string'
+      || participantBody.class.id !== workspaceBody.class.id
+      || !Array.isArray(participantBody.participants)
+    ) {
       return false;
     }
-    workspaces = body.workspaces.filter(validWorkspace);
+    workspaces = workspaceBody.workspaces.filter(validWorkspace);
+    participants = participantBody.participants.filter(validParticipant);
     return true;
   };
 
@@ -486,6 +607,7 @@ export function createInstructorClassroomController({
     clearInstructorSession(storage);
     activeSession = null;
     workspaces = [];
+    participants = [];
     selectedWorkspaceId = '';
     restoreLocal();
     renderEntry();
@@ -557,16 +679,34 @@ export function createInstructorClassroomController({
   async function refreshRoster() {
     if (!activeSession || destroyed) return false;
     try {
-      const { response, body } = await fetchRoster(activeSession.instructorToken);
-      if (response.status === 404 || response.status === 401) {
+      const {
+        workspaceResponse,
+        workspaceBody,
+        participantResponse,
+        participantBody
+      } = await fetchRoster(activeSession.instructorToken);
+      if (
+        [workspaceResponse.status, participantResponse.status].some(status => status === 404 || status === 401)
+      ) {
         return terminalClass('This instructor class is no longer available. Use the current Instructor access code.');
       }
-      if (!response.ok || !acceptRoster(body)) {
+      if (
+        !workspaceResponse.ok
+        || !participantResponse.ok
+        || !acceptRoster(workspaceBody, participantBody)
+      ) {
         setError('Could not refresh the class roster. Live observation will keep retrying.');
         scheduleRoster();
         return false;
       }
-      activeSession.class = { id: body.class.id, title: body.class.title, expiresAt: body.class.expiresAt || null };
+      activeSession.class = {
+        id: workspaceBody.class.id,
+        title: workspaceBody.class.title,
+        expiresAt: workspaceBody.class.expiresAt || null
+      };
+      activeSession.joinCode = formatInstructorJoinCode(
+        workspaceBody.class.joinCode || activeSession.joinCode || ''
+      );
       if (selectedWorkspaceId && !workspaces.some(item => item.id === selectedWorkspaceId)) {
         selectedWorkspaceId = '';
         latestObservation = null;
@@ -574,6 +714,7 @@ export function createInstructorClassroomController({
       }
       saveSession();
       renderDashboard();
+      renderParticipants();
       renderRoster();
       if (!selectedWorkspaceId && workspaces[0]) await selectWorkspace(workspaces[0].id);
       scheduleRoster();
@@ -590,18 +731,29 @@ export function createInstructorClassroomController({
     if (state.token) collaboration?.leave?.({ silent: true });
   };
 
-  const activateClass = async (token, preferredWorkspaceId = '') => {
+  const activateClass = async (token, preferredWorkspaceId = '', sessionHints = {}) => {
     onClassDisconnected();
     disconnectStandaloneCollaboration();
     setBusy(true);
     setStatus('connecting');
     setError('');
     try {
-      const { response, body } = await fetchRoster(token);
-      if (response.status === 404 || response.status === 401) {
+      const {
+        workspaceResponse,
+        workspaceBody,
+        participantResponse,
+        participantBody
+      } = await fetchRoster(token);
+      if (
+        [workspaceResponse.status, participantResponse.status].some(status => status === 404 || status === 401)
+      ) {
         return terminalClass('The Instructor access code was not accepted or has expired.');
       }
-      if (!response.ok || !acceptRoster(body)) {
+      if (
+        !workspaceResponse.ok
+        || !participantResponse.ok
+        || !acceptRoster(workspaceBody, participantBody)
+      ) {
         setError('The class service is unavailable right now. Your local Intake is unchanged.');
         renderEntry({ retry: Boolean(activeSession), message: 'The class service is unavailable right now.' });
         return false;
@@ -609,9 +761,19 @@ export function createInstructorClassroomController({
       activeSession = {
         version: INSTRUCTOR_SESSION_VERSION,
         instructorToken: token,
-        class: { id: body.class.id, title: body.class.title, expiresAt: body.class.expiresAt || null },
+        joinCode: formatInstructorJoinCode(
+          sessionHints.joinCode
+          || workspaceBody.class.joinCode
+          || activeSession?.joinCode
+          || ''
+        ),
+        class: {
+          id: workspaceBody.class.id,
+          title: workspaceBody.class.title,
+          expiresAt: workspaceBody.class.expiresAt || null
+        },
         selectedWorkspaceId: null,
-        openedAt: new Date(now()).toISOString()
+        openedAt: sessionHints.openedAt || activeSession?.openedAt || new Date(now()).toISOString()
       };
       selectedWorkspaceId = workspaces.some(item => item.id === preferredWorkspaceId)
         ? preferredWorkspaceId
@@ -619,15 +781,17 @@ export function createInstructorClassroomController({
       saveSession();
       onClassConnected(token);
       renderDashboard();
+      renderParticipants();
       renderRoster();
       if (element('instructorClassCode')) element('instructorClassCode').value = '';
+      if (element('instructorClassTitleInput')) element('instructorClassTitleInput').value = '';
       if (selectedWorkspaceId) await selectWorkspace(selectedWorkspaceId);
       else restoreLocal();
       scheduleRoster();
       return true;
     } catch {
       setError('Could not reach the class service. Your local Intake is unchanged.');
-      renderEntry({ retry: Boolean(activeSession), message: 'Could not reach the class service.' });
+      renderEntry({ retry: Boolean(activeSession), message: 'The class service is unavailable right now.' });
       return false;
     } finally {
       setBusy(false);
@@ -643,12 +807,178 @@ export function createInstructorClassroomController({
     return activateClass(token);
   };
 
+  const startClass = async titleValue => {
+    const title = typeof titleValue === 'string' ? titleValue.trim() : '';
+    if (!title || title.length > 120) {
+      setError('Enter a class title before starting the class.');
+      return false;
+    }
+    if (!fetchImpl) {
+      setError('The class service is unavailable right now.');
+      return false;
+    }
+
+    setBusy(true);
+    setStatus('creating');
+    setError('');
+    disconnectStandaloneCollaboration();
+    try {
+      const response = await fetchImpl(INSTRUCTOR_CLASSES_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title })
+      });
+      const body = await responseJson(response);
+      if (
+        response.status !== 201
+        || !validateInstructorCapability(body.instructorToken)
+        || typeof body.class?.id !== 'string'
+        || typeof body.class?.title !== 'string'
+      ) {
+        setError(body.error || 'Could not start the class.');
+        return false;
+      }
+
+      const createdSession = {
+        version: INSTRUCTOR_SESSION_VERSION,
+        instructorToken: body.instructorToken,
+        joinCode: formatInstructorJoinCode(body.joinCode || ''),
+        class: {
+          id: body.class.id,
+          title: body.class.title,
+          expiresAt: body.class.expiresAt || null
+        },
+        selectedWorkspaceId: null,
+        openedAt: new Date(now()).toISOString()
+      };
+      activeSession = createdSession;
+      saveSession();
+
+      return activateClass(body.instructorToken, '', {
+        joinCode: createdSession.joinCode,
+        openedAt: createdSession.openedAt
+      });
+    } catch {
+      setError('Could not start the class. Check your connection.');
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const createWorkspace = async (kindValue, labelValue) => {
+    if (!activeSession || busy) return false;
+    const kind = ['group', 'individual'].includes(kindValue) ? kindValue : '';
+    const label = typeof labelValue === 'string' ? labelValue.trim() : '';
+    if (!kind || !label || label.length > 80) {
+      setError('Enter a workspace name and choose Team or Individual.');
+      return false;
+    }
+
+    setBusy(true);
+    setError('');
+    try {
+      const response = await fetchImpl(INSTRUCTOR_WORKSPACES_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${activeSession.instructorToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ kind, label, snapshot: {} })
+      });
+      const body = await responseJson(response);
+      if (!response.ok || !validWorkspace(body.workspace)) {
+        setError(body.error || 'Could not create the workspace.');
+        return false;
+      }
+      if (element('instructorWorkspaceLabel')) element('instructorWorkspaceLabel').value = '';
+      toast(`${kind === 'group' ? 'Team' : 'Individual workspace'} created.`);
+      await refreshRoster();
+      return true;
+    } catch {
+      setError('Could not create the workspace. Check your connection.');
+      return false;
+    } finally {
+      setBusy(false);
+      renderParticipants();
+    }
+  };
+
+  const assignParticipant = async (participantId, workspaceId) => {
+    if (!activeSession || busy || !UUID_PATTERN.test(participantId || '')) return false;
+    if (workspaceId !== null && !workspaces.some(workspace => workspace.id === workspaceId)) {
+      renderParticipants();
+      return false;
+    }
+
+    setBusy(true);
+    setError('');
+    try {
+      const response = await fetchImpl(INSTRUCTOR_PARTICIPANTS_ENDPOINT, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${activeSession.instructorToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ participantId, workspaceId })
+      });
+      const body = await responseJson(response);
+      if (!response.ok) {
+        setError(body.error || 'Could not update the Student assignment.');
+        renderParticipants();
+        return false;
+      }
+      toast(body.changed === false
+        ? 'Student assignment is already current.'
+        : workspaceId
+          ? 'Student assignment updated.'
+          : 'Student returned to Waiting.');
+      await refreshRoster();
+      return true;
+    } catch {
+      setError('Could not update the Student assignment. Check your connection.');
+      renderParticipants();
+      return false;
+    } finally {
+      setBusy(false);
+      renderParticipants();
+    }
+  };
+
+  const copyJoinCode = async () => {
+    const joinCode = formatInstructorJoinCode(activeSession?.joinCode || '');
+    if (!joinCode) return false;
+    try {
+      if (windowRef?.navigator?.clipboard?.writeText) {
+        await windowRef.navigator.clipboard.writeText(joinCode);
+        toast('Student join code copied.');
+        return true;
+      }
+      const temporary = documentRef?.createElement?.('textarea');
+      if (!temporary) return false;
+      temporary.value = joinCode;
+      temporary.setAttribute('readonly', '');
+      temporary.style.position = 'fixed';
+      temporary.style.opacity = '0';
+      documentRef.body?.append(temporary);
+      temporary.select();
+      const copied = documentRef.execCommand?.('copy') === true;
+      temporary.remove();
+      if (copied) toast('Student join code copied.');
+      return copied;
+    } catch {
+      toast(`Student join code: ${joinCode}`);
+      return false;
+    }
+  };
+
   const resume = async () => {
     if (destroyed || getActiveExperienceRole() !== EXPERIENCE_ROLE_IDS.INSTRUCTOR) return false;
     const stored = readInstructorSession(storage);
     if (!stored) {
       activeSession = null;
       workspaces = [];
+      participants = [];
       selectedWorkspaceId = '';
       renderEntry();
       return false;
@@ -658,7 +988,8 @@ export function createInstructorClassroomController({
     if (isInstructorSessionExpired(stored, now())) {
       return terminalClass('Your saved Instructor class access has expired. Use the current Instructor access code.');
     }
-    if (element('instructorClassForm')) element('instructorClassForm').hidden = true;
+    if (element('instructorClassStartForm')) element('instructorClassStartForm').hidden = true;
+    if (element('instructorExistingClass')) element('instructorExistingClass').hidden = true;
     if (element('instructorClassResumePanel')) element('instructorClassResumePanel').hidden = false;
     if (element('instructorClassResumeTitle')) element('instructorClassResumeTitle').textContent = stored.class.title;
     if (element('instructorClassResumeMessage')) element('instructorClassResumeMessage').textContent = 'Reconnecting to your class roster…';
@@ -671,6 +1002,7 @@ export function createInstructorClassroomController({
     clearInstructorSession(storage);
     activeSession = null;
     workspaces = [];
+    participants = [];
     selectedWorkspaceId = '';
     restoreLocal();
     renderEntry();
@@ -686,10 +1018,22 @@ export function createInstructorClassroomController({
     setConnectedLayout(false);
   };
 
+  const handleStartSubmit = event => {
+    event.preventDefault();
+    void startClass(element('instructorClassTitleInput')?.value || '');
+  };
   const handleSubmit = event => {
     event.preventDefault();
     void openClass(element('instructorClassCode')?.value || '');
   };
+  const handleWorkspaceCreate = event => {
+    event.preventDefault();
+    void createWorkspace(
+      element('instructorWorkspaceKind')?.value || 'group',
+      element('instructorWorkspaceLabel')?.value || ''
+    );
+  };
+  const handleCopyJoinCode = () => { void copyJoinCode(); };
   const handleRetry = () => { void resume(); };
   const handleLeave = () => leaveClass();
   const handleSearch = event => {
@@ -716,7 +1060,10 @@ export function createInstructorClassroomController({
   };
 
   const init = () => {
+    element('instructorClassStartForm')?.addEventListener('submit', handleStartSubmit);
     element('instructorClassForm')?.addEventListener('submit', handleSubmit);
+    element('instructorWorkspaceCreateForm')?.addEventListener('submit', handleWorkspaceCreate);
+    element('instructorCopyJoinCodeBtn')?.addEventListener('click', handleCopyJoinCode);
     element('instructorClassRetryBtn')?.addEventListener('click', handleRetry);
     element('instructorClassLeaveBtn')?.addEventListener('click', handleLeave);
     element('instructorWorkspaceSearch')?.addEventListener('input', handleSearch);
@@ -734,7 +1081,10 @@ export function createInstructorClassroomController({
     stopLive();
     onObservationEnd();
     restoreReadonlyProjection();
+    element('instructorClassStartForm')?.removeEventListener('submit', handleStartSubmit);
     element('instructorClassForm')?.removeEventListener('submit', handleSubmit);
+    element('instructorWorkspaceCreateForm')?.removeEventListener('submit', handleWorkspaceCreate);
+    element('instructorCopyJoinCodeBtn')?.removeEventListener('click', handleCopyJoinCode);
     element('instructorClassRetryBtn')?.removeEventListener('click', handleRetry);
     element('instructorClassLeaveBtn')?.removeEventListener('click', handleLeave);
     element('instructorWorkspaceSearch')?.removeEventListener('input', handleSearch);
@@ -747,12 +1097,16 @@ export function createInstructorClassroomController({
     init,
     destroy,
     openClass,
+    startClass,
+    createWorkspace,
+    assignParticipant,
+    copyJoinCode,
     resume,
     refreshRoster,
     selectWorkspace,
     leaveClass,
     getState: () => ({
-      activeSession, workspaces, selectedWorkspaceId, observerEpoch,
+      activeSession, workspaces, participants, selectedWorkspaceId, observerEpoch,
       latestObservation, busy, searchQuery, kindFilter, lastError
     })
   };

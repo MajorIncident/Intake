@@ -22,6 +22,7 @@ async function joinStudent(page, { name, classCode, assignmentCode }) {
   await page.getByRole('button', { name: /Join a class/ }).click();
   await page.locator('#studentDisplayName').fill(name);
   await page.getByLabel('Class code').fill(classCode);
+  await page.locator('#studentLegacyJoin > summary').click();
   await page.getByLabel('Assignment code').fill(assignmentCode);
   await page.getByRole('button', { name: 'Join class' }).click();
   await expect(page.locator('body')).toHaveAttribute('data-student-class-status', 'connected');

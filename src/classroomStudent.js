@@ -1,12 +1,13 @@
 /**
  * @module classroomStudent
- * @summary Owns Student class admission, same-device resume, class context, and explicit class exit.
+ * @summary Owns Student class admission, waiting, assignment switching, same-device resume, and explicit class exit.
  * @description
- *   Classroom credentials remain separate from SerializedAppState. Student join
- *   and assignment capabilities are used once and discarded; only the issued
- *   per-participant workspace capability is retained in a dedicated local-only
- *   resume envelope. The existing collaboration controller owns all snapshot,
- *   revision, presence, conflict, and field-activity behavior after admission.
+ *   Live Classroom credentials remain separate from SerializedAppState. The
+ *   human join code is admission-only and discarded after use. A stable Student
+ *   class-session capability is persisted locally, while assignment-specific
+ *   workspace edit capabilities remain memory-only and are reacquired from the
+ *   server after reload, reassignment, or reconnect. Legacy two-code Student
+ *   sessions remain readable during the additive migration.
  */
 
 import { getActiveExperienceRole } from './experienceRoleController.js';
@@ -15,10 +16,15 @@ import { EXPERIENCE_ROLE_IDS } from './experienceRoles.js';
 export const STUDENT_SESSION_STORAGE_KEY = 'kt-classroom-student-session-v1';
 export const STUDENT_RECOVERY_STORAGE_KEY = 'kt-classroom-student-local-recovery-v1';
 export const STUDENT_SESSION_VERSION = 1;
+export const STUDENT_ADMIT_ENDPOINT = '/api/classes/admit';
+export const STUDENT_STATUS_ENDPOINT = '/api/classes/student';
+export const STUDENT_ACCESS_ENDPOINT = '/api/classes/student/access';
 export const STUDENT_JOIN_ENDPOINT = '/api/classes/join';
 
 const CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+const JOIN_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{8}$/;
 const DISPLAY_NAME_MAX_LENGTH = 60;
+const LIVE_STATUS_POLL_MS = 2500;
 
 /**
  * Normalize a required Student display name for client-side validation.
@@ -46,6 +52,57 @@ export function validateStudentCapability(value) {
 }
 
 /**
+ * Normalize the human Student class code.
+ *
+ * @param {unknown} value - Candidate join code.
+ * @returns {string} Normalized eight-character code or an empty string.
+ */
+export function normalizeStudentJoinCode(value) {
+  if (typeof value !== 'string') return '';
+  const normalized = value.trim().toUpperCase().replace(/[\s-]+/gu, '');
+  return JOIN_CODE_PATTERN.test(normalized) ? normalized : '';
+}
+
+function validClassContext(value) {
+  return value && typeof value.id === 'string' && typeof value.title === 'string';
+}
+
+function validParticipantContext(value) {
+  return value && typeof value.id === 'string' && typeof value.displayName === 'string';
+}
+
+function validWorkspaceContext(value) {
+  return value
+    && typeof value.id === 'string'
+    && ['individual', 'group'].includes(value.kind)
+    && typeof value.label === 'string';
+}
+
+function validLegacySession(parsed) {
+  return validateStudentCapability(parsed?.workspaceToken)
+    && validClassContext(parsed?.class)
+    && validWorkspaceContext(parsed?.workspace)
+    && validParticipantContext(parsed?.participant);
+}
+
+function validLiveSession(parsed) {
+  return parsed?.mode === 'live'
+    && validateStudentCapability(parsed.studentSessionToken)
+    && validClassContext(parsed.class)
+    && validParticipantContext(parsed.participant)
+    && Number.isInteger(parsed.assignmentRevision)
+    && parsed.assignmentRevision >= 0
+    && (parsed.assignment === null || validWorkspaceContext(parsed.assignment))
+    && !parsed.workspaceToken;
+}
+
+function validateStudentSessionEnvelope(parsed) {
+  return parsed
+    && parsed.version === STUDENT_SESSION_VERSION
+    && (validLegacySession(parsed) || validLiveSession(parsed));
+}
+
+/**
  * Read a validated Student resume envelope.
  *
  * @param {Storage|null} storage - Local storage implementation.
@@ -55,21 +112,7 @@ export function readStudentSession(storage = globalThis.localStorage) {
   if (!storage) return null;
   try {
     const parsed = JSON.parse(storage.getItem(STUDENT_SESSION_STORAGE_KEY) || 'null');
-    if (
-      !parsed
-      || parsed.version !== STUDENT_SESSION_VERSION
-      || !validateStudentCapability(parsed.workspaceToken)
-      || typeof parsed.class?.id !== 'string'
-      || typeof parsed.class?.title !== 'string'
-      || typeof parsed.workspace?.id !== 'string'
-      || typeof parsed.workspace?.label !== 'string'
-      || !['individual', 'group'].includes(parsed.workspace?.kind)
-      || typeof parsed.participant?.id !== 'string'
-      || typeof parsed.participant?.displayName !== 'string'
-    ) {
-      return null;
-    }
-    return parsed;
+    return validateStudentSessionEnvelope(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -79,11 +122,11 @@ export function readStudentSession(storage = globalThis.localStorage) {
  * Persist a Student resume envelope outside Intake state.
  *
  * @param {Storage|null} storage - Local storage implementation.
- * @param {object} session - Validated session.
+ * @param {object} session - Validated legacy or live session.
  * @returns {boolean} Whether persistence succeeded.
  */
 export function persistStudentSession(storage, session) {
-  if (!storage || !session || !validateStudentCapability(session.workspaceToken)) return false;
+  if (!storage || !validateStudentSessionEnvelope(session)) return false;
   try {
     storage.setItem(STUDENT_SESSION_STORAGE_KEY, JSON.stringify(session));
     return true;
@@ -111,10 +154,13 @@ export function clearStudentSession(storage = globalThis.localStorage) {
  */
 export function isStudentSessionExpired(session, nowMs = Date.now()) {
   if (!session) return false;
-  const expiries = [session.class?.expiresAt, session.workspace?.expiresAt]
+  const expiries = session.mode === 'live'
+    ? [session.class?.expiresAt]
+    : [session.class?.expiresAt, session.workspace?.expiresAt];
+  const timestamps = expiries
     .map(value => Date.parse(value || ''))
     .filter(Number.isFinite);
-  return expiries.length > 0 && Math.min(...expiries) <= nowMs;
+  return timestamps.length > 0 && Math.min(...timestamps) <= nowMs;
 }
 
 /**
@@ -135,15 +181,32 @@ export function createStudentClassroomController({
   now = () => Date.now(),
   toast = () => {},
   onClassConnected = () => {},
-  onClassDisconnected = () => {}
+  onClassDisconnected = () => {},
+  setTimeoutImpl = globalThis.setTimeout?.bind(globalThis),
+  clearTimeoutImpl = globalThis.clearTimeout?.bind(globalThis),
+  AbortControllerImpl = globalThis.AbortController
 }) {
   let activeSession = null;
+  let activeWorkspaceToken = '';
   let connecting = false;
   let destroyed = false;
   let lastError = '';
+  let liveEpoch = 0;
+  let statusTimer = null;
+  let statusAbort = null;
 
   const element = id => documentRef?.getElementById(id) || null;
   const intakeWrap = () => documentRef?.querySelector?.('.wrap[data-experience-surface="intake"]') || null;
+
+  const clearTimer = timer => {
+    if (timer !== null && typeof clearTimeoutImpl === 'function') clearTimeoutImpl(timer);
+  };
+
+  const abort = controller => {
+    try { controller?.abort?.(); } catch {}
+  };
+
+  const responseJson = async response => response.json().catch(() => ({}));
 
   const setError = message => {
     lastError = message || '';
@@ -167,16 +230,21 @@ export function createStudentClassroomController({
     if (documentRef?.body) documentRef.body.dataset.studentClassStatus = status;
   };
 
+  const sessionAssignment = session => (
+    session?.mode === 'live' ? session.assignment : session?.workspace
+  );
+
   const renderContext = session => {
+    const assignment = sessionAssignment(session);
     const title = element('studentClassContextTitle');
     const workspace = element('studentClassWorkspace');
     const identity = element('studentClassIdentity');
     const kind = element('studentClassWorkspaceKind');
     const expiry = element('studentClassExpiry');
     if (title) title.textContent = session?.class?.title || 'Student class';
-    if (workspace) workspace.textContent = session?.workspace?.label || 'Assigned workspace';
+    if (workspace) workspace.textContent = assignment?.label || 'Assigned workspace';
     if (identity) identity.textContent = session?.participant?.displayName || 'Student';
-    if (kind) kind.textContent = session?.workspace?.kind === 'group' ? 'Team workspace' : 'Individual workspace';
+    if (kind) kind.textContent = assignment?.kind === 'group' ? 'Team workspace' : 'Individual workspace';
     if (expiry) {
       const stamp = Date.parse(session?.class?.expiresAt || '');
       expiry.textContent = Number.isFinite(stamp)
@@ -185,29 +253,47 @@ export function createStudentClassroomController({
     }
   };
 
+  const setEntryPanels = ({ form = false, waiting = false, resume = false } = {}) => {
+    if (element('studentClassJoinForm')) element('studentClassJoinForm').hidden = !form;
+    if (element('studentClassWaitingPanel')) element('studentClassWaitingPanel').hidden = !waiting;
+    if (element('studentClassResumePanel')) element('studentClassResumePanel').hidden = !resume;
+  };
+
   const renderEntry = ({ retry = false, message = '' } = {}) => {
     setStatus(retry ? 'retry' : 'disconnected');
-    const form = element('studentClassJoinForm');
-    const resume = element('studentClassResumePanel');
-    if (form) form.hidden = retry;
-    if (resume) resume.hidden = !retry;
+    setEntryPanels({ form: !retry, resume: retry });
     const resumeTitle = element('studentClassResumeTitle');
-    if (resumeTitle) resumeTitle.textContent = activeSession?.class?.title || 'Your class workspace';
+    if (resumeTitle) resumeTitle.textContent = activeSession?.class?.title || 'Your class';
     const resumeMessage = element('studentClassResumeMessage');
-    if (resumeMessage) resumeMessage.textContent = message || 'We could not reconnect to your saved class workspace.';
+    if (resumeMessage) resumeMessage.textContent = message || 'We could not reconnect to your saved class.';
     const wrap = intakeWrap();
     if (wrap && getActiveExperienceRole() === EXPERIENCE_ROLE_IDS.STUDENT) wrap.hidden = true;
   };
 
+  const renderHolding = (session, {
+    status = 'waiting',
+    title = 'Waiting for your instructor',
+    message = 'You are in the class. Your instructor has not assigned you to a team or individual workspace yet.'
+  } = {}) => {
+    setStatus(status);
+    setEntryPanels({ waiting: true });
+    if (element('studentClassWaitingTitle')) element('studentClassWaitingTitle').textContent = title;
+    if (element('studentClassWaitingMessage')) element('studentClassWaitingMessage').textContent = message;
+    if (element('studentClassWaitingClass')) element('studentClassWaitingClass').textContent = session?.class?.title || 'Student class';
+    if (element('studentClassWaitingIdentity')) element('studentClassWaitingIdentity').textContent = session?.participant?.displayName || 'Student';
+    const wrap = intakeWrap();
+    if (wrap && getActiveExperienceRole() === EXPERIENCE_ROLE_IDS.STUDENT) wrap.hidden = true;
+    setError('');
+  };
+
+  const renderWaiting = session => renderHolding(session);
+
   const renderConnected = session => {
     setStatus('connected');
     renderContext(session);
+    setEntryPanels({ form: true });
     const wrap = intakeWrap();
     if (wrap && getActiveExperienceRole() === EXPERIENCE_ROLE_IDS.STUDENT) wrap.hidden = false;
-    const form = element('studentClassJoinForm');
-    const resume = element('studentClassResumePanel');
-    if (form) form.hidden = false;
-    if (resume) resume.hidden = true;
     setError('');
   };
 
@@ -249,7 +335,7 @@ export function createStudentClassroomController({
     }
   };
 
-  const buildSession = body => ({
+  const buildLegacySession = body => ({
     version: STUDENT_SESSION_VERSION,
     class: {
       id: body.class.id,
@@ -270,12 +356,80 @@ export function createStudentClassroomController({
     joinedAt: new Date(now()).toISOString()
   });
 
+  const normalizeAssignment = assignment => (
+    validWorkspaceContext(assignment)
+      ? { id: assignment.id, kind: assignment.kind, label: assignment.label }
+      : null
+  );
+
+  const buildLiveSession = body => ({
+    version: STUDENT_SESSION_VERSION,
+    mode: 'live',
+    class: {
+      id: body.class.id,
+      title: body.class.title,
+      expiresAt: body.class.expiresAt || null
+    },
+    participant: {
+      id: body.participant.id,
+      displayName: body.participant.displayName
+    },
+    studentSessionToken: body.studentSessionToken,
+    assignmentRevision: body.participant.assignmentRevision,
+    assignment: normalizeAssignment(body.assignment),
+    joinedAt: new Date(now()).toISOString()
+  });
+
   const isTerminalCollaborationFailure = () => {
     const state = collaboration?.getState?.() || {};
     return Boolean(state.pollingStopped || /invalid|missing|expired/i.test(state.terminalStatus || ''));
   };
 
-  const attachSession = async session => {
+  const disconnectWorkspace = () => {
+    const state = collaboration?.getState?.() || {};
+    if (activeWorkspaceToken || state.sessionKind === 'classroom') {
+      collaboration?.leave?.({ silent: true });
+      onClassDisconnected();
+    }
+    activeWorkspaceToken = '';
+  };
+
+  const stopLivePolling = () => {
+    clearTimer(statusTimer);
+    statusTimer = null;
+    abort(statusAbort);
+    statusAbort = null;
+  };
+
+  const scheduleLiveStatus = (epoch, delay = LIVE_STATUS_POLL_MS) => {
+    clearTimer(statusTimer);
+    statusTimer = null;
+    if (
+      destroyed
+      || activeSession?.mode !== 'live'
+      || epoch !== liveEpoch
+      || getActiveExperienceRole() !== EXPERIENCE_ROLE_IDS.STUDENT
+      || typeof setTimeoutImpl !== 'function'
+    ) return;
+    statusTimer = setTimeoutImpl(() => {
+      statusTimer = null;
+      void syncLiveStatus(epoch);
+    }, delay);
+  };
+
+  const terminalLiveSession = message => {
+    liveEpoch += 1;
+    stopLivePolling();
+    disconnectWorkspace();
+    clearStudentSession(storage);
+    activeSession = null;
+    restoreLocalRecovery();
+    renderEntry();
+    setError(message || 'This class session is no longer available. Ask your instructor for the current class code.');
+    return false;
+  };
+
+  const attachLegacySession = async session => {
     activeSession = session;
     setBusy(true);
     setStatus('connecting');
@@ -286,6 +440,7 @@ export function createStudentClassroomController({
     });
     setBusy(false);
     if (connected) {
+      activeWorkspaceToken = session.workspaceToken;
       renderConnected(session);
       onClassConnected(session.workspaceToken);
       return true;
@@ -293,6 +448,7 @@ export function createStudentClassroomController({
     if (isTerminalCollaborationFailure()) {
       collaboration?.leave?.({ silent: true });
       onClassDisconnected();
+      activeWorkspaceToken = '';
       clearStudentSession(storage);
       activeSession = null;
       restoreLocalRecovery();
@@ -307,6 +463,237 @@ export function createStudentClassroomController({
     return false;
   };
 
+  const validLiveStatusBody = body => (
+    validClassContext(body?.class)
+    && validParticipantContext(body?.participant)
+    && Number.isInteger(body.participant.assignmentRevision)
+    && body.participant.assignmentRevision >= 0
+    && (body.assignment === null || validWorkspaceContext(body.assignment))
+  );
+
+  const updateLiveSessionFromStatus = body => {
+    activeSession = {
+      ...activeSession,
+      class: {
+        id: body.class.id,
+        title: body.class.title,
+        expiresAt: body.class.expiresAt || null
+      },
+      participant: {
+        id: body.participant.id,
+        displayName: body.participant.displayName
+      },
+      assignmentRevision: body.participant.assignmentRevision,
+      assignment: normalizeAssignment(body.assignment)
+    };
+    persistStudentSession(storage, activeSession);
+  };
+
+  const connectLiveAssignment = async epoch => {
+    if (destroyed || activeSession?.mode !== 'live' || epoch !== liveEpoch || !activeSession.assignment) return false;
+    const target = activeSession.assignment;
+    disconnectWorkspace();
+    renderHolding(activeSession, {
+      status: 'connecting',
+      title: `Joining ${target.label}`,
+      message: 'Your instructor assigned your workspace. Loading the current team Intake…'
+    });
+
+    try {
+      const response = await fetchImpl(STUDENT_ACCESS_ENDPOINT, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${activeSession.studentSessionToken}` }
+      });
+      const body = await responseJson(response);
+      if (epoch !== liveEpoch || destroyed) return false;
+
+      if (response.status === 404 || response.status === 401) {
+        return terminalLiveSession('This class session is no longer available. Ask your instructor for the current class code.');
+      }
+      if (response.status === 409 && body.status === 'waiting' && validParticipantContext(body.participant)) {
+        activeSession = {
+          ...activeSession,
+          class: validClassContext(body.class) ? {
+            id: body.class.id,
+            title: body.class.title,
+            expiresAt: body.class.expiresAt || null
+          } : activeSession.class,
+          participant: {
+            id: body.participant.id,
+            displayName: body.participant.displayName
+          },
+          assignmentRevision: Number.isInteger(body.participant.assignmentRevision)
+            ? body.participant.assignmentRevision
+            : activeSession.assignmentRevision,
+          assignment: null
+        };
+        persistStudentSession(storage, activeSession);
+        renderWaiting(activeSession);
+        scheduleLiveStatus(epoch);
+        return true;
+      }
+      if (
+        !response.ok
+        || !validateStudentCapability(body.workspaceToken)
+        || !validClassContext(body.class)
+        || !validParticipantContext(body.participant)
+        || !Number.isInteger(body.participant.assignmentRevision)
+        || !validWorkspaceContext(body.assignment)
+      ) {
+        renderHolding(activeSession, {
+          status: 'retry',
+          title: 'Reconnecting to your assignment',
+          message: 'We could not load your assigned workspace yet. Intake will retry automatically.'
+        });
+        scheduleLiveStatus(epoch);
+        return false;
+      }
+
+      activeSession = {
+        ...activeSession,
+        class: {
+          id: body.class.id,
+          title: body.class.title,
+          expiresAt: body.class.expiresAt || null
+        },
+        participant: {
+          id: body.participant.id,
+          displayName: body.participant.displayName
+        },
+        assignmentRevision: body.participant.assignmentRevision,
+        assignment: normalizeAssignment(body.assignment)
+      };
+      persistStudentSession(storage, activeSession);
+
+      const workspaceToken = body.workspaceToken;
+      const connected = await collaboration?.connect?.(workspaceToken, {
+        displayName: activeSession.participant.displayName,
+        classroom: true
+      });
+      if (epoch !== liveEpoch || destroyed) {
+        collaboration?.leave?.({ silent: true });
+        return false;
+      }
+      if (!connected) {
+        activeWorkspaceToken = '';
+        renderHolding(activeSession, {
+          status: 'retry',
+          title: 'Assignment changed',
+          message: 'Your workspace access changed while Intake was connecting. Retrying the current assignment…'
+        });
+        scheduleLiveStatus(epoch, 500);
+        return false;
+      }
+
+      activeWorkspaceToken = workspaceToken;
+      renderConnected(activeSession);
+      onClassConnected(workspaceToken);
+      scheduleLiveStatus(epoch);
+      return true;
+    } catch {
+      if (epoch !== liveEpoch || destroyed) return false;
+      renderHolding(activeSession, {
+        status: 'retry',
+        title: 'Reconnecting to your assignment',
+        message: 'The class service is temporarily unavailable. Intake will retry automatically.'
+      });
+      scheduleLiveStatus(epoch);
+      return false;
+    }
+  };
+
+  async function syncLiveStatus(epoch = liveEpoch) {
+    if (
+      destroyed
+      || activeSession?.mode !== 'live'
+      || epoch !== liveEpoch
+      || getActiveExperienceRole() !== EXPERIENCE_ROLE_IDS.STUDENT
+    ) return false;
+
+    abort(statusAbort);
+    statusAbort = typeof AbortControllerImpl === 'function' ? new AbortControllerImpl() : null;
+    try {
+      const response = await fetchImpl(STUDENT_STATUS_ENDPOINT, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${activeSession.studentSessionToken}` },
+        signal: statusAbort?.signal
+      });
+      const body = await responseJson(response);
+      statusAbort = null;
+      if (epoch !== liveEpoch || destroyed) return false;
+
+      if (response.status === 404 || response.status === 401) {
+        return terminalLiveSession('This class session is no longer available. Ask your instructor for the current class code.');
+      }
+      if (!response.ok || !validLiveStatusBody(body)) {
+        if (!activeWorkspaceToken) {
+          renderHolding(activeSession, {
+            status: 'retry',
+            title: 'Checking your class assignment',
+            message: 'The class service is temporarily unavailable. Intake will keep retrying.'
+          });
+        }
+        scheduleLiveStatus(epoch);
+        return false;
+      }
+
+      const previousRevision = activeSession.assignmentRevision;
+      const previousAssignmentId = activeSession.assignment?.id || null;
+      const nextAssignmentId = body.assignment?.id || null;
+      const assignmentChanged = previousRevision !== body.participant.assignmentRevision
+        || previousAssignmentId !== nextAssignmentId;
+
+      updateLiveSessionFromStatus(body);
+
+      if (!activeSession.assignment) {
+        const wasAssigned = Boolean(activeWorkspaceToken || previousAssignmentId);
+        disconnectWorkspace();
+        renderWaiting(activeSession);
+        if (wasAssigned && assignmentChanged) toast('Your instructor moved you back to Waiting.');
+        scheduleLiveStatus(epoch);
+        return true;
+      }
+
+      if (!assignmentChanged && activeWorkspaceToken) {
+        renderConnected(activeSession);
+        scheduleLiveStatus(epoch);
+        return true;
+      }
+
+      if (previousAssignmentId && previousAssignmentId !== activeSession.assignment.id) {
+        toast(`Your instructor moved you to ${activeSession.assignment.label}.`);
+      }
+      return connectLiveAssignment(epoch);
+    } catch {
+      statusAbort = null;
+      if (epoch !== liveEpoch || destroyed) return false;
+      if (!activeWorkspaceToken) {
+        renderHolding(activeSession, {
+          status: 'retry',
+          title: 'Checking your class assignment',
+          message: 'The class service is temporarily unavailable. Intake will keep retrying.'
+        });
+      }
+      scheduleLiveStatus(epoch);
+      return false;
+    }
+  }
+
+  const activateLiveSession = async session => {
+    activeSession = session;
+    activeWorkspaceToken = '';
+    liveEpoch += 1;
+    const epoch = liveEpoch;
+    stopLivePolling();
+    persistStudentSession(storage, session);
+    renderHolding(session, {
+      status: 'connecting',
+      title: 'Joining your class',
+      message: 'Checking whether your instructor has assigned a workspace…'
+    });
+    return syncLiveStatus(epoch);
+  };
+
   const resume = async () => {
     if (destroyed || getActiveExperienceRole() !== EXPERIENCE_ROLE_IDS.STUDENT) return false;
     const collaborationState = collaboration?.getState?.() || {};
@@ -316,27 +703,135 @@ export function createStudentClassroomController({
     const stored = readStudentSession(storage);
     if (!stored) {
       activeSession = null;
+      activeWorkspaceToken = '';
       renderEntry();
       return false;
     }
     if (isStudentSessionExpired(stored, now())) {
+      if (stored.mode === 'live') {
+        activeSession = stored;
+        return terminalLiveSession('Your saved class access has expired. Ask your instructor for the current class code.');
+      }
       clearStudentSession(storage);
       activeSession = null;
+      activeWorkspaceToken = '';
       restoreLocalRecovery();
       renderEntry();
       setError('Your saved class access has expired. Ask your instructor for new class and assignment codes.');
       return false;
     }
-    return attachSession(stored);
+    if (stored.mode === 'live') {
+      return activateLiveSession(stored);
+    }
+    return attachLegacySession(stored);
   };
 
-  const join = async ({ classCode, assignmentCode, displayName }) => {
-    if (connecting) return false;
-    const normalizedName = normalizeStudentDisplayName(displayName);
+  const clearAdmissionInputs = () => {
+    if (element('studentClassCode')) element('studentClassCode').value = '';
+    if (element('studentAssignmentCode')) element('studentAssignmentCode').value = '';
+    if (element('studentLegacyJoin')) element('studentLegacyJoin').open = false;
+  };
+
+  const joinLegacy = async ({ classCode, assignmentCode, displayName, participantId }) => {
     const joinToken = typeof classCode === 'string' ? classCode.trim() : '';
     const assignmentToken = typeof assignmentCode === 'string' ? assignmentCode.trim() : '';
-    if (!validateStudentCapability(joinToken) || !validateStudentCapability(assignmentToken) || !normalizedName) {
-      setError('Enter your name and the current class and assignment codes from your instructor.');
+    if (!validateStudentCapability(joinToken) || !validateStudentCapability(assignmentToken)) {
+      setError('Enter the current long class and assignment codes from your instructor.');
+      return false;
+    }
+
+    const response = await fetchImpl(STUDENT_JOIN_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${joinToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        assignmentToken,
+        participantId,
+        displayName
+      })
+    });
+    const body = await responseJson(response);
+    if (!response.ok) {
+      if (response.status === 404) {
+        setError('The class or assignment code was not accepted. Ask your instructor for the current codes.');
+      } else if (response.status === 400) {
+        setError('Check your name and class codes, then try again.');
+      } else {
+        setError('The class service is unavailable right now. Your local Intake is unchanged.');
+      }
+      return false;
+    }
+    if (
+      !validateStudentCapability(body.workspaceToken)
+      || !validClassContext(body.class)
+      || !validWorkspaceContext(body.workspace)
+      || !validParticipantContext(body.self)
+    ) {
+      setError('The class service returned an incomplete workspace response.');
+      return false;
+    }
+
+    preserveLocalRecovery();
+    const session = buildLegacySession(body);
+    persistStudentSession(storage, session);
+    activeSession = session;
+    clearAdmissionInputs();
+    return attachLegacySession(session);
+  };
+
+  const joinLive = async ({ classCode, displayName, participantId }) => {
+    const joinCode = normalizeStudentJoinCode(classCode);
+    if (!joinCode) {
+      setError('Enter the eight-character class code from your instructor.');
+      return false;
+    }
+
+    const response = await fetchImpl(STUDENT_ADMIT_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        joinCode,
+        participantId,
+        displayName
+      })
+    });
+    const body = await responseJson(response);
+    if (!response.ok) {
+      if (response.status === 404) {
+        setError('That class code is not available. Ask your instructor for the current code.');
+      } else if (response.status === 400) {
+        setError('Check your name and class code, then try again.');
+      } else {
+        setError('The class service is unavailable right now. Your local Intake is unchanged.');
+      }
+      return false;
+    }
+    if (
+      !validateStudentCapability(body.studentSessionToken)
+      || !validClassContext(body.class)
+      || !validParticipantContext(body.participant)
+      || !Number.isInteger(body.participant.assignmentRevision)
+      || (body.assignment !== null && !validWorkspaceContext(body.assignment))
+    ) {
+      setError('The class service returned an incomplete admission response.');
+      return false;
+    }
+
+    preserveLocalRecovery();
+    const session = buildLiveSession(body);
+    persistStudentSession(storage, session);
+    activeSession = session;
+    clearAdmissionInputs();
+    return activateLiveSession(session);
+  };
+
+  const join = async ({ classCode, assignmentCode = '', displayName }) => {
+    if (connecting) return false;
+    const normalizedName = normalizeStudentDisplayName(displayName);
+    if (!normalizedName) {
+      setError('Enter your name before joining the class.');
       return false;
     }
     const participantId = collaboration?.getState?.().profile?.participantId;
@@ -348,54 +843,18 @@ export function createStudentClassroomController({
     setBusy(true);
     setError('');
     try {
-      const response = await fetchImpl(STUDENT_JOIN_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${joinToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          assignmentToken,
-          participantId,
-          displayName: normalizedName
-        })
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        if (response.status === 404) {
-          setError('The class or assignment code was not accepted. Ask your instructor for the current codes.');
-        } else if (response.status === 400) {
-          setError('Check your name and class codes, then try again.');
-        } else {
-          setError('The class service is unavailable right now. Your local Intake is unchanged.');
-        }
-        return false;
-      }
-      if (
-        !validateStudentCapability(body.workspaceToken)
-        || typeof body.class?.id !== 'string'
-        || typeof body.class?.title !== 'string'
-        || typeof body.workspace?.id !== 'string'
-        || !['individual', 'group'].includes(body.workspace?.kind)
-        || typeof body.workspace?.label !== 'string'
-        || typeof body.self?.id !== 'string'
-        || typeof body.self?.displayName !== 'string'
-      ) {
-        setError('The class service returned an incomplete workspace response.');
-        return false;
-      }
-
-      preserveLocalRecovery();
-      const session = buildSession(body);
-      persistStudentSession(storage, session);
-      activeSession = session;
-
-      const classInput = element('studentClassCode');
-      const assignmentInput = element('studentAssignmentCode');
-      if (classInput) classInput.value = '';
-      if (assignmentInput) assignmentInput.value = '';
-
-      return await attachSession(session);
+      return assignmentCode?.trim()
+        ? await joinLegacy({
+            classCode,
+            assignmentCode,
+            displayName: normalizedName,
+            participantId
+          })
+        : await joinLive({
+            classCode,
+            displayName: normalizedName,
+            participantId
+          });
     } catch {
       setError('Could not reach the class service. Your local Intake is unchanged.');
       return false;
@@ -405,8 +864,9 @@ export function createStudentClassroomController({
   };
 
   const leaveClass = ({ restore = true } = {}) => {
-    onClassDisconnected();
-    collaboration?.leave?.({ silent: true });
+    liveEpoch += 1;
+    stopLivePolling();
+    disconnectWorkspace();
     clearStudentSession(storage);
     activeSession = null;
     const restored = restore ? restoreLocalRecovery() : false;
@@ -420,26 +880,25 @@ export function createStudentClassroomController({
 
   const handleJoinSubmit = event => {
     event.preventDefault();
-    join({
+    void join({
       classCode: element('studentClassCode')?.value || '',
       assignmentCode: element('studentAssignmentCode')?.value || '',
       displayName: element('studentDisplayName')?.value || ''
     });
   };
 
-  const handleRetry = () => resume();
+  const handleRetry = () => { void resume(); };
   const handleLeave = () => leaveClass();
 
   const handleRoleChange = event => {
     const role = event?.detail?.role;
     if (role === EXPERIENCE_ROLE_IDS.STUDENT) {
-      resume();
+      void resume();
       return;
     }
-    if (collaboration?.getState?.().sessionKind === 'classroom') {
-      onClassDisconnected();
-      collaboration.leave({ silent: true });
-    }
+    liveEpoch += 1;
+    stopLivePolling();
+    disconnectWorkspace();
     restoreLocalRecovery({ clear: false });
   };
 
@@ -447,18 +906,22 @@ export function createStudentClassroomController({
     element('studentClassJoinForm')?.addEventListener('submit', handleJoinSubmit);
     element('studentClassRetryBtn')?.addEventListener('click', handleRetry);
     element('studentClassLeaveBtn')?.addEventListener('click', handleLeave);
+    element('studentClassWaitingLeaveBtn')?.addEventListener('click', handleLeave);
     windowRef?.addEventListener?.('intake:experience-role-changed', handleRoleChange);
-    if (getActiveExperienceRole() === EXPERIENCE_ROLE_IDS.STUDENT) resume();
+    if (getActiveExperienceRole() === EXPERIENCE_ROLE_IDS.STUDENT) void resume();
     return true;
   };
 
   const destroy = () => {
     if (destroyed) return;
     destroyed = true;
+    liveEpoch += 1;
+    stopLivePolling();
     onClassDisconnected();
     element('studentClassJoinForm')?.removeEventListener('submit', handleJoinSubmit);
     element('studentClassRetryBtn')?.removeEventListener('click', handleRetry);
     element('studentClassLeaveBtn')?.removeEventListener('click', handleLeave);
+    element('studentClassWaitingLeaveBtn')?.removeEventListener('click', handleLeave);
     windowRef?.removeEventListener?.('intake:experience-role-changed', handleRoleChange);
   };
 
@@ -467,8 +930,15 @@ export function createStudentClassroomController({
     destroy,
     join,
     resume,
+    refreshStatus: () => activeSession?.mode === 'live' ? syncLiveStatus(liveEpoch) : false,
     leaveClass,
-    getState: () => ({ activeSession, connecting, lastError })
+    getState: () => ({
+      activeSession,
+      activeWorkspaceToken,
+      connecting,
+      lastError,
+      liveEpoch
+    })
   };
 }
 

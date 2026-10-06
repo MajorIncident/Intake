@@ -17,26 +17,35 @@ These rules apply to all server-only modules below `api/`.
 
 Read `docs/classroom-api.md` and `docs/classroom-architecture.md` before modifying classroom endpoints.
 
-The classroom authorization chain is:
+The primary #312 classroom authorization chain is:
 
 ```text
 Instructor class capability
-  -> class administration + class-scoped workspace listing
+  -> class administration + class-scoped roster/workspace listing
+  -> read-only observation + coaching
 
-Student join capability + assignment capability
-  -> one authorized individual/group workspace
-  -> newly minted per-participant editable workspace capability
+human Student join code
+  -> admission only
+  -> high-entropy Student class-session capability
+  -> own assignment state only
+  -> fresh assignment-specific classroom-student workspace capability
+  -> existing collaboration edit APIs
 ```
+
+The legacy `Student join capability + assignment capability` chain remains an explicit two-code compatibility path.
 
 Rules:
 
-- Student join capability alone must never enumerate classroom workspaces.
-- Assignment capability must resolve only within the active class represented by the Student join capability.
+- Human join code and Student class-session capability must never enumerate classroom workspaces.
+- Student class-session capability must never edit collaboration directly.
+- Legacy Student join capability alone must never enumerate classroom workspaces.
+- Legacy assignment capability must resolve only within the active class represented by the Student join capability.
 - Instructor workspace listing must be scoped to exactly the class represented by the Instructor capability.
 - Classroom workspaces reuse `collaboration_workspaces`; do not create a parallel snapshot/revision/presence engine.
 - Raw bearer capabilities are returned only at creation/rotation. Persist only SHA-256 hashes.
 - Classroom credentials never enter `kt-intake-full-v2`, exported Intake files, summaries, templates, or Case Study payloads.
 - Individual assignment ownership uses the opaque participant UUID, never the display name.
+- Live participants may be Waiting with no workspace authority; assignment is a separate server-authoritative state.
 
 ## Editable workspace alias rule
 
@@ -80,13 +89,47 @@ Any runtime change under `api/` is included in the repository test-change guard.
 
 Classroom API changes must preserve automated coverage for:
 
-- class-scoped Instructor listing;
-- Student non-enumeration;
+- class-scoped Instructor roster/workspace listing;
+- Student non-enumeration and own-status-only reads;
+- Waiting participant with zero workspace edit authority;
 - cross-class assignment rejection;
-- individual claim-once vs group sharing;
+- individual occupancy vs group sharing;
+- assignment revision/idempotency semantics;
+- reassignment/unassign revoking old workspace authority before destination access;
+- stale old-team token rejection and no Intake snapshot merge;
 - credential rotation and revocation;
-- classroom workspace token reuse through the existing collaboration session API;
+- live and legacy classroom workspace tokens through the existing collaboration session API;
 - edit-capability kind restrictions;
-- legacy Standalone collaboration behavior.
-- coaching class scoping, independent feedback revisions, Student read-only access, and zero Student snapshot-revision changes.
-- protected Case Study Instructor class scoping, Student membership-bound access, rejection of legacy collaboration capabilities, metadata-only catalogs, POST-only payload selection, and private response headers.
+- legacy two-code Classroom and Standalone collaboration behavior;
+- coaching class scoping, independent feedback revisions, Student read-only access, and zero Student snapshot-revision changes;
+- protected Case Study Instructor class scoping, Student membership-bound access, rejection of legacy Standalone collaboration capabilities, metadata-only catalogs, POST-only payload selection, and private response headers.
+
+
+## #312 live-class capability direction
+
+Read `docs/classroom-live-management.md` before implementing #312.
+
+The new capability chain is intentionally different from the legacy two-code admission path:
+
+```text
+human join code (admission locator only)
+  -> high-entropy Student class-session capability
+  -> own assignment-status API only
+  -> assignment-specific classroom-student workspace capability
+  -> existing collaboration edit APIs
+```
+
+Rules:
+- never accept the human join code on workspace/observer/coaching/resource APIs;
+- never accept the Student class-session capability on collaboration edit APIs;
+- unassigned participants have no workspace edit capability;
+- on assign/reassign/unassign, revoke the previous workspace-access capability before destination access is issued;
+- never remap one still-active edit token from an old workspace to a new workspace;
+- no assignment operation copies or merges Intake snapshots;
+- keep legacy `/api/classes/join` and `classroom_memberships` working during the additive migration;
+- Student status endpoints return only that Student's assignment; they never enumerate classmates/workspaces.
+- `PATCH /api/classes/participants` must revoke any existing assignment-specific workspace capability before changing the participant's workspace assignment; destination access is issued only later through `POST /api/classes/student/access`.
+- live Student coaching/protected-resource authorization must validate that the participant's stored workspace-access hash still corresponds to an active, unrevoked `classroom-student` collaboration capability; the stored hash alone is not sufficient authority.
+- assignment changes use optimistic `assignment_revision` checks; a conflicting update may leave old access revoked, but must never leave old access valid or remap it to a new workspace.
+- stale presence cleanup after reassignment uses internal workspace identity, not the revoked bearer token.
+- individual live workspaces remain single-participant; cross-class destination assignment is rejected generically.

@@ -221,7 +221,7 @@ The eight-slice #288 program establishes the secure Classroom foundation; it doe
 - **#312 — Instructor-run live class, roster, and dynamic team management:** Instructor-created classes, one human-friendly Student join path, waiting/late roster, accessible team formation, live reassignment, automatic Student workspace switching, and high-signal team monitoring.
 - **#313 — Instructor-orchestrated case simulation and staged debrief:** staged protected Case Study release, case reference beside Intake, Instructor pause/debrief/advance controls, progressive disclosure, team progress, and server-gated future-stage / Instructor-only material.
 
-#312 is the next product slice after #308 closes; #313 should build on #312 rather than bypassing the live-class/team-management substrate.
+#312 is implemented on draft PR #314 (`feature/classroom-live-management`): Start Class, one human Student join code, Waiting/late roster, stable Student class sessions, accessible team creation/assignment, safe reassignment/unassign with stale-authority cutoff, observer/coaching integration, and integrated multi-browser acceptance are green. The final #312 gate is documentation/security/merge readiness. #313 remains the next dependent product slice and must start from the merged #312 substrate.
 
 ## Stacked PR rules
 

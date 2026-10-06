@@ -5,15 +5,23 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  CLASS_JOIN_CODE_ALPHABET,
+  CLASS_JOIN_CODE_LENGTH,
   CLASS_TITLE_MAX_LENGTH,
   CLASS_WORKSPACE_LABEL_MAX_LENGTH,
   COACHING_NOTE_MAX_LENGTH,
+  classAdmitHandler,
   classCoachingHandler,
   classHandler,
   classJoinHandler,
+  classParticipantsHandler,
   classObserveHandler,
+  classStudentAccessHandler,
   classStudentCoachingHandler,
+  classStudentHandler,
   classWorkspacesHandler,
+  formatClassJoinCode,
+  normalizeClassJoinCode,
   normalizeClassroomLabel,
   normalizeCoachingNote,
   normalizeCoachingStatus,
@@ -35,6 +43,7 @@ const CLASS_A_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const CLASS_B_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const WORKSPACE_A_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const WORKSPACE_B_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const WORKSPACE_C_ID = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 const PARTICIPANT_A = '11111111-1111-4111-8111-111111111111';
 const PARTICIPANT_B = '22222222-2222-4222-8222-222222222222';
 
@@ -48,11 +57,112 @@ test('classroom labels, kinds, and public IDs validate conservatively', () => {
   assert.equal(validateClassroomId('not-an-id'), false);
 });
 
+test('live Classroom join codes normalize to an unambiguous eight-character contract', () => {
+  assert.equal(CLASS_JOIN_CODE_LENGTH, 8);
+  assert.equal(CLASS_JOIN_CODE_ALPHABET.includes('0'), false);
+  assert.equal(CLASS_JOIN_CODE_ALPHABET.includes('O'), false);
+  assert.equal(CLASS_JOIN_CODE_ALPHABET.includes('1'), false);
+  assert.equal(CLASS_JOIN_CODE_ALPHABET.includes('I'), false);
+  assert.equal(normalizeClassJoinCode(' k7fm-p4q2 '), 'K7FMP4Q2');
+  assert.equal(formatClassJoinCode('k7fmp4q2'), 'K7FM-P4Q2');
+  assert.equal(normalizeClassJoinCode('K7F0-P4Q2'), null);
+  assert.equal(normalizeClassJoinCode('too-short'), null);
+});
+
+test('live participant admission creates a waiting Student and rotates only the class-session capability', async () => {
+  const classrooms = createClassroomRepository();
+
+  await classrooms.createClass({
+    publicId: CLASS_A_ID,
+    title: 'Class A',
+    instructorHash: testTokenHash('A'),
+    studentJoinHash: testTokenHash('C'),
+    studentJoinCode: 'K7FMP4Q2'
+  });
+
+  const first = await classrooms.admitParticipant({
+    joinCode: 'K7FMP4Q2',
+    participantId: PARTICIPANT_A,
+    displayName: 'Alex',
+    sessionHash: testTokenHash('S')
+  });
+
+  assert.equal(first.classroom.id, CLASS_A_ID);
+  assert.equal(first.participant.id, PARTICIPANT_A);
+  assert.equal(first.participant.displayName, 'Alex');
+  assert.equal(first.participant.assignmentRevision, 0);
+  assert.equal(first.assignment, null);
+
+  const firstSession = await classrooms.getParticipantBySession(testTokenHash('S'));
+  assert.equal(firstSession.classroom.id, CLASS_A_ID);
+  assert.equal(firstSession.assignment, null);
+
+  const readmission = await classrooms.admitParticipant({
+    joinCode: 'K7FMP4Q2',
+    participantId: PARTICIPANT_A,
+    displayName: 'Alex Updated',
+    sessionHash: testTokenHash('T')
+  });
+
+  assert.equal(readmission.participant.displayName, 'Alex Updated');
+  assert.equal(readmission.participant.assignmentRevision, 0);
+  assert.equal(await classrooms.getParticipantBySession(testTokenHash('S')), null);
+  assert.equal((await classrooms.getParticipantBySession(testTokenHash('T'))).participant.displayName, 'Alex Updated');
+
+  const roster = await classrooms.listParticipants(testTokenHash('A'));
+  assert.equal(roster.classroom.id, CLASS_A_ID);
+  assert.deepEqual(roster.participants.map(item => ({
+    id: item.id,
+    assignment: item.assignment
+  })), [{ id: PARTICIPANT_A, assignment: null }]);
+});
+
+test('live participant admission is class-scoped and invalid join codes do not create roster entries', async () => {
+  const classrooms = createClassroomRepository();
+
+  await classrooms.createClass({
+    publicId: CLASS_A_ID,
+    title: 'Class A',
+    instructorHash: testTokenHash('A'),
+    studentJoinHash: testTokenHash('C'),
+    studentJoinCode: 'K7FMP4Q2'
+  });
+  await classrooms.createClass({
+    publicId: CLASS_B_ID,
+    title: 'Class B',
+    instructorHash: testTokenHash('B'),
+    studentJoinHash: testTokenHash('D'),
+    studentJoinCode: 'M8RNQ5W3'
+  });
+
+  const denied = await classrooms.admitParticipant({
+    joinCode: 'ZZZZZZZZ',
+    participantId: PARTICIPANT_A,
+    displayName: 'Alex',
+    sessionHash: testTokenHash('S')
+  });
+  assert.equal(denied, null);
+
+  await classrooms.admitParticipant({
+    joinCode: 'M8RNQ5W3',
+    participantId: PARTICIPANT_B,
+    displayName: 'Blair',
+    sessionHash: testTokenHash('T')
+  });
+
+  const classA = await classrooms.listParticipants(testTokenHash('A'));
+  const classB = await classrooms.listParticipants(testTokenHash('B'));
+  assert.deepEqual(classA.participants, []);
+  assert.deepEqual(classB.participants.map(item => item.id), [PARTICIPANT_B]);
+  assert.equal(await classrooms.listParticipants(testTokenHash('C')), null);
+});
+
 test('class creation returns raw capabilities once and stores only hashes', async () => {
   const classrooms = createClassroomRepository();
   const handler = classHandler({
     getRepository: async () => classrooms,
     tokenFactory: tokenFactory(['I', 'J']),
+    joinCodeFactory: () => 'K7FMP4Q2',
     idFactory: () => CLASS_A_ID
   });
 
@@ -63,10 +173,532 @@ test('class creation returns raw capabilities once and stores only hashes', asyn
   assert.equal(res.body.class.title, 'Fall Workshop');
   assert.equal(res.body.instructorToken, 'I'.repeat(43));
   assert.equal(res.body.studentJoinToken, 'J'.repeat(43));
+  assert.equal(res.body.joinCode, 'K7FM-P4Q2');
+  assert.equal(classrooms.classes[0].studentJoinCode, 'K7FMP4Q2');
   assert.equal(classrooms.classes[0].instructorHash, testTokenHash('I'));
   assert.equal(classrooms.classes[0].studentJoinHash, testTokenHash('J'));
   assert.equal(res.headers['Cache-Control'], 'no-store');
   assert.equal(res.headers['Referrer-Policy'], 'no-referrer');
+});
+
+test('one-code admission creates a waiting Student class session without workspace edit authority', async () => {
+  const classrooms = createClassroomRepository();
+  const workspaceRepo = createWorkspaceRepository();
+  await classrooms.createClass({
+    publicId: CLASS_A_ID,
+    title: 'Class A',
+    instructorHash: testTokenHash('A'),
+    studentJoinHash: testTokenHash('C'),
+    studentJoinCode: 'K7FMP4Q2'
+  });
+
+  const admit = classAdmitHandler({
+    getRepository: async () => classrooms,
+    tokenFactory: tokenFactory(['S'])
+  });
+  const admitted = response();
+  await admit({
+    method: 'POST',
+    body: {
+      joinCode: ' k7fm-p4q2 ',
+      participantId: PARTICIPANT_A,
+      displayName: '  Alex  '
+    }
+  }, admitted);
+
+  assert.equal(admitted.statusCode, 200);
+  assert.equal(admitted.body.class.id, CLASS_A_ID);
+  assert.equal(admitted.body.participant.displayName, 'Alex');
+  assert.equal(admitted.body.participant.assignmentRevision, 0);
+  assert.equal(admitted.body.assignment, null);
+  assert.equal(admitted.body.studentSessionToken, 'S'.repeat(43));
+
+  const directWorkspace = response();
+  await workspaceHandler({ getRepository: async () => workspaceRepo })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + admitted.body.studentSessionToken }
+  }, directWorkspace);
+  assert.equal(directWorkspace.statusCode, 404, 'class-session authority is not collaboration edit authority');
+
+  const invalid = response();
+  await classAdmitHandler({
+    getRepository: async () => classrooms,
+    tokenFactory: tokenFactory(['T'])
+  })({
+    method: 'POST',
+    body: {
+      joinCode: 'M8RN-Q5W3',
+      participantId: PARTICIPANT_B,
+      displayName: 'Blair'
+    }
+  }, invalid);
+  assert.equal(invalid.statusCode, 404);
+  assert.deepEqual(invalid.body, { error: 'Class not available.' });
+});
+
+test('Instructor participant roster is class-scoped while Student status returns only self', async () => {
+  const classrooms = createClassroomRepository();
+  await classrooms.createClass({
+    publicId: CLASS_A_ID,
+    title: 'Class A',
+    instructorHash: testTokenHash('A'),
+    studentJoinHash: testTokenHash('C'),
+    studentJoinCode: 'K7FMP4Q2'
+  });
+
+  await classrooms.admitParticipant({
+    joinCode: 'K7FMP4Q2',
+    participantId: PARTICIPANT_A,
+    displayName: 'Alex',
+    sessionHash: testTokenHash('S')
+  });
+  await classrooms.admitParticipant({
+    joinCode: 'K7FMP4Q2',
+    participantId: PARTICIPANT_B,
+    displayName: 'Blair',
+    sessionHash: testTokenHash('T')
+  });
+
+  const rosterHandler = classParticipantsHandler({ getRepository: async () => classrooms });
+  const roster = response();
+  await rosterHandler({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) }
+  }, roster);
+  assert.equal(roster.statusCode, 200);
+  assert.deepEqual(roster.body.participants.map(item => item.displayName), ['Alex', 'Blair']);
+
+  const studentCannotEnumerate = response();
+  await rosterHandler({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) }
+  }, studentCannotEnumerate);
+  assert.equal(studentCannotEnumerate.statusCode, 404);
+
+  const statusHandler = classStudentHandler({ getRepository: async () => classrooms });
+  const alex = response();
+  await statusHandler({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) }
+  }, alex);
+  assert.equal(alex.statusCode, 200);
+  assert.equal(alex.body.participant.id, PARTICIPANT_A);
+  assert.equal(alex.body.participant.displayName, 'Alex');
+  assert.equal(alex.body.assignment, null);
+  assert.equal('participants' in alex.body, false);
+  assert.equal('workspaceToken' in alex.body, false);
+});
+
+test('Student workspace access waits while unassigned and rotates assignment-specific edit authority', async () => {
+  const classrooms = createClassroomRepository();
+  const workspaceRepo = createWorkspaceRepository();
+  await classrooms.createClass({
+    publicId: CLASS_A_ID,
+    title: 'Class A',
+    instructorHash: testTokenHash('A'),
+    studentJoinHash: testTokenHash('C'),
+    studentJoinCode: 'K7FMP4Q2'
+  });
+  const workspace = await workspaceRepo.create(
+    testTokenHash('P'),
+    { pre: { oneLine: 'Team A current Intake' } },
+    30,
+    'Team A'
+  );
+  await classrooms.addWorkspace(testTokenHash('A'), {
+    publicId: WORKSPACE_A_ID,
+    workspaceId: workspace.id,
+    kind: 'group',
+    label: 'Team A',
+    claimHash: testTokenHash('X')
+  });
+  await classrooms.admitParticipant({
+    joinCode: 'K7FMP4Q2',
+    participantId: PARTICIPANT_A,
+    displayName: 'Alex',
+    sessionHash: testTokenHash('S')
+  });
+
+  const waitingHandler = classStudentAccessHandler({
+    getRepository: async () => classrooms,
+    getWorkspaceRepo: async () => workspaceRepo,
+    tokenFactory: tokenFactory(['W'])
+  });
+  const waiting = response();
+  await waitingHandler({
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) }
+  }, waiting);
+  assert.equal(waiting.statusCode, 409);
+  assert.equal(waiting.body.status, 'waiting');
+  assert.equal(waiting.body.assignment, null);
+  assert.equal('workspaceToken' in waiting.body, false);
+
+  const participant = [...classrooms.participants.values()][0];
+  participant.workspaceId = workspace.id;
+  participant.assignmentRevision = 1;
+
+  const firstAccess = response();
+  await classStudentAccessHandler({
+    getRepository: async () => classrooms,
+    getWorkspaceRepo: async () => workspaceRepo,
+    tokenFactory: tokenFactory(['W'])
+  })({
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) }
+  }, firstAccess);
+  assert.equal(firstAccess.statusCode, 200);
+  assert.equal(firstAccess.body.assignment.id, WORKSPACE_A_ID);
+  assert.equal(firstAccess.body.participant.assignmentRevision, 1);
+  assert.equal(firstAccess.body.workspaceToken, 'W'.repeat(43));
+
+  const firstLoad = response();
+  await workspaceHandler({ getRepository: async () => workspaceRepo })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'W'.repeat(43) }
+  }, firstLoad);
+  assert.equal(firstLoad.statusCode, 200);
+  assert.equal(firstLoad.body.snapshot.pre.oneLine, 'Team A current Intake');
+
+  await classrooms.upsertFeedback(testTokenHash('A'), WORKSPACE_A_ID, {
+    targetId: 'problem.one-line',
+    status: 'meets-standard',
+    note: 'Clear',
+    reviewedWorkspaceRevision: 1,
+    reviewedFieldFingerprint: 'v1-0123456789abcdef'
+  });
+  const liveCoaching = response();
+  await classStudentCoachingHandler({ getRepository: async () => classrooms })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'W'.repeat(43) }
+  }, liveCoaching);
+  assert.equal(liveCoaching.statusCode, 200);
+  assert.deepEqual(liveCoaching.body.feedback.map(item => item.targetId), ['problem.one-line']);
+
+  const rotated = response();
+  await classStudentAccessHandler({
+    getRepository: async () => classrooms,
+    getWorkspaceRepo: async () => workspaceRepo,
+    tokenFactory: tokenFactory(['V'])
+  })({
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) }
+  }, rotated);
+  assert.equal(rotated.statusCode, 200);
+  assert.equal(rotated.body.workspaceToken, 'V'.repeat(43));
+
+  const oldLoad = response();
+  await workspaceHandler({ getRepository: async () => workspaceRepo })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'W'.repeat(43) }
+  }, oldLoad);
+  assert.equal(oldLoad.statusCode, 404);
+
+  const newLoad = response();
+  await workspaceHandler({ getRepository: async () => workspaceRepo })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'V'.repeat(43) }
+  }, newLoad);
+  assert.equal(newLoad.statusCode, 200);
+});
+
+test('Instructor assign -> reassign -> unassign revokes old authority and never merges team Intake', async () => {
+  const classrooms = createClassroomRepository();
+  const workspaceRepo = createWorkspaceRepository();
+
+  await classrooms.createClass({
+    publicId: CLASS_A_ID,
+    title: 'Class A',
+    instructorHash: testTokenHash('A'),
+    studentJoinHash: testTokenHash('C'),
+    studentJoinCode: 'K7FMP4Q2'
+  });
+  await classrooms.createClass({
+    publicId: CLASS_B_ID,
+    title: 'Class B',
+    instructorHash: testTokenHash('B'),
+    studentJoinHash: testTokenHash('D'),
+    studentJoinCode: 'M8RNQ5W3'
+  });
+
+  const teamA = await workspaceRepo.create(
+    testTokenHash('P'),
+    { pre: { oneLine: 'Team A original' } },
+    30,
+    'Team A'
+  );
+  const teamB = await workspaceRepo.create(
+    testTokenHash('Q'),
+    { pre: { oneLine: 'Team B original' } },
+    30,
+    'Team B'
+  );
+  const otherClass = await workspaceRepo.create(
+    testTokenHash('R'),
+    { pre: { oneLine: 'Other class' } },
+    30,
+    'Other Class Team'
+  );
+
+  await classrooms.addWorkspace(testTokenHash('A'), {
+    publicId: WORKSPACE_A_ID,
+    workspaceId: teamA.id,
+    kind: 'group',
+    label: 'Team A',
+    claimHash: testTokenHash('X')
+  });
+  await classrooms.addWorkspace(testTokenHash('A'), {
+    publicId: WORKSPACE_B_ID,
+    workspaceId: teamB.id,
+    kind: 'group',
+    label: 'Team B',
+    claimHash: testTokenHash('Y')
+  });
+  await classrooms.addWorkspace(testTokenHash('B'), {
+    publicId: WORKSPACE_C_ID,
+    workspaceId: otherClass.id,
+    kind: 'group',
+    label: 'Other Class Team',
+    claimHash: testTokenHash('Z')
+  });
+  await classrooms.admitParticipant({
+    joinCode: 'K7FMP4Q2',
+    participantId: PARTICIPANT_A,
+    displayName: 'Alex',
+    sessionHash: testTokenHash('S')
+  });
+
+  const participantHandler = classParticipantsHandler({
+    getRepository: async () => classrooms,
+    getWorkspaceRepo: async () => workspaceRepo
+  });
+
+  const assigned = response();
+  await participantHandler({
+    method: 'PATCH',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    body: { participantId: PARTICIPANT_A, workspaceId: WORKSPACE_A_ID }
+  }, assigned);
+  assert.equal(assigned.statusCode, 200);
+  assert.equal(assigned.body.changed, true);
+  assert.equal(assigned.body.assignment.id, WORKSPACE_A_ID);
+  assert.equal(assigned.body.participant.assignmentRevision, 1);
+
+  const repeated = response();
+  await participantHandler({
+    method: 'PATCH',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    body: { participantId: PARTICIPANT_A, workspaceId: WORKSPACE_A_ID }
+  }, repeated);
+  assert.equal(repeated.statusCode, 200);
+  assert.equal(repeated.body.changed, false);
+  assert.equal(repeated.body.participant.assignmentRevision, 1);
+
+  const teamAAccess = response();
+  await classStudentAccessHandler({
+    getRepository: async () => classrooms,
+    getWorkspaceRepo: async () => workspaceRepo,
+    tokenFactory: tokenFactory(['W'])
+  })({
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) }
+  }, teamAAccess);
+  assert.equal(teamAAccess.statusCode, 200);
+  assert.equal(teamAAccess.body.workspaceToken, 'W'.repeat(43));
+
+  const editedA = response();
+  await workspaceHandler({ getRepository: async () => workspaceRepo })({
+    method: 'PUT',
+    headers: { authorization: 'Bearer ' + 'W'.repeat(43) },
+    body: {
+      revision: 1,
+      snapshot: { pre: { oneLine: 'Alex changed Team A only' } }
+    }
+  }, editedA);
+  assert.equal(editedA.statusCode, 200);
+
+  await workspaceRepo.upsertPresence(testTokenHash('W'), PARTICIPANT_A, 'Alex');
+
+  const moved = response();
+  await participantHandler({
+    method: 'PATCH',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    body: { participantId: PARTICIPANT_A, workspaceId: WORKSPACE_B_ID }
+  }, moved);
+  assert.equal(moved.statusCode, 200);
+  assert.equal(moved.body.changed, true);
+  assert.equal(moved.body.assignment.id, WORKSPACE_B_ID);
+  assert.equal(moved.body.participant.assignmentRevision, 2);
+
+  const staleRead = response();
+  await workspaceHandler({ getRepository: async () => workspaceRepo })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'W'.repeat(43) }
+  }, staleRead);
+  assert.equal(staleRead.statusCode, 404);
+
+  const staleWrite = response();
+  await workspaceHandler({ getRepository: async () => workspaceRepo })({
+    method: 'PUT',
+    headers: { authorization: 'Bearer ' + 'W'.repeat(43) },
+    body: {
+      revision: 2,
+      snapshot: { pre: { oneLine: 'Must never become Team B' } }
+    }
+  }, staleWrite);
+  assert.equal(staleWrite.statusCode, 404);
+
+  const staleCoaching = response();
+  await classStudentCoachingHandler({ getRepository: async () => classrooms })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'W'.repeat(43) }
+  }, staleCoaching);
+  assert.equal(staleCoaching.statusCode, 404);
+
+  const oldPresence = await workspaceRepo.observeById(teamA.id);
+  assert.deepEqual(oldPresence.participants, []);
+
+  const teamASnapshot = await workspaceRepo.load(testTokenHash('P'));
+  const teamBSnapshotBeforeAccess = await workspaceRepo.load(testTokenHash('Q'));
+  assert.equal(teamASnapshot.snapshot.pre.oneLine, 'Alex changed Team A only');
+  assert.equal(teamBSnapshotBeforeAccess.snapshot.pre.oneLine, 'Team B original');
+
+  const studentStatus = response();
+  await classStudentHandler({ getRepository: async () => classrooms })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) }
+  }, studentStatus);
+  assert.equal(studentStatus.statusCode, 200);
+  assert.equal(studentStatus.body.assignment.id, WORKSPACE_B_ID);
+  assert.equal(studentStatus.body.participant.assignmentRevision, 2);
+
+  const teamBAccess = response();
+  await classStudentAccessHandler({
+    getRepository: async () => classrooms,
+    getWorkspaceRepo: async () => workspaceRepo,
+    tokenFactory: tokenFactory(['V'])
+  })({
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) }
+  }, teamBAccess);
+  assert.equal(teamBAccess.statusCode, 200);
+  assert.equal(teamBAccess.body.workspaceToken, 'V'.repeat(43));
+
+  const teamBLoad = response();
+  await workspaceHandler({ getRepository: async () => workspaceRepo })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'V'.repeat(43) }
+  }, teamBLoad);
+  assert.equal(teamBLoad.statusCode, 200);
+  assert.equal(teamBLoad.body.snapshot.pre.oneLine, 'Team B original');
+
+  const crossClass = response();
+  await participantHandler({
+    method: 'PATCH',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    body: { participantId: PARTICIPANT_A, workspaceId: WORKSPACE_C_ID }
+  }, crossClass);
+  assert.equal(crossClass.statusCode, 404);
+
+  const afterCrossClass = response();
+  await classStudentHandler({ getRepository: async () => classrooms })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) }
+  }, afterCrossClass);
+  assert.equal(afterCrossClass.body.assignment.id, WORKSPACE_B_ID);
+  assert.equal(afterCrossClass.body.participant.assignmentRevision, 2);
+
+  const unassigned = response();
+  await participantHandler({
+    method: 'PATCH',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    body: { participantId: PARTICIPANT_A, workspaceId: null }
+  }, unassigned);
+  assert.equal(unassigned.statusCode, 200);
+  assert.equal(unassigned.body.changed, true);
+  assert.equal(unassigned.body.assignment, null);
+  assert.equal(unassigned.body.participant.assignmentRevision, 3);
+
+  const oldTeamBLoad = response();
+  await workspaceHandler({ getRepository: async () => workspaceRepo })({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'V'.repeat(43) }
+  }, oldTeamBLoad);
+  assert.equal(oldTeamBLoad.statusCode, 404);
+
+  const waitingAgain = response();
+  await classStudentAccessHandler({
+    getRepository: async () => classrooms,
+    getWorkspaceRepo: async () => workspaceRepo,
+    tokenFactory: tokenFactory(['U'])
+  })({
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) }
+  }, waitingAgain);
+  assert.equal(waitingAgain.statusCode, 409);
+  assert.equal(waitingAgain.body.status, 'waiting');
+  assert.equal('workspaceToken' in waitingAgain.body, false);
+});
+
+test('individual live workspace rejects a second Student without disturbing either assignment', async () => {
+  const classrooms = createClassroomRepository();
+  const workspaceRepo = createWorkspaceRepository();
+  await classrooms.createClass({
+    publicId: CLASS_A_ID,
+    title: 'Class A',
+    instructorHash: testTokenHash('A'),
+    studentJoinHash: testTokenHash('C'),
+    studentJoinCode: 'K7FMP4Q2'
+  });
+  const individual = await workspaceRepo.create(testTokenHash('P'), {}, 30, 'Alex workspace');
+  await classrooms.addWorkspace(testTokenHash('A'), {
+    publicId: WORKSPACE_A_ID,
+    workspaceId: individual.id,
+    kind: 'individual',
+    label: 'Individual 1',
+    claimHash: testTokenHash('X')
+  });
+  await classrooms.admitParticipant({
+    joinCode: 'K7FMP4Q2',
+    participantId: PARTICIPANT_A,
+    displayName: 'Alex',
+    sessionHash: testTokenHash('S')
+  });
+  await classrooms.admitParticipant({
+    joinCode: 'K7FMP4Q2',
+    participantId: PARTICIPANT_B,
+    displayName: 'Blair',
+    sessionHash: testTokenHash('T')
+  });
+
+  const handler = classParticipantsHandler({
+    getRepository: async () => classrooms,
+    getWorkspaceRepo: async () => workspaceRepo
+  });
+
+  const first = response();
+  await handler({
+    method: 'PATCH',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    body: { participantId: PARTICIPANT_A, workspaceId: WORKSPACE_A_ID }
+  }, first);
+  assert.equal(first.statusCode, 200);
+  assert.equal(first.body.participant.assignmentRevision, 1);
+
+  const denied = response();
+  await handler({
+    method: 'PATCH',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    body: { participantId: PARTICIPANT_B, workspaceId: WORKSPACE_A_ID }
+  }, denied);
+  assert.equal(denied.statusCode, 409);
+
+  const alex = await classrooms.getParticipantBySession(testTokenHash('S'));
+  const blair = await classrooms.getParticipantBySession(testTokenHash('T'));
+  assert.equal(alex.assignment.id, WORKSPACE_A_ID);
+  assert.equal(alex.participant.assignmentRevision, 1);
+  assert.equal(blair.assignment, null);
+  assert.equal(blair.participant.assignmentRevision, 0);
 });
 
 test('class admin rejects missing or malformed authorization before repository access', async () => {

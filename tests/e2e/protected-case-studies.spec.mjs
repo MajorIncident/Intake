@@ -52,6 +52,7 @@ test('protected Case Studies reject unauthenticated retrieval and an authorized 
   await page.getByRole('button', { name: /Join a class/ }).click();
   await page.locator('#studentDisplayName').fill('Protected Case Student');
   await page.getByLabel('Class code').fill(classCode);
+  await page.locator('#studentLegacyJoin > summary').click();
   await page.getByLabel('Assignment code').fill(assignmentCode);
 
   const catalogResponsePromise = page.waitForResponse(response => (
