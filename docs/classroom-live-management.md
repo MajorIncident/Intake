@@ -390,13 +390,50 @@ Validation on `04f95f2...`:
 - required Browser E2E: **22 passed / 6 intentional project-scoped skips / 0 failed**;
 - CodeQL, Dependency Review, and Template Manifest Guard: green.
 
-**Exact next tranche:** implement Instructor assign/reassign/unassign repository + HTTP semantics before building the live management UI. The critical acceptance proof is:
-1. assign waiting Student -> access token edits destination workspace;
-2. reassign A -> B -> old A token is revoked before B access can be issued;
-3. unassign -> old token is revoked and Student returns to waiting;
-4. cross-class destination assignment is rejected;
-5. no assignment operation copies or merges Intake snapshots;
-6. stale Team A authority can never become Team B authority.
+## Implementation checkpoint — assign / reassign / unassign authority
+
+Completed on #314 before any live team-management UI cutover.
+
+Implemented:
+- Instructor-only `PATCH /api/classes/participants` assigns, reassigns, or unassigns one admitted Student;
+- assignment is class-scoped: participant and destination workspace must both belong to the Instructor's represented class;
+- `workspaceId: null` returns the Student to waiting/unassigned;
+- assignment changes increment `assignmentRevision`; repeating the same assignment is idempotent and does not increment;
+- any current assignment-specific edit capability is revoked **before** participant assignment metadata changes;
+- stale collaboration presence is removed from the old workspace by internal workspace ID after revocation;
+- the participant's stored workspace-access hash is cleared on assignment change;
+- destination access is never issued by the Instructor assignment operation; the Student must later call `POST /api/classes/student/access`;
+- cross-class destinations are rejected without changing assignment;
+- individual live workspaces enforce one participant;
+- leaving an individual workspace releases its individual claim for later reassignment;
+- no assignment operation reads, copies, or merges Intake snapshots;
+- live Student coaching/protected-resource context now additionally requires an active, unrevoked `classroom-student` collaboration alias, closing the stale stored-hash authorization window;
+- optimistic assignment-revision protection means a concurrent conflict can fail closed with old authority revoked rather than risk stale authority surviving or being retargeted.
+
+Durable implementation commits:
+- `742240e92156a9d43a96752a2cb6acc5908f4172` — server-only presence cleanup by workspace ID;
+- `2c1d6fdf6872eb1390424503f08692a581da6322` — deterministic presence-cleanup parity;
+- `b48e6bbb71c2d6ec818ca1f69b656b3bffbed473` — live assignment repository/HTTP semantics plus active-alias validation for Student context;
+- `a382acad42de25f4fa1ae217acf34d69a047606b` — deterministic assignment transition model;
+- `7bfd662e2dcbe5511a4065b7b19222129485d08a` — full Waiting -> Team A -> Team B -> Waiting authority-cutoff and individual-workspace tests.
+
+Validation on `7bfd662...`:
+- repository quality: **246 tests / 245 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **22 passed / 6 intentional project-scoped skips / 0 failed**;
+- CodeQL, Dependency Review, and Template Manifest Guard: green.
+
+**Exact next tranche:** build the Instructor live-management client on this proven server contract:
+1. Start Class as the primary Instructor action;
+2. persist the Instructor capability for same-device resume;
+3. display/copy the human Student join code;
+4. show Waiting/Unassigned plus team/individual workspace roster;
+5. create team/individual workspaces;
+6. assign/reassign/unassign through accessible button/select controls first;
+7. keep drag-and-drop optional/progressive enhancement, never the only assignment path;
+8. wire observer/coaching navigation from each workspace;
+9. extend the deterministic browser fixture and real-browser E2E for Instructor start/roster/team assignment before cutting over the Student client.
+
+Do not implement Student one-code waiting/automatic reassignment UI until the Instructor management surface is browser-green.
 
 ## Student client lifecycle
 
