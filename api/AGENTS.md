@@ -148,11 +148,15 @@ Rules:
 - optional content release, debrief, and stage advance are Instructor-only and optimistic-revision protected;
 - Student/team Ready state resolves the participant's current assignment server-side; stale pre-reassignment authority cannot mutate old-team exercise state;
 - beginning debrief must capture idempotent immutable workspace checkpoints before any optional post-debrief edits;
-- if Student editing is frozen, enforce it on the `classroom-student` collaboration write path; UI read-only projection alone is not authority;
+- if Student editing is frozen, enforce it on the `classroom-student` collaboration snapshot write path; UI read-only projection alone is not authority;
+- frozen Student snapshot PUT uses HTTP 423 with stable code `classroom-editing-locked`; the rejected request must not advance collaboration revision;
+- the real workspace mutation must repeat the Classroom freeze predicate atomically with the UPDATE so a freeze racing a Student save fails closed; a preflight policy check alone is insufficient;
+- Classroom freeze must not block workspace GET, presence, Instructor observation/coaching, Student staged reads/readiness, or Standalone/primary collaboration tokens;
+- Pause/Resume preserve the current Student editing policy. Only stage debrief defaults and explicit Instructor debrief `set-editing` may change that policy;
 - late joiners receive only the current cumulative Student release; reassignment changes workspace Intake/readiness, not class exercise stage;
 - exercise persistence uses one non-completed exercise per class initially, optimistic `exercise_revision`, idempotent optional releases, workspace-scoped readiness, immutable first-write-wins debrief checkpoints, and class-bounded expiry;
 - every running exercise pins the staged simulation version plus a definition fingerprint; later API reads/mutations must fail closed if the current protected definition does not match;
 - checkpoint snapshots are facilitation evidence only and must never overwrite or become the live collaboration snapshot automatically;
-- do not expose `student_editing_enabled=false` as a security guarantee until the `classroom-student` collaboration PUT path enforces the lock server-side; edit-freeze enforcement belongs to the dedicated follow-on tranche;
+- `student_editing_enabled=false` is now a server-enforced security boundary for `classroom-student` snapshot PUT; preserve that invariant when changing exercise or collaboration code;
 - do not create production stage definitions from guessed official case boundaries. Synthetic deterministic staged content is acceptable in tests until authoritative material is supplied.
 
