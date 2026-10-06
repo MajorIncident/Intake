@@ -66,7 +66,7 @@ function ensureWorkspace(workspaceToken) {
   let workspace = getWorkspace(workspaceToken);
   if (!workspace) {
     workspace = {
-      snapshot: freshClassroomSnapshot(),
+      snapshot: instructorObservation(instructorWorkspaceIdForToken(workspaceToken))?.snapshot || freshClassroomSnapshot(),
       revision: 1,
       teamName: 'Browser Test Workspace',
       participants: new Map()
