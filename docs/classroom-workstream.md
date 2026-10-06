@@ -19,9 +19,9 @@ This is the live restart document for the Classroom Experience program (#288).
 | Student join/resume | #292 | Complete | PR #302 / `feature/classroom-student-experience` | 194 tests: 193 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
 | Instructor observer | #293 | Complete | PR #305 merged | 208 tests: 207 pass, 0 fail, 1 skip; repository gates green |
 | Coaching | #294 | Complete | PR #306 merged | 224 tests: 223 pass, 0 fail, 1 skip; all repository gates green; production deployment READY |
-| Protected cases | #295 | In progress | draft PR #307 / `feature/classroom-protected-cases` | Runtime/security implementation complete; final docs/gates and deployment verification remain |
-| Browser E2E/CI | #296 | Not started | — | Uses #279 infrastructure |
-| Browser test foundation | #279 | Existing open issue | — | Shared Playwright/accessibility foundation |
+| Protected cases | #295 | Complete | PR #307 merged | Protected catalog/payload delivery, minimal `dist/` public boundary, deployment controls, and production verification complete |
+| Browser E2E/CI | #296 | In progress — final stabilization | draft PR #308 / `feature/classroom-browser-e2e` | Critical Standalone/Student/Instructor/security journeys complete; Playwright now runs inside required `tests` CI gate |
+| Browser test foundation | #279 | In progress — final stabilization via #296 | draft PR #308 | Deterministic local HTTP + Playwright/axe complete; focused Browser E2E workflow retained as manual diagnostic |
 
 ## Current architecture decisions
 
@@ -56,7 +56,7 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297–#306 are merged to `main`. #295 is active on `feature/classroom-protected-cases`.
+#297–#306 are merged to `main`. #295 is active in draft PR #307 on `feature/classroom-protected-cases`. #296 / #279 is active in stacked draft PR #308 on `feature/classroom-browser-e2e`.
 
 ## Last completed action
 
@@ -217,6 +217,127 @@ Continue #295 on draft PR #307 from the current branch head.
 - Vercel Preview Authentication then intercepted subsequent HTTP probes. A deliberately nonexistent path also returned the same HTTP 302 authentication response, proving those 302s are auth-layer behavior and cannot be interpreted as file-existence results.
 - Therefore the deployed evidence is: exact final-head preview READY + build-time protected/public-boundary checks passed + one formerly exposed internal document returned 404. Remaining protected API HTTP matrix cannot be executed from the current connector without an approved preview-auth bypass path.
 - Exact next action: synchronize PR #307 / issue #295 with this final preview evidence, then keep the PR draft until the user explicitly accepts the remaining preview-auth limitation or provides/approves a bypass path. Do not merge without explicit authorization.
+
+## Active #296 / #279 implementation
+
+- Branch: `feature/classroom-browser-e2e`.
+- Draft PR: #308.
+- Base: `main` at merged #307 (`09f034f1f1776a3aaf92be7dec86b902549c8eb9`).
+- The branch was refreshed onto current #307 because the old stack had diverged (8 ahead / 21 behind) and GitHub could no longer create the PR merge ref; subsequent pull-request workflows were not launching.
+- Refreshed stack checkpoint: `593b9766d3a993c4834f475a90a362cfaf1aa6f0` — one commit ahead / zero behind #307 at refresh time, carrying only the browser/E2E surface.
+- Browser foundation is real and running in GitHub Actions:
+  - `@playwright/test@1.63.0`;
+  - `@axe-core/playwright@4.13.0`;
+  - desktop Chromium + Pixel 7 projects;
+  - deterministic local HTTP server;
+  - traces retained on failure, screenshots only on failure;
+  - serious/critical axe violations fail covered journeys.
+- Existing smoke coverage is green for first-run role chooser/accessibility and for absence of authored template JSON/server-source files from the browser fixture.
+- First Standalone E2E checkpoint added real-browser input → summary → persistence/reload and Templates-only resource coverage.
+- The first run correctly exposed test-assumption failures:
+  - the test's init script cleared localStorage again during reload, invalidating persistence verification;
+  - Standalone renames the drawer title to `Templates`, so `Templates Library` was a stale accessible-name assertion;
+  - mobile menu-item clicks were not a stable primary-interaction contract.
+- Test-only stabilization checkpoint: `ac8ab6311d1c3f24d0f0418a650de9973c168e8b`:
+  - storage is cleared once before the journey rather than on every navigation;
+  - drawer assertion uses stable `#templatesDrawer` and verifies title `Templates`;
+  - desktop-only menu journeys stay desktop;
+  - mobile gets a separate Standalone primary-input + persistence/reload smoke;
+  - uncaught page errors remain fatal assertions.
+- Normal repository quality gate is green on the refreshed stack.
+- Browser E2E on the stabilized Standalone test checkpoint then exposed real accessibility defects in the Templates drawer:
+  - `aria-required-children` / `aria-required-parent` / `listitem`: native `ul/li` markup was mixed with listbox/option roles;
+  - `color-contrast`: the Apply resource button's white-on-`#007aff` contrast measured 4.01:1.
+- Product fixes:
+  - `e2ec381a39d1819deabb634a0ea3b0e63d9b6c8d` — resource chooser now uses a direct `div[role=listbox] > button[role=option]` pattern;
+  - `b1b686aa6b3901db1b4a55f8997c7c4245b92c83` — Apply resource uses the existing darker blue `#1769aa` locally rather than altering the global accent.
+- The same run confirmed the repaired behavioral coverage before axe executed: desktop input → summary → persistence/reload passed; mobile Standalone primary-input + persistence/reload passed.
+- Browser E2E validation on `65204eb85ee2cbcc4eb6a5159313b944859fbf24`: **7 passed, 3 intentionally project-scoped skips, 0 failed**. Failure artifacts were not uploaded because the run was clean.
+- Confirmed journeys now include:
+  - first-run role chooser + axe on desktop/mobile;
+  - protected public-boundary 404 smoke on desktop/mobile;
+  - desktop Standalone input → summary → persisted reload;
+  - desktop Standalone Templates-only drawer + serious/critical axe scan;
+  - mobile Standalone primary input → persisted reload;
+  - uncaught browser page errors fail the journeys.
+- Normal repository quality gate is also green on the same stack.
+- Deterministic Classroom fixture checkpoint: `f0f81d9e2e2b738eae47a5db20d2b0c972d108a5`.
+  - local browser server now implements Student admission, collaboration session GET/PUT, presence PUT/PATCH/DELETE, empty Student coaching, and empty Student protected-resource catalog;
+  - workspace state is keyed by the issued workspace capability so parallel desktop/mobile journeys do not require a destructive global reset;
+  - the initial shared snapshot comes from the validated public Checkout Latency Standard Template.
+- Student real-browser journey checkpoint: `6f7a03fcd0cde23944e94a4513374a289ec3af81`.
+  - runs on desktop + mobile;
+  - exercises Join a class with real form controls;
+  - verifies class/assignment admission codes are cleared and not retained in the Student resume envelope;
+  - verifies the issued workspace capability is retained for same-device resume;
+  - edits the shared Intake, waits for a real collaboration PUT, reloads, reconnects, and verifies the shared edit returns from the fixture workspace;
+  - includes serious/critical axe scan and uncaught-page-error assertion after resumed Student state.
+- Student stabilization after the #307 merge/restack:
+  - #307 merged to `main` as `09f034f1f1776a3aaf92be7dec86b902549c8eb9`; production deployment `dpl_C7cwWcBSHRjaDwvZtc8VpYbdzFKf` reached READY and #295/#304 were closed with production evidence.
+  - PR #308 was restacked onto merged `main` without force rewriting via sync commit `224dfcad016935417f88607ad2cd1b1b7ed2a013`.
+  - `1cff933dcab9536e92dfd86ed65a5aa9a136aa7f` removes an ambiguous Student display-name selector.
+  - `fba3841480b21a04b8b37b9d757b9d8240d631fe` fixes the real Student-admission layout bug where the floating Notes Intake surface intercepted the Join class button.
+  - axe-driven product repairs then fixed footer/resource/action/presence contrast and made the closed Templates dialog inert; regression coverage protects the inert lifecycle.
+  - Student gate on `b39c1c16b6e9cded47e0f1db32b697614030a222`: Browser E2E, CI, CodeQL, Dependency Review, and Template Manifest Guard all green on desktop/mobile.
+- Instructor observer checkpoint:
+  - `a38bd5e312684be36f414e07696a87a21d65688c` adds deterministic Instructor roster and observation fixtures with two stable workspaces.
+  - `f70aa734e24fd2b3d97f25b6a298c2106cad3ce5` adds the real-browser Instructor journey: class open, roster, workspace switch, read-only projection, persisted class resume, no Student join or editable collaboration endpoint traffic, axe, and uncaught-page-error protection.
+  - the first browser run exposed invalid `aria-readonly` on the generic Intake wrapper; `ce4738be9fcf37c723387fe94d112b7f0d27cf87` removes that invalid container ARIA while preserving read-only/disabled control semantics, with regression coverage in `845f0059a3a2ea9a3dd75d5143b61069f9c4909d`.
+  - Instructor gate on `845f0059a3a2ea9a3dd75d5143b61069f9c4909d`: Browser E2E, CI, CodeQL, Dependency Review, and Template Manifest Guard all green on desktop/mobile.
+- Coaching browser checkpoint:
+  - `tests/e2e/coaching.spec.mjs` exercises Instructor feedback save, Student read-only feedback, and changed-since-review after a Student edit.
+  - The checkpoint exposed and repaired a collaboration presence-badge contrast defect; the pre-protected-case head `f0740c1043ef0866827071a4800e3aa4376b365c` was green across Browser E2E, CI, CodeQL, Dependency Review, and Template Manifest Guard.
+- Protected Case Study browser checkpoint:
+  - `88c2928dbcf137940fb12b0e06e645d7b2b7866b` extends the deterministic browser server with protected Case Study catalog/payload responses while retaining authorization checks.
+  - `7d1770e30e66bdfb66f93efba3001f5f1034848b` adds the real-browser security journey: unauthenticated Student catalog and payload retrieval return 404; an admitted Student receives metadata-only catalog records; the protected payload is POSTed only when applying the selected Case Study through the real resource drawer and password flow.
+  - The first run exposed a test-only assumption: a closed off-canvas drawer remains rendered and therefore Playwright-visible even though it is `aria-hidden` and `inert`. `1d181d22e77507e87377ac8b2798ed6b927c3b98` now asserts the actual closed-drawer interaction contract.
+  - Browser E2E on `1d181d22...`: **14 passed, 4 intentionally project-scoped skips, 0 failed**.
+  - Browser E2E, CI, CodeQL, Dependency Review, and Template Manifest Guard are all green on `1d181d22...`.
+- Negative authorization browser checkpoint:
+  - `0802e012bcc0f863d912304da2dabd1d286f1825` tightens the deterministic fixture so Instructor, class-join, and assignment credentials are distinct authorities rather than any syntactically valid 43-character token.
+  - `e7bc8ed4af04b8c1061c29a8d8e67c0a36bc5795` adds real-browser coverage proving an active Student workspace capability cannot enumerate the Instructor roster, well-formed non-Instructor authority cannot open an Instructor class, and an expired saved Student session is discarded before stale workspace content resumes.
+  - The tests intentionally assert durable authorization/recovery properties rather than requiring the current class+assignment-code Student UX, because #312 will replace that admission flow with Instructor-managed assignment.
+  - Browser E2E on `e7bc8ed...`: **20 passed, 4 intentionally project-scoped skips, 0 failed**.
+  - Browser E2E, CI, CodeQL, Dependency Review, and Template Manifest Guard are all green on `e7bc8ed...`.
+- Team collaboration / isolation checkpoint:
+  - `94ab842b09301ef95114522636de81538017f620` adds a real three-browser journey: two Students in one group converge on one Intake while a Student in a different workspace remains isolated.
+  - The first fully-parallel run exposed deterministic-fixture cross-test contamination rather than a product defect. Student, coaching, and collaboration assignment capabilities are now isolated by spec/project/retry; final isolation head `bfaf307e80b4c014646080834fbef475c52204f2` restored a clean **21 passed, 5 intentional skips, 0 failed** Browser E2E run.
+- File / workflow-mode checkpoint:
+  - `5e4ea9bb2a35bc7f8ee013471a91d3944c13499a` covers a real Standalone **Save to File → mutate → Load from File** round trip and proves the exported Major Incident workflow mode and mode-controlled sections restore with the Intake.
+  - Browser E2E on that head: **22 passed, 6 intentionally project-scoped skips, 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+- Required CI decision:
+  - Browser E2E is **required**, not advisory.
+  - `c9b03f30bd300cc5528ebf36e7ca07f1ed0575d5` keeps the existing branch-protected `tests` status context and extends it to run `npm run quality`, install Chromium, and execute `npm run test:browser`.
+  - This avoids a repository-settings migration: the existing required `tests` rule now fails if browser regression fails.
+  - The separate Browser E2E workflow is retained as **manual-only** for focused reruns and failure diagnostics rather than duplicating every PR run.
+  - First required-gate validation on `c9b03f30...`: repository quality succeeded and browser regression reported **22 passed, 6 intentional skips**; CodeQL, Dependency Review, and Template Manifest Guard also green.
+- Exact next action: synchronize final docs/PR/issues, review the complete `main → #308` diff and unresolved review/security state, then make #308 ready for review/merge if the documented head remains green. After #308 / #296 / #279 close, begin #312 as the next product slice; #313 follows on the live-class/team-management substrate.
+
+## Approved Classroom follow-on direction
+
+The current #288 program establishes the secure Classroom foundation, but it is **not** the final Instructor-led teaching experience.
+
+- **#312 — Instructor-run live class, roster, and dynamic team management**
+  - normal Instructor path becomes **Start a class**, not manually supplying a pre-existing secret;
+  - one human-friendly Student join code/link for class admission;
+  - late joiners can enter an unassigned/waiting roster after an exercise has begun;
+  - Instructor creates teams/individual workspaces and assigns/reassigns Students live;
+  - accessible drag/drop-style grouping may be offered, with keyboard/button alternatives;
+  - moving a Student changes the server-authoritative workspace they synchronize with, without merging old/new team Intake snapshots;
+  - old team edit authority must not remain indefinitely after reassignment;
+  - Instructor dashboard should expose team membership, activity/progress/coaching signals, and fast observer/coaching navigation.
+
+- **#313 — Instructor-orchestrated case simulation and staged debrief**
+  - builds on #312 rather than expanding PR #308;
+  - Instructor selects/starts a Case Study and controls exercise stage;
+  - Student sees only case pages/evidence released for the current stage, ideally referenceable beside Intake;
+  - future-stage material and Instructor-only facilitation/model-answer material remain server-gated;
+  - teams document their reasoning/results continuously in Intake;
+  - Instructor can pause for debrief, review team work, coach, and then advance the class together;
+  - late join and team reassignment must preserve current-stage authorization;
+  - progressive disclosure, shared pacing, preserved Student work, and debrief-before-exemplar are the target simulation principles.
+
+#296/#279 should finish the present real-browser quality layer without encoding the current class+assignment-code Student admission UI as the permanent product contract. Negative authorization tests should protect credential isolation and non-enumeration in ways that remain valid when #312 replaces the current admission UX.
 
 ## Known risks / watch items
 

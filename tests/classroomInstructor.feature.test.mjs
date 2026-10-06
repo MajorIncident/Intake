@@ -136,6 +136,7 @@ test('Instructor opens one class, renders roster, and observes through the GET-o
   assert.equal(dom.window.document.querySelectorAll('.instructor-workspace-item').length, 2);
   assert.equal(dom.window.document.getElementById('oneLine').value, 'First');
   assert.equal(dom.window.document.getElementById('oneLine').readOnly, true);
+  assert.equal(dom.window.document.querySelector('.wrap').hasAttribute('aria-readonly'), false);
   assert.equal(dom.window.document.getElementById('addCauseBtn').disabled, true);
   assert.equal(dom.window.localStorage.getItem('sentinel'), 'keep-me');
   assert.equal(requests.some(([url]) => String(url).includes('/api/workspaces/session')), false);

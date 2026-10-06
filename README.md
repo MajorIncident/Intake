@@ -219,6 +219,7 @@ Need to know which module owns a given storage field? Jump to the [Storage-to-Mo
 [![CodeQL security scan status](../../actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
 
 - **Automated coverage is mandatory:** Every feature pull request must add or update tests that assert the behaviours introduced or modified.
+- **Required real-browser regression:** The branch-protected `tests` CI status runs `npm run quality` and then the Playwright/axe suite via `npm run test:browser`. Browser failures therefore block the existing required check. The deterministic browser server does not depend on Vercel previews or production credentials; the separate Browser E2E workflow is manual-only for focused reruns.
 - **Security scanning is automatic:** GitHub CodeQL runs on every push to `main`, pull request, and a weekly schedule to flag JavaScript/TypeScript issues without manual setup.
 - **Dependency review gate:** A GitHub dependency review workflow now blocks merges when a pull request introduces new high or critical advisories, so expect PRs to fail even if unit tests succeed until vulnerable dependencies are replaced or patched.
 - **Run the coverage guard:** Execute `npm run verify:tests` after staging runtime changes. The guard ensures any updates under `src/` or `components/` are paired with refreshed suites in `tests/**/*.test.mjs`.
@@ -234,7 +235,7 @@ Need to know which module owns a given storage field? Jump to the [Storage-to-Mo
 - **Manual regression:** Open `index.html`, fill representative data, click **Generate Summary**, then refresh to ensure state persistence.
 - **Storage changes:** Run `npm run update:storage-docs` after altering persisted fields. CI can enforce freshness with `npm run check:storage-docs`.
 
-Continuous integration runs automatically on pull requests and pushes to `main`, using the repository's Node.js version via `actions/setup-node` with npm caching for faster installs. The workflow executes `npm ci`, `npm test` (emitting JUnit results for artifact upload on failure), and `npm run check:storage-docs` so Codex-driven contributions keep tests and storage docs in sync.
+Continuous integration runs automatically on pull requests and pushes to `main`, using the repository's Node.js version via `actions/setup-node` with npm caching. The required `tests` job executes `npm ci`, the canonical `npm run quality` gate, installs Chromium, and then runs `npm run test:browser`. Node/browser failure artifacts are retained only on failure; the focused Browser E2E workflow remains available through manual dispatch.
 
 ## Additional Documentation
 - See `AGENTS.md` for global UI principles, module isolation rules, and contribution contracts.

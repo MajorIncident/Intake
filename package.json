@@ -18,7 +18,10 @@
     "repo:doctor": "node scripts/repo-doctor.js",
     "quality": "npm run verify:lockfile && npm run repo:doctor && npm run verify:tests && npm run verify:summary && npm run verify:persistence && npm run lint && npm run check:templates && npm run verify:protected-cases && npm run build:vercel-public && npm run check:storage-docs && npm test",
     "verify:protected-cases": "node scripts/verify-protected-case-boundary.mjs",
-    "build:vercel-public": "node scripts/build-vercel-public.mjs"
+    "build:vercel-public": "node scripts/build-vercel-public.mjs",
+    "serve:browser-tests": "node scripts/serve-browser-tests.mjs",
+    "test:browser": "playwright test",
+    "test:browser:headed": "playwright test --headed"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0"
@@ -26,7 +29,9 @@
   "devDependencies": {
     "eslint": "^8.57.1",
     "eslint-plugin-jsdoc": "^61.1.12",
-    "jsdom": "^27.1.0"
+    "jsdom": "^27.1.0",
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0"
   },
   "engines": {
     "node": "24.x"

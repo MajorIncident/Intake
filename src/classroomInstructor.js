@@ -345,7 +345,6 @@ export function createInstructorClassroomController({
     const wrap = intakeWrap();
     if (!wrap) return;
     wrap.classList.add('instructor-observer-readonly');
-    wrap.setAttribute('aria-readonly', 'true');
     const controls = wrap.querySelectorAll(
       'input, textarea, select, button, [contenteditable], [role="button"], [role="checkbox"], [role="switch"], [draggable="true"]'
     );

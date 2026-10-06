@@ -674,10 +674,12 @@ function mkChangePH(distText){
  * @returns {void}
  */
 export function refreshAllTokenizedText(){
-  rowsBuilt.forEach(({ th, def, isTA, notTA }) => {
+  rowsBuilt.forEach(binding => {
+    const { th, def, isTA, notTA } = binding;
     th.textContent = fillTokens(def.q);
     isTA.placeholder = fillTokens(def.isPH || '');
     notTA.placeholder = mkIsNotPH(fillTokens(def.notPH || ''), isTA.value);
+    refreshQuestionPlaceholders(binding);
   });
   updateCauseEvidencePreviews();
 }
@@ -2215,6 +2217,11 @@ function refreshQuestionPlaceholders(binding){
     return;
   }
   const { def = {}, isTA, notTA, distTA, chgTA } = binding;
+  const question = fillTokens(def.q || 'KT question').trim() || 'KT question';
+  isTA.setAttribute('aria-label', `${question} — IS`);
+  notTA.setAttribute('aria-label', `${question} — IS NOT`);
+  distTA.setAttribute('aria-label', `${question} — Distinctions`);
+  chgTA.setAttribute('aria-label', `${question} — Changes`);
   if(notTA){
     notTA.placeholder = mkIsNotPH(fillTokens(def.notPH || ''), isTA?.value || '');
   }

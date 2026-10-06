@@ -164,7 +164,7 @@ Primary deliverables:
 
 **Issue:** #295
 
-**Implementation:** draft PR #307 on `feature/classroom-protected-cases`; implementation, repository validation, and documentation are complete. Final deployed `dist/` verification remains blocked only by Vercel build capacity / preview-auth tooling.
+**Implementation:** PR #307 merged to `main` as `09f034f1f1776a3aaf92be7dec86b902549c8eb9`; protected delivery, minimal `dist/` public output, deployment controls, and production verification are complete.
 
 Requires #290 semantics and #291 authorization; both prerequisites are merged.
 
@@ -190,18 +190,38 @@ Validation evidence:
 - canonical CI built 45 public `dist/` files with no internal docs or protected Case Study identifiers;
 - prior deliberate READY preview returned HTTP 404 for the formerly public Microcomputer Cabinets authored JSON path.
 
-Remaining before merge:
-
-- obtain one deliberate `verify/**` preview of the latest `dist/` head when Vercel build capacity permits;
-- confirm app root loads and internal `/docs/*`, `/scripts/*`, and protected `/templates/*.json` paths return 404;
-- execute the deployed protected-API matrix only if an approved Preview Authentication bypass path is available; do not weaken preview protection to manufacture this evidence;
-- explicit merge authorization.
-
 ## Slice 8 — Browser/E2E and required CI
 
-**Issue:** #296, using #279
+**Issue:** #296, using #279  
+**Implementation:** draft PR #308 on `feature/classroom-browser-e2e`
 
-Do not wait until the end to write all browser tests. Add tests with the slice that owns behavior, then finish the program by promoting stable critical journeys to required CI as appropriate.
+Implemented browser foundation / critical paths:
+
+- Playwright 1.63 + axe 4.13 with desktop Chromium and Pixel 7 projects;
+- deterministic local HTTP/API fixture; no Vercel preview dependency;
+- first-run role chooser, Standalone summary/persistence/resources, mobile smoke;
+- real Save-to-File / Load-from-File round trip and Intake-mode restoration;
+- Student join/resume and shared collaboration persistence;
+- same-team multi-browser synchronization plus cross-workspace isolation;
+- Instructor roster / workspace switching / read-only observation / resume;
+- Instructor coaching → Student feedback → changed-since-review;
+- protected Case Study unauthorized/authorized catalog/payload journey;
+- invalid authority, expired Student resume, and Student non-enumeration;
+- serious/critical axe scans and uncaught-page-error assertions on covered journeys;
+- deterministic fixture isolation by test/project/retry.
+
+CI decision: the browser suite is now part of the already-required `tests` status. The required job runs `npm run quality` and then `npm run test:browser`. The separate Browser E2E workflow is manual-only for focused diagnostics.
+
+Latest functional suite checkpoint before final docs: **22 passed, 6 intentionally project-scoped skips, 0 failed**.
+
+## Post-foundation Classroom direction
+
+The eight-slice #288 program establishes the secure Classroom foundation; it does not represent the final facilitated teaching product.
+
+- **#312 — Instructor-run live class, roster, and dynamic team management:** Instructor-created classes, one human-friendly Student join path, waiting/late roster, accessible team formation, live reassignment, automatic Student workspace switching, and high-signal team monitoring.
+- **#313 — Instructor-orchestrated case simulation and staged debrief:** staged protected Case Study release, case reference beside Intake, Instructor pause/debrief/advance controls, progressive disclosure, team progress, and server-gated future-stage / Instructor-only material.
+
+#312 is the next product slice after #308 closes; #313 should build on #312 rather than bypassing the live-class/team-management substrate.
 
 ## Stacked PR rules
 

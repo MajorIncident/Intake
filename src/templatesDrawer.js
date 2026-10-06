@@ -316,7 +316,6 @@ function updateModeSelection() {
  * @returns {HTMLLIElement} List item element containing the template trigger.
  */
 function createTemplateListItem(template) {
-  const li = document.createElement('li');
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'templates-list__item';
@@ -332,8 +331,7 @@ function createTemplateListItem(template) {
   meta.textContent = template.description;
   button.appendChild(name);
   button.appendChild(meta);
-  li.appendChild(button);
-  return li;
+  return button;
 }
 
 /**
@@ -365,7 +363,7 @@ function buildTemplatesGroup(title, subtitle, templates) {
     header.appendChild(sub);
   }
   section.appendChild(header);
-  const list = document.createElement('ul');
+  const list = document.createElement('div');
   list.className = 'templates-list';
   list.setAttribute('role', 'listbox');
   list.setAttribute('aria-label', title);
@@ -605,6 +603,7 @@ function setTemplatesDrawer(open, { skipFocus = false } = {}) {
   if (templatesDrawer) {
     templatesDrawer.classList.toggle('is-open', shouldOpen);
     templatesDrawer.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+    templatesDrawer.toggleAttribute('inert', !shouldOpen);
   }
   if (templatesBackdrop) {
     templatesBackdrop.classList.toggle('is-open', shouldOpen);
@@ -756,6 +755,7 @@ export function initTemplatesDrawer({ protectedCaseStudies = null } = {}) {
     launcher.setAttribute('aria-expanded', 'false');
   });
   templatesDrawer.setAttribute('aria-hidden', 'true');
+  templatesDrawer.setAttribute('inert', '');
   templatesBackdrop.setAttribute('aria-hidden', 'true');
 
   renderModes();

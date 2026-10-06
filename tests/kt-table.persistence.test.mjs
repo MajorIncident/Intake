@@ -271,3 +271,30 @@ test('kt table persistence: sequential fallback skips band rows for legacy data'
   assert.equal(whereOnObject.chgTA.value, whereOnObjectValues.ch, 'WHERE on object changes restored');
 });
 
+
+
+test('kt table accessibility: labels every evidence column and refreshes tokenized names', async () => {
+  const ktModule = await loadKtModule();
+  ktModule.configureKT({ autoResize: () => {}, onSave: () => {} });
+  ktModule.initTable();
+
+  const rows = ktModule.getRowsBuilt();
+  assert.ok(rows.length > 0);
+
+  for (const row of rows) {
+    assert.ok(row.isTA.getAttribute('aria-label')?.endsWith('— IS'));
+    assert.ok(row.notTA.getAttribute('aria-label')?.endsWith('— IS NOT'));
+    assert.ok(row.distTA.getAttribute('aria-label')?.endsWith('— Distinctions'));
+    assert.ok(row.chgTA.getAttribute('aria-label')?.endsWith('— Changes'));
+  }
+
+  const objectRow = rows.find(row => row.questionId === 'what-object');
+  const tokenizedRow = rows.find(row => row.questionId === 'extent-count');
+  assert.ok(objectRow);
+  assert.ok(tokenizedRow);
+
+  dispatchInput(objectRow.isTA, 'Widget 5000');
+
+  assert.match(tokenizedRow.isTA.getAttribute('aria-label') || '', /Widget 5000/);
+  assert.match(tokenizedRow.chgTA.getAttribute('aria-label') || '', /Widget 5000/);
+});
