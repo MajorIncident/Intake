@@ -306,4 +306,16 @@ Key direction:
 - destination workspace state wins on reassignment; no automatic Intake merge occurs;
 - legacy two-code admission remains supported during the additive migration.
 
-Planned new endpoints are `POST /api/classes/admit`, `GET/PATCH /api/classes/participants`, `GET /api/classes/student`, and `POST /api/classes/student/access`. Existing `POST /api/classes/join` remains a compatibility path until a later explicit migration.
+Implemented live-class endpoints are `POST /api/classes/admit`, `GET/PATCH /api/classes/participants`, `GET /api/classes/student`, and `POST /api/classes/student/access`. Existing `POST /api/classes/join` remains a compatibility path until a later explicit migration.
+
+Assignment semantics:
+- `PATCH /api/classes/participants` is Instructor-only and accepts `participantId` plus a same-class `workspaceId`, or `workspaceId: null` to return the Student to waiting;
+- assign/reassign/unassign increments `assignmentRevision` exactly when the assignment changes;
+- repeating the same assignment is idempotent and does not increment the revision;
+- the previous assignment-specific edit capability is revoked before assignment metadata changes;
+- stale presence is removed from the old workspace by internal workspace ID after revocation;
+- cross-class destinations are rejected without changing the participant assignment;
+- individual workspaces remain single-participant;
+- no assignment operation reads, copies, or merges Intake snapshots;
+- the Student must exchange the stable class-session capability for a fresh destination workspace token after an assignment change;
+- a live Student coaching/protected-resource context is valid only while the stored workspace-access hash also resolves to an active, unrevoked `classroom-student` collaboration alias.
