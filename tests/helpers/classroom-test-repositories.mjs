@@ -110,6 +110,15 @@ export function createWorkspaceRepository() {
       workspace.revision += 1;
       return { status: 'updated', workspace: { revision: workspace.revision, expires_at: workspace.expires_at } };
     },
+    async updateClassroomStudent(hash, snapshot, revision, writePolicy = null) {
+      if (writePolicy?.allowed === false) {
+        const workspace = resolve(hash);
+        return workspace
+          ? { status: 'locked', revision: workspace.revision, exercise: writePolicy.exercise || null }
+          : { status: 'missing' };
+      }
+      return this.update(hash, snapshot, revision);
+    },
     async upsertPresence(hash, participantId, displayName) {
       const workspace = resolve(hash);
       if (!workspace) return null;
