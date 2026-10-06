@@ -33,8 +33,9 @@ test('Students in one team share one Intake while another workspace remains isol
   const classCode = capability('c', 't');
   // Use assignment capabilities unique to this spec so fully-parallel browser
   // projects cannot mutate the Student workspaces used by coaching/resume tests.
-  const teamAssignment = `a${'g'.repeat(41)}m`;
-  const individualAssignment = `a${'n'.repeat(41)}d`;
+  const retryMarker = String(testInfo.retry);
+  const teamAssignment = `a${'g'.repeat(40)}${retryMarker}m`;
+  const individualAssignment = `a${'n'.repeat(40)}${retryMarker}d`;
 
   const contextOptions = { baseURL: testInfo.project.use.baseURL };
   const firstContext = await browser.newContext(contextOptions);
