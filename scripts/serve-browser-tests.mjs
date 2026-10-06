@@ -13,6 +13,7 @@ import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { TEMPLATE_MANIFEST } from '../src/templates.manifest.js';
+import { PROTECTED_CASE_STUDY_MANIFEST } from '../api/protected-case-studies.manifest.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const HOST = process.env.BROWSER_TEST_HOST || '127.0.0.1';
@@ -448,14 +449,39 @@ async function handleClassroomApi(request, response, url) {
     return true;
   }
 
-  if (url.pathname === '/api/classes/case-studies/student' && request.method === 'GET') {
-    const workspaceToken = bearerToken(request);
-    if (!getWorkspace(workspaceToken)) {
+  if (url.pathname === '/api/classes/case-studies' || url.pathname === '/api/classes/case-studies/student') {
+    const token = bearerToken(request);
+    const isInstructorRequest = url.pathname === '/api/classes/case-studies';
+    const authorized = isInstructorRequest
+      ? validCapability(token) && token.startsWith('i')
+      : Boolean(getWorkspace(token));
+
+    if (!authorized) {
       sendJson(response, 404, { error: 'Class resources not found.' });
       return true;
     }
-    const context = classroomContext(workspaceToken);
-    sendJson(response, 200, { class: context.class, caseStudies: [] });
+
+    const caseStudies = PROTECTED_CASE_STUDY_MANIFEST.map(({ state: _state, ...metadata }) => structuredClone(metadata));
+
+    if (request.method === 'GET') {
+      const context = isInstructorRequest ? { class: instructorClass() } : classroomContext(token);
+      sendJson(response, 200, { class: context.class, caseStudies });
+      return true;
+    }
+
+    if (request.method === 'POST') {
+      const body = await readJson(request).catch(() => null);
+      const caseStudyId = typeof body?.caseStudyId === 'string' ? body.caseStudyId.trim() : '';
+      const record = PROTECTED_CASE_STUDY_MANIFEST.find(item => item.id === caseStudyId);
+      if (!record) {
+        sendJson(response, 404, { error: 'Case Study not found.' });
+        return true;
+      }
+      sendJson(response, 200, { caseStudy: structuredClone(record) });
+      return true;
+    }
+
+    sendJson(response, 405, { error: 'Method not allowed.' });
     return true;
   }
 
