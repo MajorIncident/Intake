@@ -513,6 +513,7 @@ body.experience-role-gate-open{overflow:hidden;}
 .student-case-reference__empty,.student-case-reference__message{margin:10px 0 0;color:var(--muted);font-size:11px;line-height:1.5;}
 .student-case-reference__message{padding:8px 9px;border-radius:9px;background:color-mix(in srgb,var(--accent) 7%,var(--panel));color:var(--ink);}
 body[data-experience-role="student"][data-student-class-status="connected"] #studentClassEntryShell{display:none;}
+body[data-experience-role="student"]:not([data-student-class-status="connected"]) #studentCaseReference{display:none;}
 body[data-experience-role="student"]:not([data-student-class-status="connected"]) [data-experience-surface="intake"]{display:none;}
 body[data-experience-role="student"]:not([data-student-class-status="connected"]) [data-experience-surface="intake-control"]{display:none;}
 @media(max-width:820px){
