@@ -539,6 +539,28 @@ Anchors present:
   </main>
   <!-- [feature:instructor-shell] end -->
 
+  <!-- [feature:student-case-reference] start -->
+  <aside class="student-case-reference" id="studentCaseReference" aria-labelledby="studentCaseReferenceTitle" data-persistence="local-only" data-summary="exclude" hidden>
+    <header class="student-case-reference__header">
+      <div>
+        <span class="experience-role-notice__eyebrow">Case reference</span>
+        <strong id="studentCaseReferenceTitle">Current exercise</strong>
+        <span id="studentCaseReferenceStatus" role="status" aria-live="polite">Loading current stage…</span>
+      </div>
+      <button type="button" class="student-case-reference__toggle" id="studentCaseReferenceToggle" aria-controls="studentCaseReferenceBody" aria-expanded="true" data-persistence="local-only" data-summary="exclude">Collapse reference</button>
+    </header>
+    <div class="student-case-reference__body" id="studentCaseReferenceBody">
+      <div class="student-case-reference__stage">
+        <span>Current stage</span>
+        <strong id="studentCaseReferenceStageTitle">Stage</strong>
+        <p id="studentCaseReferenceObjective"></p>
+      </div>
+      <div class="student-case-reference__content" id="studentCaseReferenceContent" aria-live="polite"></div>
+      <p class="student-case-reference__message" id="studentCaseReferenceMessage" hidden></p>
+    </div>
+  </aside>
+  <!-- [feature:student-case-reference] end -->
+
   <div class="wrap" data-experience-surface="intake">
     <!-- [feature:instructor-observer] start -->
     <section class="instructor-observation-notice" id="instructorObservationNotice" aria-labelledby="instructorObservedWorkspace" data-persistence="local-only" data-summary="exclude" hidden>
