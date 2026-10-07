@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 import { TEMPLATE_MANIFEST } from '../src/templates.manifest.js';
 import { PROTECTED_CASE_STUDY_MANIFEST } from '../api/protected-case-studies.manifest.js';
+import { buildClassroomDebriefModel } from '../src/classroomDebriefModel.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const HOST = process.env.BROWSER_TEST_HOST || '127.0.0.1';
@@ -579,6 +580,48 @@ function managedInstructorObservation(token, workspaceId) {
       })),
     snapshot: structuredClone(state.snapshot)
   };
+}
+
+function browserInstructorDebrief(token) {
+  const fixture = managedInstructorFixture(token);
+  const roster = managedInstructorRoster(token) || instructorRoster();
+  const currentSnapshots = roster.workspaces.map(workspace => {
+    const observation = fixture
+      ? managedInstructorObservation(token, workspace.id)
+      : instructorObservation(workspace.id);
+    return observation
+      ? {
+          workspaceId: workspace.id,
+          workspaceRevision: observation.workspace.revision,
+          updatedAt: observation.workspace.updatedAt,
+          snapshot: structuredClone(observation.snapshot)
+        }
+      : null;
+  }).filter(Boolean);
+
+  const representedExercise = classroomExercises.get(token) || null;
+  const exercise = representedExercise?.status === 'completed' ? null : representedExercise;
+  const readiness = exercise ? browserExerciseWorkspaceState(token, exercise) : [];
+  const checkpoints = exercise?.stagePhase === 'debrief' && exercise.currentStageId
+    ? (classroomExerciseCheckpoints.get(token) || [])
+        .filter(item => item.stageId === exercise.currentStageId)
+        .map(item => structuredClone(item))
+    : [];
+  const feedback = roster.workspaces.flatMap(workspace => (
+    [...(classroomCoachingFeedback.get(workspace.id) || new Map()).values()]
+      .map(item => ({ workspaceId: workspace.id, ...structuredClone(item) }))
+  ));
+
+  return buildClassroomDebriefModel({
+    classroom: roster.class,
+    exercise: exercise ? structuredClone(exercise) : null,
+    recommendedTargetIds: [],
+    workspaces: structuredClone(roster.workspaces),
+    currentSnapshots,
+    checkpoints,
+    readiness,
+    feedback
+  });
 }
 
 function instructorObservation(workspaceId) {
@@ -1416,6 +1459,20 @@ async function handleClassroomApi(request, response, url) {
     }
 
     sendJson(response, 405, { error: 'Method not allowed.' });
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/debrief') {
+    if (request.method !== 'GET') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const instructorToken = bearerToken(request);
+    if (!activeInstructorCapability(instructorToken)) {
+      sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
+      return true;
+    }
+    sendJson(response, 200, browserInstructorDebrief(instructorToken));
     return true;
   }
 
