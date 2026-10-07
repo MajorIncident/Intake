@@ -265,13 +265,13 @@ Build on the universal target contract from #318 plus Ready/Working, coaching, i
 
 **#320 — Join sharing and compact mobile workspace chrome**
 
-Implementation through 320C is complete on PR #324: fragment-only human-code share links, native Web Share/copy fallback, fully local QR rendering, and compact presentation-only mobile Class/Case/Team/Notes/Instructor surfaces are green. 320D final audit/publish-readiness is the remaining tranche. No bearer capability enters join URLs/QR, and mobile collapse state remains outside Classroom/domain persistence.
+PR #324 implements #320 end-to-end: fragment-only human-code share links, native Web Share/copy fallback, fully local QR rendering, and compact presentation-only mobile Class/Case/Team/Notes/Instructor surfaces. 320D audited the full PR and repaired one Team responsive breakpoint mismatch so compact CSS and controller state now share the same <=700px boundary. No bearer capability enters join URLs/QR, and mobile collapse state remains outside Classroom/domain persistence. Final documentation-head validation/review remains before merge.
 
 ### Recommended dependency/order
 
 ```text
 CURRENT UX TRACK
-#320  join sharing + compact mobile workspace chrome   <-- active now
+#320  join sharing + compact mobile workspace chrome   <-- implementation complete / PR #324 final gates
 
 DEBRIEF / TEMPLATE-COMPATIBILITY TRACK
 #318  universal stable Intake target identity
@@ -284,7 +284,7 @@ PRODUCTION SIMULATION TRACK — intentionally deferred for now
   #317  first production staged KT Case Study
 ```
 
-Current product decision: **do #320 now**. We are intentionally not treating #316/#317 as the immediate next work because more Standard Templates/fields are expected before production simulation authoring. Before #319 UI is implemented, #318 should establish the universal target contract so future Templates remain compatible automatically when they use existing fields, and future new fields fail loudly unless they opt into the target/debrief contract. #318 can begin after or in parallel with #320. #316/#317 remain valid future work but are not the active priority.
+Current product decision after #320: **#318 is the next implementation target after PR #324 merges**. We are intentionally not treating #316/#317 as the immediate next work because more Standard Templates/fields are expected before production simulation authoring. Before #319 UI is implemented, #318 should establish the universal target contract so future Templates remain compatible automatically when they use existing fields, and future new fields fail loudly unless they opt into the target/debrief contract. #316/#317 remain valid future work but are not the active priority.
 
 ## Stacked PR rules
 
