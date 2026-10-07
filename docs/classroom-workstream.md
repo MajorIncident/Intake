@@ -31,7 +31,7 @@ Current product priority is **#320 — join sharing and compact mobile workspace
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
 | Universal Intake target identity | #318 | Planned | Open | Shared target contract for coaching, future staged guidance, and #319; template-independent |
 | Class debrief comparison | #319 | Planned after #318 | Open | Template-independent cross-team checkpoint/live comparison using stable target IDs |
-| Join/mobile polish | #320 | **Active — 320A complete** | PR #324 / `feature/classroom-join-mobile-polish` | 320A safe join link green; 320B QR/native share next; 320C compact mobile chrome after |
+| Join/mobile polish | #320 | **Active — 320A + 320B1 complete** | PR #324 / `feature/classroom-join-mobile-polish` | Safe join link + native share green; 320B2 local QR next; 320C compact mobile chrome after |
 
 ## Current architecture decisions
 
@@ -77,46 +77,50 @@ Product/architecture decision:
 
 ## Last completed action
 
-Completed and validated **#320A — Join-link contract + safe prefill** on implementation head `bf7c018ff2c6c3d51b66865511880eb1255bd346`.
+Completed and validated two bounded #320 checkpoints:
 
-320A behavior:
-- new `src/classroomJoinLink.js` owns one client-only share contract: `#join=<human-code>`;
-- share-link construction deliberately strips the current query string, so an existing Standalone `?workspace=` collaboration capability or other query state is never forwarded;
-- no Instructor, Student-session, assignment, workspace, collaboration, or other bearer capability is permitted in the join intent;
-- a valid join fragment selects Student experience before first-run role choice, while an existing Standalone `?workspace=` link retains precedence;
-- Student consumes the join fragment only when there is no saved Student class session, prefills the normal class-code field, removes the fragment with `history.replaceState`, and still uses ordinary `/api/classes/admit` admission;
-- an existing saved Student class session is never silently replaced by a new join fragment;
-- Instructor **Share class** copies the safe join URL while existing **Copy code** remains unchanged;
-- scoped AGENTS/commenting docs record the fragment-only authority boundary.
+### #320A — Join-link contract + safe prefill
 
-Validation on `bf7c018...`:
-- repository quality gate: **success**;
-- required Chromium browser regression suite: **success**;
-- CodeQL: **success**;
-- Dependency Review: **success**;
-- Template Manifest Guard: **success**.
+Validated implementation head: `bf7c018ff2c6c3d51b66865511880eb1255bd346`.
 
-Browser-test repair note:
-- the first standalone join-sharing Playwright spec failed because the ordinary Instructor fixture intentionally does not accept dynamic Student admission;
-- production join-link behavior was not weakened;
-- the proof now runs inside the existing serial **Integrated Browser Classroom** suite, which is the deterministic multi-browser admission fixture.
+- `src/classroomJoinLink.js` owns the client-only `#join=<human-code>` share contract;
+- share-link construction strips current query state so Standalone `?workspace=` or other URL authority cannot be forwarded;
+- no Instructor, Student-session, assignment, workspace, collaboration, or other bearer capability belongs in the join URL;
+- valid join intent selects Student experience, prefills normal admission, and is removed client-side;
+- saved Student class access is never silently replaced;
+- Instructor **Share class** and existing **Copy code** both preserve the human-code-only boundary;
+- integrated browser acceptance proves the shared link reaches normal Student admission.
 
-Durable PR mini milestones are recorded in PR #324. Issue #320 also now requires a mini milestone after every meaningful sub-slice or validation repair so a cold AI can resume after timeout/conversation loss.
+Validation: repository quality, required Chromium browser regression, CodeQL, Dependency Review, and Template Manifest Guard all **green**.
+
+### #320B1 — Native Web Share + copy fallback
+
+Validated implementation head: `ea2e6b6e589e00894a892d63b4f1c5541985619f`.
+
+- `Share class` prefers `navigator.share()` when supported;
+- native payload contains only class title, visible human join code, and the exact safe fragment-only join URL;
+- native-share cancellation does not silently copy;
+- unsupported/failed native share falls back to copying the same safe link;
+- feature coverage proves native share receives no bearer/query authority and does not also write the clipboard.
+
+Validation: repository quality, required Chromium browser regression, CodeQL, Dependency Review, and Template Manifest Guard all **green**.
+
+PR #324 contains durable mini-milestone comments for the 320A implementation, the browser-fixture repair, the 320A green gate, cold-start ledger sync, 320B1 implementation, and 320B1 green gate. Issue #320 requires this checkpoint discipline before long waits or tranche transitions.
 
 ## Next recommended action
 
-Implement **#320B — QR/share affordance**, without touching the #320A authority contract.
+Implement **#320B2 — local/in-app QR rendering only**.
 
 Required next slice:
-1. keep `src/classroomJoinLink.js` as the single source for the safe share URL;
-2. add an accessible Instructor share affordance that uses native Web Share when available and retains copy-link fallback;
-3. add local/in-app QR rendering for that exact safe URL — **no third-party QR service, tracking endpoint, or remote image dependency**;
-4. ensure QR/share UI exposes the human class code in visible text and has keyboard/screen-reader labels; QR is convenience, never authority;
-5. keep bearer credentials out of DOM attributes, URLs, QR payloads, logs, Intake persistence, summaries, and exports;
-6. add focused unit/feature/browser accessibility coverage;
-7. leave a PR mini milestone and update this cold-start ledger before starting 320C mobile chrome.
+1. continue to obtain the payload exclusively from `buildClassroomJoinUrl()`; QR must encode that exact safe fragment-only human-code URL;
+2. use a local browser implementation — **no third-party QR image/API/tracking service and no remote runtime dependency**;
+3. expose QR from the Instructor join/share area with visible human code and a clear accessible label/instruction so scanning is optional convenience rather than hidden authority;
+4. keep QR data out of Intake persistence, summaries, exports, resume envelopes, logs, and DOM attributes that could accidentally carry bearer authority;
+5. preserve native Web Share and copy fallback unchanged;
+6. add focused QR correctness/contract tests plus keyboard/screen-reader/browser acceptance;
+7. leave another PR mini milestone and update this restart ledger before beginning 320C.
 
-**Not started yet:** 320B QR/native-share implementation; 320C Notes/Class/Case mobile chrome; 320D final acceptance/production verification.
+**Not started yet:** 320B2 QR implementation; 320C Notes/Class/Case mobile chrome; 320D final acceptance/production verification.
 
 ## Completed #300 implementation
 
