@@ -10,6 +10,19 @@
 import { ROWS } from './constants.js';
 
 export const INTAKE_TARGET_FINGERPRINT_VERSION = 'v1';
+export const POSSIBLE_CAUSE_TARGET_FAMILY_ID = 'possible-cause';
+
+const TARGET_ID_MAX_LENGTH = 160;
+const POSSIBLE_CAUSE_TARGET_PREFIX = `${POSSIBLE_CAUSE_TARGET_FAMILY_ID}.`;
+
+export const INTAKE_TARGET_FAMILY_DEFINITIONS = Object.freeze([
+  Object.freeze({
+    id: POSSIBLE_CAUSE_TARGET_FAMILY_ID,
+    label: 'Possible Causes',
+    section: 'Possible Causes',
+    kind: 'dynamic-card'
+  })
+]);
 
 const STATIC_TARGETS = Object.freeze([
   { id: 'problem.one-line', label: 'Problem statement', section: 'Problem', domId: 'oneLine', snapshotPaths: [['pre', 'oneLine']] },
@@ -71,6 +84,7 @@ export const INTAKE_TARGET_DEFINITIONS = Object.freeze([
 ]);
 
 const DEFINITION_BY_ID = new Map(INTAKE_TARGET_DEFINITIONS.map(target => [target.id, target]));
+const FAMILY_BY_ID = new Map(INTAKE_TARGET_FAMILY_DEFINITIONS.map(family => [family.id, family]));
 
 /**
  * Return the immutable universal Intake target definitions.
@@ -89,6 +103,78 @@ export function listIntakeTargetDefinitions() {
  */
 export function getIntakeTargetDefinition(targetId) {
   return typeof targetId === 'string' ? (DEFINITION_BY_ID.get(targetId) || null) : null;
+}
+
+/**
+ * Return the immutable dynamic target-family definitions.
+ *
+ * @returns {ReadonlyArray<object>} Stable family metadata.
+ */
+export function listIntakeTargetFamilyDefinitions() {
+  return INTAKE_TARGET_FAMILY_DEFINITIONS;
+}
+
+/**
+ * Look up one dynamic target-family definition.
+ *
+ * @param {string} familyId Stable family ID.
+ * @returns {object|null} Family definition or null.
+ */
+export function getIntakeTargetFamilyDefinition(familyId) {
+  return typeof familyId === 'string' ? (FAMILY_BY_ID.get(familyId) || null) : null;
+}
+
+function isLowerAlphaNumeric(character) {
+  return Boolean(character) && (
+    (character >= 'a' && character <= 'z')
+    || (character >= '0' && character <= '9')
+  );
+}
+
+function isTargetSegment(segment) {
+  if (!segment || !isLowerAlphaNumeric(segment[0]) || !isLowerAlphaNumeric(segment.at(-1))) {
+    return false;
+  }
+  for (let index = 1; index < segment.length - 1; index += 1) {
+    const character = segment[index];
+    if (character !== '-' && !isLowerAlphaNumeric(character)) return false;
+  }
+  return true;
+}
+
+/**
+ * Validate a persisted Possible Cause lifecycle ID for use as a coaching target segment.
+ *
+ * Invalid/legacy IDs are not silently rewritten because target identity must not collide
+ * or sever other persisted references to the same cause.
+ *
+ * @param {unknown} value Persisted cause ID.
+ * @returns {string} Grammar-safe lowercase instance ID or an empty string.
+ */
+export function normalizePossibleCauseInstanceId(value) {
+  if (typeof value !== 'string') return '';
+  const candidate = value.trim();
+  if (!candidate || candidate !== candidate.toLowerCase() || !isTargetSegment(candidate)) return '';
+  return (POSSIBLE_CAUSE_TARGET_PREFIX.length + candidate.length) <= TARGET_ID_MAX_LENGTH
+    ? candidate
+    : '';
+}
+
+/**
+ * Derive the stable coaching/debrief target ID for one persisted Possible Cause.
+ *
+ * @param {unknown} causeId Persisted cause lifecycle ID.
+ * @returns {string} Target ID or an empty string when the instance ID is unsupported.
+ */
+export function possibleCauseTargetId(causeId) {
+  const instanceId = normalizePossibleCauseInstanceId(causeId);
+  return instanceId ? `${POSSIBLE_CAUSE_TARGET_PREFIX}${instanceId}` : '';
+}
+
+function parsePossibleCauseTargetId(targetId) {
+  if (typeof targetId !== 'string' || !targetId.startsWith(POSSIBLE_CAUSE_TARGET_PREFIX)) return '';
+  const instanceId = targetId.slice(POSSIBLE_CAUSE_TARGET_PREFIX.length);
+  return possibleCauseTargetId(instanceId) === targetId ? instanceId : '';
 }
 
 /**
@@ -184,6 +270,115 @@ function snapshotEvidence(definition, snapshot) {
     : extractStaticSnapshotEvidence(definition, snapshot);
 }
 
+
+function normalizedCauseField(value) {
+  return normalizeIntakeTargetEvidence(value);
+}
+
+function normalizedCauseFindings(findings) {
+  if (!findings || typeof findings !== 'object' || Array.isArray(findings)) return [];
+  return Object.entries(findings)
+    .map(([key, entry]) => ({
+      key: String(key),
+      mode: normalizedCauseField(entry?.mode),
+      note: normalizedCauseField(entry?.note)
+    }))
+    .filter(entry => entry.mode || entry.note)
+    .sort((left, right) => left.key.localeCompare(right.key));
+}
+
+/**
+ * Build deterministic persisted reasoning evidence for one Possible Cause.
+ *
+ * Presentation-only fields such as editing/testingOpen are intentionally excluded.
+ *
+ * @param {unknown} cause Persisted/in-memory cause record.
+ * @returns {string} Canonical JSON evidence or an empty string when no reasoning exists.
+ */
+export function buildPossibleCauseEvidence(cause) {
+  if (!cause || typeof cause !== 'object' || Array.isArray(cause)) return '';
+  const record = {
+    suspect: normalizedCauseField(cause.suspect),
+    accusation: normalizedCauseField(cause.accusation),
+    impact: normalizedCauseField(cause.impact),
+    summaryText: normalizedCauseField(cause.summaryText),
+    confidence: normalizedCauseField(cause.confidence),
+    evidence: normalizedCauseField(cause.evidence),
+    findings: normalizedCauseFindings(cause.findings)
+  };
+  const hasEvidence = record.suspect
+    || record.accusation
+    || record.impact
+    || record.summaryText
+    || record.confidence
+    || record.evidence
+    || record.findings.length > 0;
+  return hasEvidence ? JSON.stringify(record) : '';
+}
+
+function possibleCauseComparisonText(cause) {
+  const summary = normalizedCauseField(cause?.summaryText);
+  if (summary) return summary;
+  return [
+    normalizedCauseField(cause?.suspect),
+    normalizedCauseField(cause?.accusation),
+    normalizedCauseField(cause?.impact)
+  ].filter(Boolean).join(' · ');
+}
+
+function possibleCauseLabel(cause, instanceId) {
+  const concise = normalizedCauseField(cause?.suspect)
+    || normalizedCauseField(cause?.summaryText)
+    || instanceId;
+  return concise ? `Possible Cause · ${concise}` : 'Possible Cause';
+}
+
+function uniquePossibleCauseEntries(causes) {
+  const records = new Map();
+  const duplicates = new Set();
+  (Array.isArray(causes) ? causes : []).forEach(cause => {
+    const targetId = possibleCauseTargetId(cause?.id);
+    if (!targetId) return;
+    if (records.has(targetId)) {
+      duplicates.add(targetId);
+      return;
+    }
+    records.set(targetId, cause);
+  });
+  duplicates.forEach(targetId => records.delete(targetId));
+  return [...records.entries()];
+}
+
+function projectPossibleCauseRecord(targetId, cause) {
+  const instanceId = parsePossibleCauseTargetId(targetId);
+  if (!instanceId || !cause) return null;
+  const evidence = buildPossibleCauseEvidence(cause);
+  return {
+    id: targetId,
+    familyId: POSSIBLE_CAUSE_TARGET_FAMILY_ID,
+    instanceId,
+    label: possibleCauseLabel(cause, instanceId),
+    section: 'Possible Causes',
+    kind: 'dynamic-card',
+    evidence,
+    comparisonText: possibleCauseComparisonText(cause),
+    empty: evidence.length === 0,
+    fingerprint: fingerprintIntakeTargetEvidence(targetId, evidence)
+  };
+}
+
+/**
+ * Project every unambiguous Possible Cause instance from a serialized Intake snapshot.
+ *
+ * @param {object} [snapshot={}] Serialized Intake/checkpoint snapshot.
+ * @returns {object[]} Dynamic per-workspace target projections in cause order.
+ */
+export function projectPossibleCauseTargets(snapshot = {}) {
+  return uniquePossibleCauseEntries(snapshot?.causes)
+    .map(([targetId, cause]) => projectPossibleCauseRecord(targetId, cause))
+    .filter(Boolean);
+}
+
 /**
  * Project one target from a serialized Intake snapshot without mounting the DOM.
  *
@@ -193,18 +388,23 @@ function snapshotEvidence(definition, snapshot) {
  */
 export function projectIntakeTarget(targetId, snapshot = {}) {
   const definition = getIntakeTargetDefinition(targetId);
-  if (!definition) return null;
-  const evidence = normalizeIntakeTargetEvidence(snapshotEvidence(definition, snapshot));
-  return {
-    id: definition.id,
-    label: definition.label,
-    section: definition.section,
-    kind: definition.kind,
-    evidence,
-    comparisonText: evidence,
-    empty: evidence.length === 0,
-    fingerprint: fingerprintIntakeTargetEvidence(definition.id, evidence)
-  };
+  if (definition) {
+    const evidence = normalizeIntakeTargetEvidence(snapshotEvidence(definition, snapshot));
+    return {
+      id: definition.id,
+      label: definition.label,
+      section: definition.section,
+      kind: definition.kind,
+      evidence,
+      comparisonText: evidence,
+      empty: evidence.length === 0,
+      fingerprint: fingerprintIntakeTargetEvidence(definition.id, evidence)
+    };
+  }
+
+  const dynamic = uniquePossibleCauseEntries(snapshot?.causes)
+    .find(([candidateTargetId]) => candidateTargetId === targetId);
+  return dynamic ? projectPossibleCauseRecord(dynamic[0], dynamic[1]) : null;
 }
 
 /**
@@ -214,7 +414,10 @@ export function projectIntakeTarget(targetId, snapshot = {}) {
  * @returns {object[]} Stable projections in registry order.
  */
 export function projectIntakeTargets(snapshot = {}) {
-  return INTAKE_TARGET_DEFINITIONS.map(definition => projectIntakeTarget(definition.id, snapshot));
+  return [
+    ...INTAKE_TARGET_DEFINITIONS.map(definition => projectIntakeTarget(definition.id, snapshot)),
+    ...projectPossibleCauseTargets(snapshot)
+  ];
 }
 
 function resolveStatic(definition, documentRef) {
@@ -249,6 +452,37 @@ function resolveKt(definition, rows) {
   };
 }
 
+
+function findPossibleCauseCard(documentRef, instanceId) {
+  const cards = documentRef?.querySelectorAll?.('.cause-card[data-cause-id]') || [];
+  return [...cards].find(card => card.dataset?.causeId === instanceId) || null;
+}
+
+function resolvePossibleCause(targetId, { documentRef, causes } = {}) {
+  const instanceId = parsePossibleCauseTargetId(targetId);
+  if (!instanceId) return null;
+  const dynamic = uniquePossibleCauseEntries(causes)
+    .find(([candidateTargetId]) => candidateTargetId === targetId);
+  if (!dynamic) return null;
+  const cause = dynamic[1];
+  const mount = findPossibleCauseCard(documentRef, instanceId);
+  if (!mount) return null;
+  const value = buildPossibleCauseEvidence(cause);
+  return {
+    id: targetId,
+    familyId: POSSIBLE_CAUSE_TARGET_FAMILY_ID,
+    instanceId,
+    label: possibleCauseLabel(cause, instanceId),
+    section: 'Possible Causes',
+    kind: 'dynamic-card',
+    control: mount.querySelector?.('textarea, button') || mount,
+    mount,
+    cause,
+    value,
+    fingerprint: fingerprintIntakeTargetEvidence(targetId, value)
+  };
+}
+
 /**
  * Resolve a stable Intake target into its current DOM placement and evidence.
  *
@@ -262,10 +496,13 @@ function resolveKt(definition, rows) {
  */
 export function resolveIntakeTarget(targetId, {
   documentRef = globalThis.document,
-  rows = []
+  rows = [],
+  causes = []
 } = {}) {
   const definition = getIntakeTargetDefinition(targetId);
-  if (!definition) return null;
+  if (!definition) {
+    return resolvePossibleCause(targetId, { documentRef, causes });
+  }
   const resolved = definition.kind === 'kt-row'
     ? resolveKt(definition, rows)
     : resolveStatic(definition, documentRef);
@@ -283,7 +520,11 @@ export function resolveIntakeTarget(targetId, {
  * @returns {object[]} Mounted targets in registry order.
  */
 export function listResolvedIntakeTargets(options = {}) {
-  return INTAKE_TARGET_DEFINITIONS
+  const staticTargets = INTAKE_TARGET_DEFINITIONS
     .map(definition => resolveIntakeTarget(definition.id, options))
     .filter(Boolean);
+  const dynamicTargets = uniquePossibleCauseEntries(options?.causes)
+    .map(([targetId]) => resolveIntakeTarget(targetId, options))
+    .filter(Boolean);
+  return [...staticTargets, ...dynamicTargets];
 }
