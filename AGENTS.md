@@ -35,7 +35,7 @@ See `docs/REPOSITORY-OPERATIONS.md#delivery-resilience-for-ai-assisted-work` for
 
 ## Long-running Classroom Program
 
-The Standalone / Student / Instructor program is tracked by #288. Any work touching experience roles, classes, classroom workspaces, instructor observation, coaching, or protected Case Studies must read `docs/classroom-architecture.md`, `docs/classroom-roadmap.md`, and `docs/classroom-workstream.md` before editing. Class/API authorization work must additionally read `docs/classroom-api.md` and `api/AGENTS.md`. Staged exercise/debrief work under #313 must also read `docs/classroom-staged-simulation.md`.
+The Standalone / Student / Instructor program is tracked by #288. Any work touching experience roles, classes, classroom workspaces, instructor observation, coaching, or protected Case Studies must read `docs/classroom-architecture.md`, `docs/classroom-roadmap.md`, and `docs/classroom-workstream.md` before editing. Class/API authorization work must additionally read `docs/classroom-api.md` and `api/AGENTS.md`. Staged exercise/debrief work under #313 must also read `docs/classroom-staged-simulation.md`. Work on universal Intake target identity, dynamic coaching targets, staged `intakeTargetIds`, or #319 debrief comparison must also read `docs/intake-target-identity.md`; that contract forbids template IDs and DOM selectors from becoming semantic target identity.
 
 Classroom invariants:
 
