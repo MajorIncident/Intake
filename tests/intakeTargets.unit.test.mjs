@@ -9,13 +9,16 @@ import {
   fingerprintIntakeTargetEvidence,
   getIntakeTargetDefinition,
   projectIntakeTarget,
-  projectIntakeTargets
+  projectIntakeTargets,
+  validateIntakeTargetCoverage
 } from '../src/intakeTargets.js';
 import {
   COACHABLE_TARGET_DEFINITIONS,
   fingerprintCoachingEvidence,
   getCoachableTargetDefinition
 } from '../src/coachableFields.js';
+import { migrateAppState } from '../src/storage.js';
+import { TEMPLATE_MANIFEST } from '../src/templates.manifest.js';
 
 test('universal registry preserves every existing coaching ID through the compatibility facade', () => {
   const universalIds = INTAKE_TARGET_DEFINITIONS.map(target => target.id);
@@ -147,4 +150,93 @@ test('projecting the registry yields a stable complete static/KT projection set'
   assert.equal(projected.every(target => typeof target.fingerprint === 'string'), true);
   assert.equal(projected.every(target => target.empty === true), true);
   assert.equal(projectIntakeTarget('unknown.target', {}), null);
+});
+
+
+test('canonical normalized target-bearing schema has complete registered/excluded coverage', () => {
+  const normalized = migrateAppState({
+    meta: { version: 2, savedAt: null }
+  });
+  assert.ok(normalized);
+  assert.deepEqual(validateIntakeTargetCoverage(normalized), []);
+});
+
+test('every public Standard Template projects through the universal target layer without template-specific mapping', () => {
+  assert.ok(TEMPLATE_MANIFEST.length > 0);
+  TEMPLATE_MANIFEST.forEach(template => {
+    const errors = validateIntakeTargetCoverage(template.state);
+    assert.deepEqual(errors, [], `${template.id} target coverage should be complete`);
+
+    const projected = projectIntakeTargets(template.state);
+    assert.equal(
+      projected.length,
+      INTAKE_TARGET_DEFINITIONS.length + (template.state.causes?.length || 0),
+      `${template.id} should project static/KT plus dynamic cause targets`
+    );
+    assert.equal(
+      projected.every(target => target && typeof target.id === 'string' && typeof target.fingerprint === 'string'),
+      true,
+      `${template.id} projections should all be comparison-safe`
+    );
+  });
+});
+
+test('target-bearing schema additions fail loudly unless registered or explicitly reviewed', () => {
+  const errors = validateIntakeTargetCoverage({
+    pre: {
+      oneLine: 'Known target',
+      newReasoningField: 'Should not silently disappear'
+    },
+    ops: {
+      containDesc: 'Known target',
+      newOperationalReasoning: 'Needs classification'
+    },
+    table: [
+      { questionId: 'future-question', is: 'Unknown row' }
+    ],
+    causes: [
+      { id: 'cause-safe' },
+      { id: 'cause-safe' },
+      { id: 'Legacy Cause' }
+    ]
+  });
+
+  assert.ok(errors.some(message => message.includes('pre.newReasoningField')));
+  assert.ok(errors.some(message => message.includes('ops.newOperationalReasoning')));
+  assert.ok(errors.some(message => message.includes('table[0].questionId')));
+  assert.ok(errors.some(message => message.includes('duplicates dynamic Intake target')));
+  assert.ok(errors.some(message => message.includes('supported persisted Possible Cause lifecycle ID')));
+});
+
+test('reviewed workflow/infrastructure fields inside target-bearing areas remain explicit exclusions', () => {
+  const errors = validateIntakeTargetCoverage({
+    ops: {
+      bridgeOpenedUtc: '2026-10-07T10:00:00Z',
+      severity: 'SEV-1',
+      containStatus: 'stabilized',
+      containDesc: 'Rollback active',
+      commLog: []
+    },
+    potentialProblemAnalysis: {
+      owner: {
+        name: 'Priya',
+        category: 'TECHNOLOGY_PLATFORM',
+        subOwner: '',
+        notes: '',
+        lastAssignedBy: '',
+        lastAssignedAt: '',
+        source: 'Manual'
+      },
+      risk: {
+        level: 'High',
+        impactIfFails: 'Extended outage',
+        prevent: 'Canary first',
+        ifHappens: 'Rollback'
+      },
+      changeControl: { required: true, rollbackPlan: 'Rollback' },
+      verification: { required: true, result: 'Error rate below 1%' }
+    }
+  });
+
+  assert.deepEqual(errors, []);
 });
