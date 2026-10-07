@@ -505,39 +505,7 @@ Anchors present:
       </section>
       <!-- [feature:instructor-exercise-console] end -->
 
-      <!-- [feature:instructor-debrief-comparison] start -->
-      <section class="instructor-debrief-comparison" id="instructorDebriefComparison" aria-labelledby="instructorDebriefTitle" data-persistence="local-only" data-summary="exclude" hidden>
-        <div class="instructor-debrief-comparison__heading">
-          <div>
-            <strong id="instructorDebriefTitle">Class debrief comparison</strong>
-            <span id="instructorDebriefStatus" role="status" aria-live="polite">Loading class comparison…</span>
-          </div>
-          <button type="button" class="btn-secondary" id="instructorDebriefRefreshBtn" data-persistence="local-only" data-summary="exclude">Refresh</button>
-        </div>
 
-        <section class="instructor-debrief-comparison__progress" aria-labelledby="instructorDebriefProgressTitle">
-          <div class="instructor-debrief-comparison__subheading">
-            <strong id="instructorDebriefProgressTitle">Class progress</strong>
-            <span id="instructorDebriefProgressSummary" aria-live="polite">No workspaces</span>
-          </div>
-          <div class="instructor-debrief-progress" id="instructorDebriefProgressList"></div>
-        </section>
-
-        <div class="instructor-debrief-comparison__target">
-          <label for="instructorDebriefTargetSelect" data-persistence="local-only" data-summary="exclude">Compare Intake target</label>
-          <select id="instructorDebriefTargetSelect" data-persistence="local-only" data-summary="exclude"></select>
-          <small>Current live evidence only. Open a workspace for the existing read-only Intake and coaching view.</small>
-        </div>
-
-        <section class="instructor-debrief-comparison__evidence" aria-labelledby="instructorDebriefComparisonTitle">
-          <div class="instructor-debrief-comparison__subheading">
-            <strong id="instructorDebriefComparisonTitle">Selected Intake target</strong>
-            <span>Live evidence</span>
-          </div>
-          <div class="instructor-debrief-matrix" id="instructorDebriefMatrix"></div>
-        </section>
-      </section>
-      <!-- [feature:instructor-debrief-comparison] end -->
 
       <section class="instructor-live-management" aria-labelledby="instructorLiveManagementTitle" data-persistence="local-only" data-summary="exclude">
         <div class="instructor-live-management__heading">
@@ -614,6 +582,39 @@ Anchors present:
   <!-- [feature:student-case-reference] end -->
 
   <div class="wrap" data-experience-surface="intake">
+    <!-- [feature:instructor-debrief-comparison] start -->
+      <section class="instructor-debrief-comparison" id="instructorDebriefComparison" aria-labelledby="instructorDebriefTitle" data-persistence="local-only" data-summary="exclude" hidden>
+        <div class="instructor-debrief-comparison__heading">
+          <div>
+            <strong id="instructorDebriefTitle">Class debrief comparison</strong>
+            <span id="instructorDebriefStatus" role="status" aria-live="polite">Loading class comparison…</span>
+          </div>
+          <button type="button" class="btn-secondary" id="instructorDebriefRefreshBtn" data-persistence="local-only" data-summary="exclude">Refresh</button>
+        </div>
+
+        <section class="instructor-debrief-comparison__progress" aria-labelledby="instructorDebriefProgressTitle">
+          <div class="instructor-debrief-comparison__subheading">
+            <strong id="instructorDebriefProgressTitle">Class progress</strong>
+            <span id="instructorDebriefProgressSummary" aria-live="polite">No workspaces</span>
+          </div>
+          <div class="instructor-debrief-progress" id="instructorDebriefProgressList"></div>
+        </section>
+
+        <div class="instructor-debrief-comparison__target">
+          <label for="instructorDebriefTargetSelect" data-persistence="local-only" data-summary="exclude">Compare Intake target</label>
+          <select id="instructorDebriefTargetSelect" data-persistence="local-only" data-summary="exclude"></select>
+          <small>Current live evidence only. Open a workspace for the existing read-only Intake and coaching view.</small>
+        </div>
+
+        <section class="instructor-debrief-comparison__evidence" aria-labelledby="instructorDebriefComparisonTitle">
+          <div class="instructor-debrief-comparison__subheading">
+            <strong id="instructorDebriefComparisonTitle">Selected Intake target</strong>
+            <span>Live evidence</span>
+          </div>
+          <div class="instructor-debrief-matrix" id="instructorDebriefMatrix"></div>
+        </section>
+      </section>
+      <!-- [feature:instructor-debrief-comparison] end -->
     <!-- [feature:instructor-observer] start -->
     <section class="instructor-observation-notice" id="instructorObservationNotice" aria-labelledby="instructorObservedWorkspace" data-persistence="local-only" data-summary="exclude" hidden>
       <div class="instructor-observation-notice__main">
