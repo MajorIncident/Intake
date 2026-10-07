@@ -7,7 +7,8 @@ Active branch: `feature/classroom-debrief-comparison`
 Base: `main` at `ef6949100ddac28c646338ee55cb6e7a74beb067` (#318 / PR #325 merge)  
 319A architecture checkpoint: `22d5d9ee056f6ddd70f7e5d9a97f2322c5d3c41f`  
 319B GREEN implementation head: `c6986b330fab31509c1697b3d77c8a5e907ef279`  
-Current tranche: **319C — Instructor-only debrief API**
+319C GREEN implementation head: `676ccbc963fb60c59851e3beda5962f2fdaa9ca5`  
+Current tranche: **319D — Instructor progress + target comparison UI**
 
 This document is the canonical architecture contract for #319.
 
@@ -407,13 +408,33 @@ Validation:
 - Browser E2E: **29 passed / 11 intentional project-scoped skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
 
-### 319C — Instructor-only debrief API
+### 319C — Instructor-only debrief API — complete
 
-- add GET-only `/api/classes/debrief` inside the consolidated Classroom function/router;
-- reuse/add narrow class-batch repository reads;
-- authorize only the Instructor capability;
-- return comparison projections, not raw snapshots/edit authority;
-- add API/security/cross-class tests.
+Validated implementation head: `676ccbc963fb60c59851e3beda5962f2fdaa9ca5`.
+
+Implemented:
+- GET-only `/api/classes/debrief` inside the existing consolidated Classroom function/router; no new Vercel function was created;
+- Instructor class capability is the only authority accepted by the route;
+- class-scoped batch repository reads load current collaboration snapshots, compact coaching metadata, staged readiness, and current-stage checkpoint snapshots without browser-side N-workspace raw snapshot polling;
+- raw live/checkpoint snapshots are consumed only server-side and projected through the 319B model before response;
+- aggregate response excludes raw `snapshot` objects, coaching notes, internal workspace IDs, Student/assignment/join/collaboration capabilities, and editable authority;
+- endpoint creates no persistence table and exposes no mutation method;
+- ordinary classes with no current non-completed staged exercise still return current-live comparison; staged readiness/checkpoint context is nullable rather than synthesized;
+- current staged debrief checkpoint snapshots are loaded with a class-scoped batch read rather than one explicit checkpoint request per workspace;
+- the route is wired through `api/_classroomRouter.js` and `vercel.json` while preserving the existing Serverless Function budget.
+
+Focused API/security coverage proves:
+- projection-only aggregate response and private `no-store` / `no-referrer` headers;
+- GET-only behavior rejects writes before repository access;
+- current staged readiness plus immutable checkpoint projection;
+- Student join, assignment/workspace, and legacy collaboration capabilities cannot read the comparison;
+- valid Instructor authority receives only its represented class;
+- Vercel rewrite/function-budget regression includes the new route.
+
+Validation:
+- repository quality: **355 tests / 354 pass / 0 fail / 1 intentional skip**;
+- Browser E2E: **29 passed / 11 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
 
 ### 319D — Instructor progress + target comparison UI
 
@@ -463,4 +484,4 @@ Read:
 - existing Classroom coaching modules;
 - the consolidated Classroom router/server modules.
 
-Continue the existing #319 branch/PR. 319A/B are complete; begin 319C with the Instructor-only derived debrief API. Leave a mini milestone after every meaningful sub-slice and before long validation waits.
+Continue the existing #319 branch/PR. 319A/B/C are complete; begin 319D with the Instructor progress + semantic target comparison UI, consuming `/api/classes/debrief` and reusing the existing observer for drill-down. Leave a mini milestone after every meaningful sub-slice and before long validation waits.
