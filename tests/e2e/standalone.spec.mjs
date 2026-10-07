@@ -154,9 +154,30 @@ test('mobile Standalone accepts primary Intake input and persists it', async ({ 
     return raw ? JSON.parse(raw)?.pre?.oneLine || '' : '';
   }, INTAKE_STORAGE_KEY)).toBe(problem);
 
+  const notesWorkspace = page.locator('#notesWorkspace');
+  await expect(notesWorkspace).toHaveClass(/is-collapsed/);
+  await expect(page.getByRole('button', { name: 'Open notes' })).toBeVisible();
+  const beforeNotesToggle = await page.evaluate(key => window.localStorage.getItem(key), INTAKE_STORAGE_KEY);
+
+  await page.getByRole('button', { name: 'Open notes' }).click();
+  await expect(notesWorkspace).not.toHaveClass(/is-collapsed/);
+  await page.getByRole('button', { name: 'Collapse notes' }).click();
+  await expect(notesWorkspace).toHaveClass(/is-collapsed/);
+
+  const afterNotesToggle = await page.evaluate(key => window.localStorage.getItem(key), INTAKE_STORAGE_KEY);
+  expect(afterNotesToggle).toBe(beforeNotesToggle);
+
+  const layout = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth
+  }));
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
+  await expectNoBlockingA11yViolations(page);
+
   await page.reload();
 
   await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'standalone');
   await expect(page.locator('#oneLine')).toHaveValue(problem);
+  await expect(page.locator('#notesWorkspace')).toHaveClass(/is-collapsed/);
   expect(pageErrors).toEqual([]);
 });
