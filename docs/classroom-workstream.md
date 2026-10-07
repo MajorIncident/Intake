@@ -30,7 +30,7 @@ The secure Classroom foundation (#288), live-class management (#312), and staged
 | Rich staged assets | #316 | Deferred | Open | Secure protected image/table/document-page delivery; resume before #317 production simulation |
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
 | Universal Intake target identity | #318 | Complete | PR #325 merged as `ef694910...` | Shared static/KT/dynamic target projection and compatibility guards merged to `main` |
-| Class debrief comparison | #319 | **Active — 319A architecture/inventory** | PR #326 / `feature/classroom-debrief-comparison` | Instructor-only derived read model; aggregate projected live/checkpoint evidence; no new persistence |
+| Class debrief comparison | #319 | **Active — 319B complete / 319C next** | PR #326 / `feature/classroom-debrief-comparison` | Pure comparison model green; Instructor-only derived debrief API next |
 | Join/mobile polish | #320 | Complete | PR #324 merged as `273ae643...` | Fragment-only share/QR + compact mobile Class/Case/Team/Notes/Instructor chrome published to `main` |
 
 ## Current architecture decisions
@@ -69,11 +69,12 @@ See `docs/classroom-architecture.md` for the full contract.
 
 **#319 is active** on `feature/classroom-debrief-comparison` / PR #326, based on merged `main` SHA `ef6949100ddac28c646338ee55cb6e7a74beb067`.
 
-Current tranche: **319A — architecture and source inventory**.
+Current tranche: **319C — Instructor-only debrief API**.
 
 Canonical contract: `docs/classroom-debrief-comparison.md`.
 
-Architecture checkpoint: `1e45cf295a3e00eefd20c64d5a46f4391eee0c7d`.
+Architecture checkpoint: `22d5d9ee056f6ddd70f7e5d9a97f2322c5d3c41f`.
+319B GREEN implementation head: `c6986b330fab31509c1697b3d77c8a5e907ef279`.
 
 Frozen decisions:
 - #319 is an Instructor-only **derived read model**; it creates no second snapshot/checkpoint/coaching persistence model;
@@ -95,19 +96,38 @@ Planned tranches:
 5. **319E** checkpoint/staged/coaching integration.
 6. **319F** integrated browser/accessibility/security closeout.
 
+## Last completed action
+
+Completed **319B — pure derived comparison model**.
+
+Delivered:
+- new `src/classroomDebriefModel.js` is DOM/network/persistence-free;
+- current/checkpoint snapshots project through #318 semantic targets without mutating source state or returning raw snapshot copies;
+- Ready/Working metadata remains nullable when no staged signal exists;
+- coaching aggregates status/change metadata while omitting notes and any scoring/ranking;
+- static/KT selection aligns only by semantic ID;
+- `possible-cause` selection returns each workspace's independent collection and never pairs causes across teams;
+- staged recommendation filtering accepts only authorable static/KT/family IDs.
+
+Validation on `c6986b330fab31509c1697b3d77c8a5e907ef279`:
+- repository quality: **352 tests / 351 pass / 0 fail / 1 intentional skip**;
+- Browser E2E: **29 passed / 11 intentional skips / 0 failed**;
+- CI / CodeQL / Dependency Review / Template Manifest Guard: **green**.
+
 ## Next recommended action
 
-Complete **319A** by reconciling roadmap/issue/PR to this contract, then begin **319B** as a pure DOM-free comparison model with focused unit tests.
+Begin **319C — Instructor-only debrief API**.
 
-319B should:
-1. accept class/workspace metadata plus already-authorized current/checkpoint snapshots;
-2. project through the #318 target registry;
-3. derive neutral progress/coaching change metadata without scoring;
-4. preserve dynamic Possible Causes as workspace-local collections;
-5. remain mutation-free and independent of templates/DOM;
-6. leave API routing, server authorization, and UI for later tranches.
+319C should:
+1. add GET-only `/api/classes/debrief` to the existing consolidated Classroom router/function;
+2. authorize only the Instructor class capability;
+3. obtain current class workspace snapshots, readiness/current exercise/checkpoint evidence, and coaching rows from existing sources of truth;
+4. use the 319B model server-side so the response contains comparison-safe projections rather than raw live/checkpoint snapshots;
+5. return no edit capability/internal workspace IDs/coaching notes;
+6. prove Student/join/assignment/workspace capabilities cannot read the endpoint and cross-class data cannot leak;
+7. avoid any new persistence table or mutation path.
 
-**Not started:** #319 runtime/API/UI implementation beyond the architecture contract, or #316/#317 production simulation work.
+**Not started:** 319C implementation, 319D UI, 319E checkpoint/staged/coaching presentation, or #316/#317 production simulation work.
 
 
 ## Completed #300 implementation
