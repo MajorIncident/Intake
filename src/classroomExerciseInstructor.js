@@ -9,6 +9,7 @@
  */
 
 export const INSTRUCTOR_EXERCISE_ENDPOINT = '/api/classes/exercise';
+export const INSTRUCTOR_EXERCISE_CHECKPOINT_ENDPOINT = '/api/classes/exercise/checkpoint';
 
 const CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
@@ -90,7 +91,8 @@ function sanitizeCheckpoint(value) {
 export function createInstructorExerciseConsoleController({
   fetchImpl = globalThis.fetch?.bind(globalThis),
   documentRef = globalThis.document,
-  onSelectWorkspace = () => {}
+  onSelectWorkspace = () => {},
+  onInspectCheckpoint = () => {}
 } = {}) {
   let capability = '';
   let epoch = 0;
@@ -469,7 +471,21 @@ export function createInstructorExerciseConsoleController({
       label.textContent = item.workspaceLabel;
       const revision = documentRef.createElement('strong');
       revision.textContent = `Revision ${item.workspaceRevision}`;
-      row.append(label, revision);
+      const inspect = documentRef.createElement('button');
+      inspect.type = 'button';
+      inspect.className = 'btn-secondary instructor-exercise-checkpoint__inspect';
+      inspect.setAttribute('data-persistence', 'local-only');
+      inspect.setAttribute('data-summary', 'exclude');
+      inspect.setAttribute(
+        'aria-label',
+        `Inspect ${item.workspaceLabel} checkpoint, revision ${item.workspaceRevision}`
+      );
+      inspect.textContent = 'Inspect checkpoint';
+      inspect.disabled = loading;
+      inspect.addEventListener('click', () => {
+        void inspectCheckpoint(item.workspaceId);
+      });
+      row.append(label, revision, inspect);
       wrapper.append(row);
     });
     list.append(wrapper);
@@ -591,6 +607,91 @@ export function createInstructorExerciseConsoleController({
     } catch {
       if (destroyed || localEpoch !== epoch) return false;
       lastError = 'Could not load the class exercise.';
+      return false;
+    } finally {
+      if (!destroyed && localEpoch === epoch) {
+        loading = false;
+        render();
+      }
+    }
+  };
+
+  const inspectCheckpoint = async workspaceId => {
+    if (
+      destroyed
+      || !capability
+      || loading
+      || exercise?.stagePhase !== 'debrief'
+      || !exercise?.currentStageId
+      || typeof fetchImpl !== 'function'
+    ) return false;
+
+    const item = checkpoints.find(candidate => (
+      candidate.workspaceId === workspaceId
+      && candidate.stageId === exercise.currentStageId
+    ));
+    if (!item) return false;
+
+    const localCapability = capability;
+    const localEpoch = epoch;
+    const stageId = exercise.currentStageId;
+    loading = true;
+    lastError = '';
+    lastNotice = '';
+    render();
+
+    try {
+      const response = await fetchImpl(
+        `${INSTRUCTOR_EXERCISE_CHECKPOINT_ENDPOINT}?workspaceId=${encodeURIComponent(item.workspaceId)}`,
+        {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${localCapability}` }
+        }
+      );
+      const body = await response.json().catch(() => ({}));
+      if (destroyed || localEpoch !== epoch || capability !== localCapability) return false;
+
+      if (response.status === 409) {
+        loading = false;
+        const reloaded = await refresh();
+        if (reloaded && !destroyed && localEpoch === epoch) {
+          lastNotice = 'current state reloaded';
+          render();
+        }
+        return false;
+      }
+
+      const validSnapshot = response.ok
+        && body?.workspace?.id === item.workspaceId
+        && body?.checkpoint?.stageId === stageId
+        && Number(body?.checkpoint?.workspaceRevision) === item.workspaceRevision
+        && body?.checkpoint?.snapshot
+        && typeof body.checkpoint.snapshot === 'object';
+      if (!validSnapshot) {
+        lastError = response.status === 401 || response.status === 404
+          ? 'Checkpoint is no longer available.'
+          : 'Could not inspect the captured checkpoint.';
+        return false;
+      }
+
+      await Promise.resolve(onInspectCheckpoint({
+        workspace: {
+          id: body.workspace.id,
+          kind: body.workspace.kind,
+          label: body.workspace.label
+        },
+        checkpoint: {
+          stageId: body.checkpoint.stageId,
+          workspaceRevision: body.checkpoint.workspaceRevision,
+          capturedAt: body.checkpoint.capturedAt || null,
+          snapshot: body.checkpoint.snapshot
+        }
+      }));
+      lastNotice = 'checkpoint opened';
+      return true;
+    } catch {
+      if (destroyed || localEpoch !== epoch) return false;
+      lastError = 'Could not inspect the captured checkpoint.';
       return false;
     } finally {
       if (!destroyed && localEpoch === epoch) {
@@ -1027,6 +1128,7 @@ export function createInstructorExerciseConsoleController({
     complete: () => mutateLifecycle('complete'),
     setEditing,
     releaseContent,
+    inspectCheckpoint,
     getState: () => ({
       connected: Boolean(capability),
       loading,
