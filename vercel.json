@@ -9,5 +9,71 @@
       "verify/**": true
     }
   },
-  "ignoreCommand": "case \"$VERCEL_GIT_COMMIT_REF\" in main|verify/*) exit 1 ;; *) exit 0 ;; esac"
+  "ignoreCommand": "case \"$VERCEL_GIT_COMMIT_REF\" in main|verify/*) exit 1 ;; *) exit 0 ;; esac",
+  "rewrites": [
+    {
+      "source": "/api/classes",
+      "destination": "/api/classroom?__classroomRoute=root"
+    },
+    {
+      "source": "/api/classes/admit",
+      "destination": "/api/classroom?__classroomRoute=admit"
+    },
+    {
+      "source": "/api/classes/join",
+      "destination": "/api/classroom?__classroomRoute=join"
+    },
+    {
+      "source": "/api/classes/participants",
+      "destination": "/api/classroom?__classroomRoute=participants"
+    },
+    {
+      "source": "/api/classes/student",
+      "destination": "/api/classroom?__classroomRoute=student"
+    },
+    {
+      "source": "/api/classes/student/access",
+      "destination": "/api/classroom?__classroomRoute=student-access"
+    },
+    {
+      "source": "/api/classes/workspaces",
+      "destination": "/api/classroom?__classroomRoute=workspaces"
+    },
+    {
+      "source": "/api/classes/observe",
+      "destination": "/api/classroom?__classroomRoute=observe"
+    },
+    {
+      "source": "/api/classes/coaching",
+      "destination": "/api/classroom?__classroomRoute=coaching"
+    },
+    {
+      "source": "/api/classes/coaching/student",
+      "destination": "/api/classroom?__classroomRoute=coaching-student"
+    },
+    {
+      "source": "/api/classes/case-studies",
+      "destination": "/api/classroom?__classroomRoute=case-studies"
+    },
+    {
+      "source": "/api/classes/case-studies/student",
+      "destination": "/api/classroom?__classroomRoute=case-studies-student"
+    },
+    {
+      "source": "/api/classes/exercise",
+      "destination": "/api/classroom?__classroomRoute=exercise"
+    },
+    {
+      "source": "/api/classes/exercise/checkpoint",
+      "destination": "/api/classroom?__classroomRoute=exercise-checkpoint"
+    },
+    {
+      "source": "/api/classes/exercise/student",
+      "destination": "/api/classroom?__classroomRoute=exercise-student"
+    },
+    {
+      "source": "/api/classes/exercise/student/ready",
+      "destination": "/api/classroom?__classroomRoute=exercise-student-ready"
+    }
+  ]
 }
