@@ -672,3 +672,28 @@ test('Instructor checkpoint view pauses live observation and returns explicitly 
 
   env.controller.destroy();
 });
+
+
+test('Instructor observer keeps debrief comparison controls interactive while Intake remains read-only', async () => {
+  const env = setup(async (url) => {
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  });
+
+  await env.controller.openClass(TOKEN);
+
+  const oneLine = dom.window.document.getElementById('oneLine');
+  const target = dom.window.document.getElementById('instructorDebriefTargetSelect');
+  const refresh = dom.window.document.getElementById('instructorDebriefRefreshBtn');
+
+  assert.equal(oneLine.readOnly, true);
+  assert.equal(oneLine.hasAttribute('data-instructor-readonly-control'), true);
+  assert.equal(target.disabled, false);
+  assert.equal(target.hasAttribute('data-instructor-readonly-control'), false);
+  assert.equal(refresh.disabled, false);
+  assert.equal(refresh.hasAttribute('data-instructor-readonly-control'), false);
+
+  env.controller.destroy();
+});
