@@ -269,7 +269,7 @@ Protected Case Study delivery (#295) adds no public/browser data table and remai
 - `classroom_exercise_workspace_state` — workspace/team Ready state plus collaboration-revision evidence;
 - `classroom_exercise_checkpoints` — immutable pre-debrief workspace snapshot/revision evidence.
 
-These tables do not replace or duplicate collaboration state. Checkpoints are historical facilitation evidence only; the live Intake remains in `collaboration_workspaces`. Exercise state must not overload collaboration revision or coaching revision.
+These tables do not replace or duplicate collaboration state. Checkpoints are historical facilitation evidence only; the live Intake remains in `collaboration_workspaces`. Normal Instructor exercise reads expose only checkpoint metadata. Snapshot bytes are available only through an explicit Instructor-authorized current-stage debrief inspection read, are rendered through the existing read-only observer surface, and never become live collaboration state or browser-persisted exercise state. Exercise state must not overload collaboration revision or coaching revision.
 
 Schema initialization/migration must remain idempotent and documented. Browser boot for Standalone must never depend on Classroom schema creation.
 
