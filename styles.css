@@ -3322,6 +3322,7 @@ body[data-experience-role="instructor"].instructor-class-connected.instructor-ra
 .instructor-exercise-console__setup-row .btn-secondary{padding:7px 9px;font-size:10px;white-space:nowrap;}
 .instructor-exercise-console__setup small{display:block;margin-top:5px;color:var(--muted);font-size:9px;line-height:1.4;}
 .instructor-exercise-console__lifecycle{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+.instructor-exercise-console__lifecycle .btn{background:var(--accent-text);border-color:var(--accent-text);}
 .instructor-exercise-console__lifecycle small{flex-basis:100%;color:var(--muted);font-size:9px;line-height:1.4;}
 .instructor-exercise-console__stage{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:11px;background:var(--panel-muted);}
 .instructor-exercise-console__stage-heading{display:flex;flex-direction:column;gap:2px;}
