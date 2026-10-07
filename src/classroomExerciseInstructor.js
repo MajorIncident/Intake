@@ -691,6 +691,10 @@ export function createInstructorExerciseConsoleController({
       return false;
     }
 
+    const lifecycleStages = Array.isArray(caseStudy?.simulation?.stages)
+      ? caseStudy.simulation.stages
+      : [];
+    const lifecycleStageIndex = lifecycleStages.findIndex(item => item.id === exercise.currentStageId);
     const allowed = (
       (action === 'start' && exercise.status === 'draft' && !exercise.currentStageId)
       || (action === 'pause' && exercise.status === 'active')
@@ -705,16 +709,15 @@ export function createInstructorExerciseConsoleController({
         action === 'advance'
         && exercise.status === 'active'
         && exercise.stagePhase === 'debrief'
-        && Array.isArray(caseStudy?.simulation?.stages)
-        && caseStudy.simulation.stages.findIndex(item => item.id === exercise.currentStageId) >= 0
-        && caseStudy.simulation.stages.findIndex(item => item.id === exercise.currentStageId) < caseStudy.simulation.stages.length - 1
+        && lifecycleStageIndex >= 0
+        && lifecycleStageIndex < lifecycleStages.length - 1
       )
       || (
         action === 'complete'
         && exercise.status === 'active'
         && exercise.stagePhase === 'debrief'
-        && Array.isArray(caseStudy?.simulation?.stages)
-        && caseStudy.simulation.stages.findIndex(item => item.id === exercise.currentStageId) === caseStudy.simulation.stages.length - 1
+        && lifecycleStages.length > 0
+        && lifecycleStageIndex === lifecycleStages.length - 1
       )
     );
     if (!allowed) return false;
