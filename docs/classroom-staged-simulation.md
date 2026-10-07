@@ -836,17 +836,41 @@ Validation on `61aa582e9faee9a7e500796634c5cc06e256ff14`:
 - required Browser E2E: **26 passed / 8 intentional project-scoped skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
 
+## Implementation checkpoint — Tranche 6F Advance/Complete and lifecycle completion
+
+Final Instructor lifecycle contract:
+- **Advance to next stage** is rendered only when the represented exercise is active, in debrief, and the protected Instructor-authorized simulation has a next authored stage;
+- the client sends only `{ action: "advance", expectedRevision }`; it never chooses or submits an arbitrary next stage ID;
+- successful Advance accepts the server's authoritative next stage, returns to work, and renders that stage's Student objective/timing plus only its referenced Instructor facilitation content;
+- advancing restores the represented Student editing policy for work and hides debrief/checkpoint controls until the next debrief;
+- **Complete exercise** is rendered only when active debrief is on the final authored stage and sends `{ action: "complete", expectedRevision }`;
+- completion renders as **Completed** even though the persisted terminal stage phase remains `debrief`;
+- terminal completion hides Pause/Advance/Complete and Freeze/Allow mutations, preserves final-stage checkpoint review, and states explicitly that completion does not release additional Student, Instructor-only, exemplar/model, or complete protected Case Study material;
+- all lifecycle 409s continue to authoritative-refresh and never replay stale intent;
+- existing observer/coaching remains usable while stages advance and after exercise completion as long as the Classroom session remains valid;
+- deterministic browser fixture now owns two synthetic stages only and preserves prior-stage checkpoints when the later stage enters debrief;
+- real-browser acceptance proves Stage 1 work -> Stage 1 debrief -> Advance -> Stage 2 work -> Stage 2 debrief -> Complete -> reload.
+
+Implementation spans `e855df09...` through `e2f5534...`.
+
+Validation on `e2f5534aa0e85bccc2bee0e73275c9b77d000f3d`:
+- repository quality: **290 tests / 289 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **26 passed / 8 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
+
 ## Exact next implementation action
 
-Implement **Tranche 6F — Advance/Complete and Instructor-console lifecycle completion**.
+Begin **Tranche 7A — Student current-stage case-reference foundation**.
 
 Required next slice:
-- expose **Advance** only in active debrief when a next authored stage exists;
-- expose **Complete exercise** only in active debrief on the final authored stage;
-- send the current `exerciseRevision` for both actions and authoritative-refresh on 409 without replay;
-- after Advance, render the next authored stage in work phase and authoritative Student editing restored for work;
-- after Complete, render a terminal completed state without implying that Instructor-only/exemplar material becomes Student-visible;
-- keep observer/coaching usable across stage transition and completion where the existing Classroom session remains valid;
-- extend the synthetic staged fixture to at least two stages so browser acceptance proves Stage 1 debrief -> Advance -> Stage 2 work -> Stage 2 debrief -> Complete.
+- create a dedicated Student case-reference controller/module rather than adding staged-case logic to the existing Student class controller;
+- connect/disconnect it from the existing Student class lifecycle using the Student class-session capability in memory only;
+- read only `GET /api/classes/exercise/student`; do not fetch the complete protected Case Study payload from Student mode;
+- render the current stage title/objective and only cumulative Student-safe content actually present in the Student-authorized response;
+- show authoritative work/debrief/editing-frozen/completed status so the learner understands why Intake may be temporarily read-only;
+- refresh safely when the represented exercise revision changes, without persisting case/exercise state into Intake, localStorage, summaries, exports, or URLs;
+- establish a compact, collapsible Student reference surface that does not consume excessive mobile real estate; keep the existing Notes/mobile alignment concern in view;
+- add focused tests for credential isolation, payload projection, disconnect clearing, and no future/Instructor content leakage;
+- add the smallest deterministic browser acceptance necessary to prove the reference surface appears beside the existing Student Intake.
 
-Keep Student staged-case reference/UI in Tranche 7. Do not invent production official Case Study staging.
+Do **not** add Student readiness/debrief actions in 7A; reserve those for the next Student interaction slice. Do not invent production official Case Study staging.
