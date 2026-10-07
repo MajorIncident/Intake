@@ -122,6 +122,13 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
 
   await page.locator('#instructorExerciseRefreshBtn').click();
   await expect(page.locator('#instructorExerciseProgressSummary')).toHaveText('1 ready · 0 working');
+
+  await page.locator('#instructorDebriefRefreshBtn').click();
+  await expect(page.locator('#instructorDebriefProgressSummary')).toHaveText('1 workspace · 1 ready · 0 working');
+  await expect(page.locator('#instructorDebriefRecommendations')).toBeVisible();
+  await expect(page.locator('#instructorDebriefRecommendationList')).toContainText('Problem statement');
+  await expect(page.locator('#instructorDebriefEvidenceMode')).toBeHidden();
+
   await expect(page.getByRole('button', { name: 'Observe Team Alpha, Ready' })).toBeVisible();
   await page.getByRole('button', { name: 'Observe Team Alpha, Ready' }).click();
   await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
@@ -133,6 +140,15 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Team Alpha');
   await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Revision 1');
   await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
+
+  await page.locator('#instructorDebriefRefreshBtn').click();
+  await expect(page.locator('#instructorDebriefEvidenceMode')).toBeVisible();
+  await page.locator('#instructorDebriefCheckpointBtn').click();
+  await expect(page.locator('#instructorDebriefCheckpointBtn')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#instructorDebriefEvidenceSourceLabel')).toHaveText('Immutable debrief checkpoint');
+  await expect(page.locator('#instructorDebriefMatrix')).toContainText('Team Alpha live-class Intake.');
+  await page.locator('#instructorDebriefCurrentBtn').click();
+  await expect(page.locator('#instructorDebriefCurrentBtn')).toHaveAttribute('aria-pressed', 'true');
 
   await page.getByRole('button', { name: 'Allow editing' }).click();
   await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing allowed during debrief');
@@ -148,6 +164,13 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.locator('#instructorExerciseFacilitation')).toContainText('Synthetic Instructor-only guidance for the final browser stage.');
   await expect(page.locator('#instructorExerciseDebriefPanel')).toBeHidden();
   await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
+
+  await page.locator('#instructorDebriefRefreshBtn').click();
+  await expect(page.locator('#instructorDebriefEvidenceMode')).toBeHidden();
+  const stageTwoFocus = page.locator('#instructorDebriefRecommendationList .instructor-debrief-recommendation');
+  await expect(stageTwoFocus).toHaveCount(1);
+  await stageTwoFocus.click();
+  await expect(page.locator('#instructorDebriefTargetSelect')).toHaveValue('kt.where-location');
 
   await page.getByRole('button', { name: 'Begin debrief' }).click();
   await expect(page.locator('#instructorExerciseStatus')).toHaveText('Debrief · debrief started');
