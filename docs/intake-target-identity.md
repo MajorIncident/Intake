@@ -5,11 +5,12 @@
 Tracking issue: #318  
 Active branch: `feature/universal-intake-target-identity`  
 Base: `main` at `273ae6437c0898b9e35778587c7053580db14e22` (PR #324 merge)  
-Current tranche: **318E — integrated acceptance and closeout**  
+Current tranche: **318E complete — final documentation/review readiness**  
 318A validated checkpoint: `5638a8211056954fe29eb1f5892a53517f62f0c7`  
 318B GREEN checkpoint: `e716ee1f4933124caa052b1a21cfae097ca8d23e`  
 318C implementation/validation head: `052125de3c73c963e91ab1054124983ed87f7403`  
-318D GREEN checkpoint: `b312a23a2cc90a6d792d3f4a11ff47024e920ebd`
+318D GREEN checkpoint: `b312a23a2cc90a6d792d3f4a11ff47024e920ebd`  
+318E acceptance/audit head: `55da51daaf77b31de7218a5d78ca06a75a51444c`
 
 This document is the canonical contract for #318. It defines the semantic identity layer that coaching, future staged guidance, and #319 cross-team debrief comparison must share.
 
@@ -268,12 +269,27 @@ Validation:
 - Browser E2E: **29 passed / 11 intentional skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
 
-### 318E — integrated acceptance and closeout
+### 318E — integrated acceptance and closeout — complete
 
-- Classroom coaching regression for static + dynamic targets;
-- checkpoint/current snapshot projection acceptance for #319 readiness;
-- accessibility/browser coverage where dynamic coaching UI changes require it;
-- documentation/security/final gates.
+Validated acceptance/audit head: `55da51daaf77b31de7218a5d78ca06a75a51444c`.
+
+- snapshot-native current vs immutable checkpoint projection is accepted for static, KT, and dynamic targets;
+- projection is non-mutating and preserves checkpoint evidence while current evidence/fingerprints can change independently;
+- dynamic Possible Cause collections remain workspace-local: semantically similar causes from different workspaces are not aligned by ordinal position or text;
+- real-browser Instructor -> Student dynamic Possible Cause coaching is covered end-to-end;
+- Student feedback is read-only, performs no coaching write, survives cause-card DOM rebuild, and reports **Changed since review** against persisted cause identity;
+- the same browser flow is covered by the existing serious/critical Axe assertion;
+- acceptance exposed a real small-text contrast defect in the Possible Cause editing/testing UI; it was repaired without changing layout/domain/persistence behavior and the accessibility assertion remained enabled;
+- full `main -> PR #325` audit confirms no `api/**`, `src/appState.js`, `src/storage.js`, summary/export, collaboration revision, or Intake persistence schema changes;
+- coaching continues to use the existing separate class/workspace feedback API and independent feedback revision;
+- Standard Template/public-manifest changes are validation-only and do not introduce template-specific target identity;
+- staged validation consumes only shared static/KT or family IDs; protected production Case Study content was not added or modified;
+- PR base remains the documented merged `main` SHA and there are no unresolved review threads.
+
+Validation:
+- repository quality: **346 tests / 345 pass / 0 fail / 1 intentional skip**;
+- Browser E2E: **29 passed / 11 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
 
 ## Non-goals
 
@@ -301,4 +317,4 @@ Read:
 - `src/appState.js`;
 - `src/storage.js`.
 
-Continue the existing #318 branch/PR. Leave a mini milestone after every meaningful sub-slice and before long validation waits.
+#318 implementation is complete on PR #325. Validate the final documentation head, then mark the PR ready for review if all required gates remain green. Do not merge automatically. After merge, #319 is the next debrief-track implementation target; #316/#317 remain intentionally deferred.
