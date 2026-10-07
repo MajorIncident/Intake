@@ -86,6 +86,56 @@ export const INTAKE_TARGET_DEFINITIONS = Object.freeze([
 const DEFINITION_BY_ID = new Map(INTAKE_TARGET_DEFINITIONS.map(target => [target.id, target]));
 const FAMILY_BY_ID = new Map(INTAKE_TARGET_FAMILY_DEFINITIONS.map(family => [family.id, family]));
 
+const TARGET_BEARING_OBJECT_PATHS = Object.freeze([
+  Object.freeze(['pre']),
+  Object.freeze(['impact']),
+  Object.freeze(['ops']),
+  Object.freeze(['decisionAnalysis']),
+  Object.freeze(['potentialProblemAnalysis', 'owner']),
+  Object.freeze(['potentialProblemAnalysis', 'risk']),
+  Object.freeze(['potentialProblemAnalysis', 'changeControl']),
+  Object.freeze(['potentialProblemAnalysis', 'verification'])
+]);
+
+const REVIEWED_TARGET_COVERAGE_EXCLUSIONS = new Set([
+  'ops.bridgeOpenedUtc',
+  'ops.icName',
+  'ops.bcName',
+  'ops.semOpsName',
+  'ops.severity',
+  'ops.detectMonitoring',
+  'ops.detectUserReport',
+  'ops.detectAutomation',
+  'ops.detectOther',
+  'ops.evScreenshot',
+  'ops.evLogs',
+  'ops.evMetrics',
+  'ops.evRepro',
+  'ops.evOther',
+  'ops.containStatus',
+  'ops.commCadence',
+  'ops.commLog',
+  'ops.commNextDueIso',
+  'ops.commNextUpdateTime',
+  'ops.tableFocusMode',
+  'potentialProblemAnalysis.owner.category',
+  'potentialProblemAnalysis.owner.subOwner',
+  'potentialProblemAnalysis.owner.notes',
+  'potentialProblemAnalysis.owner.lastAssignedBy',
+  'potentialProblemAnalysis.owner.lastAssignedAt',
+  'potentialProblemAnalysis.owner.source',
+  'potentialProblemAnalysis.changeControl.required',
+  'potentialProblemAnalysis.verification.required'
+]);
+
+const REGISTERED_SNAPSHOT_PATHS = new Set(
+  INTAKE_TARGET_DEFINITIONS.flatMap(definition => (
+    Array.isArray(definition.snapshotPaths)
+      ? definition.snapshotPaths.map(path => path.join('.'))
+      : []
+  ))
+);
+
 /**
  * Return the immutable universal Intake target definitions.
  *
@@ -122,6 +172,88 @@ export function listIntakeTargetFamilyDefinitions() {
  */
 export function getIntakeTargetFamilyDefinition(familyId) {
   return typeof familyId === 'string' ? (FAMILY_BY_ID.get(familyId) || null) : null;
+}
+
+/**
+ * Return whether an authored guidance target is part of the shared semantic namespace.
+ *
+ * Static/KT target IDs and family IDs are authorable. Runtime dynamic instance IDs
+ * such as possible-cause.<cause.id> are learner/workspace-specific and therefore
+ * cannot be authored into staged definitions.
+ *
+ * @param {unknown} value Candidate authored target ID.
+ * @returns {boolean} Whether the ID is safe for authored guidance.
+ */
+export function isAuthorableIntakeTargetId(value) {
+  if (typeof value !== 'string') return false;
+  const targetId = value.trim();
+  return DEFINITION_BY_ID.has(targetId) || FAMILY_BY_ID.has(targetId);
+}
+
+/**
+ * Validate target-bearing serialized Intake areas against the universal registry.
+ *
+ * Fields inside designated reasoning areas must either map to a registered
+ * snapshot target path or be an explicit reviewed workflow/infrastructure
+ * exclusion. KT rows and Possible Cause identities are checked separately.
+ *
+ * @param {object} [snapshot={}] Serialized/current/checkpoint Intake state.
+ * @returns {string[]} Actionable coverage errors; empty when covered.
+ */
+export function validateIntakeTargetCoverage(snapshot = {}) {
+  const errors = [];
+  const state = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)
+    ? snapshot
+    : {};
+
+  TARGET_BEARING_OBJECT_PATHS.forEach(path => {
+    const area = readPath(state, path);
+    if (area === undefined || area === null) return;
+    if (typeof area !== 'object' || Array.isArray(area)) {
+      errors.push(`${path.join('.')} must be an object for Intake target coverage`);
+      return;
+    }
+
+    Object.keys(area).forEach(field => {
+      const fullPath = [...path, field].join('.');
+      if (REGISTERED_SNAPSHOT_PATHS.has(fullPath) || REVIEWED_TARGET_COVERAGE_EXCLUSIONS.has(fullPath)) {
+        return;
+      }
+      errors.push(
+        `${fullPath} is inside a target-bearing Intake area but has no stable target definition or reviewed exclusion`
+      );
+    });
+  });
+
+  const rows = Array.isArray(state.table) ? state.table : [];
+  rows.forEach((row, index) => {
+    if (!row || typeof row !== 'object' || row.band) return;
+    const questionId = typeof row.questionId === 'string' ? row.questionId.trim() : '';
+    if (!questionId || !DEFINITION_BY_ID.has(`kt.${questionId}`)) {
+      errors.push(
+        `table[${index}].questionId must resolve to a registered KT Intake target`
+      );
+    }
+  });
+
+  const dynamicIds = new Set();
+  const causes = Array.isArray(state.causes) ? state.causes : [];
+  causes.forEach((cause, index) => {
+    const targetId = possibleCauseTargetId(cause?.id);
+    if (!targetId) {
+      errors.push(
+        `causes[${index}].id must be a supported persisted Possible Cause lifecycle ID`
+      );
+      return;
+    }
+    if (dynamicIds.has(targetId)) {
+      errors.push(`causes[${index}].id duplicates dynamic Intake target ${targetId}`);
+      return;
+    }
+    dynamicIds.add(targetId);
+  });
+
+  return errors;
 }
 
 function isLowerAlphaNumeric(character) {
