@@ -8,6 +8,7 @@ import { JSDOM } from 'jsdom';
 
 import {
   STUDENT_EXERCISE_ENDPOINT,
+  STUDENT_EXERCISE_READY_ENDPOINT,
   createStudentExerciseReferenceController
 } from '../src/classroomExerciseStudent.js';
 
@@ -27,6 +28,8 @@ function payload({
   editing = true,
   stageTitle = 'Clarify the case',
   objective = 'Capture the initial situation.',
+  readiness = null,
+  assignment = { id: 'workspace-1', kind: 'group', label: 'Team Alpha' },
   content = [
     {
       stageId: 'stage-1',
@@ -44,7 +47,7 @@ function payload({
   return {
     class: { id: 'class-1', title: 'PSDM Class' },
     participant: { id: 'participant-1', displayName: 'Alex' },
-    assignment: { id: 'workspace-1', kind: 'group', label: 'Team Alpha' },
+    assignment,
     exercise: {
       id: 'exercise-1',
       caseStudyId: 'protected-case-id',
@@ -64,7 +67,7 @@ function payload({
         studentObjective: objective
       },
       releasedContent: content,
-      readiness: null,
+      readiness,
       futureStage: {
         title: 'DO NOT SHOW FUTURE STAGE'
       },
@@ -235,5 +238,151 @@ test('Student reference clears exercise content immediately on session disconnec
   assert.equal(controller.getState().exercise, null);
   assert.equal(dom.window.document.getElementById('studentCaseReference').hidden, true);
   assert.equal(dom.window.document.body.classList.contains('student-case-reference-visible'), false);
+  controller.destroy();
+});
+
+
+test('Student can mark Ready and Resume working with only the stable class-session capability', async () => {
+  dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  const requests = [];
+  let ready = false;
+  const controller = createStudentExerciseReferenceController({
+    documentRef: dom.window.document,
+    windowRef: dom.window,
+    fetchImpl: async (url, options) => {
+      requests.push([url, options]);
+      if (url === STUDENT_EXERCISE_ENDPOINT) {
+        return response(200, payload({
+          readiness: ready
+            ? {
+                stageId: 'stage-1',
+                readyForDebrief: true,
+                readyAt: '2099-12-31T23:30:00.000Z',
+                readyWorkspaceRevision: 7
+              }
+            : null
+        }));
+      }
+      if (url === STUDENT_EXERCISE_READY_ENDPOINT) {
+        const body = JSON.parse(options.body);
+        ready = body.ready;
+        return response(200, {
+          assignment: { id: 'workspace-1', kind: 'group', label: 'Team Alpha' },
+          readiness: {
+            stageId: 'stage-1',
+            readyForDebrief: ready,
+            readyAt: ready ? '2099-12-31T23:30:00.000Z' : null,
+            readyWorkspaceRevision: ready ? 7 : null
+          },
+          changed: true
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    },
+    setTimeoutImpl: () => 1,
+    clearTimeoutImpl: () => {}
+  });
+
+  assert.equal(await controller.connectStudent(TOKEN), true);
+  const readinessPanel = dom.window.document.getElementById('studentCaseReferenceReadiness');
+  const status = dom.window.document.getElementById('studentCaseReferenceReadinessStatus');
+  const button = dom.window.document.getElementById('studentCaseReferenceReadyBtn');
+  assert.equal(readinessPanel.hidden, false);
+  assert.equal(status.textContent, 'Working');
+  assert.equal(button.textContent, 'Mark Ready');
+  assert.equal(button.getAttribute('aria-pressed'), 'false');
+
+  assert.equal(await controller.setReadiness(true), true);
+  assert.equal(status.textContent, 'Ready for debrief · Intake revision 7');
+  assert.equal(button.textContent, 'Resume working');
+  assert.equal(button.getAttribute('aria-pressed'), 'true');
+
+  const readyRequest = requests.find(([url]) => url === STUDENT_EXERCISE_READY_ENDPOINT);
+  assert.ok(readyRequest);
+  assert.equal(readyRequest[1].method, 'PUT');
+  assert.equal(readyRequest[1].headers.Authorization, `Bearer ${TOKEN}`);
+  assert.deepEqual(JSON.parse(readyRequest[1].body), { ready: true });
+  assert.equal(readyRequest[1].body.includes('workspace'), false);
+  assert.equal(JSON.stringify(controller.getState()).includes(TOKEN), false);
+
+  assert.equal(await controller.setReadiness(false), true);
+  assert.equal(status.textContent, 'Working');
+  assert.equal(button.textContent, 'Mark Ready');
+  assert.equal(button.getAttribute('aria-pressed'), 'false');
+
+  const readyBodies = requests
+    .filter(([url]) => url === STUDENT_EXERCISE_READY_ENDPOINT)
+    .map(([, options]) => JSON.parse(options.body));
+  assert.deepEqual(readyBodies, [{ ready: true }, { ready: false }]);
+
+  controller.destroy();
+});
+
+test('Student readiness 409 refreshes authoritative assignment and does not replay stale intent', async () => {
+  dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  const requests = [];
+  let exerciseReads = 0;
+  const controller = createStudentExerciseReferenceController({
+    documentRef: dom.window.document,
+    windowRef: dom.window,
+    fetchImpl: async (url, options) => {
+      requests.push([url, options]);
+      if (url === STUDENT_EXERCISE_READY_ENDPOINT) {
+        return response(409, {
+          error: 'Student assignment changed. Refresh and retry.'
+        });
+      }
+      if (url === STUDENT_EXERCISE_ENDPOINT) {
+        exerciseReads += 1;
+        return response(200, exerciseReads === 1
+          ? payload()
+          : payload({
+              assignment: null,
+              readiness: null
+            }));
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    },
+    setTimeoutImpl: () => 1,
+    clearTimeoutImpl: () => {}
+  });
+
+  assert.equal(await controller.connectStudent(TOKEN), true);
+  assert.equal(await controller.setReadiness(true), false);
+
+  const readyRequests = requests.filter(([url]) => url === STUDENT_EXERCISE_READY_ENDPOINT);
+  assert.equal(readyRequests.length, 1, 'stale Ready intent is never replayed');
+  assert.equal(exerciseReads, 2, '409 is followed by exactly one authoritative exercise refresh');
+  assert.equal(controller.getState().assignment, null);
+  assert.equal(dom.window.document.getElementById('studentCaseReferenceReadiness').hidden, true);
+  assert.equal(dom.window.document.getElementById('studentCaseReferenceReadyBtn').hidden, true);
+
+  controller.destroy();
+});
+
+test('Student readiness controls are unavailable outside active work', async () => {
+  dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  const controller = createStudentExerciseReferenceController({
+    documentRef: dom.window.document,
+    windowRef: dom.window,
+    fetchImpl: async () => response(200, payload({
+      stagePhase: 'debrief',
+      editing: false,
+      readiness: {
+        stageId: 'stage-1',
+        readyForDebrief: true,
+        readyAt: '2099-12-31T23:30:00.000Z',
+        readyWorkspaceRevision: 4
+      }
+    })),
+    setTimeoutImpl: () => 1,
+    clearTimeoutImpl: () => {}
+  });
+
+  await controller.connectStudent(TOKEN);
+  assert.equal(dom.window.document.getElementById('studentCaseReferenceReadiness').hidden, true);
+  assert.equal(dom.window.document.getElementById('studentCaseReferenceReadyBtn').hidden, true);
+  assert.equal(await controller.setReadiness(false), false);
+
   controller.destroy();
 });
