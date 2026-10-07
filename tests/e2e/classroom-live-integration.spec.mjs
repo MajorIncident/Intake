@@ -242,8 +242,8 @@ test('Instructor compares immutable debrief checkpoint with current live Intake'
 
   try {
     await startFresh(instructor);
-    await instructor.getByRole('button', { name: /Run a class/ }).click();
-    await instructor.locator('#instructorClassTitle').fill('Integrated Browser Classroom');
+    await instructor.getByRole('button', { name: /Teach a class/ }).click();
+    await instructor.getByLabel('Class title').fill('Integrated Browser Classroom');
     await instructor.getByRole('button', { name: 'Start class' }).click();
     await expect(instructor.locator('#instructorClassDashboard')).toBeVisible();
 
