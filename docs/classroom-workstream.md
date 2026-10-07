@@ -31,7 +31,7 @@ Current product priority is **#320 — join sharing and compact mobile workspace
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
 | Universal Intake target identity | #318 | Planned | Open | Shared target contract for coaching, future staged guidance, and #319; template-independent |
 | Class debrief comparison | #319 | Planned after #318 | Open | Template-independent cross-team checkpoint/live comparison using stable target IDs |
-| Join/mobile polish | #320 | **Active — 320A + 320B complete** | PR #324 / `feature/classroom-join-mobile-polish` | Safe join link, native share, and local QR green; 320C compact mobile chrome next |
+| Join/mobile polish | #320 | **Active — 320A/B/C complete** | PR #324 / `feature/classroom-join-mobile-polish` | Join sharing + compact mobile chrome green; 320D final acceptance/publish readiness next |
 
 ## Current architecture decisions
 
@@ -77,45 +77,52 @@ Product/architecture decision:
 
 ## Last completed action
 
-Completed and validated **#320B2 — local/in-app QR rendering** on implementation head `22b370dc3f29ce70c8fabb024bec8fb7c5979ae0`.
+Completed and validated **#320C — compact mobile workspace chrome** on implementation head `18c2047556c1bd92a46a6e1d00714f5ebd935621`.
 
-B2 behavior:
-- `src/classroomJoinQr.js` is a self-contained in-browser QR Model 2 renderer; it makes no remote QR/image/tracking request;
-- QR payload comes exclusively from `buildClassroomJoinUrl()`, so QR, native share, and copy all use the same fragment-only human-code URL;
-- the fixed auditable profile is Version 5-L, byte mode, with a 106-byte payload limit; unsupported longer URLs fail closed to Share/Copy guidance;
-- Instructor **Show QR / Hide QR** renders a local SVG beneath the existing human join code;
-- the QR panel visibly repeats the human class code and provides a screen-reader label;
-- raw join URL is not stored in SVG/DOM attributes, Intake persistence, summaries, exports, or resume state;
-- native Web Share and copy fallback from B1 are unchanged.
+320C behavior:
+- Student Class context defaults compact at `max-width:700px`, retains class title plus workspace/student summary, and expands with one accessible action;
+- Student Case reference keeps the existing presentation-only mobile collapse contract;
+- Team/people collaboration workspace now defaults compact, retains team name plus people-count summary, and expands without mutating collaboration token/revision/team/presence/snapshot state;
+- Notes now separates persisted desktop `notesWorkspace.open` from mobile presentation expansion; mobile open/collapse does not call persistence and returning to desktop restores the serialized preference;
+- Instructor Class rail keeps its existing presentation-only compact behavior;
+- local QR/share controls remain usable inside the expanded mobile Instructor rail;
+- Student Team/Notes workspace dock remains in normal document flow on mobile, avoiding competing fixed overlays and nested modal scroll systems;
+- desktop behavior and Classroom/session authorization contracts are unchanged.
 
-Validation on `22b370d...`:
-- repository quality: **322 tests / 321 pass / 0 fail / 1 intentional skip**;
+Mobile acceptance on `18c2047...`:
+- Student Class / Case / Team / Notes all start compact and remain one-action accessible;
+- Student mobile dock is `position: static` and document horizontal overflow is rejected;
+- Instructor mobile Class rail expands, QR stays within viewport, and staged console remains operable;
+- Standalone mobile Notes presentation does not rewrite the serialized Intake state and remains compact after reload;
+- serious/critical Axe checks are clean.
+
+Validation:
+- repository quality: **325 tests / 324 pass / 0 fail / 1 intentional skip**;
 - required Browser E2E: **29 passed / 11 intentional project-scoped skips / 0 failed**;
-- CI: **green**;
-- CodeQL: **green**;
-- Dependency Review: **green**;
-- Template Manifest Guard: **green**.
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
 
-Earlier completed #320 checkpoints remain:
-- #320A safe join-link/prefill green on `bf7c018...`;
-- #320B1 native Web Share/copy fallback green on `ea2e6b6...`.
+Earlier #320 green checkpoints remain:
+- #320A safe join-link/prefill: `bf7c018...`;
+- #320B1 native Web Share/copy fallback: `ea2e6b6...`;
+- #320B2 local QR: `22b370d...`.
 
-PR #324 contains mini-milestone comments before/after long validation and issue #320 requires that discipline for all remaining slices.
+PR #324 contains mini milestones for inventory/design, C1, C2, C3, and validation.
 
 ## Next recommended action
 
-Implement **#320C — compact mobile workspace chrome**.
+Perform **#320D — final acceptance, cleanup, and publish readiness**.
 
-Required next slice:
-1. inventory the current narrow-screen behavior of Notes, Student Case reference, Student class/team context, and Instructor class rail before changing CSS/DOM;
-2. design one consistent compact-launcher pattern rather than four unrelated floating surfaces;
-3. keep secondary surfaces default-collapsed on narrow screens when practical, but always one action away and keyboard/screen-reader discoverable;
-4. prevent fixed-surface overlap, nested scroll traps, and excessive vertical occupation of the Intake;
-5. preserve desktop behavior, Notes persistence, Student staged-content disclosure, frozen-debrief read-only projection, Instructor observer/coaching behavior, and join QR/share controls;
-6. add focused mobile Playwright coverage and serious/critical axe checks for Student and Instructor states;
-7. leave mini milestones after inventory/design, implementation, and validation before starting 320D.
+Required final slice:
+1. audit the complete `main...feature/classroom-join-mobile-polish` diff rather than only the latest commits;
+2. re-check the #320 security boundary: join URL/QR/native-share carry only the human code; no bearer capability enters URLs, QR markup, logs, Intake persistence, summaries, exports, or resume envelopes;
+3. re-check mobile presentation isolation: Student Class, Team, Case, Notes, and Instructor rail collapse state must not alter domain/session/persisted Intake state beyond the pre-existing desktop Notes preference;
+4. verify desktop behavior, Standalone collaboration links, Student admission/resume/reassignment, staged freeze/readiness, Instructor observer/coaching, QR/share, Notes editing, and browser accessibility remain additive;
+5. reconcile README, roadmap, workstream, scoped AGENTS/commenting docs, PR #324, and issue #320 with the final behavior;
+6. validate the final documentation head through repository quality, required Browser E2E, CodeQL, Dependency Review, and Template Manifest Guard;
+7. if fully green with no unresolved review/security threads, mark PR #324 ready for review — **do not merge automatically unless explicitly requested**;
+8. leave a final mini milestone with exact head/evidence and the next roadmap action after #320.
 
-**Not started yet:** 320C mobile chrome; 320D final acceptance/production verification.
+**Not started yet:** 320D audit/publish-readiness work.
 
 ## Completed #300 implementation
 
