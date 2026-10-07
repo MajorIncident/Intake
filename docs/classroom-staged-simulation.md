@@ -990,10 +990,25 @@ Validation baseline before documentation-only reconciliation:
 
 Tranche 10 is functionally complete. Remaining gate is repository validation of the documentation-reconciled head.
 
-## Exact next implementation action
+## Closeout and next implementation action
 
-Validate the final Tranche 10 documentation head through repository quality, required Browser E2E, CodeQL, Dependency Review, and Template Manifest Guard. If all are green:
-- synchronize PR #315 and issue #313 with the final head/evidence;
-- mark PR #315 **ready for review**;
-- leave issue #313 open until merge unless repository convention dictates otherwise;
-- do **not** merge automatically.
+#313 / PR #315 completes the staged-simulation **engine and secure facilitation workflow**. It intentionally does not author guessed production case stages.
+
+Known remaining product gaps are now tracked separately:
+- **#316** — protected staged case assets + rich Student rendering. Immediate blocker: the schema supports `image`, `table`, and `document-page`, while the current Student projection/rendering path keeps only `id/kind/title/body`.
+- **#317** — source-faithful first production staged KT Case Study, after #316.
+- **#318** — runtime use of `intakeTargetIds` plus stable identity/coaching for dynamic Possible Cause cards.
+- **#319** — Instructor cross-team debrief comparison/progress view built on immutable checkpoints/live observation.
+- **#320** — share/QR join convenience and compact mobile Notes/Class/Case chrome.
+
+After PR #315 merges, the exact next implementation action is **#316**.
+
+Do not begin production official-case staging as a shortcut. Preserve:
+- server-side progressive disclosure;
+- stable Student class-session authority for staged reads;
+- assignment/workspace authority for Intake edits;
+- no protected assets in public static output;
+- no exercise/capability state in Intake persistence/export/summary/URLs;
+- no Student access to future-stage/Instructor/exemplar content.
+
+#317 may inventory and map authoritative source material in parallel, but production-selectable staged content must wait for the secure rich-content path.
