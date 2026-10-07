@@ -481,7 +481,8 @@ export function createInstructorExerciseConsoleController({
         `Inspect ${item.workspaceLabel} checkpoint, revision ${item.workspaceRevision}`
       );
       inspect.textContent = 'Inspect checkpoint';
-      inspect.disabled = loading;
+      inspect.hidden = exercise.status === 'completed';
+      inspect.disabled = loading || exercise.status === 'completed';
       inspect.addEventListener('click', () => {
         void inspectCheckpoint(item.workspaceId);
       });
@@ -674,7 +675,7 @@ export function createInstructorExerciseConsoleController({
         return false;
       }
 
-      await Promise.resolve(onInspectCheckpoint({
+      const opened = await Promise.resolve(onInspectCheckpoint({
         workspace: {
           id: body.workspace.id,
           kind: body.workspace.kind,
@@ -687,6 +688,10 @@ export function createInstructorExerciseConsoleController({
           snapshot: body.checkpoint.snapshot
         }
       }));
+      if (opened === false) {
+        lastError = 'Could not display the captured checkpoint.';
+        return false;
+      }
       lastNotice = 'checkpoint opened';
       return true;
     } catch {
