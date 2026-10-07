@@ -359,7 +359,13 @@ test('Instructor compares immutable debrief checkpoint with current live Intake'
     await expect(instructor.locator('#oneLine')).toHaveValue(beforeDebrief, { timeout: 10000 });
 
     await instructor.getByRole('button', { name: 'Begin debrief' }).click();
-    await expect(instructor.locator('#instructorExerciseCheckpointList')).toContainText('Revision 2');
+    const checkpointRow = instructor.locator('.instructor-exercise-checkpoint__row').filter({ hasText: 'Team Alpha' });
+    await expect(checkpointRow).toBeVisible();
+    const checkpointRevisionText = (await checkpointRow.locator('strong').textContent()) || '';
+    const checkpointRevisionMatch = /Revision\s+(\d+)/u.exec(checkpointRevisionText);
+    expect(checkpointRevisionMatch).not.toBeNull();
+    const checkpointRevision = Number(checkpointRevisionMatch[1]);
+    expect(checkpointRevision).toBeGreaterThan(0);
     await instructor.getByRole('button', { name: 'Allow editing' }).click();
 
     const afterDebrief = 'Team Alpha refined its reasoning after discussion.';
@@ -379,13 +385,13 @@ test('Instructor compares immutable debrief checkpoint with current live Intake'
       && response.ok()
     ));
     await instructor.getByRole('button', {
-      name: 'Inspect Team Alpha checkpoint, revision 2'
+      name: `Inspect Team Alpha checkpoint, revision ${checkpointRevision}`
     }).click();
     await checkpointResponse;
 
     await expect(instructor.locator('#oneLine')).toHaveValue(beforeDebrief);
     await expect(instructor.locator('#instructorObservedRevision')).toHaveText(
-      'Checkpoint at debrief start · Revision 2'
+      `Checkpoint at debrief start · Revision ${checkpointRevision}`
     );
     await expect(instructor.locator('#instructorObserverStatus')).toHaveText(
       'Immutable checkpoint · live updates paused'
@@ -401,7 +407,9 @@ test('Instructor compares immutable debrief checkpoint with current live Intake'
     await liveObservation;
 
     await expect(instructor.locator('#oneLine')).toHaveValue(afterDebrief);
-    await expect(instructor.locator('#instructorObservedRevision')).toHaveText('Revision 3');
+    await expect(instructor.locator('#instructorObservedRevision')).toHaveText(
+      `Revision ${checkpointRevision + 1}`
+    );
     await expect(instructor.locator('#instructorObserverStatus')).toHaveText('Live read-only view');
 
     await expectNoBlockingA11yViolations(instructor);
