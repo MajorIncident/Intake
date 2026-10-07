@@ -910,18 +910,41 @@ Implementation spans `8d70e84...` through `50435c3...`.
 
 Validation status for the combined 7B/7C implementation is finalized on the documented head after repository/browser/security checks complete. Repository quality already passed on implementation head `50435c30e7d43f906eeff88d32265ba585fad079`.
 
+## Implementation checkpoint — Tranche 8A immutable checkpoint inspection versus current live work
+
+Checkpoint inspection contract:
+- normal Instructor `GET /api/classes/exercise` carries only checkpoint metadata: workspace identity, stage, captured workspace revision, and capture time; snapshot bytes are intentionally excluded;
+- explicit `GET /api/classes/exercise/checkpoint?workspaceId=<public UUID>` is Instructor-only, GET-only, current-exercise/current-stage debrief scoped, and definition-drift protected;
+- the server resolves class/exercise/workspace ownership from Instructor authority and never accepts a Student workspace capability as checkpoint authority;
+- the response returns exactly one immutable captured snapshot plus its captured collaboration revision; it never mints editable workspace authority and never writes or restores collaboration state;
+- `classroomExerciseInstructor.js` fetches checkpoint bytes only after an explicit **Inspect checkpoint** action and passes them transiently to the Instructor class controller; the snapshot never enters exercise controller public state or browser persistence;
+- `classroomInstructor.js` reuses the established read-only Intake projection for checkpoint evidence rather than maintaining a second renderer;
+- checkpoint display is unmistakably historical: **Checkpoint at debrief start · Revision N** with **Immutable checkpoint · live updates paused**;
+- entering checkpoint view pauses the live observer timer and current coaching projection; no Instructor coaching control is attached to historical checkpoint evidence;
+- **View current live Intake** performs a fresh existing observer read for the same workspace and restores current revision/coaching context;
+- choosing another workspace also exits checkpoint mode and opens that workspace's live observer;
+- checkpoint inspection never overwrites, merges, restores, or saves Student work and never reveals exemplar/model/future-stage material.
+
+Implementation spans `0ce4b8d...` through `8530128...`; browser-test isolation/stabilization continues through `04587bf558d370b740f6d7f5c9b31b4dae8f4404`.
+
+Focused regression covers explicit Instructor snapshot retrieval, metadata-only normal payloads, Student authority rejection, no checkpoint snapshot in exercise controller public state, paused live observation while inspecting, and explicit checkpoint -> current-live restoration. The integrated browser proof is separated from the existing four-browser lifecycle test so timeout or checkpoint failures remain attributable; both integrated tests share a deterministic fixture and therefore run serially within their file while the broader Playwright suite remains parallel.
+
+Tranche 8 is complete: immutable checkpoint capture already existed, protected current-stage Instructor facilitation is already presented separately from Student content, and 8A now provides historical-vs-live debrief inspection without replacing Student work with an exemplar.
+
+Validation baseline:
+- repository quality: **302 tests / 301 pass / 0 fail / 1 intentional skip**;
+- final required Browser E2E, CodeQL, Dependency Review, and Template Manifest Guard evidence is taken from the final documented PR head.
+
 ## Exact next implementation action
 
-Implement **Tranche 8A — Instructor immutable checkpoint inspection versus current live work**.
+Begin **Tranche 9A — integrated staged security / late-join / reassignment acceptance**.
 
 Required next slice:
-- checkpoint snapshots remain Instructor-authorized, class/workspace/stage scoped, memory-only, and excluded from Intake persistence/export/summary;
-- expose an explicit Instructor action from the current-stage debrief checkpoint list to inspect the immutable snapshot captured at debrief start;
-- reuse the existing read-only Intake rendering/observer surface instead of building a second form renderer;
-- clearly label **Checkpoint at debrief start · Revision N** versus **Current live Intake** so facilitation can compare pre-discussion reasoning with subsequent live changes;
-- inspecting a checkpoint must never overwrite, restore, merge, or mutate the live Student workspace and must not mint Student workspace authority;
-- preserve the existing live observer/coaching path and provide an explicit action back to current live observation;
-- do not reveal exemplar/model content, future-stage content, or another class/team's checkpoint;
-- add focused controller tests plus integrated browser coverage for checkpoint -> live switching and workspace isolation.
-
-Production official Case Study staging remains deferred until authoritative case pages/evidence/facilitation material is supplied and reviewed.
+- inventory existing #313 browser/API coverage first and add only missing acceptance assertions;
+- prove a late Student joining after exercise Start receives the represented **current stage**, not draft/future content;
+- prove Student reassignment during an active stage keeps class exercise stage constant while destination workspace Intake/readiness wins and old workspace authority stays revoked;
+- retain a direct server/browser assertion that frozen Student snapshot PUT is HTTP **423 `classroom-editing-locked`** with no collaboration revision mutation;
+- prove Student clients cannot obtain future-stage metadata/content, Instructor facilitation/model/exemplar material, or the complete protected Case Study payload through staged/full-payload routes;
+- verify staged Student/Instructor mobile surfaces remain operable and run serious/critical axe checks on the staged states that matter;
+- keep tests focused and deterministic rather than expanding one global end-to-end scenario;
+- production official Case Study staging remains deferred until authoritative instructional material is supplied and reviewed.
