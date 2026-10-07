@@ -904,6 +904,7 @@ export function createStudentClassroomController({
     liveEpoch += 1;
     stopLivePolling();
     disconnectWorkspace();
+    if (activeSession?.mode === 'live') onSessionDisconnected();
     restoreLocalRecovery({ clear: false });
   };
 
