@@ -424,7 +424,7 @@ test('Instructor compares immutable debrief checkpoint with current live Intake'
 
 test('Instructor share link opens normal Student admission with fragment-only human code', async ({ browser }, testInfo) => {
   test.setTimeout(45_000);
-  test.skip(testInfo.project.name === 'chromium-mobile', 'Join-link contract is browser-independent; mobile share/QR presentation is covered in later #320 tranches.');
+  test.skip(testInfo.project.name === 'chromium-mobile', 'Join-link/QR contract is covered on desktop; compact mobile presentation is covered in #320C.');
 
   const contextOptions = { baseURL: testInfo.project.use.baseURL };
   const instructorContext = await browser.newContext(contextOptions);
@@ -445,6 +445,16 @@ test('Instructor share link opens normal Student admission with fragment-only hu
 
     const joinCode = (await instructor.locator('#instructorJoinCode').textContent())?.trim() || '';
     expect(joinCode).toMatch(/^[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/u);
+
+    await instructor.getByRole('button', { name: 'Show QR' }).click();
+    await expect(instructor.locator('#instructorJoinQrPanel')).toBeVisible();
+    await expect(instructor.locator('#instructorJoinQrCode')).toHaveText(joinCode);
+    await expect(instructor.locator('#instructorJoinQrSvg')).toHaveAttribute('role', 'img');
+    await expect(instructor.locator('#instructorJoinQrSvg')).toHaveAttribute('aria-label', new RegExp(joinCode));
+    await expect(instructor.locator('#instructorJoinQrSvg path')).toHaveCount(1);
+    const qrMarkup = await instructor.locator('#instructorJoinQrSvg').evaluate(node => node.outerHTML);
+    expect(qrMarkup).not.toContain('https://');
+    expect(qrMarkup).not.toContain('workspace=');
 
     await instructor.getByRole('button', { name: 'Share class' }).click();
     const shareUrl = await instructor.evaluate(() => navigator.clipboard.readText());
