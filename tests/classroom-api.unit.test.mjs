@@ -1446,21 +1446,22 @@ test('Instructor debrief comparison returns projected evidence only and is GET-o
         }]
       };
     },
-    async getWorkspaceForObservation(_instructorHash, workspaceId) {
-      assert.equal(workspaceId, WORKSPACE_A_ID);
+    async listWorkspaceSnapshotsForInstructor() {
+      repositoryReads += 1;
       return {
-        workspace: {
-          internalId: 41,
-          id: WORKSPACE_A_ID,
-          kind: 'group',
-          label: 'Team Alpha'
-        }
+        snapshots: [{
+          workspaceId: WORKSPACE_A_ID,
+          workspaceRevision: 2,
+          updatedAt: '2026-10-07T18:01:00Z',
+          snapshot: { pre: { oneLine: 'Team Alpha current reasoning' } }
+        }]
       };
     },
-    async listFeedbackForInstructor(_instructorHash, workspaceId) {
-      assert.equal(workspaceId, WORKSPACE_A_ID);
+    async listFeedbackForClassInstructor() {
+      repositoryReads += 1;
       return {
         feedback: [{
+          workspaceId: WORKSPACE_A_ID,
           targetId: 'problem.one-line',
           status: 'meets-standard',
           note: 'Private coaching note must not enter aggregate comparison.',
@@ -1471,26 +1472,13 @@ test('Instructor debrief comparison returns projected evidence only and is GET-o
       };
     },
     async getCurrentExerciseForInstructor() {
+      repositoryReads += 1;
       return null;
-    }
-  };
-  const workspaceRepository = {
-    async observeById(internalId) {
-      assert.equal(internalId, 41);
-      return {
-        revision: 2,
-        updatedAt: '2026-10-07T18:01:00Z',
-        snapshot: {
-          pre: { oneLine: 'Team Alpha current reasoning' }
-        },
-        participants: []
-      };
     }
   };
 
   const handler = classDebriefHandler({
-    getRepository: async () => repository,
-    getWorkspaceRepo: async () => workspaceRepository
+    getRepository: async () => repository
   });
 
   const result = response();
@@ -1519,6 +1507,7 @@ test('Instructor debrief comparison returns projected evidence only and is GET-o
     assert.equal(keys.has(forbidden), false, `aggregate response must not expose ${forbidden}`);
   }
 
+  const readsBeforeWriteAttempt = repositoryReads;
   const writeAttempt = response();
   await handler({
     method: 'POST',
@@ -1527,7 +1516,7 @@ test('Instructor debrief comparison returns projected evidence only and is GET-o
   }, writeAttempt);
   assert.equal(writeAttempt.statusCode, 405);
   assert.equal(writeAttempt.headers.Allow, 'GET');
-  assert.equal(repositoryReads, 1, 'write rejection occurs before repository access');
+  assert.equal(repositoryReads, readsBeforeWriteAttempt, 'write rejection occurs before repository access');
 });
 
 test('Instructor debrief comparison composes current staged readiness and immutable checkpoint projections', async () => {
@@ -1559,17 +1548,25 @@ test('Instructor debrief comparison composes current staged readiness and immuta
         ]
       };
     },
-    async getWorkspaceForObservation(_instructorHash, workspaceId) {
+    async listWorkspaceSnapshotsForInstructor() {
       return {
-        workspace: {
-          internalId: workspaceId === WORKSPACE_A_ID ? 41 : 42,
-          id: workspaceId,
-          kind: 'group',
-          label: workspaceId === WORKSPACE_A_ID ? 'Team Alpha' : 'Team Beta'
-        }
+        snapshots: [
+          {
+            workspaceId: WORKSPACE_A_ID,
+            workspaceRevision: 7,
+            updatedAt: '2026-10-07T18:01:00Z',
+            snapshot: { pre: { oneLine: 'Team Alpha live reasoning' } }
+          },
+          {
+            workspaceId: WORKSPACE_B_ID,
+            workspaceRevision: 4,
+            updatedAt: '2026-10-07T18:01:00Z',
+            snapshot: { pre: { oneLine: 'Team Beta live reasoning' } }
+          }
+        ]
       };
     },
-    async listFeedbackForInstructor() {
+    async listFeedbackForClassInstructor() {
       return { feedback: [] };
     },
     async getCurrentExerciseForInstructor() {
@@ -1594,7 +1591,7 @@ test('Instructor debrief comparison composes current staged readiness and immuta
         }]
       };
     },
-    async listExerciseCheckpointsForInstructor(_instructorHash, exerciseId, stageId) {
+    async listExerciseCheckpointSnapshotsForInstructor(_instructorHash, exerciseId, stageId) {
       assert.equal(exerciseId, 'exercise-1');
       assert.equal(stageId, 'stage-1');
       return {
@@ -1602,43 +1599,15 @@ test('Instructor debrief comparison composes current staged readiness and immuta
           workspaceId: WORKSPACE_A_ID,
           stageId: 'stage-1',
           workspaceRevision: 5,
-          capturedAt: '2026-10-07T17:56:00Z'
-        }]
-      };
-    },
-    async getExerciseCheckpointForInstructor(_instructorHash, exerciseId, stageId, workspaceId) {
-      assert.equal(exerciseId, 'exercise-1');
-      assert.equal(stageId, 'stage-1');
-      assert.equal(workspaceId, WORKSPACE_A_ID);
-      return {
-        checkpoint: {
-          stageId: 'stage-1',
-          workspaceRevision: 5,
           capturedAt: '2026-10-07T17:56:00Z',
           snapshot: { pre: { oneLine: 'Checkpoint reasoning' } }
-        }
-      };
-    }
-  };
-  const workspaceRepository = {
-    async observeById(internalId) {
-      return {
-        revision: internalId === 41 ? 7 : 4,
-        updatedAt: '2026-10-07T18:01:00Z',
-        snapshot: {
-          pre: {
-            oneLine: internalId === 41
-              ? 'Team Alpha live reasoning'
-              : 'Team Beta live reasoning'
-          }
-        }
+        }]
       };
     }
   };
 
   const handler = classDebriefHandler({
-    getRepository: async () => repository,
-    getWorkspaceRepo: async () => workspaceRepository
+    getRepository: async () => repository
   });
   const result = response();
   await handler({
@@ -1666,8 +1635,10 @@ test('Instructor debrief comparison composes current staged readiness and immuta
 });
 
 test('non-Instructor classroom capabilities cannot read the class debrief comparison', async () => {
-  const classrooms = createClassroomRepository();
   const workspaceRepo = createWorkspaceRepository();
+  const classrooms = createClassroomRepository({
+    observeWorkspaceById: workspaceId => workspaceRepo.observeById(workspaceId)
+  });
 
   await classrooms.createClass({
     publicId: CLASS_A_ID,
@@ -1690,8 +1661,7 @@ test('non-Instructor classroom capabilities cannot read the class debrief compar
   });
 
   const handler = classDebriefHandler({
-    getRepository: async () => classrooms,
-    getWorkspaceRepo: async () => workspaceRepo
+    getRepository: async () => classrooms
   });
 
   for (const token of ['C', 'X', 'P']) {
