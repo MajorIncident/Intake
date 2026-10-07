@@ -44,6 +44,10 @@
       "destination": "/api/classroom?__classroomRoute=observe"
     },
     {
+      "source": "/api/classes/debrief",
+      "destination": "/api/classroom?__classroomRoute=debrief"
+    },
+    {
       "source": "/api/classes/coaching",
       "destination": "/api/classroom?__classroomRoute=coaching"
     },
