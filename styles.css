@@ -3450,7 +3450,7 @@ body[data-experience-role="instructor"].instructor-class-connected.instructor-ra
 .instructor-debrief-comparison__subheading strong{color:var(--ink-strong);font-size:12px;}
 .instructor-debrief-comparison__subheading span{color:var(--muted);font-size:10px;}
 .instructor-debrief-progress{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:7px;margin-top:8px;}
-.instructor-debrief-progress__row{appearance:none;width:100%;display:flex;align-items:center;justify-content:space-between;gap:9px;padding:9px 10px;border:1px solid var(--line);border-radius:11px;background:var(--panel-muted);color:var(--ink);text-align:left;cursor:pointer;}
+.instructor-debrief-progress__row{appearance:none;box-sizing:border-box;width:100%;max-width:100%;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:9px;padding:9px 10px;border:1px solid var(--line);border-radius:11px;background:var(--panel-muted);color:var(--ink);text-align:left;cursor:pointer;}
 .instructor-debrief-progress__row:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));}
 .instructor-debrief-progress__row:focus-visible{outline:none;box-shadow:0 0 0 3px var(--focus-ring);}
 .instructor-debrief-progress__identity{min-width:0;display:flex;flex-direction:column;gap:1px;}
