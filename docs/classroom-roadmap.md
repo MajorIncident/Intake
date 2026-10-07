@@ -223,7 +223,7 @@ The eight-slice #288 program establishes the secure Classroom foundation; it doe
 
 #312 is complete and merged as PR #314 at `b141d55050207e4cf7ce842a4452a220a5268968`: Start Class, one human Student join code, Waiting/late roster, stable Student class sessions, accessible team creation/assignment, safe reassignment/unassign with stale-authority cutoff, observer/coaching integration, and integrated multi-browser acceptance are the live substrate.
 
-#313 is now active on `feature/classroom-staged-simulation`, based directly on that merge. Its canonical contract is `docs/classroom-staged-simulation.md`. The first tranche is architecture/governance only; staged Case Study authoring schema comes next, before exercise persistence/API/UI.
+#313 is implemented on `feature/classroom-staged-simulation`, based directly on the #312 merge. Its canonical contract is `docs/classroom-staged-simulation.md`. Tranches 1–9 are complete: server-only staged authoring schema, additive exercise persistence, Instructor/Student APIs, server-enforced Student freeze, Instructor orchestration console, Student case reference/readiness, immutable checkpoint inspection, and integrated browser/security/mobile/accessibility acceptance. Production official Case Study stage definitions remain intentionally deferred; the branch is in Tranche 10 final documentation/security/merge-readiness audit.
 
 ## Stacked PR rules
 
