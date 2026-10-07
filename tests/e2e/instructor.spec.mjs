@@ -217,6 +217,24 @@ test('mobile Instructor can open and run the staged exercise console accessibly'
   await page.getByRole('button', { name: 'Open class panel' }).click();
   await expect(page.locator('#instructorClassDashboard')).not.toHaveClass(/is-collapsed/);
 
+  await page.getByRole('button', { name: 'Show QR' }).click();
+  await expect(page.locator('#instructorJoinQrPanel')).toBeVisible();
+  await expect(page.locator('#instructorJoinQrSvg')).toHaveAttribute('role', 'img');
+  const qrLayout = await page.locator('#instructorJoinQrPanel').evaluate(node => {
+    const box = node.getBoundingClientRect();
+    return {
+      right: box.right,
+      left: box.left,
+      viewportWidth: window.innerWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    };
+  });
+  expect(qrLayout.left).toBeGreaterThanOrEqual(0);
+  expect(qrLayout.right).toBeLessThanOrEqual(qrLayout.viewportWidth + 1);
+  expect(qrLayout.scrollWidth).toBeLessThanOrEqual(qrLayout.viewportWidth + 1);
+  await page.getByRole('button', { name: 'Hide QR' }).click();
+  await expect(page.locator('#instructorJoinQrPanel')).toBeHidden();
+
   await expect(page.locator('#instructorExerciseConsole')).toBeVisible();
   await expect(page.locator('#instructorExerciseStatus')).toHaveText('1 staged Case Study available');
   await page.getByLabel('Staged Case Study').selectOption('browser-staged-simulation');
