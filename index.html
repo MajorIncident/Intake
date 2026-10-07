@@ -600,16 +600,30 @@ Anchors present:
           <div class="instructor-debrief-progress" id="instructorDebriefProgressList"></div>
         </section>
 
+        <section class="instructor-debrief-recommendations" id="instructorDebriefRecommendations" aria-labelledby="instructorDebriefRecommendationsTitle" data-persistence="local-only" data-summary="exclude" hidden>
+          <div class="instructor-debrief-comparison__subheading">
+            <strong id="instructorDebriefRecommendationsTitle">Stage focus</strong>
+            <span>Recommended, not required</span>
+          </div>
+          <div class="instructor-debrief-recommendations__list" id="instructorDebriefRecommendationList"></div>
+        </section>
+
         <div class="instructor-debrief-comparison__target">
           <label for="instructorDebriefTargetSelect" data-persistence="local-only" data-summary="exclude">Compare Intake target</label>
           <select id="instructorDebriefTargetSelect" data-persistence="local-only" data-summary="exclude"></select>
-          <small>Current live evidence only. Open a workspace for the existing read-only Intake and coaching view.</small>
+          <small id="instructorDebriefTargetHelp">Compare current live evidence. Stage focus suggestions never hide or score other Intake targets.</small>
         </div>
 
         <section class="instructor-debrief-comparison__evidence" aria-labelledby="instructorDebriefComparisonTitle">
           <div class="instructor-debrief-comparison__subheading">
             <strong id="instructorDebriefComparisonTitle">Selected Intake target</strong>
-            <span>Live evidence</span>
+            <div class="instructor-debrief-comparison__source">
+              <span id="instructorDebriefEvidenceSourceLabel">Current live evidence</span>
+              <div class="instructor-debrief-mode" id="instructorDebriefEvidenceMode" role="group" aria-label="Comparison evidence source" data-persistence="local-only" data-summary="exclude" hidden>
+                <button type="button" class="instructor-debrief-mode__button" id="instructorDebriefCurrentBtn" aria-pressed="true" data-persistence="local-only" data-summary="exclude">Current</button>
+                <button type="button" class="instructor-debrief-mode__button" id="instructorDebriefCheckpointBtn" aria-pressed="false" data-persistence="local-only" data-summary="exclude">Checkpoint</button>
+              </div>
+            </div>
           </div>
           <div class="instructor-debrief-matrix" id="instructorDebriefMatrix"></div>
         </section>
