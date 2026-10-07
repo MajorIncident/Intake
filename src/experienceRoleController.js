@@ -10,11 +10,13 @@
 
 import { STORAGE_KEY as INTAKE_STORAGE_KEY } from './storage.js';
 import {
+  EXPERIENCE_ROLE_IDS,
   LEGACY_DEFAULT_EXPERIENCE_ROLE,
   getExperienceRoleDefinition,
   isExperienceSurfaceVisible,
   normalizeExperienceRole
 } from './experienceRoles.js';
+import { readClassroomJoinIntent } from './classroomJoinLink.js';
 
 /** Dedicated local-only role preference, never part of serialized Intake state. */
 export const EXPERIENCE_ROLE_STORAGE_KEY = 'kt-experience-role-v1';
@@ -467,6 +469,15 @@ export function initExperienceRoleController({
     });
     closeExperienceRoleChooser({ force: true });
     return collaborationRole;
+  }
+
+  if (readClassroomJoinIntent(locationRef)) {
+    const studentRole = applyExperienceRole(EXPERIENCE_ROLE_IDS.STUDENT, {
+      persist: true,
+      announce: false
+    });
+    closeExperienceRoleChooser({ force: true });
+    return studentRole;
   }
 
   const storedRole = readExperienceRolePreference(storageRef);
