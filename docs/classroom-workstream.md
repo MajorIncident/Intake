@@ -6,22 +6,32 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-#294 is merged and production READY. #295 Protected Case Study delivery is active on `feature/classroom-protected-cases`.
+The secure Classroom foundation (#288), live-class management (#312), and staged-simulation engine (#313) are **merged and production-published**. The Vercel function-budget blocker #321 was resolved by PR #322; exact merged-main SHA `21bff1d1c5a70caff0aa94aadd58abcb0644f397` reached production **READY** with a clean runtime-error scan.
+
+The immediate next implementation issue is **#316 — protected staged case assets and rich Student case rendering**. Do not author the first production staged KT Case Study (#317) until #316 provides the secure rich-content path.
 
 ## Program issues
 
 | Slice | Issue | Status | PR / branch | Notes |
 | --- | --- | --- | --- | --- |
-| Program | #288 | Open | #297 merged | Architecture/governance foundation is now on `main` |
-| Experience role | #289 | Complete | PR #298 / `feature/classroom-experience-roles` | Runtime/tests/docs complete; canonical CI, dependency review, template guard, and CodeQL green |
-| Templates / Case Studies | #290 | Complete | PR #299 / `feature/classroom-resource-split` | 171 tests: 170 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
-| Class domain/API | #291 | Complete | PR #300 / `feature/classroom-domain-api` | Combined #290+#291 head: 183 tests, 182 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
-| Student join/resume | #292 | Complete | PR #302 / `feature/classroom-student-experience` | 194 tests: 193 pass, 0 fail, 1 skip; CI/CodeQL/dependency/template guard green |
-| Instructor observer | #293 | Complete | PR #305 merged | 208 tests: 207 pass, 0 fail, 1 skip; repository gates green |
-| Coaching | #294 | Complete | PR #306 merged | 224 tests: 223 pass, 0 fail, 1 skip; all repository gates green; production deployment READY |
-| Protected cases | #295 | Complete | PR #307 merged | Protected catalog/payload delivery, minimal `dist/` public boundary, deployment controls, and production verification complete |
-| Browser E2E/CI | #296 | In progress — final stabilization | draft PR #308 / `feature/classroom-browser-e2e` | Critical Standalone/Student/Instructor/security journeys complete; Playwright now runs inside required `tests` CI gate |
-| Browser test foundation | #279 | In progress — final stabilization via #296 | draft PR #308 | Deterministic local HTTP + Playwright/axe complete; focused Browser E2E workflow retained as manual diagnostic |
+| Program | #288 | Complete | PR #297 merged | Foundation program closed; follow-ons tracked separately |
+| Experience role | #289 | Complete | PR #298 merged | Runtime/tests/docs complete |
+| Templates / Case Studies | #290 | Complete | PR #299 merged | Resource semantics complete |
+| Class domain/API | #291 | Complete | PR #300 merged | Class/workspace authorization complete |
+| Student join/resume | #292 | Complete | PR #302 merged | Student admission/resume complete |
+| Instructor observer | #293 | Complete | PR #305 merged | Server-enforced read-only observation complete |
+| Coaching | #294 | Complete | PR #306 merged | Separate coaching persistence/UI complete |
+| Protected cases | #295 | Complete | PR #307 merged | Protected catalog/payload + minimal public `dist/` boundary complete |
+| Browser E2E/CI | #296 | Complete | PR #308 merged | Required Playwright/axe regression is inside CI |
+| Browser test foundation | #279 | Complete | PR #308 merged | Deterministic browser fixture and accessibility foundation complete |
+| Live class management | #312 | Complete / published | PR #314 merged | Start Class, one-code admission, Waiting/late join, teams, reassignment, observer/coaching |
+| Staged simulation | #313 | Complete / published | PR #315 merged | Staged release, Ready/debrief/freeze/checkpoints/advance/complete |
+| Publish recovery | #321 | Complete | PR #322 merged | Vercel function count consolidated to 5/12; exact-main production READY |
+| Rich staged assets | #316 | **Next** | Open | Secure protected image/table/document-page delivery + Student rendering |
+| First production staged case | #317 | Blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
+| Stage-linked Intake guidance | #318 | Open | Open | Runtime `intakeTargetIds` + dynamic Possible Cause coaching identity |
+| Class debrief comparison | #319 | Open | Open | Cross-team checkpoint/live comparison; benefits from #318 target identity |
+| Join/mobile polish | #320 | Open | Open | QR/share convenience + compact Notes/Class/Case mobile chrome |
 
 ## Current architecture decisions
 
@@ -38,7 +48,7 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Cold restart checklist
 
-1. Inspect current `main` HEAD and all open PRs/issues matching #288–#296 and #279.
+1. Inspect current `main` HEAD and open Classroom follow-on issues #316–#320. Also inspect any newer Classroom/deployment blocker before creating work.
 2. Read:
    - root `AGENTS.md`;
    - `docs/classroom-architecture.md`;
@@ -56,28 +66,46 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-#297–#306 are merged to `main`. #295 is active in draft PR #307 on `feature/classroom-protected-cases`. #296 / #279 is active in stacked draft PR #308 on `feature/classroom-browser-e2e`.
+There is no unfinished #288/#312/#313 implementation branch. #321 is closed and production is current through `21bff1d1c5a70caff0aa94aadd58abcb0644f397`.
+
+**Next implementation:** #316.
 
 ## Last completed action
 
-Completed the #295 implementation/security/documentation slices through root cold-start and repository-operations guidance. Latest durable docs checkpoint before this update is `47ffd1bf11c813e69f8d7956659902c041c8e908`, followed by README/onboarding/roadmap/commenting/storage/operations synchronization. The public/server manifest split, authorized API/client flow, raw authored-JSON Vercel exclusion, and protected-resource verifier are implemented.
+PR #322 merged and restored production publishing after #314/#315 exceeded the Vercel Hobby Serverless Function limit. The recovery preserves every public `/api/classes/**` URL through rewrites into one `api/classroom.js` function and keeps authorization inside the existing handlers.
+
+Deployment evidence:
+- exact PR-head verification `9094a3fa2a56c8720e9c149278ef03165ecd0b17` -> Vercel preview `dpl_87aJLUvqaSc3wQ45gecTiGVMdCVq` -> **READY**;
+- Vercel build guard: **5/12** conservative Serverless Function candidates;
+- protected authored `templates/*.json` excluded and protected/public manifest boundary re-verified;
+- PR #322 squash-merged as `21bff1d1c5a70caff0aa94aadd58abcb0644f397`;
+- exact merged-main production deployment `dpl_VZoSoWJsDs6Eb727EN5hmrFSgAcA` -> **READY**;
+- post-deploy Vercel runtime-error scan -> **clean**.
+
+#312 and #313 are therefore both merged **and production-published**.
 
 ## Next recommended action
 
-Continue #295 on draft PR #307 from the current branch head.
+Start **#316 — Protected staged case assets and rich Student case rendering** from current `main`.
 
-1. Protected Case Study runtime/security implementation is complete: public/server manifest split, Classroom authorization, role-aware client delivery, static/runtime leak guards, and deterministic API/client coverage.
-2. A second-order production exposure was discovered during deployed verification: with the old `outputDirectory: "."`, production returned internal repository files such as `/docs/classroom-workstream.md` and `/scripts/build-templates-manifest.mjs` with HTTP 200.
-3. #307 now builds a minimal public `dist/` surface via `scripts/build-vercel-public.mjs`. It copies only `index.html`, `main.js`, `styles.css`, and browser JavaScript under `src/` + `components/`; it rejects internal file types and protected Case Study identifiers.
-4. `vercel.json` now uses `outputDirectory: "dist"` and `npm run verify:protected-cases && npm run build:vercel-public`. The verifier rejects any return to repository-root static output.
-5. Exact GitHub CI evidence on `7f998f96b92a6760d5437a8fd8ffc36ea0a97f4c`:
-   - `[verify:protected-cases] Protected 4 Case Study payload(s); public manifest/runtime and Vercel deployment boundary verified.`
-   - `[build:vercel-public] Built 45 public file(s) in dist/ with no internal docs or protected Case Study identifiers.`
-   - CI, CodeQL, Dependency Review, and Template Manifest Guard all green.
-6. Vercel Git deployment policy remains repository-owned: ordinary branches create no Vercel deployment; `main` and `verify/**` are the only allowed classes, and repo `ignoreCommand` explicitly continues those branches.
-7. A deliberate preview of the new `dist/` head was requested through `verify/protected-cases-preview`, but Vercel returned `upgradeToPro=build-rate-limit` before creating the deployment. This remains tracked in #304.
-8. The earlier guarded preview `dpl_Ep2q8Y3BMUWGEV7fzZQHnvdwPumA` reached READY and returned HTTP 404 for the formerly public Microcomputer Cabinets authored JSON path, proving the protected authoring-source boundary before the `dist/` broadening.
-9. Exact next action: finish PR/issue/diff synchronization on the latest documented head, then obtain one deliberate `verify/**` preview when Vercel capacity permits and confirm `/docs/classroom-workstream.md`, `/scripts/build-templates-manifest.mjs`, and protected `/templates/*.json` paths return 404. The deployed protected API matrix still requires an approved preview-auth bypass path; deterministic server tests are already green. Keep #307 draft and do not merge without explicit authorization.
+Why #316 is first:
+1. #313 deliberately supports rich staged block kinds (`image`, `table`, `document-page`) in the protected authoring schema.
+2. The Student runtime still projects/renders released staged material primarily as `id/kind/title/body`; it cannot yet faithfully present protected pages, images, or structured tables.
+3. #317 must not flatten, guess, or publish official case material around that missing secure rendering layer.
+
+#316 must preserve:
+- protected assets remain server-gated and absent from public `dist/`;
+- Student receives only currently authorized/released assets;
+- future-stage, Instructor-only, exemplar/model, and full protected source material remain withheld;
+- stable Student class-session authority remains separate from assignment/workspace edit authority;
+- asset or exercise state must not enter `kt-intake-full-v2`, file exports, summaries, or URLs;
+- deterministic API/client/browser tests must prove unauthorized/non-released asset denial and accessible rich rendering.
+
+Parallel work that is safe:
+- #318 can proceed independently on stable Intake target identity / `intakeTargetIds`, provided it does not depend on guessed official case stages.
+- #320 can proceed independently as join/mobile polish.
+- #317 may inventory/map authoritative source material, but must not ship production-selectable staged content until #316 is complete.
+- #319 should preferably consume #318's stable target identity rather than invent a second comparison-target model.
 
 ## Completed #300 implementation
 
