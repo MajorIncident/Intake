@@ -369,7 +369,7 @@ The legacy membership table remains supported for two-code compatibility. Live a
 
 Database foreign keys and handler authorization jointly enforce class/workspace isolation. Existing collaboration tables, Standalone secret links, and the legacy Classroom path remain valid.
 
-#313 Tranche 3 adds persistence primitives but **no exercise HTTP routes yet**:
+#313 adds the following persistence primitives beneath the exercise HTTP/UI layers:
 
 - `classroom_exercises` — class-scoped exercise run with protected Case Study ID, pinned simulation version + definition fingerprint, status/stage/phase, optimistic `exercise_revision`, editing-policy state, timestamps, and owning-class expiry;
 - `classroom_exercise_releases` — idempotent optional-content release records;
