@@ -18,6 +18,7 @@ Applies to all authored JSON files inside `templates/`.
 - `supportedModes` may omit entries that do not make sense for a resource, but it must never be empty.
 - `templateKind` is a resource-kind axis, not an experience role. `standard` records are reusable Templates; `case-study` records are protected teaching resources.
 - `state` must satisfy the `SerializedAppState` contract documented in `src/storage.js`.
+- Standard Template state is also checked by the universal Intake target coverage guard. Fields added inside designated target-bearing reasoning areas must register one stable target definition or an explicit reviewed workflow/infrastructure exclusion; do not add template-specific debrief mappings.
 
 ## Security boundary
 
@@ -50,7 +51,7 @@ Keep three concepts separate:
 - `simulation.studentContent` — only content blocks eligible for controlled Student release;
 - `simulation.instructorContent` — facilitation/debrief/model material that Student endpoints must never return.
 
-`simulation.stages` references stable content IDs. Stage/content IDs must be unique and cross-references valid. Future-stage Student content must remain server-gated, not preloaded into browser assets.
+`simulation.stages` references stable content IDs. Stage/content IDs must be unique and cross-references valid. Future-stage Student content must remain server-gated, not preloaded into browser assets. `simulation.stages[].intakeTargetIds` must come from the universal Intake target namespace: registered static/KT IDs or registered family IDs such as `possible-cause`. Never author learner/workspace-specific dynamic instance IDs such as `possible-cause.<cause.id>`.
 
 Do not infer or fabricate official stage boundaries from a completed `state`. Until authoritative case pages/evidence/facilitation material is supplied and reviewed, use synthetic staged definitions only in deterministic tests/fixtures rather than production authored Case Studies.
 
