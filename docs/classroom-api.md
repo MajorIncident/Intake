@@ -250,9 +250,22 @@ Returns only the represented class's current non-completed exercise plus:
 - complete Instructor-authorized staged definition;
 - optional-content releases;
 - workspace readiness/progress state;
-- current-stage immutable debrief checkpoints.
+- **metadata only** for current-stage immutable debrief checkpoints: workspace identity, captured workspace revision, stage, and capture time.
 
-Every read fails closed if the pinned simulation version/fingerprint no longer matches the current protected definition.
+Normal exercise reads never include checkpoint snapshot bytes. Every read fails closed if the pinned simulation version/fingerprint no longer matches the current protected definition.
+
+### `GET /api/classes/exercise/checkpoint?workspaceId=<public UUID>`
+
+Requires the Instructor class capability.
+
+This is the explicit, read-only path for inspecting one immutable checkpoint during the represented exercise's current debrief stage. The server re-resolves the Instructor's current class/exercise, validates the pinned staged definition, scopes the requested workspace to that class/stage, and returns only that workspace's captured checkpoint snapshot plus its captured collaboration revision.
+
+Security/behavior rules:
+- Student class-session, workspace-edit, assignment, human join-code, or unrelated Instructor authority does not grant checkpoint access;
+- the endpoint is GET-only and never mints Student workspace authority;
+- reading a checkpoint never writes, restores, merges, or replaces the live collaboration snapshot;
+- checkpoint snapshot bytes are fetched only after an explicit Instructor inspection action and remain outside normal exercise state, Intake persistence/export/summary, and browser resume state;
+- returning to current live Intake uses the existing Instructor observer endpoint rather than treating the checkpoint as collaboration state.
 
 ### `PATCH /api/classes/exercise`
 
