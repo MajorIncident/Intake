@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run verify:protected-cases && npm run build:vercel-public",
+  "buildCommand": "npm run verify:vercel-functions && npm run verify:protected-cases && npm run build:vercel-public",
   "outputDirectory": "dist",
   "cleanUrls": true,
   "git": {
