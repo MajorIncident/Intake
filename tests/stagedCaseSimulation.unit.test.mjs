@@ -75,7 +75,7 @@ function validSimulation() {
         studentObjective: 'Refine the analysis using the newly released evidence.',
         initialReleaseIds: ['supplement-page'],
         optionalReleaseIds: [],
-        intakeTargetIds: ['problem.one-line', 'pa.what-object'],
+        intakeTargetIds: ['kt.what-object', 'possible-cause'],
         suggestedMinutes: null,
         instructorContentIds: ['stage-two-exemplar'],
         defaultDebriefEditPolicy: 'open'
@@ -250,4 +250,36 @@ test('version-1 definitions reject unknown lifecycle/content fields rather than 
   const errors = validateStagedSimulation(simulation);
   assert.ok(errors.some(message => message.includes('simulation.futureStagesVisible is not allowed')));
   assert.ok(errors.some(message => message.includes('autoAdvanceWhenReady is not allowed')));
+});
+
+
+test('staged intakeTargetIds accept shared static/KT targets and dynamic family selectors', () => {
+  const simulation = validSimulation();
+  assert.deepEqual(validateStagedSimulation(simulation), []);
+
+  const normalized = normalizeStagedSimulation(simulation);
+  assert.deepEqual(normalized.stages[0].intakeTargetIds, ['problem.one-line']);
+  assert.deepEqual(normalized.stages[1].intakeTargetIds, ['kt.what-object', 'possible-cause']);
+});
+
+test('staged intakeTargetIds reject unknown targets and learner-created dynamic instance IDs', () => {
+  const simulation = validSimulation();
+  simulation.stages[0] = {
+    ...simulation.stages[0],
+    intakeTargetIds: [
+      'problem.one-line',
+      'future.unregistered-target',
+      'possible-cause.cause-cache-rule'
+    ]
+  };
+
+  const errors = validateStagedSimulation(simulation);
+  assert.ok(errors.some(message => (
+    message.includes('future.unregistered-target')
+    && message.includes('unknown or unauthorable Intake target id')
+  )));
+  assert.ok(errors.some(message => (
+    message.includes('possible-cause.cause-cache-rule')
+    && message.includes('unknown or unauthorable Intake target id')
+  )));
 });
