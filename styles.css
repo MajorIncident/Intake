@@ -547,6 +547,8 @@ body[data-experience-role="student"]:not([data-student-class-status="connected"]
   .student-class-context{align-items:stretch;}
 }
 @media (max-width:760px){
+  .instructor-join-qr{align-items:flex-start;width:100%;}
+  .instructor-join-qr__image{width:112px;height:112px;flex-basis:112px;}
   .experience-role-gate{padding:12px;}
   .experience-role-dialog{max-height:calc(100vh - 24px);padding:22px;border-radius:20px;}
   .experience-role-dialog h2,.experience-shell h2{font-size:24px;}
@@ -3216,6 +3218,13 @@ body.dialog-open{overflow:hidden;}
 .instructor-join-code>span{color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;}
 .instructor-join-code>strong{padding:6px 9px;border:1px solid var(--line);border-radius:10px;background:var(--panel-muted);color:var(--ink-strong);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;}
 .instructor-join-code .btn-secondary{padding:6px 9px;font-size:11px;}
+.instructor-join-qr{display:flex;align-items:center;gap:12px;width:min(100%,420px);margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--panel-muted);}
+.instructor-join-qr[hidden]{display:none !important;}
+.instructor-join-qr__image{display:block;width:128px;height:128px;flex:0 0 128px;border:1px solid var(--line);border-radius:8px;background:#fff;}
+.instructor-join-qr__details{display:flex;flex-direction:column;gap:5px;min-width:0;}
+.instructor-join-qr__details>strong{color:var(--ink-strong);font-size:13px;}
+.instructor-join-qr__details>span,.instructor-join-qr__details>small{color:var(--muted);font-size:10px;line-height:1.4;}
+.instructor-join-qr__details code{color:var(--ink-strong);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;letter-spacing:.06em;}
 .instructor-class-form .field{max-width:680px;}
 .instructor-class-form input[type="password"]{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.02em;}
 .instructor-dashboard{display:flex;flex-direction:column;min-height:0;}
