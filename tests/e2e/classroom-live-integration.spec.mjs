@@ -210,16 +210,81 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
     await expect(studentB.locator('#oneLine')).toHaveJSProperty('readOnly', false);
     await expect(studentB.locator('#studentClassLeaveBtn')).toBeEnabled();
 
-    const afterDebriefUpdate = 'Team Alpha refined its reasoning after debrief began.';
-    const afterDebriefSave = studentB.waitForResponse(response => (
+    await expectNoBlockingA11yViolations(instructor);
+    await expectNoBlockingA11yViolations(studentA);
+
+    expect(instructorErrors).toEqual([]);
+    expect(studentAErrors).toEqual([]);
+    expect(studentBErrors).toEqual([]);
+    expect(lateStudentErrors).toEqual([]);
+  } finally {
+    await instructorContext.close();
+    await studentAContext.close();
+    await studentBContext.close();
+    await lateStudentContext.close();
+  }
+});
+
+
+test('Instructor compares immutable debrief checkpoint with current live Intake', async ({ browser }, testInfo) => {
+  test.setTimeout(60_000);
+  test.skip(testInfo.project.name === 'chromium-mobile', 'Checkpoint/live comparison is covered once on desktop; mobile Instructor layout has dedicated coverage.');
+
+  const contextOptions = { baseURL: testInfo.project.use.baseURL };
+  const instructorContext = await browser.newContext(contextOptions);
+  const studentContext = await browser.newContext(contextOptions);
+  const instructor = await instructorContext.newPage();
+  const student = await studentContext.newPage();
+  const instructorErrors = watchPageErrors(instructor);
+  const studentErrors = watchPageErrors(student);
+
+  try {
+    await startFresh(instructor);
+    await instructor.getByRole('button', { name: /Run a class/ }).click();
+    await instructor.locator('#instructorClassTitle').fill('Integrated Browser Classroom');
+    await instructor.getByRole('button', { name: 'Start class' }).click();
+    await expect(instructor.locator('#instructorClassDashboard')).toBeVisible();
+
+    const classCode = (await instructor.locator('#instructorJoinCode').textContent())?.trim() || '';
+    await createTeam(instructor, 'Team Alpha');
+
+    await instructor.getByLabel('Staged Case Study').selectOption('browser-staged-simulation');
+    await instructor.getByRole('button', { name: 'Create draft' }).click();
+    await instructor.getByRole('button', { name: 'Start exercise' }).click();
+    await expect(instructor.locator('#instructorExerciseStatus')).toHaveText('In progress · exercise started');
+
+    await joinLiveStudent(student, { name: 'Checkpoint Student', classCode });
+    await expect(instructor.locator('[data-participant-id]').filter({ hasText: 'Checkpoint Student' })).toBeVisible({ timeout: 10000 });
+    await instructor.getByLabel('Assignment for Checkpoint Student').selectOption({ label: 'Team · Team Alpha' });
+    await expect(student.locator('body')).toHaveAttribute('data-student-class-status', 'connected', { timeout: 10000 });
+
+    const beforeDebrief = 'Team Alpha reasoning captured before debrief.';
+    const beforeSave = student.waitForResponse(response => (
       response.request().method() === 'PUT'
       && new URL(response.url()).pathname === '/api/workspaces/session'
       && response.ok()
     ));
-    await studentB.locator('#oneLine').fill(afterDebriefUpdate);
-    await studentB.locator('#oneLine').blur();
-    await afterDebriefSave;
-    await expect(instructor.locator('#oneLine')).toHaveValue(afterDebriefUpdate, { timeout: 10000 });
+    await student.locator('#oneLine').fill(beforeDebrief);
+    await student.locator('#oneLine').blur();
+    await beforeSave;
+
+    await instructor.locator('.instructor-workspace-item').filter({ hasText: 'Team Alpha' }).click();
+    await expect(instructor.locator('#oneLine')).toHaveValue(beforeDebrief, { timeout: 10000 });
+
+    await instructor.getByRole('button', { name: 'Begin debrief' }).click();
+    await expect(instructor.locator('#instructorExerciseCheckpointList')).toContainText('Revision 2');
+    await instructor.getByRole('button', { name: 'Allow editing' }).click();
+
+    const afterDebrief = 'Team Alpha refined its reasoning after discussion.';
+    const afterSave = student.waitForResponse(response => (
+      response.request().method() === 'PUT'
+      && new URL(response.url()).pathname === '/api/workspaces/session'
+      && response.ok()
+    ));
+    await student.locator('#oneLine').fill(afterDebrief);
+    await student.locator('#oneLine').blur();
+    await afterSave;
+    await expect(instructor.locator('#oneLine')).toHaveValue(afterDebrief, { timeout: 10000 });
 
     const checkpointResponse = instructor.waitForResponse(response => (
       response.request().method() === 'GET'
@@ -230,8 +295,8 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
       name: 'Inspect Team Alpha checkpoint, revision 2'
     }).click();
     await checkpointResponse;
-    await expect(instructor.locator('#oneLine')).toHaveValue(alphaUpdate);
-    await expect(instructor.locator('#oneLine')).not.toHaveValue(betaUpdate);
+
+    await expect(instructor.locator('#oneLine')).toHaveValue(beforeDebrief);
     await expect(instructor.locator('#instructorObservedRevision')).toHaveText(
       'Checkpoint at debrief start · Revision 2'
     );
@@ -247,21 +312,16 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
     ));
     await instructor.getByRole('button', { name: 'View current live Intake' }).click();
     await liveObservation;
-    await expect(instructor.locator('#oneLine')).toHaveValue(afterDebriefUpdate);
+
+    await expect(instructor.locator('#oneLine')).toHaveValue(afterDebrief);
     await expect(instructor.locator('#instructorObservedRevision')).toHaveText('Revision 3');
     await expect(instructor.locator('#instructorObserverStatus')).toHaveText('Live read-only view');
 
     await expectNoBlockingA11yViolations(instructor);
-    await expectNoBlockingA11yViolations(studentA);
-
     expect(instructorErrors).toEqual([]);
-    expect(studentAErrors).toEqual([]);
-    expect(studentBErrors).toEqual([]);
-    expect(lateStudentErrors).toEqual([]);
+    expect(studentErrors).toEqual([]);
   } finally {
     await instructorContext.close();
-    await studentAContext.close();
-    await studentBContext.close();
-    await lateStudentContext.close();
+    await studentContext.close();
   }
 });
