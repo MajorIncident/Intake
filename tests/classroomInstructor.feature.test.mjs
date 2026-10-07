@@ -254,6 +254,42 @@ test('Instructor Share class prefers native Web Share with the same safe human-c
   env.controller.destroy();
 });
 
+test('Instructor QR panel renders the safe join URL locally without exposing it in DOM attributes', async () => {
+  const env = setup(async (url) => {
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  });
+
+  await env.controller.openClass(TOKEN);
+  dom.window.history.replaceState(null, '', '/?workspace=must-not-leak');
+
+  assert.equal(env.controller.toggleJoinQr(), true);
+  const panel = dom.window.document.getElementById('instructorJoinQrPanel');
+  const svg = dom.window.document.getElementById('instructorJoinQrSvg');
+  const toggle = dom.window.document.getElementById('instructorShowJoinQrBtn');
+
+  assert.equal(panel.hidden, false);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  assert.equal(toggle.textContent, 'Hide QR');
+  assert.equal(dom.window.document.getElementById('instructorJoinQrCode').textContent, 'K7FM-P4Q2');
+  assert.equal(svg.getAttribute('role'), 'img');
+  assert.match(svg.getAttribute('aria-label'), /K7FM-P4Q2/u);
+  assert.equal(svg.querySelectorAll('rect').length, 1);
+  assert.equal(svg.querySelectorAll('path').length, 1);
+  assert.equal(svg.outerHTML.includes('https://'), false);
+  assert.equal(svg.outerHTML.includes('workspace='), false);
+  assert.equal(svg.outerHTML.includes(TOKEN), false);
+
+  assert.equal(env.controller.toggleJoinQr(), false);
+  assert.equal(panel.hidden, true);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  assert.equal(toggle.textContent, 'Show QR');
+
+  env.controller.destroy();
+});
+
 test('Instructor opens one class, renders roster, and observes through the GET-only class endpoint', async () => {
   const requests = [];
   const env = setup(async (url, options) => {
