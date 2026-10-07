@@ -148,11 +148,85 @@ export function createStudentExerciseReferenceController({
   let epoch = 0;
   let timer = null;
   let abortController = null;
+  const readonlyRecords = new Map();
   const mobileQuery = windowRef?.matchMedia?.('(max-width: 700px)') || null;
   let expanded = !mobileQuery?.matches;
   let expansionTouched = false;
 
   const element = id => documentRef?.getElementById?.(id) || null;
+  const intakeWrap = () => documentRef?.querySelector?.('.wrap[data-experience-surface="intake"]') || null;
+
+  const restoreReadonlyProjection = () => {
+    readonlyRecords.forEach((record, control) => {
+      if (!control) return;
+      if (record.disabled !== undefined) control.disabled = record.disabled;
+      if (record.readOnly !== undefined) control.readOnly = record.readOnly;
+      if (record.tabIndex === null) control.removeAttribute?.('tabindex');
+      else control.setAttribute?.('tabindex', record.tabIndex);
+      if (record.ariaDisabled === null) control.removeAttribute?.('aria-disabled');
+      else control.setAttribute?.('aria-disabled', record.ariaDisabled);
+      if (record.ariaReadonly === null) control.removeAttribute?.('aria-readonly');
+      else control.setAttribute?.('aria-readonly', record.ariaReadonly);
+      if (record.contentEditable === null) control.removeAttribute?.('contenteditable');
+      else control.setAttribute?.('contenteditable', record.contentEditable);
+      if (record.draggable !== undefined) control.draggable = record.draggable;
+      control.removeAttribute?.('data-student-exercise-readonly-control');
+    });
+    readonlyRecords.clear();
+    intakeWrap()?.classList?.remove('student-exercise-readonly');
+  };
+
+  const projectReadonly = () => {
+    const wrap = intakeWrap();
+    if (!wrap) return;
+    wrap.classList.add('student-exercise-readonly');
+    const controls = wrap.querySelectorAll(
+      'input, textarea, select, button, [contenteditable], [role="button"], [role="checkbox"], [role="switch"], [draggable="true"]'
+    );
+    controls.forEach(control => {
+      if (control.closest?.('#studentExperienceNotice')) return;
+      if (!readonlyRecords.has(control)) {
+        readonlyRecords.set(control, {
+          disabled: 'disabled' in control ? control.disabled : undefined,
+          readOnly: 'readOnly' in control ? control.readOnly : undefined,
+          tabIndex: control.hasAttribute?.('tabindex') ? control.getAttribute('tabindex') : null,
+          ariaDisabled: control.hasAttribute?.('aria-disabled') ? control.getAttribute('aria-disabled') : null,
+          ariaReadonly: control.hasAttribute?.('aria-readonly') ? control.getAttribute('aria-readonly') : null,
+          contentEditable: control.hasAttribute?.('contenteditable') ? control.getAttribute('contenteditable') : null,
+          draggable: 'draggable' in control ? control.draggable : undefined
+        });
+      }
+      const tag = control.tagName;
+      const type = String(control.getAttribute?.('type') || '').toLowerCase();
+      if (tag === 'TEXTAREA' || (tag === 'INPUT' && !['checkbox', 'radio', 'button', 'submit', 'reset', 'file', 'range', 'color'].includes(type))) {
+        control.readOnly = true;
+        control.setAttribute('aria-readonly', 'true');
+      } else if ('disabled' in control) {
+        control.disabled = true;
+      } else {
+        control.setAttribute('aria-disabled', 'true');
+        control.setAttribute('tabindex', '-1');
+      }
+      if (control.hasAttribute?.('contenteditable')) control.setAttribute('contenteditable', 'false');
+      if ('draggable' in control) control.draggable = false;
+      control.setAttribute?.('data-student-exercise-readonly-control', '');
+    });
+    if (wrap.contains(documentRef.activeElement) && typeof documentRef.activeElement?.blur === 'function') {
+      documentRef.activeElement.blur();
+    }
+  };
+
+  const syncReadonlyProjection = () => {
+    const frozenDebrief = Boolean(
+      exercise
+      && exercise.status !== 'completed'
+      && exercise.stagePhase === 'debrief'
+      && exercise.studentEditingEnabled === false
+      && exercise.editFreezeEnforced === true
+    );
+    if (frozenDebrief) projectReadonly();
+    else restoreReadonlyProjection();
+  };
 
   const stopTimer = () => {
     if (timer !== null && typeof clearTimeoutImpl === 'function') clearTimeoutImpl(timer);
@@ -252,7 +326,10 @@ export function createStudentExerciseReferenceController({
     panel.hidden = !visible;
     documentRef?.body?.classList?.toggle('student-case-reference-visible', visible);
     renderExpansion();
-    if (!visible) return;
+    if (!visible) {
+      restoreReadonlyProjection();
+      return;
+    }
 
     if (title) title.textContent = exercise.caseStudy?.name || 'Current exercise';
     if (status) {
@@ -302,6 +379,7 @@ export function createStudentExerciseReferenceController({
         ? 'Your instructor has frozen Student editing for this debrief. You can still review the released case material.'
         : '';
     }
+    syncReadonlyProjection();
     renderContent();
   };
 
@@ -476,6 +554,7 @@ export function createStudentExerciseReferenceController({
     stopTimer();
     abort();
     capability = '';
+    restoreReadonlyProjection();
     clearView();
     renderExpansion();
   };
