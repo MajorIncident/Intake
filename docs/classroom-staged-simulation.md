@@ -962,19 +962,38 @@ Validation on `89a5321a750606cff6fbf34ccf75ef40dc3def07`:
 
 Tranche 9 is complete. The staged simulation now has browser-level proof for late join, reassignment/stale-authority cutoff, workspace-scoped readiness, progressive disclosure/full-payload denial, server freeze non-mutation, mobile Student/Instructor operation, accessibility, and historical-vs-live checkpoint comparison.
 
+## Implementation checkpoint — Tranche 10 final documentation, security, and merge-readiness audit
+
+Final audit scope/results:
+- audited the full #313 branch from merged #312 base `b141d55050207e4cf7ce842a4452a220a5268968` through completed Tranche 9 head `b000ceab20d1c0bdc132cb0fede0aaa75c85fe17`, not only the latest commits;
+- reconciled stale end-state prose in README, the Classroom API contract, and the Classroom roadmap;
+- confirmed root/scoped AGENTS guidance matches the implemented separation between class-session authority, assignment/workspace edit authority, exercise orchestration, checkpoint evidence, and protected resources;
+- confirmed Instructor exercise lifecycle/checkpoint reads are class-scoped and revision-safe; Student staged reads are stable-session scoped; Student collaboration writes remain workspace-authorized;
+- confirmed progressive disclosure is server-side: future-stage content, Instructor facilitation, exemplar/model material, and complete Case Study `state` are omitted from staged Student responses;
+- confirmed Student full protected Case Study retrieval is blocked whenever that class has a staged exercise record for the case, including after completion;
+- confirmed freeze is a server authorization boundary, not a UI convention: frozen Classroom Student PUT is HTTP **423 `classroom-editing-locked`**, non-mutating, and atomically repeated in production SQL; Standalone and classes with no active staged policy remain writable;
+- confirmed immutable checkpoints are historical facilitation evidence only: normal exercise reads expose metadata, explicit snapshot reads are Instructor-only/current-debrief scoped, and checkpoint rendering never restores or merges live Intake;
+- confirmed late join/reassignment semantics preserve current class stage while collaboration authority/readiness follows the server-authoritative assignment; stale old-workspace authority is rejected;
+- confirmed #313 schema initialization is additive/idempotent; exercise/release/readiness/checkpoint rows are class/workspace scoped, cascade with owning records, and inherit class retention;
+- confirmed public/static boundaries remain intact: Standard-only public manifest, server-only protected manifest, authored template JSON excluded from Vercel source upload, generated `dist/` as the only public output;
+- confirmed no production official Case Study has an authored staged `simulation`; synthetic staged definitions/content exist only in tests/browser fixtures until authoritative instructional material is supplied;
+- confirmed Classroom exercise/session/checkpoint state and bearer capabilities remain outside Intake storage, templates, summary/export payloads, and URLs;
+- confirmed PR #315 has no unresolved review threads/reviews and is mergeable; it remains draft only until the final documentation head re-passes required gates.
+
+Documentation reconciliation begins at `65390fca49f32a51e57e4c5d095eedd2e483b14e`.
+
+Validation baseline before documentation-only reconciliation:
+- implementation/security head `b000ceab20d1c0bdc132cb0fede0aaa75c85fe17`;
+- repository quality: **302 tests / 301 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **28 passed / 10 intentional project-scoped skips / 0 failed / 0 flaky** across 38 project cases;
+- CI, CodeQL, Dependency Review, Template Manifest Guard: green.
+
+Tranche 10 is functionally complete. Remaining gate is repository validation of the documentation-reconciled head.
+
 ## Exact next implementation action
 
-Perform **Tranche 10 — final documentation, security, and merge-readiness audit**.
-
-Required final tranche:
-- audit the complete `main...feature/classroom-staged-simulation` diff, not only recent commits;
-- reconcile README, `docs/classroom-api.md`, `docs/classroom-architecture.md`, `docs/classroom-roadmap.md`, `docs/classroom-workstream.md`, this staged-simulation contract, and applicable `AGENTS.md` guidance against the actual implemented end state;
-- audit every #313 authorization boundary: Instructor vs Student capabilities, stable Student session vs assignment/workspace authority, non-enumeration, staged/full-payload separation, future/Instructor/exemplar omission, revision-safe lifecycle mutations, immutable checkpoints, server-enforced freeze, and stale-authority cutoff after reassignment;
-- verify generated protected/public manifests and Vercel public-output controls remain current;
-- verify Classroom exercise/session state and bearer capabilities remain excluded from Intake persistence, templates, summaries, exports, and URLs;
-- confirm Standalone behavior and legacy Classroom compatibility remain additive;
-- inspect schema/migration/retention/rollback documentation and make sure the #313 data additions remain idempotent and class-bounded;
-- explicitly confirm that no production official Case Study stage boundaries/content were guessed or introduced; synthetic staged content remains test-only until authoritative material is supplied;
-- inspect PR #315 for unresolved review/security threads, mergeability, draft/readiness state, and final issue #313 consistency;
-- validate the final documentation/security head through repository quality, required Browser E2E, CodeQL, Dependency Review, and Template Manifest Guard;
+Validate the final Tranche 10 documentation head through repository quality, required Browser E2E, CodeQL, Dependency Review, and Template Manifest Guard. If all are green:
+- synchronize PR #315 and issue #313 with the final head/evidence;
+- mark PR #315 **ready for review**;
+- leave issue #313 open until merge unless repository convention dictates otherwise;
 - do **not** merge automatically.
