@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  classExerciseCheckpointHandler,
   classExerciseHandler,
   classStudentExerciseHandler,
   classStudentExerciseReadyHandler,
@@ -150,6 +151,13 @@ function instructorHandler(classrooms, workspaceRepo) {
     getWorkspaceRepo: async () => workspaceRepo,
     manifest: MANIFEST,
     idFactory: () => EXERCISE_ID
+  });
+}
+
+function instructorCheckpointHandler(classrooms) {
+  return classExerciseCheckpointHandler({
+    getRepository: async () => classrooms,
+    manifest: MANIFEST
   });
 }
 
@@ -301,6 +309,7 @@ test('Instructor lifecycle is revision-safe, optional release is idempotent, and
   assert.equal(debrief.body.exercise.exerciseRevision, 4);
   assert.equal(debrief.body.capturedCount, 2);
   assert.equal(debrief.body.checkpoints.length, 2);
+  assert.equal(debrief.body.checkpoints.some(item => Object.hasOwn(item, 'snapshot')), false);
   assert.equal(debrief.body.editFreezeEnforced, true);
   assert.equal(debrief.body.exercise.studentEditingEnabled, false);
 
@@ -309,8 +318,32 @@ test('Instructor lifecycle is revision-safe, optional release is idempotent, and
     { pre: { oneLine: 'Team A changed after checkpoint' } },
     1
   );
-  const checkpointA = debrief.body.checkpoints.find(item => item.workspaceId === WORKSPACE_A_ID);
-  assert.equal(checkpointA.snapshot.pre.oneLine, 'Team A before debrief');
+  const checkpointRead = response();
+  await instructorCheckpointHandler(classrooms)({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    query: { workspaceId: WORKSPACE_A_ID }
+  }, checkpointRead);
+  assert.equal(checkpointRead.statusCode, 200);
+  assert.equal(checkpointRead.body.workspace.id, WORKSPACE_A_ID);
+  assert.equal(checkpointRead.body.checkpoint.workspaceRevision, 1);
+  assert.equal(checkpointRead.body.checkpoint.snapshot.pre.oneLine, 'Team A before debrief');
+
+  const studentCheckpointRead = response();
+  await instructorCheckpointHandler(classrooms)({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'S'.repeat(43) },
+    query: { workspaceId: WORKSPACE_A_ID }
+  }, studentCheckpointRead);
+  assert.equal(studentCheckpointRead.statusCode, 404);
+
+  const invalidCheckpointRead = response();
+  await instructorCheckpointHandler(classrooms)({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    query: { workspaceId: 'not-a-workspace' }
+  }, invalidCheckpointRead);
+  assert.equal(invalidCheckpointRead.statusCode, 400);
 
   const staleDebriefReplay = await patchExercise(handler, {
     action: 'begin-debrief',
