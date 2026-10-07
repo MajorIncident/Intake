@@ -9,7 +9,7 @@ Base: `main` at `ef6949100ddac28c646338ee55cb6e7a74beb067` (#318 / PR #325 merge
 319B GREEN implementation head: `c6986b330fab31509c1697b3d77c8a5e907ef279`  
 319C GREEN implementation head: `676ccbc963fb60c59851e3beda5962f2fdaa9ca5`  
 319D GREEN implementation head: `54845e82e71c69b471019d6f24f01b36d1077894`  
-Current tranche: **319E — checkpoint/staged/coaching integration**
+Current tranche: **319E-B — Current / Checkpoint + Ready / Working presentation**
 
 This document is the canonical architecture contract for #319.
 
@@ -469,12 +469,37 @@ Validation:
 - Browser E2E: **31 passed / 11 intentional project-scoped skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
 
-### 319E — checkpoint/staged/coaching integration
+### 319E — checkpoint/staged/coaching integration — active
 
-- explicit checkpoint/current mode;
-- staged target recommendations;
-- coaching status/changed-since-review badges;
-- preserve ordinary non-staged class behavior.
+#### 319E-A — staged target recommendations — complete
+
+Validated implementation head: `dd0f3d28f2741c89c714e0c23a8a475acbdc8de3`.
+
+- extracted the staged simulation fingerprint into shared server-only `api/_classroomSimulation.js`, preserving the existing exercise export/contract;
+- current-stage authored `intakeTargetIds` are derived from the existing protected Case Study manifest only when the exercise's stored simulation version **and fingerprint** still match the governed definition;
+- definition drift, missing/non-staged cases, and missing stages fail closed to **no recommendations**;
+- `/api/classes/debrief` passes the authored IDs through the 319B model, which still filters unknown/runtime-dynamic IDs through the universal target registry;
+- recommendations remain advisory metadata only and do not affect authorization, scoring, editing, or target availability;
+- ordinary non-staged classes continue to return an empty recommendation list.
+
+Validation:
+- repository quality: **361 tests / 360 pass / 0 fail / 1 intentional skip**;
+- Browser E2E: **31 passed / 11 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
+
+#### 319E-B — explicit evidence mode + staged readiness — next
+
+- add presentation-only **Current / Checkpoint** mode when current-stage immutable checkpoints exist;
+- report checkpoint-unavailable honestly per workspace rather than silently falling back to live evidence;
+- surface staged Ready / Working as facilitation metadata when present;
+- preserve ordinary non-staged activity presentation;
+- keep target/mode selection in memory only.
+
+#### 319E-C — coaching integration — after B
+
+- add neutral per-target coaching status / changed-since-review badges;
+- do not expose notes, grades, rankings, or cross-team scores;
+- preserve dynamic Possible Cause independence.
 
 ### 319F — integrated browser/accessibility/security closeout
 
@@ -509,4 +534,4 @@ Read:
 - existing Classroom coaching modules;
 - the consolidated Classroom router/server modules.
 
-Continue the existing #319 branch/PR. 319A/B/C/D are complete; begin 319E with checkpoint/current evidence mode, current-stage target recommendations, and neutral coaching status/change presentation. Keep ordinary non-staged classes unchanged and comparison state presentation-only. Leave a mini milestone after every meaningful sub-slice and before long validation waits.
+Continue the existing #319 branch/PR. 319A/B/C/D and 319E-A are complete; begin 319E-B with Current / Checkpoint evidence mode plus staged Ready / Working presentation. Keep ordinary non-staged classes unchanged, never silently fall back from missing checkpoint evidence to live evidence, and keep comparison state presentation-only. Leave a mini milestone after every meaningful sub-slice and before long validation waits.
