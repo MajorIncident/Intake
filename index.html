@@ -879,23 +879,29 @@ Anchors present:
   <aside class="workspace-dock" data-experience-surface="intake" aria-label="Team and notes workspace">
   <!-- [feature:collaboration-presence] start -->
     <section class="collaboration-workspace" id="collaborationWorkspace" aria-label="Team workspace" hidden>
-      <div class="collaboration-workspace__identity">
-        <span class="collaboration-workspace__eyebrow">Team workspace</span>
-        <strong id="collaborationTeamName">Shared intake</strong>
-      </div>
-      <div class="collaboration-workspace__people">
-        <div class="collaboration-workspace__summary">
-          <span class="collaboration-workspace__presence-dot" aria-hidden="true"></span>
-          <span id="collaborationPeopleSummary">1 person here</span>
-          <span id="collaborationPresenceStale" class="collaboration-workspace__stale" hidden>Presence may be out of date</span>
+      <div class="collaboration-workspace__header">
+        <div class="collaboration-workspace__identity">
+          <span class="collaboration-workspace__eyebrow">Team workspace</span>
+          <strong id="collaborationTeamName">Shared intake</strong>
+          <span class="collaboration-workspace__compact" id="collaborationWorkspaceCompactSummary" aria-live="polite">1 person here</span>
         </div>
-        <ul class="collaboration-participants" id="collaborationParticipants" aria-label="People currently in this workspace"></ul>
-        <button type="button" class="collaboration-roster-toggle" id="collaborationRosterToggle" aria-expanded="false" data-persistence="local-only" data-summary="exclude" hidden>Show everyone</button>
-        <p class="sr-only" id="collaborationLiveRegion" role="status" aria-live="polite" aria-atomic="true"></p>
+        <button type="button" class="collaboration-workspace__toggle" id="collaborationWorkspaceToggle" aria-controls="collaborationWorkspaceBody" aria-expanded="true" data-persistence="local-only" data-summary="exclude">Collapse team</button>
       </div>
-      <div class="collaboration-workspace__actions">
-        <button type="button" class="btn-secondary collaboration-workspace__edit" id="editCollaborationNameBannerBtn" data-persistence="local-only">Edit my name</button>
-        <button type="button" class="btn-secondary collaboration-workspace__edit" id="editCollaborationTeamBannerBtn" data-persistence="local-only">Edit team</button>
+      <div class="collaboration-workspace__body" id="collaborationWorkspaceBody">
+        <div class="collaboration-workspace__people">
+          <div class="collaboration-workspace__summary">
+            <span class="collaboration-workspace__presence-dot" aria-hidden="true"></span>
+            <span id="collaborationPeopleSummary">1 person here</span>
+            <span id="collaborationPresenceStale" class="collaboration-workspace__stale" hidden>Presence may be out of date</span>
+          </div>
+          <ul class="collaboration-participants" id="collaborationParticipants" aria-label="People currently in this workspace"></ul>
+          <button type="button" class="collaboration-roster-toggle" id="collaborationRosterToggle" aria-expanded="false" data-persistence="local-only" data-summary="exclude" hidden>Show everyone</button>
+          <p class="sr-only" id="collaborationLiveRegion" role="status" aria-live="polite" aria-atomic="true"></p>
+        </div>
+        <div class="collaboration-workspace__actions">
+          <button type="button" class="btn-secondary collaboration-workspace__edit" id="editCollaborationNameBannerBtn" data-persistence="local-only">Edit my name</button>
+          <button type="button" class="btn-secondary collaboration-workspace__edit" id="editCollaborationTeamBannerBtn" data-persistence="local-only">Edit team</button>
+        </div>
       </div>
     </section>
 
