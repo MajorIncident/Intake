@@ -44,6 +44,8 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
   const classCode = 'M7QR-T4P2';
   const workspaceTokens = [];
   const exerciseTokens = [];
+  const readinessTokens = [];
+  const readinessBodies = [];
 
   page.on('request', request => {
     const url = new URL(request.url());
@@ -55,6 +57,10 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
     }
     if (url.pathname === '/api/classes/exercise/student' && !exerciseTokens.includes(match[1])) {
       exerciseTokens.push(match[1]);
+    }
+    if (url.pathname === '/api/classes/exercise/student/ready') {
+      readinessTokens.push(match[1]);
+      readinessBodies.push(request.postDataJSON());
     }
   });
 
@@ -114,6 +120,30 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
   await page.locator('#oneLine').fill(alphaMarker);
   await page.locator('#oneLine').blur();
   await alphaSave;
+
+  await expect(page.locator('#studentCaseReferenceReadiness')).toBeVisible();
+  await expect(page.locator('#studentCaseReferenceReadinessStatus')).toHaveText('Working');
+  const readyResponse = page.waitForResponse(response => (
+    response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === '/api/classes/exercise/student/ready'
+    && response.ok()
+  ));
+  await page.getByRole('button', { name: 'Mark Ready' }).click();
+  await readyResponse;
+  await expect(page.locator('#studentCaseReferenceReadinessStatus')).toHaveText('Ready for debrief · Intake revision 2');
+  await expect(page.getByRole('button', { name: 'Resume working' })).toHaveAttribute('aria-pressed', 'true');
+
+  const resumeResponse = page.waitForResponse(response => (
+    response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === '/api/classes/exercise/student/ready'
+    && response.ok()
+  ));
+  await page.getByRole('button', { name: 'Resume working' }).click();
+  await resumeResponse;
+  await expect(page.locator('#studentCaseReferenceReadinessStatus')).toHaveText('Working');
+  await expect(page.getByRole('button', { name: 'Mark Ready' })).toHaveAttribute('aria-pressed', 'false');
+  expect(readinessTokens).toEqual([storedWaiting.studentSessionToken, storedWaiting.studentSessionToken]);
+  expect(readinessBodies).toEqual([{ ready: true }, { ready: false }]);
 
   await page.reload();
 
