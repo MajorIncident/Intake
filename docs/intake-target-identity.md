@@ -5,9 +5,10 @@
 Tracking issue: #318  
 Active branch: `feature/universal-intake-target-identity`  
 Base: `main` at `273ae6437c0898b9e35778587c7053580db14e22` (PR #324 merge)  
-Current tranche: **318B — universal static registry and snapshot projection**  
+Current tranche: **318D — Template/staged compatibility guards**  
 318A validated checkpoint: `5638a8211056954fe29eb1f5892a53517f62f0c7`  
-318B implementation checkpoint: `ce5e8bccc12e367e780ad1e31cacb7e713b2a1d4`
+318B GREEN checkpoint: `e716ee1f4933124caa052b1a21cfae097ca8d23e`  
+318C implementation/validation head: `052125de3c73c963e91ab1054124983ed87f7403`
 
 This document is the canonical contract for #318. It defines the semantic identity layer that coaching, future staged guidance, and #319 cross-team debrief comparison must share.
 
@@ -52,7 +53,7 @@ Some reasoning objects are created by the learner and therefore cannot have a gl
 
 Possible Causes are the first dynamic family.
 
-Each persisted Possible Cause already has a durable `cause.id` that survives normal save/load and does not depend on list position. #318 will reuse that lifecycle identity rather than inventing another persisted identifier.
+Each persisted Possible Cause already has a durable `cause.id` that survives normal save/load and does not depend on list position. #318 reuses that lifecycle identity rather than inventing another persisted identifier.
 
 The semantic model is:
 
@@ -211,7 +212,7 @@ For dynamic families:
 - record compatibility/failure rules;
 - no runtime behavior change.
 
-### 318B — universal static registry and snapshot projection — implemented / validating
+### 318B — universal static registry and snapshot projection — complete
 
 Implementation checkpoint: `ce5e8bccc12e367e780ad1e31cacb7e713b2a1d4`.
 
@@ -224,15 +225,28 @@ Implementation checkpoint: `ce5e8bccc12e367e780ad1e31cacb7e713b2a1d4`.
 - live DOM/KT bindings remain optional rendering hooks on the same definitions;
 - `coachableFields.js` delegates to the universal module as a compatibility facade;
 - `tests/intakeTargets.unit.test.mjs` locks coaching compatibility, uniqueness, snapshot projection, KT row-order independence, nested workflow extraction, and unknown-target behavior;
-- dynamic Possible Cause family work remains intentionally deferred to 318C.
+- dynamic Possible Cause family work was completed in 318C.
 
-### 318C — dynamic Possible Cause target family
+### 318C — dynamic Possible Cause target family — complete
 
-- derive stable coaching target instance identity from persisted cause lifecycle identity;
-- project card-level evidence/fingerprint without presentation flags;
-- resolve the live cause card by persisted cause ID;
-- extend Instructor/Student coaching to dynamic cause targets;
-- prove save/load/reorder stability and feedback revision independence.
+Validated runtime/test head: `052125de3c73c963e91ab1054124983ed87f7403`.
+
+- dynamic family `possible-cause` is part of the universal target contract;
+- instance target IDs are derived as `possible-cause.<cause.id>` from the already-persisted lifecycle identity;
+- malformed/unsupported or duplicate instance IDs fail closed rather than being silently rewritten;
+- card-level evidence/fingerprints include persisted reasoning and testing findings while excluding presentation-only `editing` / `testingOpen`;
+- finding insertion order and card reorder do not change instance identity;
+- snapshot projection exposes family + instance metadata without DOM mounting;
+- live resolution maps by persisted `cause.id`, never list position;
+- Instructor and Student Classroom coaching use the same existing feedback API/revision channel for dynamic targets;
+- coaching panels reattach after Possible Cause card DOM rebuilds through presentation-only `intake:possible-causes-rendered`;
+- Student dynamic feedback remains read-only and changed-since-review uses the same deterministic fingerprint contract;
+- no coaching/API/storage/revision schema changed.
+
+Validation on the runtime/test head:
+- repository quality: **339 tests / 338 pass / 0 fail / 1 intentional skip**;
+- Browser E2E: **29 passed / 11 intentional skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
 
 ### 318D — Template/staged compatibility guards
 
