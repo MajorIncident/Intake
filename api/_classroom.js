@@ -19,6 +19,8 @@ import {
   validateToken
 } from './_workspace.js';
 import { buildClassroomDebriefModel } from '../src/classroomDebriefModel.js';
+import { stagedExerciseRecommendedTargetIds } from './_classroomSimulation.js';
+import { PROTECTED_CASE_STUDY_MANIFEST } from './protected-case-studies.manifest.js';
 
 export const CLASS_TITLE_MAX_LENGTH = 120;
 export const CLASS_WORKSPACE_LABEL_MAX_LENGTH = 120;
@@ -2323,7 +2325,10 @@ export function classObserveHandler({
  */
 export function classDebriefHandler({
   getRepository = getClassroomRepository,
-  buildModel = buildClassroomDebriefModel
+  buildModel = buildClassroomDebriefModel,
+  getRecommendedTargetIds = exercise => (
+    stagedExerciseRecommendedTargetIds(exercise, PROTECTED_CASE_STUDY_MANIFEST)
+  )
 } = {}) {
   return async (req, res) => {
     if (req.method !== 'GET') return methodNotAllowed(res, 'GET');
@@ -2351,9 +2356,14 @@ export function classDebriefHandler({
       let exercise = null;
       let readiness = [];
       let checkpoints = [];
+      let recommendedTargetIds = [];
 
       if (currentExercise?.exercise) {
         exercise = currentExercise.exercise;
+        const authoredRecommendations = getRecommendedTargetIds(exercise);
+        recommendedTargetIds = Array.isArray(authoredRecommendations)
+          ? authoredRecommendations
+          : [];
         const readinessResult = await repository.listExerciseWorkspaceStateForInstructor(
           instructorHash,
           exercise.id
@@ -2377,7 +2387,7 @@ export function classDebriefHandler({
       return send(res, 200, buildModel({
         classroom: roster.classroom,
         exercise,
-        recommendedTargetIds: [],
+        recommendedTargetIds,
         workspaces: roster.workspaces,
         currentSnapshots: liveSources.snapshots,
         checkpoints,
