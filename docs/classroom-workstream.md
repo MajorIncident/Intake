@@ -8,7 +8,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 The secure Classroom foundation (#288), live-class management (#312), and staged-simulation engine (#313) are **merged and production-published**. The Vercel function-budget blocker #321 was resolved by PR #322; exact merged-main SHA `21bff1d1c5a70caff0aa94aadd58abcb0644f397` reached production **READY** with a clean runtime-error scan.
 
-Current product priority is **#320 — join sharing and compact mobile workspace chrome**, active on `feature/classroom-join-mobile-polish`. Production staged-case work (#316/#317) is intentionally deferred while the reusable Template/field surface continues to expand. Before #319 cross-team debrief UI is built, #318 should establish a universal stable Intake-target contract so future Templates remain compatible without template-specific comparison code.
+**#320 — join sharing and compact mobile workspace chrome is implementation-complete on PR #324.** 320D audited the full PR and repaired one responsive-only Team breakpoint mismatch so the Team toggle and controller now share the same <=700px compact boundary. PR #324 should be reviewed/merged only after the current documentation head is fully green. The next implementation target after #320 is **#318 — universal stable Intake target identity**; #319 should consume that contract. Production staged-case work (#316/#317) remains intentionally deferred while the reusable Template/field surface continues to expand.
 
 ## Program issues
 
@@ -31,7 +31,7 @@ Current product priority is **#320 — join sharing and compact mobile workspace
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
 | Universal Intake target identity | #318 | Planned | Open | Shared target contract for coaching, future staged guidance, and #319; template-independent |
 | Class debrief comparison | #319 | Planned after #318 | Open | Template-independent cross-team checkpoint/live comparison using stable target IDs |
-| Join/mobile polish | #320 | **Active — 320A/B/C complete** | PR #324 / `feature/classroom-join-mobile-polish` | Join sharing + compact mobile chrome green; 320D final acceptance/publish readiness next |
+| Join/mobile polish | #320 | **Implementation complete — final docs/gates** | PR #324 / `feature/classroom-join-mobile-polish` | 320A/B/C delivered; 320D full-PR audit complete with Team breakpoint repair; review/merge after final green head |
 
 ## Current architecture decisions
 
@@ -67,7 +67,7 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-**#320 is active** on `feature/classroom-join-mobile-polish`.
+**#320 implementation is complete** on `feature/classroom-join-mobile-polish` / PR #324. The branch remains unmerged pending final documentation-head validation and review.
 
 Product/architecture decision:
 - expand Templates/fields independently; do not rush official production simulations;
@@ -110,19 +110,24 @@ PR #324 contains mini milestones for inventory/design, C1, C2, C3, and validatio
 
 ## Next recommended action
 
-Perform **#320D — final acceptance, cleanup, and publish readiness**.
+Finish **PR #324 review/merge readiness**, then move to **#318 — universal stable Intake target identity**.
 
-Required final slice:
-1. audit the complete `main...feature/classroom-join-mobile-polish` diff rather than only the latest commits;
-2. re-check the #320 security boundary: join URL/QR/native-share carry only the human code; no bearer capability enters URLs, QR markup, logs, Intake persistence, summaries, exports, or resume envelopes;
-3. re-check mobile presentation isolation: Student Class, Team, Case, Notes, and Instructor rail collapse state must not alter domain/session/persisted Intake state beyond the pre-existing desktop Notes preference;
-4. verify desktop behavior, Standalone collaboration links, Student admission/resume/reassignment, staged freeze/readiness, Instructor observer/coaching, QR/share, Notes editing, and browser accessibility remain additive;
-5. reconcile README, roadmap, workstream, scoped AGENTS/commenting docs, PR #324, and issue #320 with the final behavior;
-6. validate the final documentation head through repository quality, required Browser E2E, CodeQL, Dependency Review, and Template Manifest Guard;
-7. if fully green with no unresolved review/security threads, mark PR #324 ready for review — **do not merge automatically unless explicitly requested**;
-8. leave a final mini milestone with exact head/evidence and the next roadmap action after #320.
+#320D final audit result:
+1. full `main...feature/classroom-join-mobile-polish` diff reviewed;
+2. join URL/native-share/QR boundary remains human-code-only and strips query authority;
+3. Student admission still exchanges the human code through the normal server admission path;
+4. mobile Student Class / Case / Team / Notes / Instructor Class collapse remains presentation-only;
+5. Notes mobile toggles do not rewrite persisted desktop `notesWorkspace.open`;
+6. Team/Class compact controls do not mutate collaboration/Classroom authority or domain state;
+7. one responsive-only defect was found and repaired at `ca858037...`: Team compact CSS exposed its toggle through 720px while controller compact state began at 700px; new compact Team rules now use the same <=700px boundary while the pre-existing <=720px spacing rule remains;
+8. `main` remained exactly the documented PR base during audit and PR #324 had no unresolved review threads.
 
-**Not started yet:** 320D audit/publish-readiness work.
+After the final documentation head is green:
+- mark PR #324 ready for review;
+- do **not** merge automatically without explicit instruction;
+- next implementation work should start #318 from updated `main` after #324 merges;
+- keep #316/#317 deferred until production simulation authoring resumes.
+
 
 ## Completed #300 implementation
 
