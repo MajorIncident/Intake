@@ -57,6 +57,8 @@ Today only `classroom-student` may resolve through that path.
 
 Instructor observation for #293 must **not** be inserted as a workspace alias. `GET /api/classes/observe` is the canonical read-only path: it authenticates the Instructor class capability, proves class/workspace ownership, resolves the internal collaboration workspace server-side, and returns snapshot/presence without minting an edit alias. Routing Instructor observation through legacy collaboration PUT/PATCH would silently grant write access.
 
+#319 class debrief comparison uses a separate Instructor-only **GET-only** `/api/classes/debrief` aggregate read. It must reuse the represented class authorization boundary and existing live/checkpoint/readiness/coaching sources, then return only comparison-safe projections from the universal Intake target layer. Never return raw live/checkpoint snapshots, internal workspace IDs, coaching notes, editable capabilities, or Student/assignment/join credentials from the aggregate route. The route must create no persistence or mutation path. A class with no current non-completed staged exercise remains comparable using live Intake; staged readiness/checkpoint context is simply absent.
+
 ## Retention and revocation
 
 - Classroom workspaces must not outlive their class; create them with the class's absolute expiry timestamp.
