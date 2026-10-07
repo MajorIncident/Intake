@@ -182,6 +182,8 @@ export function createStudentClassroomController({
   toast = () => {},
   onClassConnected = () => {},
   onClassDisconnected = () => {},
+  onSessionConnected = () => {},
+  onSessionDisconnected = () => {},
   setTimeoutImpl = globalThis.setTimeout?.bind(globalThis),
   clearTimeoutImpl = globalThis.clearTimeout?.bind(globalThis),
   AbortControllerImpl = globalThis.AbortController
@@ -421,6 +423,7 @@ export function createStudentClassroomController({
     liveEpoch += 1;
     stopLivePolling();
     disconnectWorkspace();
+    onSessionDisconnected();
     clearStudentSession(storage);
     activeSession = null;
     restoreLocalRecovery();
@@ -686,6 +689,7 @@ export function createStudentClassroomController({
     const epoch = liveEpoch;
     stopLivePolling();
     persistStudentSession(storage, session);
+    onSessionConnected(session.studentSessionToken);
     renderHolding(session, {
       status: 'connecting',
       title: 'Joining your class',
@@ -867,6 +871,7 @@ export function createStudentClassroomController({
     liveEpoch += 1;
     stopLivePolling();
     disconnectWorkspace();
+    onSessionDisconnected();
     clearStudentSession(storage);
     activeSession = null;
     const restored = restore ? restoreLocalRecovery() : false;
@@ -918,6 +923,7 @@ export function createStudentClassroomController({
     liveEpoch += 1;
     stopLivePolling();
     onClassDisconnected();
+    onSessionDisconnected();
     element('studentClassJoinForm')?.removeEventListener('submit', handleJoinSubmit);
     element('studentClassRetryBtn')?.removeEventListener('click', handleRetry);
     element('studentClassLeaveBtn')?.removeEventListener('click', handleLeave);
