@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 import { TEMPLATE_MODE_IDS } from '../src/templateModes.js';
 import { TEMPLATE_KINDS } from '../src/templateKinds.js';
+import { validateIntakeTargetCoverage } from '../src/intakeTargets.js';
 import {
   normalizeStagedSimulation,
   validateSimulationForResource
@@ -183,6 +184,11 @@ async function readTemplateFile(fileName) {
   }
   const stateErrors = validateSerializedAppState(state);
   errors.push(...stateErrors.map(message => `state invalid: ${message}`));
+
+  if (templateKind === TEMPLATE_KINDS.STANDARD && isRecord(state)) {
+    const targetCoverageErrors = validateIntakeTargetCoverage(state);
+    errors.push(...targetCoverageErrors.map(message => `state target coverage invalid: ${message}`));
+  }
 
   const simulationErrors = validateSimulationForResource({ templateKind, simulation });
   errors.push(...simulationErrors.map(message => `simulation invalid: ${message}`));
