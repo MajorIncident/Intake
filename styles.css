@@ -3262,6 +3262,7 @@ body.dialog-open{overflow:hidden;}
 .instructor-observation-notice__main>strong{display:block;color:var(--ink-strong);font-size:15px;}
 .instructor-observation-notice__meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px;color:var(--muted);font-size:11px;}
 .instructor-observation-notice__meta span{padding:4px 7px;border:1px solid var(--line);border-radius:999px;background:var(--panel);}
+.instructor-observation-live-btn{margin-top:9px;padding:6px 9px;font-size:10px;}
 .instructor-observation-participants{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;max-width:55%;margin:0;padding:0;list-style:none;}
 .instructor-observation-person{padding:5px 8px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font-size:11px;}
 .instructor-observation-person--muted{color:var(--muted);}
@@ -3365,6 +3366,7 @@ body[data-experience-role="instructor"].instructor-class-connected.instructor-ra
 .instructor-exercise-checkpoint__row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 8px;border:1px solid var(--line);border-radius:10px;background:var(--panel);}
 .instructor-exercise-checkpoint__row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-size:10px;}
 .instructor-exercise-checkpoint__row strong{flex:0 0 auto;color:var(--muted);font-size:9px;}
+.instructor-exercise-checkpoint__inspect{flex:0 0 auto;padding:5px 7px;font-size:9px;white-space:nowrap;}
 .instructor-exercise-checkpoint__empty{margin:7px 0 0;color:var(--muted);font-size:9px;line-height:1.4;}
 .instructor-exercise-console__available{margin-top:9px;}
 .instructor-exercise-console__available>span{display:block;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;}
