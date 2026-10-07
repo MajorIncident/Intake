@@ -4,7 +4,10 @@
 
 Tracking issue: #318  
 Active branch: `feature/universal-intake-target-identity`  
-Base: `main` at `273ae6437c0898b9e35778587c7053580db14e22` (PR #324 merge)
+Base: `main` at `273ae6437c0898b9e35778587c7053580db14e22` (PR #324 merge)  
+Current tranche: **318B — universal static registry and snapshot projection**  
+318A validated checkpoint: `5638a8211056954fe29eb1f5892a53517f62f0c7`  
+318B implementation checkpoint: `ce5e8bccc12e367e780ad1e31cacb7e713b2a1d4`
 
 This document is the canonical contract for #318. It defines the semantic identity layer that coaching, future staged guidance, and #319 cross-team debrief comparison must share.
 
@@ -98,7 +101,7 @@ The existing coaching target IDs are part of the compatibility contract.
 - 22 static coaching fields;
 - KT row IDs derived from stable `ROWS[].id`.
 
-`src/coachableFields.js` should become a compatibility facade over the universal target module rather than remaining a second semantic registry.
+`src/intakeTargets.js` is the semantic source of truth for the current static/KT target registry, snapshot projection, live placement resolution, and evidence fingerprints. `src/coachableFields.js` is a compatibility facade over that module so existing coaching imports and stored target IDs remain stable.
 
 Existing feedback rows must continue to resolve after migration.
 
@@ -208,13 +211,20 @@ For dynamic families:
 - record compatibility/failure rules;
 - no runtime behavior change.
 
-### 318B — universal static registry and snapshot projection
+### 318B — universal static registry and snapshot projection — implemented / validating
 
-- add domain-neutral target module;
-- preserve existing coaching target IDs;
-- add serialized extractors and comparison-safe projections for static + KT targets;
-- make `coachableFields.js` a compatibility facade;
-- add registry integrity and snapshot-projection tests.
+Implementation checkpoint: `ce5e8bccc12e367e780ad1e31cacb7e713b2a1d4`.
+
+- `src/intakeTargets.js` now owns the domain-neutral static + KT registry;
+- every existing coaching target ID and v1 fingerprint contract is preserved;
+- static targets project evidence from serialized Intake paths without mounting the DOM;
+- KT targets project by durable `questionId`, never serialized row position;
+- Decision Analysis and Potential Problem/Risk targets project from their persisted nested structures, including the rollback/contingency fallback semantics;
+- projection returns stable label/section/kind metadata, normalized evidence, comparison text, empty state, and deterministic fingerprint;
+- live DOM/KT bindings remain optional rendering hooks on the same definitions;
+- `coachableFields.js` delegates to the universal module as a compatibility facade;
+- `tests/intakeTargets.unit.test.mjs` locks coaching compatibility, uniqueness, snapshot projection, KT row-order independence, nested workflow extraction, and unknown-target behavior;
+- dynamic Possible Cause family work remains intentionally deferred to 318C.
 
 ### 318C — dynamic Possible Cause target family
 
@@ -257,6 +267,7 @@ Read:
 - `docs/classroom-workstream.md`;
 - `docs/classroom-roadmap.md`;
 - root and `src/AGENTS.md`;
+- `src/intakeTargets.js`;
 - `src/coachableFields.js`;
 - `src/classroomCoaching.js`;
 - `src/kt.js`;
