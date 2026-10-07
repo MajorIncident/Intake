@@ -15,9 +15,18 @@ function reply(status, body) {
   return { ok: status >= 200 && status < 300, status, json: async () => body };
 }
 /** Builds a deterministic collaboration controller environment. @param {string} url Page URL. @returns {object} Environment. */
-function setup(url = 'https://intake.test/', initial = { local: true }) {
-  const dom = new JSDOM(`<!doctype html><head><title>KT Intake</title></head><body><div id="collaborationStatus"></div><div id="collaborationSyncDetail"></div><button id="syncCollaborationBtn"></button><button id="startCollaborationBtn"></button><button id="copyCollaborationLinkBtn"></button><button id="editCollaborationNameBtn"></button><button id="editCollaborationNameBannerBtn"></button><button id="editCollaborationTeamBtn"></button><button id="editCollaborationTeamBannerBtn"></button><button id="leaveCollaborationBtn"></button><div id="collaborationConflictActions"></div><button id="loadSharedVersionBtn"></button><button id="exportRecoveryBtn"></button><section id="collaborationWorkspace" hidden><strong id="collaborationTeamName"></strong><span id="collaborationPeopleSummary"></span><span id="collaborationPresenceStale" hidden></span><ul id="collaborationParticipants"></ul><button id="collaborationRosterToggle" hidden></button><p id="collaborationLiveRegion"></p></section><div id="collaborationDialogBackdrop" hidden></div><section id="collaborationDialog" hidden tabindex="-1"><h4 id="collaborationDialogTitle"></h4><p id="collaborationDialogDescription"></p><form id="collaborationDialogForm"><div id="collaborationTeamNameField" data-persistence="local-only"><input id="collaborationTeamNameInput"></div><div id="collaborationDisplayNameField" data-persistence="local-only"><input id="collaborationDisplayNameInput"></div><button id="collaborationDialogCancelBtn" type="button"></button><button id="collaborationDialogSubmitBtn" type="submit"></button></form></section><label for="field">Problem statement</label><input id="field"></body>`, { url });
+function setup(url = 'https://intake.test/', initial = { local: true }, { mobile = false } = {}) {
+  const dom = new JSDOM(`<!doctype html><head><title>KT Intake</title></head><body><div id="collaborationStatus"></div><div id="collaborationSyncDetail"></div><button id="syncCollaborationBtn"></button><button id="startCollaborationBtn"></button><button id="copyCollaborationLinkBtn"></button><button id="editCollaborationNameBtn"></button><button id="editCollaborationNameBannerBtn"></button><button id="editCollaborationTeamBtn"></button><button id="editCollaborationTeamBannerBtn"></button><button id="leaveCollaborationBtn"></button><div id="collaborationConflictActions"></div><button id="loadSharedVersionBtn"></button><button id="exportRecoveryBtn"></button><section id="collaborationWorkspace" hidden><div><strong id="collaborationTeamName"></strong><span id="collaborationWorkspaceCompactSummary"></span><button id="collaborationWorkspaceToggle" aria-expanded="true"></button></div><div id="collaborationWorkspaceBody"><span id="collaborationPeopleSummary"></span><span id="collaborationPresenceStale" hidden></span><ul id="collaborationParticipants"></ul><button id="collaborationRosterToggle" hidden></button><p id="collaborationLiveRegion"></p><button id="editCollaborationNameBannerBtn"></button><button id="editCollaborationTeamBannerBtn"></button></div></section><div id="collaborationDialogBackdrop" hidden></div><section id="collaborationDialog" hidden tabindex="-1"><h4 id="collaborationDialogTitle"></h4><p id="collaborationDialogDescription"></p><form id="collaborationDialogForm"><div id="collaborationTeamNameField" data-persistence="local-only"><input id="collaborationTeamNameInput"></div><div id="collaborationDisplayNameField" data-persistence="local-only"><input id="collaborationDisplayNameInput"></div><button id="collaborationDialogCancelBtn" type="button"></button><button id="collaborationDialogSubmitBtn" type="submit"></button></form></section><label for="field">Problem statement</label><input id="field"></body>`, { url });
   Object.defineProperty(dom.window.document, 'hidden', { configurable: true, value: false });
+  Object.defineProperty(dom.window, 'matchMedia', {
+    configurable: true,
+    value: query => ({
+      media: query,
+      matches: mobile && query === '(max-width: 700px)',
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    })
+  });
   const timers = []; const requests = []; const applyCalls = []; const localSaves = [];
   let current = initial;
   const fetchImpl = async (...args) => {
@@ -63,6 +72,43 @@ test('starting a session sends team and profile metadata and renders server-assi
   assert.equal(env.dom.window.document.title, 'Payments team · Teammate 1 · KT Intake');
   assert.equal(env.timers.some(timer => timer.delay === PRESENCE_DELAY_MS), true);
   assert.equal(JSON.parse(env.dom.window.localStorage.getItem(PROFILE_STORAGE_KEY)).displayName, 'Teammate 1');
+});
+
+test('Team workspace defaults compact on mobile and expands without changing collaboration state', async () => {
+  const env = setup('https://intake.test/', { local: true }, { mobile: true });
+  await env.controller.init();
+  setup.handler = async (_url, options) => {
+    const sent = JSON.parse(options.body);
+    return reply(201, {
+      token,
+      revision: 1,
+      teamName: 'Mobile team',
+      self: { id: sent.participant.id, displayName: 'Alex' },
+      participants: [{ id: sent.participant.id, displayName: 'Alex' }]
+    });
+  };
+
+  assert.equal(await env.controller.start({ requestedTeamName: 'Mobile team', requestedDisplayName: 'Alex' }), true);
+  const workspace = env.dom.window.document.getElementById('collaborationWorkspace');
+  const toggle = env.dom.window.document.getElementById('collaborationWorkspaceToggle');
+  const before = env.controller.getState();
+
+  assert.equal(workspace.classList.contains('is-collapsed'), true);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  assert.equal(toggle.textContent, 'Open team');
+  assert.equal(env.dom.window.document.getElementById('collaborationWorkspaceCompactSummary').textContent, '1 person here');
+  assert.equal(before.workspaceExpanded, false);
+
+  toggle.click();
+
+  const after = env.controller.getState();
+  assert.equal(workspace.classList.contains('is-collapsed'), false);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  assert.equal(toggle.textContent, 'Collapse team');
+  assert.equal(after.workspaceExpanded, true);
+  assert.equal(after.token, before.token);
+  assert.equal(after.revision, before.revision);
+  assert.equal(after.teamName, before.teamName);
 });
 
 test('joining prompts for a name then registers presence without changing the snapshot revision', async () => {
