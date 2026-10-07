@@ -157,6 +157,8 @@ Rules:
 - exercise persistence uses one non-completed exercise per class initially, optimistic `exercise_revision`, idempotent optional releases, workspace-scoped readiness, immutable first-write-wins debrief checkpoints, and class-bounded expiry;
 - every running exercise pins the staged simulation version plus a definition fingerprint; later API reads/mutations must fail closed if the current protected definition does not match;
 - checkpoint snapshots are facilitation evidence only and must never overwrite or become the live collaboration snapshot automatically;
+- normal Instructor exercise payloads must expose checkpoint **metadata only**; snapshot bytes require the explicit Instructor-only current-stage debrief checkpoint read and must remain class/workspace/stage scoped;
+- the checkpoint read is GET-only, must never mint workspace edit authority, and must reject Student/join/assignment/unrelated-class authority without leaking whether another team's checkpoint exists;
 - `student_editing_enabled=false` is now a server-enforced security boundary for `classroom-student` snapshot PUT; preserve that invariant when changing exercise or collaboration code;
 - do not create production stage definitions from guessed official case boundaries. Synthetic deterministic staged content is acceptable in tests until authoritative material is supplied.
 
