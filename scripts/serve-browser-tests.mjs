@@ -67,6 +67,12 @@ const BROWSER_STAGED_CASE = Object.freeze({
         kind: 'evidence',
         title: 'Optional browser evidence',
         body: 'Synthetic optional Student evidence released only by the Instructor.'
+      },
+      {
+        id: 'browser-brief-2',
+        kind: 'narrative',
+        title: 'Second browser briefing',
+        body: 'Synthetic Student-safe content authored for the second browser stage.'
       }
     ],
     instructorContent: [
@@ -75,6 +81,12 @@ const BROWSER_STAGED_CASE = Object.freeze({
         kind: 'facilitation',
         title: 'Browser facilitation note',
         body: 'Synthetic Instructor-only browser facilitation.'
+      },
+      {
+        id: 'browser-teach-2',
+        kind: 'facilitation',
+        title: 'Second-stage browser facilitation',
+        body: 'Synthetic Instructor-only guidance for the final browser stage.'
       }
     ],
     stages: [
@@ -88,6 +100,17 @@ const BROWSER_STAGED_CASE = Object.freeze({
         suggestedMinutes: 5,
         instructorContentIds: ['browser-teach-1'],
         defaultDebriefEditPolicy: 'frozen'
+      },
+      {
+        id: 'browser-stage-2',
+        title: 'Analyze the browser case',
+        studentObjective: 'Use the second-stage information to refine the analysis.',
+        initialReleaseIds: ['browser-brief-2'],
+        optionalReleaseIds: [],
+        intakeTargetIds: ['kt.where-location'],
+        suggestedMinutes: 4,
+        instructorContentIds: ['browser-teach-2'],
+        defaultDebriefEditPolicy: 'open'
       }
     ]
   }
@@ -950,7 +973,11 @@ async function handleClassroomApi(request, response, url) {
         }
         const stage = BROWSER_STAGED_CASE.simulation.stages.find(item => item.id === exercise.currentStageId);
         const checkpoints = captureBrowserExerciseCheckpoints(instructorToken, exercise);
-        classroomExerciseCheckpoints.set(instructorToken, checkpoints);
+        const priorCheckpoints = classroomExerciseCheckpoints.get(instructorToken) || [];
+        classroomExerciseCheckpoints.set(instructorToken, [
+          ...priorCheckpoints.filter(item => item.stageId !== exercise.currentStageId),
+          ...checkpoints
+        ]);
         capturedCount = checkpoints.length;
         exercise.stagePhase = 'debrief';
         exercise.studentEditingEnabled = stage?.defaultDebriefEditPolicy !== 'frozen';
@@ -964,6 +991,38 @@ async function handleClassroomApi(request, response, url) {
           return true;
         }
         exercise.studentEditingEnabled = body.enabled;
+      } else if (body.action === 'advance') {
+        const currentIndex = BROWSER_STAGED_CASE.simulation.stages.findIndex(
+          item => item.id === exercise.currentStageId
+        );
+        const nextStage = currentIndex >= 0
+          ? BROWSER_STAGED_CASE.simulation.stages[currentIndex + 1]
+          : null;
+        if (exercise.status !== 'active' || exercise.stagePhase !== 'debrief' || !nextStage) {
+          sendJson(response, 409, {
+            error: 'Exercise is not ready to advance.',
+            exercise: structuredClone(exercise)
+          });
+          return true;
+        }
+        exercise.currentStageId = nextStage.id;
+        exercise.stagePhase = 'work';
+        exercise.studentEditingEnabled = true;
+      } else if (body.action === 'complete') {
+        const finalStage = BROWSER_STAGED_CASE.simulation.stages.at(-1);
+        if (
+          exercise.status !== 'active'
+          || exercise.stagePhase !== 'debrief'
+          || exercise.currentStageId !== finalStage?.id
+        ) {
+          sendJson(response, 409, {
+            error: 'Exercise cannot be completed from its current state.',
+            exercise: structuredClone(exercise)
+          });
+          return true;
+        }
+        exercise.status = 'completed';
+        exercise.studentEditingEnabled = true;
       } else {
         sendJson(response, 400, { error: 'Invalid exercise action.' });
         return true;
