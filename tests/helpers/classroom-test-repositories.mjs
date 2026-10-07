@@ -946,6 +946,46 @@ export function createClassroomRepository() {
           .filter(checkpoint => checkpoint.workspaceId)
       };
     },
+    async getExerciseCheckpointForInstructor(
+      instructorHash,
+      exercisePublicId,
+      stageId,
+      workspacePublicId
+    ) {
+      const current = await this.getExerciseForInstructor(instructorHash, exercisePublicId);
+      if (!current) return null;
+      const exercise = exercises.find(candidate => (
+        candidate.classInternalId === current.classroom.internal_id
+        && candidate.id === exercisePublicId
+      ));
+      const workspace = workspaces.find(candidate => (
+        candidate.classInternalId === current.classroom.internal_id
+        && candidate.id === workspacePublicId
+        && !candidate.revoked
+      ));
+      if (!exercise || !workspace) return null;
+      const checkpoint = exerciseCheckpoints.get(
+        exercise.internalId + ':' + stageId + ':' + workspace.workspaceId
+      );
+      if (!checkpoint) return null;
+      return {
+        ...current,
+        workspace: {
+          id: workspace.id,
+          kind: workspace.kind,
+          label: workspace.label
+        },
+        checkpoint: {
+          workspaceId: workspace.id,
+          workspaceKind: workspace.kind,
+          workspaceLabel: workspace.label,
+          stageId: checkpoint.stageId,
+          workspaceRevision: checkpoint.workspaceRevision,
+          snapshot: cloneValue(checkpoint.snapshot),
+          capturedAt: checkpoint.capturedAt
+        }
+      };
+    },
     async rotateStudentJoin(instructorHash, nextHash) {
       const item = activeByInstructor(instructorHash);
       if (!item) return null;
