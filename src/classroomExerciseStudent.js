@@ -9,6 +9,7 @@
  */
 
 export const STUDENT_EXERCISE_ENDPOINT = '/api/classes/exercise/student';
+export const STUDENT_EXERCISE_READY_ENDPOINT = '/api/classes/exercise/student/ready';
 export const STUDENT_EXERCISE_POLL_MS = 2500;
 
 const CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
@@ -62,6 +63,19 @@ function sanitizeReleasedContent(value) {
   };
 }
 
+function sanitizeReadiness(value) {
+  if (!value || typeof value !== 'object') return null;
+  const stageId = typeof value.stageId === 'string' ? value.stageId.trim() : '';
+  if (!stageId || typeof value.readyForDebrief !== 'boolean') return null;
+  const revision = Number(value.readyWorkspaceRevision);
+  return {
+    stageId,
+    readyForDebrief: value.readyForDebrief,
+    readyAt: typeof value.readyAt === 'string' ? value.readyAt : null,
+    readyWorkspaceRevision: Number.isInteger(revision) && revision >= 0 ? revision : null
+  };
+}
+
 function sanitizeExercise(value) {
   if (!value || typeof value !== 'object') return null;
   const id = typeof value.id === 'string' ? value.id.trim() : '';
@@ -83,7 +97,8 @@ function sanitizeExercise(value) {
     currentStage: sanitizeStage(value.currentStage),
     releasedContent: Array.isArray(value.releasedContent)
       ? value.releasedContent.map(sanitizeReleasedContent).filter(Boolean)
-      : []
+      : [],
+    readiness: sanitizeReadiness(value.readiness)
   };
 }
 
@@ -127,6 +142,8 @@ export function createStudentExerciseReferenceController({
   let participant = null;
   let loading = false;
   let lastError = '';
+  let readinessUpdating = false;
+  let readinessError = '';
   let destroyed = false;
   let epoch = 0;
   let timer = null;
@@ -184,6 +201,8 @@ export function createStudentExerciseReferenceController({
     assignment = null;
     participant = null;
     lastError = '';
+    readinessUpdating = false;
+    readinessError = '';
     const panel = element('studentCaseReference');
     if (panel) panel.hidden = true;
     documentRef?.body?.classList?.remove('student-case-reference-visible');
@@ -224,6 +243,9 @@ export function createStudentExerciseReferenceController({
     const stageTitle = element('studentCaseReferenceStageTitle');
     const objective = element('studentCaseReferenceObjective');
     const message = element('studentCaseReferenceMessage');
+    const readinessPanel = element('studentCaseReferenceReadiness');
+    const readinessStatus = element('studentCaseReferenceReadinessStatus');
+    const readinessButton = element('studentCaseReferenceReadyBtn');
     if (!panel) return;
 
     const visible = Boolean(capability && exercise);
@@ -240,6 +262,36 @@ export function createStudentExerciseReferenceController({
     }
     if (stageTitle) stageTitle.textContent = exercise.currentStage?.title || 'Waiting for current stage';
     if (objective) objective.textContent = exercise.currentStage?.studentObjective || '';
+
+    const readinessForCurrentStage = exercise.readiness?.stageId === exercise.currentStage?.id
+      ? exercise.readiness
+      : null;
+    const isReady = readinessForCurrentStage?.readyForDebrief === true;
+    const canManageReadiness = exercise.status === 'active'
+      && exercise.stagePhase === 'work'
+      && Boolean(exercise.currentStage)
+      && Boolean(assignment);
+
+    if (readinessPanel) readinessPanel.hidden = !canManageReadiness;
+    if (readinessStatus) {
+      if (readinessUpdating) {
+        readinessStatus.textContent = 'Updating team status…';
+      } else if (readinessError) {
+        readinessStatus.textContent = readinessError;
+      } else if (isReady) {
+        readinessStatus.textContent = Number.isInteger(readinessForCurrentStage.readyWorkspaceRevision)
+          ? `Ready for debrief · Intake revision ${readinessForCurrentStage.readyWorkspaceRevision}`
+          : 'Ready for debrief';
+      } else {
+        readinessStatus.textContent = 'Working';
+      }
+    }
+    if (readinessButton) {
+      readinessButton.hidden = !canManageReadiness;
+      readinessButton.disabled = readinessUpdating || !canManageReadiness;
+      readinessButton.setAttribute('aria-pressed', String(isReady));
+      readinessButton.textContent = isReady ? 'Resume working' : 'Mark Ready';
+    }
 
     if (message) {
       const frozen = exercise.stagePhase === 'debrief'
@@ -260,6 +312,7 @@ export function createStudentExerciseReferenceController({
       ? { id: body.participant.id, displayName: body.participant.displayName }
       : null;
     exercise = sanitizeExercise(body?.exercise);
+    readinessError = '';
   };
 
   async function refresh(requestEpoch = epoch) {
@@ -325,6 +378,87 @@ export function createStudentExerciseReferenceController({
     }
   }
 
+  async function setReadiness(nextReady, requestEpoch = epoch) {
+    if (
+      destroyed
+      || !capability
+      || requestEpoch !== epoch
+      || readinessUpdating
+      || typeof fetchImpl !== 'function'
+      || exercise?.status !== 'active'
+      || exercise?.stagePhase !== 'work'
+      || !exercise?.currentStage
+      || !assignment
+    ) return false;
+
+    const localCapability = capability;
+    const desiredReady = Boolean(nextReady);
+    readinessUpdating = true;
+    readinessError = '';
+    stopTimer();
+    abort();
+    render();
+    abortController = typeof AbortControllerImpl === 'function' ? new AbortControllerImpl() : null;
+
+    try {
+      const response = await fetchImpl(STUDENT_EXERCISE_READY_ENDPOINT, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${localCapability}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ready: desiredReady }),
+        signal: abortController?.signal
+      });
+      const body = await response.json().catch(() => ({}));
+      abortController = null;
+      if (destroyed || requestEpoch !== epoch || capability !== localCapability) return false;
+
+      if (response.status === 401 || response.status === 404) {
+        disconnect();
+        return false;
+      }
+      if (response.status === 409) {
+        readinessError = 'Class or assignment changed. Refreshing team status…';
+        render();
+        await refresh(requestEpoch);
+        return false;
+      }
+      if (!response.ok) {
+        readinessError = 'Unable to update team readiness.';
+        render();
+        schedule(requestEpoch);
+        return false;
+      }
+
+      assignment = body?.assignment && typeof body.assignment === 'object'
+        ? { ...body.assignment }
+        : assignment;
+      if (exercise) {
+        exercise = {
+          ...exercise,
+          readiness: sanitizeReadiness(body?.readiness)
+        };
+      }
+      readinessError = '';
+      render();
+      schedule(requestEpoch);
+      return true;
+    } catch (error) {
+      abortController = null;
+      if (destroyed || requestEpoch !== epoch || error?.name === 'AbortError') return false;
+      readinessError = 'Unable to update team readiness.';
+      render();
+      schedule(requestEpoch);
+      return false;
+    } finally {
+      if (!destroyed && requestEpoch === epoch) {
+        readinessUpdating = false;
+        render();
+      }
+    }
+  }
+
   const connectStudent = async token => {
     if (destroyed || !validCapability(token)) return false;
     epoch += 1;
@@ -347,12 +481,19 @@ export function createStudentExerciseReferenceController({
   };
 
   const handleToggle = () => setExpanded(!expanded, { user: true });
+  const handleReadyToggle = () => {
+    const current = exercise?.readiness?.stageId === exercise?.currentStage?.id
+      ? exercise.readiness.readyForDebrief === true
+      : false;
+    void setReadiness(!current, epoch);
+  };
   const handleMediaChange = event => {
     if (expansionTouched) return;
     setExpanded(!event.matches);
   };
 
   element('studentCaseReferenceToggle')?.addEventListener('click', handleToggle);
+  element('studentCaseReferenceReadyBtn')?.addEventListener('click', handleReadyToggle);
   mobileQuery?.addEventListener?.('change', handleMediaChange);
   renderExpansion();
 
@@ -360,11 +501,14 @@ export function createStudentExerciseReferenceController({
     connectStudent,
     disconnect,
     refresh: () => refresh(epoch),
+    setReadiness: ready => setReadiness(Boolean(ready), epoch),
     setExpanded: next => setExpanded(next, { user: true }),
     getState: () => ({
       connected: Boolean(capability),
       loading,
       lastError,
+      readinessUpdating,
+      readinessError,
       expanded,
       classroom,
       assignment,
@@ -377,13 +521,15 @@ export function createStudentExerciseReferenceController({
             releasedContent: exercise.releasedContent.map(item => ({
               ...item,
               content: { ...item.content }
-            }))
+            })),
+            readiness: exercise.readiness ? { ...exercise.readiness } : null
           }
         : null
     }),
     destroy: () => {
       if (destroyed) return;
       element('studentCaseReferenceToggle')?.removeEventListener('click', handleToggle);
+      element('studentCaseReferenceReadyBtn')?.removeEventListener('click', handleReadyToggle);
       mobileQuery?.removeEventListener?.('change', handleMediaChange);
       disconnect();
       destroyed = true;
