@@ -5,10 +5,11 @@
 Tracking issue: #318  
 Active branch: `feature/universal-intake-target-identity`  
 Base: `main` at `273ae6437c0898b9e35778587c7053580db14e22` (PR #324 merge)  
-Current tranche: **318D — Template/staged compatibility guards**  
+Current tranche: **318E — integrated acceptance and closeout**  
 318A validated checkpoint: `5638a8211056954fe29eb1f5892a53517f62f0c7`  
 318B GREEN checkpoint: `e716ee1f4933124caa052b1a21cfae097ca8d23e`  
-318C implementation/validation head: `052125de3c73c963e91ab1054124983ed87f7403`
+318C implementation/validation head: `052125de3c73c963e91ab1054124983ed87f7403`  
+318D GREEN checkpoint: `b312a23a2cc90a6d792d3f4a11ff47024e920ebd`
 
 This document is the canonical contract for #318. It defines the semantic identity layer that coaching, future staged guidance, and #319 cross-team debrief comparison must share.
 
@@ -157,7 +158,7 @@ Tests/build guards must:
 - load every public Standard Template and project it through the target layer;
 - reject duplicate/renamed target definitions;
 - fail loudly when a new field is added to a target-bearing schema area without a target definition or explicit reviewed exclusion;
-- validate staged `intakeTargetIds` against static/family semantic IDs once the shared validator lands.
+- validate staged `intakeTargetIds` against shared static/KT and family semantic IDs.
 
 A new Template using existing fields must pass automatically.
 
@@ -248,12 +249,24 @@ Validation on the runtime/test head:
 - Browser E2E: **29 passed / 11 intentional skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
 
-### 318D — Template/staged compatibility guards
+### 318D — Template/staged compatibility guards — complete
 
-- iterate every Standard Template through target projection;
-- add actionable fail-loud coverage for new target-bearing fields;
-- validate staged `intakeTargetIds` against the shared registry/family IDs;
-- do not author production simulation content.
+Validated implementation head: `b312a23a2cc90a6d792d3f4a11ff47024e920ebd`.
+
+- every public Standard Template is projected through the universal target layer with no template-specific mapping;
+- Standard Template generation runs executable target coverage validation;
+- designated target-bearing schema areas fail loudly when a persisted field has neither a stable target definition nor an explicit reviewed exclusion;
+- canonical normalized app-state is coverage-tested so future fields in covered reasoning areas cannot silently bypass #319;
+- KT rows must resolve to registered `kt.<questionId>` targets;
+- Possible Cause lifecycle IDs must be supported and unique for dynamic target projection;
+- staged `intakeTargetIds` accept only shared static/KT IDs or registered family IDs such as `possible-cause`;
+- learner/workspace dynamic instance IDs are intentionally unauthorable in staged definitions;
+- no production Case Study content was added or changed.
+
+Validation:
+- repository quality: **345 tests / 344 pass / 0 fail / 1 intentional skip**;
+- Browser E2E: **29 passed / 11 intentional skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
 
 ### 318E — integrated acceptance and closeout
 
