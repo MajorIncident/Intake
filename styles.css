@@ -510,6 +510,13 @@ body.experience-role-gate-open{overflow:hidden;}
 .student-case-reference__item{padding:10px;border:1px solid var(--line);border-radius:11px;background:var(--panel);}
 .student-case-reference__item strong{display:block;color:var(--ink-strong);font-size:12px;}
 .student-case-reference__item p{margin:4px 0 0;color:var(--ink);font-size:11px;line-height:1.5;overflow-wrap:anywhere;}
+.student-case-reference__readiness{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:10px;border:1px solid var(--line);border-radius:11px;background:color-mix(in srgb,var(--accent) 5%,var(--panel));}
+.student-case-reference__readiness[hidden]{display:none;}
+.student-case-reference__readiness>div{min-width:0;}
+.student-case-reference__readiness span{display:block;color:var(--muted);font-size:9px;font-weight:850;letter-spacing:.07em;text-transform:uppercase;}
+.student-case-reference__readiness strong{display:block;margin-top:3px;color:var(--ink-strong);font-size:11px;line-height:1.4;}
+.student-case-reference__ready-btn{flex:0 0 auto;font-size:11px;padding:7px 10px;}
+.student-case-reference__ready-btn[aria-pressed="true"]{border-color:color-mix(in srgb,var(--accent) 55%,var(--control-border));background:color-mix(in srgb,var(--accent) 12%,var(--control-bg));}
 .student-case-reference__empty,.student-case-reference__message{margin:10px 0 0;color:var(--muted);font-size:11px;line-height:1.5;}
 .student-case-reference__message{padding:8px 9px;border-radius:9px;background:color-mix(in srgb,var(--accent) 7%,var(--panel));color:var(--ink);}
 body[data-experience-role="student"][data-student-class-status="connected"] #studentClassEntryShell{display:none;}
@@ -521,6 +528,8 @@ body[data-experience-role="student"]:not([data-student-class-status="connected"]
   .student-case-reference__header{align-items:center;}
   .student-case-reference.is-collapsed .student-case-reference__header [role="status"]{max-width:52vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .student-case-reference__toggle{padding:6px 7px;font-size:10px;white-space:nowrap;}
+  .student-case-reference__readiness{align-items:stretch;flex-direction:column;}
+  .student-case-reference__ready-btn{width:100%;}
   body[data-experience-role="student"] .workspace-dock{
     position:static;
     width:auto;
