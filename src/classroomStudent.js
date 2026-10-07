@@ -12,6 +12,10 @@
 
 import { getActiveExperienceRole } from './experienceRoleController.js';
 import { EXPERIENCE_ROLE_IDS } from './experienceRoles.js';
+import {
+  consumeClassroomJoinIntent,
+  formatClassroomJoinLinkCode
+} from './classroomJoinLink.js';
 
 export const STUDENT_SESSION_STORAGE_KEY = 'kt-classroom-student-session-v1';
 export const STUDENT_RECOVERY_STORAGE_KEY = 'kt-classroom-student-local-recovery-v1';
@@ -736,6 +740,26 @@ export function createStudentClassroomController({
     if (element('studentLegacyJoin')) element('studentLegacyJoin').open = false;
   };
 
+  const applyJoinIntent = () => {
+    if (readStudentSession(storage)) return false;
+    const joinCode = consumeClassroomJoinIntent({
+      locationRef: windowRef?.location,
+      historyRef: windowRef?.history
+    });
+    if (!joinCode) return false;
+
+    activeSession = null;
+    activeWorkspaceToken = '';
+    renderEntry();
+    const input = element('studentClassCode');
+    if (input) input.value = formatClassroomJoinLinkCode(joinCode);
+    setError('');
+    if (element('studentDisplayName') && typeof element('studentDisplayName').focus === 'function') {
+      element('studentDisplayName').focus();
+    }
+    return true;
+  };
+
   const joinLegacy = async ({ classCode, assignmentCode, displayName, participantId }) => {
     const joinToken = typeof classCode === 'string' ? classCode.trim() : '';
     const assignmentToken = typeof assignmentCode === 'string' ? assignmentCode.trim() : '';
@@ -898,7 +922,7 @@ export function createStudentClassroomController({
   const handleRoleChange = event => {
     const role = event?.detail?.role;
     if (role === EXPERIENCE_ROLE_IDS.STUDENT) {
-      void resume();
+      if (!applyJoinIntent()) void resume();
       return;
     }
     liveEpoch += 1;
@@ -914,7 +938,9 @@ export function createStudentClassroomController({
     element('studentClassLeaveBtn')?.addEventListener('click', handleLeave);
     element('studentClassWaitingLeaveBtn')?.addEventListener('click', handleLeave);
     windowRef?.addEventListener?.('intake:experience-role-changed', handleRoleChange);
-    if (getActiveExperienceRole() === EXPERIENCE_ROLE_IDS.STUDENT) void resume();
+    if (getActiveExperienceRole() === EXPERIENCE_ROLE_IDS.STUDENT) {
+      if (!applyJoinIntent()) void resume();
+    }
     return true;
   };
 
