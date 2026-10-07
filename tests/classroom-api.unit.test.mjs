@@ -1606,8 +1606,19 @@ test('Instructor debrief comparison composes current staged readiness and immuta
     }
   };
 
+  const recommendedCalls = [];
   const handler = classDebriefHandler({
-    getRepository: async () => repository
+    getRepository: async () => repository,
+    getRecommendedTargetIds: exercise => {
+      recommendedCalls.push(exercise.id);
+      return [
+        'problem.one-line',
+        'possible-cause',
+        'possible-cause.runtime-instance',
+        'unknown.target',
+        'problem.one-line'
+      ];
+    }
   });
   const result = response();
   await handler({
@@ -1617,6 +1628,9 @@ test('Instructor debrief comparison composes current staged readiness and immuta
 
   assert.equal(result.statusCode, 200);
   assert.equal(result.body.exercise.currentStageId, 'stage-1');
+  assert.deepEqual(recommendedCalls, ['exercise-1']);
+  assert.deepEqual(result.body.recommendedTargetIds, ['problem.one-line', 'possible-cause']);
+  assert.deepEqual(result.body.exercise.recommendedTargetIds, ['problem.one-line', 'possible-cause']);
   const alpha = result.body.workspaces.find(workspace => workspace.id === WORKSPACE_A_ID);
   const beta = result.body.workspaces.find(workspace => workspace.id === WORKSPACE_B_ID);
   assert.equal(alpha.readiness.readyForDebrief, true);
