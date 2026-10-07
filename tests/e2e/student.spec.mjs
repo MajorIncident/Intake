@@ -108,6 +108,9 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
   await expect(page.locator('#studentCaseReferenceContent')).toContainText('Optional browser evidence');
   await expect(page.locator('#studentCaseReference')).not.toContainText('Second browser briefing');
   await expect(page.locator('#studentCaseReference')).not.toContainText('Browser facilitation note');
+  if (testInfo.project.name === 'chromium-mobile') {
+    await expectNoBlockingA11yViolations(page);
+  }
   expect(exerciseTokens).toContain(storedWaiting.studentSessionToken);
   expect(exerciseTokens.every(token => token === storedWaiting.studentSessionToken)).toBe(true);
 
