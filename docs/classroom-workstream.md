@@ -8,7 +8,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 The secure Classroom foundation (#288), live-class management (#312), and staged-simulation engine (#313) are **merged and production-published**. The Vercel function-budget blocker #321 was resolved by PR #322; exact merged-main SHA `21bff1d1c5a70caff0aa94aadd58abcb0644f397` reached production **READY** with a clean runtime-error scan.
 
-The immediate next implementation issue is **#316 — protected staged case assets and rich Student case rendering**. Do not author the first production staged KT Case Study (#317) until #316 provides the secure rich-content path.
+**#320 — join sharing and compact mobile workspace chrome is implementation-complete on PR #324.** 320D audited the full PR and repaired one responsive-only Team breakpoint mismatch so the Team toggle and controller now share the same <=700px compact boundary. PR #324 should be reviewed/merged only after the current documentation head is fully green. The next implementation target after #320 is **#318 — universal stable Intake target identity**; #319 should consume that contract. Production staged-case work (#316/#317) remains intentionally deferred while the reusable Template/field surface continues to expand.
 
 ## Program issues
 
@@ -27,11 +27,11 @@ The immediate next implementation issue is **#316 — protected staged case asse
 | Live class management | #312 | Complete / published | PR #314 merged | Start Class, one-code admission, Waiting/late join, teams, reassignment, observer/coaching |
 | Staged simulation | #313 | Complete / published | PR #315 merged | Staged release, Ready/debrief/freeze/checkpoints/advance/complete |
 | Publish recovery | #321 | Complete | PR #322 merged | Vercel function count consolidated to 5/12; exact-main production READY |
-| Rich staged assets | #316 | **Next** | Open | Secure protected image/table/document-page delivery + Student rendering |
-| First production staged case | #317 | Blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
-| Stage-linked Intake guidance | #318 | Open | Open | Runtime `intakeTargetIds` + dynamic Possible Cause coaching identity |
-| Class debrief comparison | #319 | Open | Open | Cross-team checkpoint/live comparison; benefits from #318 target identity |
-| Join/mobile polish | #320 | Open | Open | QR/share convenience + compact Notes/Class/Case mobile chrome |
+| Rich staged assets | #316 | Deferred | Open | Secure protected image/table/document-page delivery; resume before #317 production simulation |
+| First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
+| Universal Intake target identity | #318 | Planned | Open | Shared target contract for coaching, future staged guidance, and #319; template-independent |
+| Class debrief comparison | #319 | Planned after #318 | Open | Template-independent cross-team checkpoint/live comparison using stable target IDs |
+| Join/mobile polish | #320 | **Implementation complete — final docs/gates** | PR #324 / `feature/classroom-join-mobile-polish` | 320A/B/C delivered; 320D full-PR audit complete with Team breakpoint repair; review/merge after final green head |
 
 ## Current architecture decisions
 
@@ -62,50 +62,72 @@ See `docs/classroom-architecture.md` for the full contract.
 4. If an implementation PR is already open, continue that PR rather than creating competing work.
 5. Refresh the branch from its documented base before editing.
 6. Run/inspect `npm run quality`.
-7. Before handoff, update this table, record validation, and write the exact next action below.
+7. After every meaningful completed sub-slice or validation repair, add a **mini milestone** to the active PR with branch/head SHA, proven behavior, pending/failed checks, scope not yet started, and the exact next action. Do this before long validation waits and before moving to another tranche.
+8. Before handoff, update this table, record validation, and write the exact next action below.
 
 ## Active work
 
-There is no unfinished #288/#312/#313 implementation branch. #321 is closed and production is current through `21bff1d1c5a70caff0aa94aadd58abcb0644f397`.
+**#320 implementation is complete** on `feature/classroom-join-mobile-polish` / PR #324. The branch remains unmerged pending final documentation-head validation and review.
 
-**Next implementation:** #316.
+Product/architecture decision:
+- expand Templates/fields independently; do not rush official production simulations;
+- #318 becomes the universal stable Intake-target contract used by coaching, future staged guidance, and #319;
+- #319 must be template-independent: blank Intake, current/future Standard Templates, and later staged Case Studies all use the same target IDs;
+- #316/#317 remain deferred until production simulation content becomes a priority.
 
 ## Last completed action
 
-PR #322 merged and restored production publishing after #314/#315 exceeded the Vercel Hobby Serverless Function limit. The recovery preserves every public `/api/classes/**` URL through rewrites into one `api/classroom.js` function and keeps authorization inside the existing handlers.
+Completed and validated **#320C — compact mobile workspace chrome** on implementation head `18c2047556c1bd92a46a6e1d00714f5ebd935621`.
 
-Deployment evidence:
-- exact PR-head verification `9094a3fa2a56c8720e9c149278ef03165ecd0b17` -> Vercel preview `dpl_87aJLUvqaSc3wQ45gecTiGVMdCVq` -> **READY**;
-- Vercel build guard: **5/12** conservative Serverless Function candidates;
-- protected authored `templates/*.json` excluded and protected/public manifest boundary re-verified;
-- PR #322 squash-merged as `21bff1d1c5a70caff0aa94aadd58abcb0644f397`;
-- exact merged-main production deployment `dpl_VZoSoWJsDs6Eb727EN5hmrFSgAcA` -> **READY**;
-- post-deploy Vercel runtime-error scan -> **clean**.
+320C behavior:
+- Student Class context defaults compact at `max-width:700px`, retains class title plus workspace/student summary, and expands with one accessible action;
+- Student Case reference keeps the existing presentation-only mobile collapse contract;
+- Team/people collaboration workspace now defaults compact, retains team name plus people-count summary, and expands without mutating collaboration token/revision/team/presence/snapshot state;
+- Notes now separates persisted desktop `notesWorkspace.open` from mobile presentation expansion; mobile open/collapse does not call persistence and returning to desktop restores the serialized preference;
+- Instructor Class rail keeps its existing presentation-only compact behavior;
+- local QR/share controls remain usable inside the expanded mobile Instructor rail;
+- Student Team/Notes workspace dock remains in normal document flow on mobile, avoiding competing fixed overlays and nested modal scroll systems;
+- desktop behavior and Classroom/session authorization contracts are unchanged.
 
-#312 and #313 are therefore both merged **and production-published**.
+Mobile acceptance on `18c2047...`:
+- Student Class / Case / Team / Notes all start compact and remain one-action accessible;
+- Student mobile dock is `position: static` and document horizontal overflow is rejected;
+- Instructor mobile Class rail expands, QR stays within viewport, and staged console remains operable;
+- Standalone mobile Notes presentation does not rewrite the serialized Intake state and remains compact after reload;
+- serious/critical Axe checks are clean.
+
+Validation:
+- repository quality: **325 tests / 324 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **29 passed / 11 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
+
+Earlier #320 green checkpoints remain:
+- #320A safe join-link/prefill: `bf7c018...`;
+- #320B1 native Web Share/copy fallback: `ea2e6b6...`;
+- #320B2 local QR: `22b370d...`.
+
+PR #324 contains mini milestones for inventory/design, C1, C2, C3, and validation.
 
 ## Next recommended action
 
-Start **#316 — Protected staged case assets and rich Student case rendering** from current `main`.
+Finish **PR #324 review/merge readiness**, then move to **#318 — universal stable Intake target identity**.
 
-Why #316 is first:
-1. #313 deliberately supports rich staged block kinds (`image`, `table`, `document-page`) in the protected authoring schema.
-2. The Student runtime still projects/renders released staged material primarily as `id/kind/title/body`; it cannot yet faithfully present protected pages, images, or structured tables.
-3. #317 must not flatten, guess, or publish official case material around that missing secure rendering layer.
+#320D final audit result:
+1. full `main...feature/classroom-join-mobile-polish` diff reviewed;
+2. join URL/native-share/QR boundary remains human-code-only and strips query authority;
+3. Student admission still exchanges the human code through the normal server admission path;
+4. mobile Student Class / Case / Team / Notes / Instructor Class collapse remains presentation-only;
+5. Notes mobile toggles do not rewrite persisted desktop `notesWorkspace.open`;
+6. Team/Class compact controls do not mutate collaboration/Classroom authority or domain state;
+7. one responsive-only defect was found and repaired at `ca858037...`: Team compact CSS exposed its toggle through 720px while controller compact state began at 700px; new compact Team rules now use the same <=700px boundary while the pre-existing <=720px spacing rule remains;
+8. `main` remained exactly the documented PR base during audit and PR #324 had no unresolved review threads.
 
-#316 must preserve:
-- protected assets remain server-gated and absent from public `dist/`;
-- Student receives only currently authorized/released assets;
-- future-stage, Instructor-only, exemplar/model, and full protected source material remain withheld;
-- stable Student class-session authority remains separate from assignment/workspace edit authority;
-- asset or exercise state must not enter `kt-intake-full-v2`, file exports, summaries, or URLs;
-- deterministic API/client/browser tests must prove unauthorized/non-released asset denial and accessible rich rendering.
+After the final documentation head is green:
+- mark PR #324 ready for review;
+- do **not** merge automatically without explicit instruction;
+- next implementation work should start #318 from updated `main` after #324 merges;
+- keep #316/#317 deferred until production simulation authoring resumes.
 
-Parallel work that is safe:
-- #318 can proceed independently on stable Intake target identity / `intakeTargetIds`, provided it does not depend on guessed official case stages.
-- #320 can proceed independently as join/mobile polish.
-- #317 may inventory/map authoritative source material, but must not ship production-selectable staged content until #316 is complete.
-- #319 should preferably consume #318's stable target identity rather than invent a second comparison-target model.
 
 ## Completed #300 implementation
 

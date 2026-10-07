@@ -17,6 +17,27 @@ import {
 } from '../src/notesWorkspace.js';
 
 let dom;
+let media;
+
+function installMatchMedia(window) {
+  let matches = false;
+  const listeners = new Set();
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: query => ({
+      media: query,
+      get matches() { return matches && query === '(max-width: 700px)'; },
+      addEventListener: (_event, listener) => listeners.add(listener),
+      removeEventListener: (_event, listener) => listeners.delete(listener)
+    })
+  });
+  return {
+    setMatches(value) {
+      matches = Boolean(value);
+      listeners.forEach(listener => listener({ matches, media: '(max-width: 700px)' }));
+    }
+  };
+}
 
 function installGlobals(window) {
   for (const key of ['window', 'document', 'Event', 'HTMLElement', 'HTMLInputElement', 'HTMLTextAreaElement']) globalThis[key] = window[key];
@@ -24,6 +45,7 @@ function installGlobals(window) {
 
 beforeEach(() => {
   dom = new JSDOM(`<!doctype html><body><main class="wrap"><textarea id="target"></textarea><input id="readonly" readonly><select id="invalid"></select></main><aside id="notesWorkspace"><button id="notesWorkspaceToggle"></button><div id="notesWorkspaceControls"><input id="notesWorkspaceInput"><button id="notesWorkspaceAddBtn"></button></div><ul id="notesWorkspaceList"></ul></aside><button id="notesWorkspaceMenuBtn"></button></body>`);
+  media = installMatchMedia(dom.window);
   installGlobals(dom.window);
   applyNotesWorkspaceState({ notes: [], open: true });
   initNotesWorkspace({ onSave: () => {}, showToast: () => {} });
@@ -68,6 +90,34 @@ test('notes persist their stable IDs and dock preference across state round trip
   assert.equal(document.querySelector('#notesWorkspace').getAttribute('aria-hidden'), 'false');
   assert.equal(document.querySelector('#notesWorkspaceList').hidden, true);
   assert.equal(document.querySelector('[data-note-id]').dataset.noteId, id);
+});
+
+test('mobile Notes collapse is presentation-only and preserves the persisted desktop preference', () => {
+  let saves = 0;
+  initNotesWorkspace({ onSave: () => { saves += 1; } });
+  const before = getNotesWorkspaceState();
+
+  media.setMatches(true);
+
+  assert.equal(document.querySelector('#notesWorkspace').classList.contains('is-collapsed'), true);
+  assert.equal(document.querySelector('#notesWorkspaceToggle').getAttribute('aria-expanded'), 'false');
+  assert.equal(document.querySelector('#notesWorkspaceToggle').textContent, 'Open notes');
+  assert.deepEqual(getNotesWorkspaceState(), before);
+  assert.equal(saves, 0);
+
+  toggleNotesWorkspace();
+
+  assert.equal(document.querySelector('#notesWorkspace').classList.contains('is-collapsed'), false);
+  assert.equal(document.querySelector('#notesWorkspaceToggle').getAttribute('aria-expanded'), 'true');
+  assert.equal(document.querySelector('#notesWorkspaceToggle').textContent, 'Collapse notes');
+  assert.deepEqual(getNotesWorkspaceState(), before);
+  assert.equal(saves, 0, 'mobile presentation toggles never persist the desktop open preference');
+
+  media.setMatches(false);
+
+  assert.equal(document.querySelector('#notesWorkspace').classList.contains('is-collapsed'), false);
+  assert.equal(document.querySelector('#notesWorkspaceToggle').getAttribute('aria-expanded'), 'true');
+  assert.deepEqual(getNotesWorkspaceState(), before);
 });
 
 test('valid drop inserts at selection, dispatches editing events, and removes the note', () => {

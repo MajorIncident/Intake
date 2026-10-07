@@ -245,7 +245,7 @@ Production recovery is verified:
 
 **#316 — Protected staged case assets and rich Student case rendering**
 
-This is the immediate blocker. The staged schema already allows `image`, `table`, and `document-page` Student blocks, but the current Student case-reference projects released content to `id/kind/title/body` and therefore cannot faithfully render protected case pages/images/tables. Implement server-gated asset delivery and accessible rich rendering without weakening progressive disclosure or the public-static boundary.
+This remains the first blocker **when production simulation authoring resumes**, but it is intentionally deferred while Template/field coverage and facilitator UX are expanded. The staged schema already allows `image`, `table`, and `document-page` Student blocks, but the current Student case-reference projects released content to `id/kind/title/body` and therefore cannot faithfully render protected case pages/images/tables. Implement server-gated asset delivery and accessible rich rendering without weakening progressive disclosure or the public-static boundary.
 
 **#317 — Author and validate the first production staged KT Case Study**
 
@@ -253,41 +253,38 @@ Depends on #316. Use only authoritative participant/instructor source material. 
 
 ### P1 — facilitation completeness
 
-**#318 — Stage-linked Intake guidance and complete coachable target identity**
+**#318 — Universal Intake target identity + staged guidance/coaching**
 
-The `simulation.stages[].intakeTargetIds` authoring contract exists but is not consumed by Student/Instructor runtime. Wire those targets to stable Intake identities so a stage can point learners toward the relevant work without revealing answers. In the same identity layer, close #294's intentionally deferred dynamic Possible Cause coaching gap.
+Evolve the existing coaching target registry into one domain-neutral, stable Intake-target contract used by coaching, future staged guidance, and #319 cross-team debrief comparison. Templates remain serialized Intake data: adding a new Template that uses existing fields must require no #319-specific wiring. New debrief/coaching-capable Intake fields must register one stable target identity rather than being keyed by DOM selector or template name. In the same identity layer, close #294's intentionally deferred dynamic Possible Cause coaching gap. Staged `simulation.stages[].intakeTargetIds` becomes an optional consumer of this registry; simulation is **not** required for the registry or #319.
 
-**#319 — Instructor class debrief comparison and progress view**
+**#319 — Template-independent Instructor class debrief comparison and progress view**
 
-Build on Ready/Working, coaching, immutable checkpoints, and live observation to provide a class-level comparison/heatmap-style debrief surface. Keep it read-only and Instructor-only; compare selected checkpoint/current targets without duplicating or grading Intake state.
+Build on the universal target contract from #318 plus Ready/Working, coaching, immutable checkpoints, and live observation. The Instructor should be able to compare registered Intake targets across teams whether workspaces started blank, from current/future Standard Templates, or from a staged Case Study. Staged target IDs may pre-filter/recommend comparison targets later, but #319 must not depend on template IDs, DOM selectors, or a running simulation. Keep it read-only and Instructor-only; compare checkpoint/current evidence without duplicating or grading Intake state.
 
 ### P2 — delivery polish
 
 **#320 — Join sharing and compact mobile workspace chrome**
 
-Add QR/share-link convenience around the human join code without putting bearer capabilities in URLs, and finish the acknowledged mobile Notes/Class/Case chrome alignment so these persistent workspaces remain discoverable without consuming excessive Intake real estate.
+PR #324 implements #320 end-to-end: fragment-only human-code share links, native Web Share/copy fallback, fully local QR rendering, and compact presentation-only mobile Class/Case/Team/Notes/Instructor surfaces. 320D audited the full PR and repaired one Team responsive breakpoint mismatch so compact CSS and controller state now share the same <=700px boundary. No bearer capability enters join URLs/QR, and mobile collapse state remains outside Classroom/domain persistence. Final documentation-head validation/review remains before merge.
 
 ### Recommended dependency/order
 
 ```text
-#315 merge
+CURRENT UX TRACK
+#320  join sharing + compact mobile workspace chrome   <-- implementation complete / PR #324 final gates
+
+DEBRIEF / TEMPLATE-COMPATIBILITY TRACK
+#318  universal stable Intake target identity
    |
-  #321 / #322  restore production deployment under Vercel function budget
-   |
-  #316  protected rich staged content
+  #319  template-independent class debrief comparison
+
+PRODUCTION SIMULATION TRACK — intentionally deferred for now
+#316  protected rich staged content
    |
   #317  first production staged KT Case Study
-   |
-   +----------> production classroom rehearsal / case-specific acceptance
-
-#318  stage-linked Intake targets + dynamic coaching identity
-   |
-  #319  scalable class debrief comparison
-
-#320  join/mobile polish (can proceed in parallel after #315)
 ```
 
-The immediate next implementation action is **#316**, not authoring an official case prematurely. #317 may prepare source mapping in parallel, but must not ship production staged content until #316 provides the secure rich-content path. #318 and #320 can proceed in parallel; #319 should preferably build on #318's stable target identity.
+Current product decision after #320: **#318 is the next implementation target after PR #324 merges**. We are intentionally not treating #316/#317 as the immediate next work because more Standard Templates/fields are expected before production simulation authoring. Before #319 UI is implemented, #318 should establish the universal target contract so future Templates remain compatible automatically when they use existing fields, and future new fields fail loudly unless they opt into the target/debrief contract. #316/#317 remain valid future work but are not the active priority.
 
 ## Stacked PR rules
 

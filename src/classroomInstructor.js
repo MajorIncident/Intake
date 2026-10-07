@@ -10,6 +10,8 @@
 
 import { getActiveExperienceRole } from './experienceRoleController.js';
 import { EXPERIENCE_ROLE_IDS } from './experienceRoles.js';
+import { buildClassroomJoinUrl } from './classroomJoinLink.js';
+import { renderClassroomJoinQr } from './classroomJoinQr.js';
 
 export const INSTRUCTOR_SESSION_STORAGE_KEY = 'kt-classroom-instructor-session-v1';
 export const INSTRUCTOR_SESSION_VERSION = 1;
@@ -139,6 +141,7 @@ export function createInstructorClassroomController({
   let searchQuery = '';
   let kindFilter = 'all';
   let lastError = '';
+  let joinQrExpanded = false;
   const mobileRailQuery = windowRef?.matchMedia?.('(max-width: 700px)') || null;
   let railExpanded = !mobileRailQuery?.matches;
   let railPreferenceTouched = false;
@@ -187,7 +190,9 @@ export function createInstructorClassroomController({
       'instructorClassOpenBtn',
       'instructorClassRetryBtn',
       'instructorWorkspaceCreateBtn',
-      'instructorCopyJoinCodeBtn'
+      'instructorCopyJoinCodeBtn',
+      'instructorShareClassBtn',
+      'instructorShowJoinQrBtn'
     ].forEach(id => {
       if (element(id)) element(id).disabled = value;
     });
@@ -248,6 +253,57 @@ export function createInstructorClassroomController({
     if (element('instructorObservationNotice')) element('instructorObservationNotice').hidden = true;
   };
 
+  const renderJoinQrPanel = () => {
+    const toggle = element('instructorShowJoinQrBtn');
+    const panel = element('instructorJoinQrPanel');
+    const svg = element('instructorJoinQrSvg');
+    const code = element('instructorJoinQrCode');
+    const error = element('instructorJoinQrError');
+    const joinCode = formatInstructorJoinCode(activeSession?.joinCode || activeSession?.class?.joinCode || '');
+    const joinUrl = buildClassroomJoinUrl(joinCode, windowRef?.location);
+    const available = Boolean(joinCode && joinUrl);
+
+    if (toggle) {
+      toggle.disabled = busy || !available;
+      toggle.setAttribute('aria-expanded', String(Boolean(available && joinQrExpanded)));
+      toggle.textContent = joinQrExpanded ? 'Hide QR' : 'Show QR';
+    }
+    if (!panel) return;
+
+    panel.hidden = !available || !joinQrExpanded;
+    if (panel.hidden) return;
+
+    if (code) code.textContent = joinCode;
+    if (error) {
+      error.hidden = true;
+      error.textContent = '';
+    }
+
+    try {
+      const rendered = renderClassroomJoinQr(svg, joinUrl, {
+        label: `Scan to join ${activeSession?.class?.title || 'this class'} with code ${joinCode}`
+      });
+      if (svg) svg.hidden = !rendered;
+      if (!rendered && error) {
+        error.hidden = false;
+        error.textContent = 'QR unavailable. Use Share class or Copy code.';
+      }
+    } catch {
+      if (svg) svg.hidden = true;
+      if (error) {
+        error.hidden = false;
+        error.textContent = 'QR unavailable for this link. Use Share class or Copy code.';
+      }
+    }
+  };
+
+  const toggleJoinQr = () => {
+    if (!activeSession) return false;
+    joinQrExpanded = !joinQrExpanded;
+    renderJoinQrPanel();
+    return joinQrExpanded;
+  };
+
   const renderDashboard = () => {
     if (!activeSession) return;
     setConnectedLayout(true);
@@ -260,6 +316,8 @@ export function createInstructorClassroomController({
     const joinCode = formatInstructorJoinCode(activeSession.joinCode || activeSession.class?.joinCode || '');
     if (element('instructorJoinCode')) element('instructorJoinCode').textContent = joinCode || 'Unavailable';
     if (element('instructorCopyJoinCodeBtn')) element('instructorCopyJoinCodeBtn').disabled = !joinCode || busy;
+    if (element('instructorShareClassBtn')) element('instructorShareClassBtn').disabled = !joinCode || busy;
+    renderJoinQrPanel();
     setError('');
   };
 
@@ -1059,18 +1117,17 @@ export function createInstructorClassroomController({
     }
   };
 
-  const copyJoinCode = async () => {
-    const joinCode = formatInstructorJoinCode(activeSession?.joinCode || '');
-    if (!joinCode) return false;
+  const copyText = async (value, successMessage) => {
+    if (!value) return false;
     try {
       if (windowRef?.navigator?.clipboard?.writeText) {
-        await windowRef.navigator.clipboard.writeText(joinCode);
-        toast('Student join code copied.');
+        await windowRef.navigator.clipboard.writeText(value);
+        toast(successMessage);
         return true;
       }
       const temporary = documentRef?.createElement?.('textarea');
       if (!temporary) return false;
-      temporary.value = joinCode;
+      temporary.value = value;
       temporary.setAttribute('readonly', '');
       temporary.style.position = 'fixed';
       temporary.style.opacity = '0';
@@ -1078,12 +1135,45 @@ export function createInstructorClassroomController({
       temporary.select();
       const copied = documentRef.execCommand?.('copy') === true;
       temporary.remove();
-      if (copied) toast('Student join code copied.');
+      if (copied) toast(successMessage);
       return copied;
     } catch {
-      toast(`Student join code: ${joinCode}`);
       return false;
     }
+  };
+
+  const copyJoinCode = async () => {
+    const joinCode = formatInstructorJoinCode(activeSession?.joinCode || '');
+    if (!joinCode) return false;
+    const copied = await copyText(joinCode, 'Student join code copied.');
+    if (!copied) toast(`Student join code: ${joinCode}`);
+    return copied;
+  };
+
+  const shareClass = async () => {
+    const joinCode = formatInstructorJoinCode(activeSession?.joinCode || '');
+    const joinUrl = buildClassroomJoinUrl(joinCode, windowRef?.location);
+    if (!joinUrl) return false;
+
+    if (typeof windowRef?.navigator?.share === 'function') {
+      try {
+        await windowRef.navigator.share({
+          title: activeSession?.class?.title
+            ? `Join ${activeSession.class.title}`
+            : 'Join KT Intake class',
+          text: `Join this KT Intake class with code ${joinCode}.`,
+          url: joinUrl
+        });
+        toast('Class join link shared.');
+        return true;
+      } catch (error) {
+        if (error?.name === 'AbortError') return false;
+      }
+    }
+
+    const copied = await copyText(joinUrl, 'Class join link copied.');
+    if (!copied) toast(`Class join link: ${joinUrl}`);
+    return copied;
   };
 
   const resume = async () => {
@@ -1148,6 +1238,8 @@ export function createInstructorClassroomController({
     );
   };
   const handleCopyJoinCode = () => { void copyJoinCode(); };
+  const handleShareClass = () => { void shareClass(); };
+  const handleJoinQrToggle = () => { toggleJoinQr(); };
   const handleRailToggle = () => { setRailExpanded(!railExpanded, { user: true }); };
   const handleRailMediaChange = event => {
     if (railPreferenceTouched) return;
@@ -1184,6 +1276,8 @@ export function createInstructorClassroomController({
     element('instructorClassForm')?.addEventListener('submit', handleSubmit);
     element('instructorWorkspaceCreateForm')?.addEventListener('submit', handleWorkspaceCreate);
     element('instructorCopyJoinCodeBtn')?.addEventListener('click', handleCopyJoinCode);
+    element('instructorShareClassBtn')?.addEventListener('click', handleShareClass);
+    element('instructorShowJoinQrBtn')?.addEventListener('click', handleJoinQrToggle);
     element('instructorClassPanelToggle')?.addEventListener('click', handleRailToggle);
     mobileRailQuery?.addEventListener?.('change', handleRailMediaChange);
     element('instructorClassRetryBtn')?.addEventListener('click', handleRetry);
@@ -1208,6 +1302,8 @@ export function createInstructorClassroomController({
     element('instructorClassForm')?.removeEventListener('submit', handleSubmit);
     element('instructorWorkspaceCreateForm')?.removeEventListener('submit', handleWorkspaceCreate);
     element('instructorCopyJoinCodeBtn')?.removeEventListener('click', handleCopyJoinCode);
+    element('instructorShareClassBtn')?.removeEventListener('click', handleShareClass);
+    element('instructorShowJoinQrBtn')?.removeEventListener('click', handleJoinQrToggle);
     element('instructorClassPanelToggle')?.removeEventListener('click', handleRailToggle);
     mobileRailQuery?.removeEventListener?.('change', handleRailMediaChange);
     element('instructorClassRetryBtn')?.removeEventListener('click', handleRetry);
@@ -1227,6 +1323,8 @@ export function createInstructorClassroomController({
     createWorkspace,
     assignParticipant,
     copyJoinCode,
+    shareClass,
+    toggleJoinQr,
     resume,
     refreshRoster,
     selectWorkspace,
@@ -1238,7 +1336,7 @@ export function createInstructorClassroomController({
       activeSession, workspaces, participants, selectedWorkspaceId, observerEpoch,
       latestObservation,
       checkpointView: checkpointView ? { ...checkpointView } : null,
-      busy, searchQuery, kindFilter, lastError, railExpanded
+      busy, searchQuery, kindFilter, lastError, railExpanded, joinQrExpanded
     })
   };
 }

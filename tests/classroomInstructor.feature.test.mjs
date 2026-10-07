@@ -115,7 +115,7 @@ function setup(fetchImpl, {
   dom.window.document.getElementById('oneLine').value = 'Local before observation';
   dom.window.localStorage.setItem('sentinel', 'keep-me');
 
-  const calls = { apply: [], leave: [], timers: [] };
+  const calls = { apply: [], leave: [], timers: [], toasts: [] };
   const collaborationState = { token: null };
   const collaboration = {
     getState: () => collaborationState,
@@ -138,7 +138,7 @@ function setup(fetchImpl, {
     documentRef: dom.window.document,
     windowRef: dom.window,
     now: () => Date.parse('2026-10-01T00:00:00Z'),
-    toast: () => {},
+    toast: message => calls.toasts.push(message),
     onObservation,
     onObservationEnd,
     onClassConnected,
@@ -191,6 +191,102 @@ test('Instructor class rail defaults collapsed on mobile and remains explicitly 
   toggle.click();
   assert.equal(env.controller.getState().railExpanded, false);
   assert.equal(dashboard.classList.contains('is-collapsed'), true);
+  env.controller.destroy();
+});
+
+test('Instructor Share class copies a fragment-only join URL without forwarding query authority', async () => {
+  const env = setup(async (url) => {
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  });
+  const copied = [];
+  Object.defineProperty(dom.window.navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: async value => copied.push(value) }
+  });
+
+  await env.controller.openClass(TOKEN);
+  dom.window.history.replaceState(null, '', '/?workspace=must-not-leak');
+
+  assert.equal(await env.controller.shareClass(), true);
+  assert.deepEqual(copied, ['https://intake.test/#join=K7FMP4Q2']);
+  assert.equal(copied[0].includes(TOKEN), false);
+  assert.equal(copied[0].includes('workspace='), false);
+  assert.equal(env.calls.toasts.at(-1), 'Class join link copied.');
+  assert.equal(dom.window.document.getElementById('instructorShareClassBtn').disabled, false);
+
+  env.controller.destroy();
+});
+
+test('Instructor Share class prefers native Web Share with the same safe human-code URL', async () => {
+  const env = setup(async (url) => {
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  });
+  const shares = [];
+  const copied = [];
+  Object.defineProperty(dom.window.navigator, 'share', {
+    configurable: true,
+    value: async payload => shares.push(payload)
+  });
+  Object.defineProperty(dom.window.navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: async value => copied.push(value) }
+  });
+
+  await env.controller.openClass(TOKEN);
+  dom.window.history.replaceState(null, '', '/?workspace=must-not-leak');
+
+  assert.equal(await env.controller.shareClass(), true);
+  assert.equal(shares.length, 1);
+  assert.equal(shares[0].title, 'Join Problem Solving 101');
+  assert.equal(shares[0].text, 'Join this KT Intake class with code K7FM-P4Q2.');
+  assert.equal(shares[0].url, 'https://intake.test/#join=K7FMP4Q2');
+  assert.equal(shares[0].url.includes(TOKEN), false);
+  assert.equal(shares[0].url.includes('workspace='), false);
+  assert.deepEqual(copied, []);
+  assert.equal(env.calls.toasts.at(-1), 'Class join link shared.');
+
+  env.controller.destroy();
+});
+
+test('Instructor QR panel renders the safe join URL locally without exposing it in DOM attributes', async () => {
+  const env = setup(async (url) => {
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  });
+
+  await env.controller.openClass(TOKEN);
+  dom.window.history.replaceState(null, '', '/?workspace=must-not-leak');
+
+  assert.equal(env.controller.toggleJoinQr(), true);
+  const panel = dom.window.document.getElementById('instructorJoinQrPanel');
+  const svg = dom.window.document.getElementById('instructorJoinQrSvg');
+  const toggle = dom.window.document.getElementById('instructorShowJoinQrBtn');
+
+  assert.equal(panel.hidden, false);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  assert.equal(toggle.textContent, 'Hide QR');
+  assert.equal(dom.window.document.getElementById('instructorJoinQrCode').textContent, 'K7FM-P4Q2');
+  assert.equal(svg.getAttribute('role'), 'img');
+  assert.match(svg.getAttribute('aria-label'), /K7FM-P4Q2/u);
+  assert.equal(svg.querySelectorAll('rect').length, 1);
+  assert.equal(svg.querySelectorAll('path').length, 1);
+  assert.equal(svg.outerHTML.includes('https://'), false);
+  assert.equal(svg.outerHTML.includes('workspace='), false);
+  assert.equal(svg.outerHTML.includes(TOKEN), false);
+
+  assert.equal(env.controller.toggleJoinQr(), false);
+  assert.equal(panel.hidden, true);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  assert.equal(toggle.textContent, 'Show QR');
+
   env.controller.destroy();
 });
 
