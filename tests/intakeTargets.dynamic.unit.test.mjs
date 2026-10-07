@@ -153,3 +153,61 @@ test('live Possible Cause resolution uses persisted model evidence and the match
   assert.notEqual(resolved.fingerprint, changed.fingerprint);
   dom.window.close();
 });
+
+
+test('current and checkpoint projection stays snapshot-native while dynamic families remain workspace-local', () => {
+  const checkpoint = {
+    pre: { oneLine: 'Checkout is slow' },
+    table: [{
+      questionId: 'where-location',
+      is: 'Region A',
+      no: 'Region B',
+      di: 'Routing',
+      ch: 'New route'
+    }],
+    causes: [
+      cause({ id: 'cause-team-a', suspect: 'Route A', summaryText: 'Route A hypothesis' })
+    ]
+  };
+  const checkpointBefore = JSON.stringify(checkpoint);
+  const current = structuredClone(checkpoint);
+  current.pre.oneLine = 'Checkout is timing out';
+  current.table[0].ch = 'Route changed again';
+  current.causes[0].evidence = 'New trace confirms the route issue';
+
+  const checkpointTargets = projectIntakeTargets(checkpoint);
+  const currentTargets = projectIntakeTargets(current);
+  const checkpointById = new Map(checkpointTargets.map(target => [target.id, target]));
+  const currentById = new Map(currentTargets.map(target => [target.id, target]));
+
+  assert.equal(checkpointById.get('problem.one-line').evidence, 'Checkout is slow');
+  assert.equal(currentById.get('problem.one-line').evidence, 'Checkout is timing out');
+  assert.notEqual(
+    checkpointById.get('problem.one-line').fingerprint,
+    currentById.get('problem.one-line').fingerprint
+  );
+  assert.notEqual(
+    checkpointById.get('kt.where-location').fingerprint,
+    currentById.get('kt.where-location').fingerprint
+  );
+  assert.notEqual(
+    checkpointById.get('possible-cause.cause-team-a').fingerprint,
+    currentById.get('possible-cause.cause-team-a').fingerprint
+  );
+  assert.equal(JSON.stringify(checkpoint), checkpointBefore, 'projection must not mutate checkpoint evidence');
+
+  const otherWorkspaceCauses = projectPossibleCauseTargets({
+    causes: [
+      cause({ id: 'cause-team-b', suspect: 'Route A', summaryText: 'Route A hypothesis' })
+    ]
+  });
+  const checkpointCauses = projectPossibleCauseTargets(checkpoint);
+
+  assert.equal(checkpointCauses[0].familyId, POSSIBLE_CAUSE_TARGET_FAMILY_ID);
+  assert.equal(otherWorkspaceCauses[0].familyId, POSSIBLE_CAUSE_TARGET_FAMILY_ID);
+  assert.notEqual(
+    checkpointCauses[0].id,
+    otherWorkspaceCauses[0].id,
+    'independently created causes in different workspaces must not align by ordinal position or similar text'
+  );
+});
