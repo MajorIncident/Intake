@@ -8,7 +8,8 @@ Base: `main` at `ef6949100ddac28c646338ee55cb6e7a74beb067` (#318 / PR #325 merge
 319A architecture checkpoint: `22d5d9ee056f6ddd70f7e5d9a97f2322c5d3c41f`  
 319B GREEN implementation head: `c6986b330fab31509c1697b3d77c8a5e907ef279`  
 319C GREEN implementation head: `676ccbc963fb60c59851e3beda5962f2fdaa9ca5`  
-Current tranche: **319D — Instructor progress + target comparison UI**
+319D GREEN implementation head: `54845e82e71c69b471019d6f24f01b36d1077894`  
+Current tranche: **319E — checkpoint/staged/coaching integration**
 
 This document is the canonical architecture contract for #319.
 
@@ -436,13 +437,37 @@ Validation:
 - Browser E2E: **29 passed / 11 intentional project-scoped skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
 
-### 319D — Instructor progress + target comparison UI
+### 319D — Instructor progress + target comparison UI — complete
 
-- add the dedicated comparison module and Instructor shell surface;
-- render progress summary and target picker;
-- desktop matrix + narrow stacked representation;
-- current-live comparison first;
-- reuse existing observer for drill-down.
+Validated implementation head: `54845e82e71c69b471019d6f24f01b36d1077894`.
+
+Implemented:
+- new `src/classroomDebriefComparison.js` presentation-only controller consuming GET-only `/api/classes/debrief`;
+- dedicated **Class debrief comparison** surface in the wide Instructor Intake area, separate from the fixed class rail;
+- compact workspace progress cards plus semantic Intake target picker;
+- current-live evidence matrix on desktop and single-column stacked workspace cards on narrow screens;
+- static/KT target selection by shared semantic target ID and dynamic `possible-cause` family selection without cross-team instance alignment;
+- progress/evidence **Observe** actions delegate to the existing `classroomInstructor.selectWorkspace()` read-only observer rather than applying aggregate comparison snapshots into Intake;
+- comparison controls remain interactive while the observed Intake DOM stays read-only;
+- comparison target state/cached model remain in memory only: no localStorage/sessionStorage key, Intake state, export, summary, Template, or collaboration revision participation;
+- refresh/loading/error handling plus periodic GET refresh;
+- deterministic browser fixture serves the real 319B model shape for the comparison endpoint;
+- desktop comparison stays side-by-side, mobile stacks cleanly, and the page has no horizontal overflow;
+- fixed a pre-existing content-box overflow on the global `.menu-bar` revealed by the new desktop acceptance test.
+
+Focused coverage proves:
+- target picker contains shared static/KT/family IDs but no runtime Possible Cause instance IDs;
+- Instructor bearer authority is sent only to the debrief GET;
+- live progress/evidence render correctly and dynamic Possible Cause collections remain per-workspace;
+- observer drill-down works without persisting comparison state;
+- transient refresh failures remain read-only/retryable;
+- Instructor observer read-only projection excludes comparison controls;
+- desktop/mobile browser journey covers target switching, observer drill-down, no debrief persistence key, responsive layout, and Axe serious/critical checks.
+
+Validation:
+- repository quality: **359 tests / 358 pass / 0 fail / 1 intentional skip**;
+- Browser E2E: **31 passed / 11 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
 
 ### 319E — checkpoint/staged/coaching integration
 
@@ -484,4 +509,4 @@ Read:
 - existing Classroom coaching modules;
 - the consolidated Classroom router/server modules.
 
-Continue the existing #319 branch/PR. 319A/B/C are complete; begin 319D with the Instructor progress + semantic target comparison UI, consuming `/api/classes/debrief` and reusing the existing observer for drill-down. Leave a mini milestone after every meaningful sub-slice and before long validation waits.
+Continue the existing #319 branch/PR. 319A/B/C/D are complete; begin 319E with checkpoint/current evidence mode, current-stage target recommendations, and neutral coaching status/change presentation. Keep ordinary non-staged classes unchanged and comparison state presentation-only. Leave a mini milestone after every meaningful sub-slice and before long validation waits.
