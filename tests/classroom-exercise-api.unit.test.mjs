@@ -12,6 +12,7 @@ import {
   classStudentExerciseReadyHandler,
   fingerprintStagedSimulation
 } from '../api/_classroomExercise.js';
+import { stagedExerciseRecommendedTargetIds } from '../api/_classroomSimulation.js';
 import { createClassroomStudentWritePolicy } from '../api/_classroomWritePolicy.js';
 import { studentCaseStudiesHandler } from '../api/_protectedCaseStudies.js';
 import { workspaceHandler } from '../api/_workspace.js';
@@ -194,6 +195,52 @@ test('staged definition fingerprint is canonical across object key order', () =>
     fingerprintStagedSimulation(reordered)
   );
   assert.match(fingerprintStagedSimulation(STAGED_CASE.simulation), /^[a-f0-9]{64}$/u);
+});
+
+test('staged exercise recommendations use the exact governed current-stage definition', () => {
+  const exercise = {
+    caseStudyId: STAGED_CASE.id,
+    currentStageId: 'stage-1',
+    simulationVersion: STAGED_CASE.simulation.version,
+    simulationFingerprint: fingerprintStagedSimulation(STAGED_CASE.simulation)
+  };
+
+  assert.deepEqual(
+    stagedExerciseRecommendedTargetIds(exercise, MANIFEST),
+    ['problem.one-line']
+  );
+
+  exercise.currentStageId = 'stage-2';
+  assert.deepEqual(
+    stagedExerciseRecommendedTargetIds(exercise, MANIFEST),
+    ['problem.one-line']
+  );
+});
+
+test('staged exercise recommendations fail closed on definition drift or missing stage', () => {
+  const exercise = {
+    caseStudyId: STAGED_CASE.id,
+    currentStageId: 'stage-1',
+    simulationVersion: STAGED_CASE.simulation.version,
+    simulationFingerprint: fingerprintStagedSimulation(STAGED_CASE.simulation)
+  };
+
+  assert.deepEqual(
+    stagedExerciseRecommendedTargetIds({ ...exercise, simulationFingerprint: 'b'.repeat(64) }, MANIFEST),
+    []
+  );
+  assert.deepEqual(
+    stagedExerciseRecommendedTargetIds({ ...exercise, simulationVersion: 999 }, MANIFEST),
+    []
+  );
+  assert.deepEqual(
+    stagedExerciseRecommendedTargetIds({ ...exercise, currentStageId: 'missing-stage' }, MANIFEST),
+    []
+  );
+  assert.deepEqual(
+    stagedExerciseRecommendedTargetIds({ ...exercise, caseStudyId: 'ordinary-case' }, MANIFEST),
+    []
+  );
 });
 
 test('Instructor exercise GET discovers staged Case Studies without exposing simulation definitions', async () => {
