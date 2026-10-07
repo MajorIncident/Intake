@@ -1475,6 +1475,47 @@ async function initializeClassroomRepository() {
       return { ...current, checkpoints };
     },
 
+    async getExerciseCheckpointForInstructor(
+      instructorHash,
+      exercisePublicId,
+      stageId,
+      workspacePublicId
+    ) {
+      const current = await this.getExerciseForInstructor(instructorHash, exercisePublicId);
+      if (!current) return null;
+      const rows = await sql`SELECT
+          cw.public_id AS "workspaceId",
+          cw.workspace_kind AS "workspaceKind",
+          cw.label AS "workspaceLabel",
+          cp.stage_id AS "stageId",
+          cp.workspace_revision AS "workspaceRevision",
+          cp.snapshot,
+          cp.captured_at AS "capturedAt"
+        FROM classroom_exercise_checkpoints cp
+        JOIN classroom_exercises e ON e.id = cp.exercise_id
+        JOIN classroom_workspaces cw
+          ON cw.class_id = cp.class_id
+          AND cw.workspace_id = cp.workspace_id
+        WHERE cp.class_id = ${current.classroom.internal_id}
+          AND e.public_id = ${exercisePublicId}::uuid
+          AND cp.stage_id = ${stageId}
+          AND cw.public_id = ${workspacePublicId}::uuid
+          AND cw.revoked_at IS NULL
+          AND e.expires_at > NOW()
+        LIMIT 1`;
+      return rows[0]
+        ? {
+            ...current,
+            workspace: {
+              id: rows[0].workspaceId,
+              kind: rows[0].workspaceKind,
+              label: rows[0].workspaceLabel
+            },
+            checkpoint: rows[0]
+          }
+        : null;
+    },
+
     async rotateStudentJoin(instructorHash, nextHash) {
       const rows = await sql`UPDATE classroom_classes
         SET student_join_token_hash = ${nextHash}, updated_at = NOW()
