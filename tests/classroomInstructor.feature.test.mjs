@@ -115,7 +115,7 @@ function setup(fetchImpl, {
   dom.window.document.getElementById('oneLine').value = 'Local before observation';
   dom.window.localStorage.setItem('sentinel', 'keep-me');
 
-  const calls = { apply: [], leave: [], timers: [] };
+  const calls = { apply: [], leave: [], timers: [], toasts: [] };
   const collaborationState = { token: null };
   const collaboration = {
     getState: () => collaborationState,
@@ -138,7 +138,7 @@ function setup(fetchImpl, {
     documentRef: dom.window.document,
     windowRef: dom.window,
     now: () => Date.parse('2026-10-01T00:00:00Z'),
-    toast: () => {},
+    toast: message => calls.toasts.push(message),
     onObservation,
     onObservationEnd,
     onClassConnected,
@@ -191,6 +191,32 @@ test('Instructor class rail defaults collapsed on mobile and remains explicitly 
   toggle.click();
   assert.equal(env.controller.getState().railExpanded, false);
   assert.equal(dashboard.classList.contains('is-collapsed'), true);
+  env.controller.destroy();
+});
+
+test('Instructor Share class copies a fragment-only join URL without forwarding query authority', async () => {
+  const env = setup(async (url) => {
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  });
+  const copied = [];
+  Object.defineProperty(dom.window.navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: async value => copied.push(value) }
+  });
+
+  await env.controller.openClass(TOKEN);
+  dom.window.history.replaceState(null, '', '/?workspace=must-not-leak');
+
+  assert.equal(await env.controller.shareClass(), true);
+  assert.deepEqual(copied, ['https://intake.test/#join=K7FMP4Q2']);
+  assert.equal(copied[0].includes(TOKEN), false);
+  assert.equal(copied[0].includes('workspace='), false);
+  assert.equal(env.calls.toasts.at(-1), 'Class join link copied.');
+  assert.equal(dom.window.document.getElementById('instructorShareClassBtn').disabled, false);
+
   env.controller.destroy();
 });
 
