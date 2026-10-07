@@ -680,3 +680,47 @@ Cold-start priority after #315 merges:
 4. do **not** add an official production `simulation` definition until #316 is complete and the source material for #317 is present/reviewed.
 
 The #288 foundation roadmap plus #312/#313 orchestration generation are complete after #315 merges. The next program phase is **production case enablement and facilitator scale**, beginning with #316.
+
+
+## #321 publish-recovery checkpoint
+
+**Issue:** #321  
+**PR:** #322  
+**Branch:** `fix/vercel-classroom-function-budget`  
+**Base:** `main` at #315 merge `7c6afa4069ac5de5eae8ec0c9b0959084650c93a`
+
+Why this exists:
+- #314 (`b141d55...`) and #315 (`7c6afa4...`) both passed GitHub quality/security/browser gates but their Vercel production deployments ended in `ERROR`;
+- Vercel reported `exceeded_serverless_functions_per_deployment`: Hobby permits at most 12 Serverless Functions;
+- the last READY production deployment remained #308 at `6c58336ac1677764641c09eadb201abcad8eeac1`;
+- #312 added four Classroom route entrypoints and #313 added four more, taking the one-file-per-route design beyond the plan limit.
+
+Recovery architecture:
+- all existing public `/api/classes/**` URLs remain unchanged;
+- `vercel.json` rewrites those paths to one `api/classroom.js` deployment entrypoint;
+- `api/_classroomRouter.js` delegates to the existing class/coaching/protected-case/exercise handler factories;
+- routing is not authorization: every delegated handler retains its existing method/capability/class/workspace checks;
+- standalone collaboration continues through the separate `api/workspaces/*` functions;
+- the 16 redundant `api/classes/**/*.js` wrapper files are removed;
+- the conservative deployable function count falls to **5**, leaving headroom below the Hobby limit of 12;
+- `npm run verify:vercel-functions` now guards the budget in both `npm run quality` and the Vercel production build;
+- regression coverage locks every preserved Classroom public URL to its dispatcher route.
+
+Security invariants unchanged:
+- Instructor vs Student capability isolation;
+- stable Student class-session vs assignment/workspace edit authority;
+- Student non-enumeration;
+- protected Case Study and staged progressive-disclosure boundaries;
+- checkpoint authorization;
+- server-enforced HTTP 423 freeze;
+- Standalone/ad-hoc collaboration compatibility.
+
+Exact continuation:
+1. finish #322 GitHub gates;
+2. create a short-lived `verify/**` branch at the exact PR head and confirm Vercel can build/deploy it under the function budget;
+3. merge #322 only after review/gates;
+4. verify the exact merged `main` SHA reaches Vercel production `READY` and scan runtime errors;
+5. close #321 and confirm #316 is unblocked;
+6. then begin #316 — protected staged assets + rich Student rendering.
+
+Do not describe #312/#313 as production-published until step 4 is complete.
