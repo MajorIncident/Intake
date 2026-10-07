@@ -165,8 +165,14 @@ export function createWorkspaceRepository() {
   };
 }
 
-/** Create an in-memory classroom repository. @returns {object} Repository. */
-export function createClassroomRepository() {
+/**
+ * Create an in-memory classroom repository.
+ *
+ * @param {object} [options] Test-only dependency hooks.
+ * @param {Function|null} [options.observeWorkspaceById=null] Optional collaboration snapshot reader for aggregate debrief parity.
+ * @returns {object} Repository.
+ */
+export function createClassroomRepository({ observeWorkspaceById = null } = {}) {
   let nextInternalId = 1;
   let nextExerciseInternalId = 1;
   const classes = [];
@@ -945,6 +951,46 @@ export function createClassroomRepository() {
           .filter(checkpoint => checkpoint.workspaceId)
       };
     },
+    async listExerciseCheckpointSnapshotsForInstructor(
+      instructorHash,
+      exercisePublicId,
+      stageId
+    ) {
+      const current = await this.getExerciseForInstructor(instructorHash, exercisePublicId);
+      if (!current) return null;
+      const exercise = exercises.find(candidate => (
+        candidate.classInternalId === current.classroom.internal_id
+        && candidate.id === exercisePublicId
+      ));
+      if (!exercise) return null;
+      return {
+        ...current,
+        checkpoints: [...exerciseCheckpoints.values()]
+          .filter(checkpoint => (
+            checkpoint.exerciseInternalId === exercise.internalId
+            && checkpoint.stageId === stageId
+          ))
+          .map(checkpoint => {
+            const workspace = workspaces.find(candidate => (
+              candidate.classInternalId === current.classroom.internal_id
+              && candidate.workspaceId === checkpoint.workspaceInternalId
+              && !candidate.revoked
+            ));
+            if (!workspace) return null;
+            return {
+              workspaceId: workspace.id,
+              workspaceKind: workspace.kind,
+              workspaceLabel: workspace.label,
+              stageId: checkpoint.stageId,
+              workspaceRevision: checkpoint.workspaceRevision,
+              snapshot: cloneValue(checkpoint.snapshot),
+              capturedAt: checkpoint.capturedAt
+            };
+          })
+          .filter(Boolean)
+      };
+    },
+
     async getExerciseCheckpointForInstructor(
       instructorHash,
       exercisePublicId,
@@ -1057,6 +1103,57 @@ export function createClassroomRepository() {
           }))
       };
     },
+    async listWorkspaceSnapshotsForInstructor(instructorHash) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      const snapshots = [];
+      if (typeof observeWorkspaceById === 'function') {
+        for (const workspace of workspaces.filter(candidate => (
+          candidate.classInternalId === item.internalId && !candidate.revoked
+        ))) {
+          const observation = await observeWorkspaceById(workspace.workspaceId);
+          if (!observation) continue;
+          snapshots.push({
+            workspaceId: workspace.id,
+            workspaceRevision: observation.revision,
+            updatedAt: observation.updatedAt,
+            snapshot: cloneValue(observation.snapshot)
+          });
+        }
+      }
+      return { classroom: publicClass(item), snapshots };
+    },
+
+    async listFeedbackForClassInstructor(instructorHash) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      const represented = new Map(
+        workspaces
+          .filter(workspace => workspace.classInternalId === item.internalId && !workspace.revoked)
+          .map(workspace => [workspace.workspaceId, workspace])
+      );
+      const feedback = [];
+      for (const [key, value] of coaching.entries()) {
+        const [classId, workspaceId] = key.split(':');
+        if (Number(classId) !== item.internalId) continue;
+        const workspace = represented.get(Number(workspaceId)) || represented.get(workspaceId);
+        if (!workspace) continue;
+        feedback.push({
+          workspaceId: workspace.id,
+          targetId: value.targetId,
+          status: value.status,
+          reviewedWorkspaceRevision: value.reviewedWorkspaceRevision,
+          reviewedFieldFingerprint: value.reviewedFieldFingerprint,
+          feedbackRevision: value.feedbackRevision
+        });
+      }
+      feedback.sort((left, right) => (
+        left.workspaceId.localeCompare(right.workspaceId)
+        || left.targetId.localeCompare(right.targetId)
+      ));
+      return { classroom: publicClass(item), feedback };
+    },
+
     async getWorkspaceForObservation(instructorHash, workspacePublicId) {
       const item = activeByInstructor(instructorHash);
       if (!item) return null;
