@@ -223,24 +223,23 @@ The eight-slice #288 program establishes the secure Classroom foundation; it doe
 
 #312 is complete and merged as PR #314 at `b141d55050207e4cf7ce842a4452a220a5268968`: Start Class, one human Student join code, Waiting/late roster, stable Student class sessions, accessible team creation/assignment, safe reassignment/unassign with stale-authority cutoff, observer/coaching integration, and integrated multi-browser acceptance are the live substrate.
 
-#313 is implementation-complete on `feature/classroom-staged-simulation`, based directly on the #312 merge. Its canonical contract is `docs/classroom-staged-simulation.md`. Tranches 1–10 are complete: server-only staged authoring schema, additive exercise persistence, Instructor/Student APIs, server-enforced Student freeze, Instructor orchestration console, Student case reference/readiness, immutable checkpoint inspection, integrated browser/security/mobile/accessibility acceptance, and final security/documentation audit. PR #315 is the publish/merge vehicle.
+#313 is complete and merged as PR #315. Its canonical contract is `docs/classroom-staged-simulation.md`. Tranches 1–10 are complete: server-only staged authoring schema, additive exercise persistence, Instructor/Student APIs, server-enforced Student freeze, Instructor orchestration console, Student case reference/readiness, immutable checkpoint inspection, integrated browser/security/mobile/accessibility acceptance, and final security/documentation audit.
 
 ## Next production-Classroom roadmap
 
 The secure classroom/orchestration engine is complete, but a **real production KT simulation is not yet runnable from source-faithful case material**. The remaining roadmap is now product/content enablement rather than another exercise-engine tranche.
 
-### Publish recovery — #321 / PR #322
+### Publish recovery — #321 / PR #322 — complete
 
-#312 and #313 were both green in GitHub, but their first `main` deployments exceeded the Vercel Hobby limit of 12 Serverless Functions. Production therefore remained on the older #308 baseline even after PR #315 merged.
+#312 and #313 initially exceeded the Vercel Hobby limit of 12 Serverless Functions after merge. #321 / PR #322 consolidated every public `/api/classes/**` route behind one deployment entrypoint without changing URLs or authorization behavior.
 
-#321 resolves the deployment packaging without changing public API or authorization semantics:
-- keep every public `/api/classes/**` URL;
-- rewrite those paths to one `api/classroom.js` Vercel function;
-- delegate through `api/_classroomRouter.js` to the existing tested handlers;
-- keep collaboration workspace functions separate;
-- enforce the <=12 budget in `npm run quality` and in the Vercel build.
+Production recovery is verified:
+- conservative deployment function count: **5/12**;
+- exact merged-main SHA `21bff1d1c5a70caff0aa94aadd58abcb0644f397`;
+- production deployment `dpl_VZoSoWJsDs6Eb727EN5hmrFSgAcA`: **READY**;
+- post-deploy runtime-error scan: **clean**.
 
-**Roadmap gate:** do not begin #316 as production work until #321/#322 has a READY Vercel deployment from the exact merged `main` SHA. Once that publish recovery is verified, #316 is the next implementation issue.
+#316 is now unblocked and is the immediate next implementation issue.
 
 ### P0 — production case material delivery
 
@@ -288,7 +287,7 @@ Add QR/share-link convenience around the human join code without putting bearer 
 #320  join/mobile polish (can proceed in parallel after #315)
 ```
 
-The first next implementation action after #315 merges is **#316**, not authoring an official case prematurely. #317 may prepare source mapping in parallel, but must not ship production staged content until #316 provides the secure rich-content path.
+The immediate next implementation action is **#316**, not authoring an official case prematurely. #317 may prepare source mapping in parallel, but must not ship production staged content until #316 provides the secure rich-content path. #318 and #320 can proceed in parallel; #319 should preferably build on #318's stable target identity.
 
 ## Stacked PR rules
 
