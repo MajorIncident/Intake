@@ -401,6 +401,16 @@ Anchors present:
             <strong id="instructorJoinCode">—</strong>
             <button type="button" class="btn-secondary" id="instructorCopyJoinCodeBtn" data-persistence="local-only" data-summary="exclude">Copy code</button>
             <button type="button" class="btn-secondary" id="instructorShareClassBtn" data-persistence="local-only" data-summary="exclude">Share class</button>
+            <button type="button" class="btn-secondary" id="instructorShowJoinQrBtn" aria-controls="instructorJoinQrPanel" aria-expanded="false" data-persistence="local-only" data-summary="exclude">Show QR</button>
+          </div>
+          <div class="instructor-join-qr" id="instructorJoinQrPanel" data-persistence="local-only" data-summary="exclude" hidden>
+            <svg id="instructorJoinQrSvg" class="instructor-join-qr__image" focusable="false" aria-label="Scan to join this class"></svg>
+            <div class="instructor-join-qr__details">
+              <strong>Scan to join</strong>
+              <span>Class code <code id="instructorJoinQrCode">—</code></span>
+              <small>Scanning opens the normal Student join screen. The class code is still required for admission.</small>
+              <span id="instructorJoinQrError" role="status" aria-live="polite" hidden></span>
+            </div>
           </div>
         </div>
         <div class="instructor-dashboard__actions">
