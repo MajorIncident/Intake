@@ -403,6 +403,7 @@ Anchors present:
           </div>
         </div>
         <div class="instructor-dashboard__actions">
+          <button type="button" class="btn-secondary instructor-dashboard__collapse" id="instructorClassPanelToggle" aria-controls="instructorClassDashboard" aria-expanded="true" data-persistence="local-only" data-summary="exclude">Collapse class panel</button>
           <button type="button" class="btn-secondary" id="instructorTeachingResourcesBtn" data-open-templates-drawer aria-haspopup="dialog" aria-controls="templatesDrawer" aria-expanded="false" data-persistence="local-only" data-summary="exclude">
             <span data-template-resource-launcher-label>Teaching Case Studies</span>
           </button>
@@ -437,6 +438,7 @@ Anchors present:
           <button type="button" class="btn" id="instructorExerciseStartBtn" data-persistence="local-only" data-summary="exclude" hidden>Start exercise</button>
           <button type="button" class="btn-secondary" id="instructorExercisePauseBtn" data-persistence="local-only" data-summary="exclude" hidden>Pause exercise</button>
           <button type="button" class="btn" id="instructorExerciseResumeBtn" data-persistence="local-only" data-summary="exclude" hidden>Resume exercise</button>
+          <button type="button" class="btn" id="instructorExerciseBeginDebriefBtn" data-persistence="local-only" data-summary="exclude" hidden>Begin debrief</button>
           <small id="instructorExerciseLifecycleHelp">Pause controls class pacing only. Student editing freeze is a separate debrief control.</small>
         </div>
         <section class="instructor-exercise-console__stage" id="instructorExerciseStagePanel" aria-labelledby="instructorExerciseStageTitle" data-persistence="local-only" data-summary="exclude" hidden>
@@ -463,6 +465,25 @@ Anchors present:
             <span id="instructorExerciseProgressSummary" aria-live="polite"></span>
           </div>
           <div id="instructorExerciseProgressList"></div>
+        </section>
+        <section class="instructor-exercise-console__debrief" id="instructorExerciseDebriefPanel" aria-labelledby="instructorExerciseDebriefTitle" data-persistence="local-only" data-summary="exclude" hidden>
+          <div class="instructor-exercise-console__debrief-heading">
+            <div>
+              <strong id="instructorExerciseDebriefTitle">Debrief controls</strong>
+              <span id="instructorExerciseEditingStatus" role="status" aria-live="polite">Student editing status unavailable</span>
+            </div>
+            <div class="instructor-exercise-console__editing-actions">
+              <button type="button" class="btn-secondary" id="instructorExerciseFreezeBtn" data-persistence="local-only" data-summary="exclude" hidden>Freeze editing</button>
+              <button type="button" class="btn" id="instructorExerciseAllowEditingBtn" data-persistence="local-only" data-summary="exclude" hidden>Allow editing</button>
+            </div>
+          </div>
+          <div class="instructor-exercise-console__checkpoints">
+            <div class="instructor-exercise-console__checkpoint-heading">
+              <span>Captured team checkpoints</span>
+              <strong id="instructorExerciseCheckpointSummary">0 captured</strong>
+            </div>
+            <div id="instructorExerciseCheckpointList"></div>
+          </div>
         </section>
         <div class="instructor-exercise-console__available">
           <span>Available staged Case Studies</span>
