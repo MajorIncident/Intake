@@ -858,19 +858,40 @@ Validation on `e2f5534aa0e85bccc2bee0e73275c9b77d000f3d`:
 - required Browser E2E: **26 passed / 8 intentional project-scoped skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
 
+## Implementation checkpoint — Tranche 7A Student current-stage case-reference foundation
+
+Student reference contract:
+- `src/classroomExerciseStudent.js` owns staged Student presentation separately from assignment/workspace authority;
+- the client accepts only the stable live Student class-session capability in memory and GETs `/api/classes/exercise/student`; it never uses the rotating workspace capability to authorize staged reads and never requests the complete protected Case Study payload;
+- `classroomStudent.js` now provides a stable live-session lifecycle alongside the existing workspace lifecycle. Team reassignment rotates collaboration authority without disconnecting/reconnecting the staged exercise client; terminal session loss, Leave Class, destroy, or Student-role exit clears it;
+- payload projection permits only Student case summary, represented exercise status/phase/revision/editing state, current Student-visible stage title/objective, and cumulative released Student-safe content. Unknown future-stage or Instructor-only response fields are discarded before public state or DOM rendering;
+- the case-reference module persists neither bearer capability nor staged content to Intake/localStorage/sessionStorage/export/summary/URL state;
+- the learner sees explicit Work, Paused, Debrief/editing-open, Debrief/editing-frozen, or Completed status. Frozen debrief keeps released case material reviewable and explains the temporary write restriction, while the Tranche 5 server 423 boundary remains the enforcement control;
+- successful polling refreshes authoritative exercise revisions and released material automatically; same-device class resume reconstructs the reference from the server rather than local staged-content storage;
+- desktop uses a bounded companion surface only when there is enough width; narrow/mobile defaults the reference collapsed behind an accessible **Open case reference** control;
+- real mobile acceptance discovered that the pre-existing fixed Student team/Notes workspace dock could overlap and intercept the reference control. Student narrow layouts now place that dock in normal document flow; the browser journey opens the case reference with a normal click and no forced event/z-index bypass;
+- deterministic browser payloads expose Stage 1 safe briefing/optional evidence but not Stage 2 content or Instructor facilitation; focused tests also inject forbidden-looking future/Instructor fields and prove they do not appear in DOM/public controller state;
+- 7A intentionally adds no readiness mutation.
+
+Implementation spans `e307ca2...` through `91d7029...`.
+
+Validation on `91d7029bec5cddaf251d02301a4fd1ce97dc908c`:
+- repository quality: **295 tests / 294 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **26 passed / 8 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
+
 ## Exact next implementation action
 
-Begin **Tranche 7A — Student current-stage case-reference foundation**.
+Implement **Tranche 7B — Student Ready/Resume Working interaction**.
 
 Required next slice:
-- create a dedicated Student case-reference controller/module rather than adding staged-case logic to the existing Student class controller;
-- connect/disconnect it from the existing Student class lifecycle using the Student class-session capability in memory only;
-- read only `GET /api/classes/exercise/student`; do not fetch the complete protected Case Study payload from Student mode;
-- render the current stage title/objective and only cumulative Student-safe content actually present in the Student-authorized response;
-- show authoritative work/debrief/editing-frozen/completed status so the learner understands why Intake may be temporarily read-only;
-- refresh safely when the represented exercise revision changes, without persisting case/exercise state into Intake, localStorage, summaries, exports, or URLs;
-- establish a compact, collapsible Student reference surface that does not consume excessive mobile real estate; keep the existing Notes/mobile alignment concern in view;
-- add focused tests for credential isolation, payload projection, disconnect clearing, and no future/Instructor content leakage;
-- add the smallest deterministic browser acceptance necessary to prove the reference surface appears beside the existing Student Intake.
+- add readiness controls to the Student reference only while the represented exercise is `active + work` and the Student has a current assignment;
+- use only the stable Student class-session capability with `PUT /api/classes/exercise/student/ready` and body `{ ready: boolean }`;
+- show authoritative current-workspace readiness returned by GET/PUT; when Ready, show the server-captured collaboration revision rather than inventing client evidence;
+- allow returning from Ready to Working with `ready:false` while still in active work;
+- Waiting/unassigned Students must see no usable Ready mutation, and paused/debrief/completed phases must not expose readiness actions;
+- an assignment-race or phase 409 must trigger authoritative status/exercise refresh instead of replaying the mutation or attaching readiness to an old workspace;
+- keep readiness local-only/summary-excluded and separate from collaboration snapshot revision state;
+- extend focused and deterministic browser coverage so a Student marks a team Ready and the Instructor sees that existing `workspaceState` signal.
 
-Do **not** add Student readiness/debrief actions in 7A; reserve those for the next Student interaction slice. Do not invent production official Case Study staging.
+Do **not** implement the temporary frozen-debrief Intake read-only projection in 7B; keep that as the next bounded Student slice after readiness. Do not invent production official Case Study staging.
