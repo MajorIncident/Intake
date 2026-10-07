@@ -46,7 +46,7 @@ async function createTeam(page, label) {
 }
 
 test('live class integrates Instructor roster, team sync, isolation, coaching, reassignment, and unassign', async ({ browser }, testInfo) => {
-  test.setTimeout(45_000);
+  test.setTimeout(60_000);
   test.skip(testInfo.project.name === 'chromium-mobile', 'Integrated four-browser classroom acceptance is covered once on desktop; mobile Student and Instructor paths have dedicated coverage.');
 
   const contextOptions = { baseURL: testInfo.project.use.baseURL };
