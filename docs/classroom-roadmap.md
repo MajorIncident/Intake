@@ -245,7 +245,7 @@ Production recovery is verified:
 
 **#316 — Protected staged case assets and rich Student case rendering**
 
-This is the immediate blocker. The staged schema already allows `image`, `table`, and `document-page` Student blocks, but the current Student case-reference projects released content to `id/kind/title/body` and therefore cannot faithfully render protected case pages/images/tables. Implement server-gated asset delivery and accessible rich rendering without weakening progressive disclosure or the public-static boundary.
+This remains the first blocker **when production simulation authoring resumes**, but it is intentionally deferred while Template/field coverage and facilitator UX are expanded. The staged schema already allows `image`, `table`, and `document-page` Student blocks, but the current Student case-reference projects released content to `id/kind/title/body` and therefore cannot faithfully render protected case pages/images/tables. Implement server-gated asset delivery and accessible rich rendering without weakening progressive disclosure or the public-static boundary.
 
 **#317 — Author and validate the first production staged KT Case Study**
 
@@ -265,7 +265,7 @@ Build on the universal target contract from #318 plus Ready/Working, coaching, i
 
 **#320 — Join sharing and compact mobile workspace chrome**
 
-Add QR/share-link convenience around the human join code without putting bearer capabilities in URLs, and finish the acknowledged mobile Notes/Class/Case chrome alignment so these persistent workspaces remain discoverable without consuming excessive Intake real estate.
+Implementation through 320C is complete on PR #324: fragment-only human-code share links, native Web Share/copy fallback, fully local QR rendering, and compact presentation-only mobile Class/Case/Team/Notes/Instructor surfaces are green. 320D final audit/publish-readiness is the remaining tranche. No bearer capability enters join URLs/QR, and mobile collapse state remains outside Classroom/domain persistence.
 
 ### Recommended dependency/order
 
