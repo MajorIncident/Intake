@@ -87,6 +87,13 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
     await createTeam(instructor, 'Team Alpha');
     await createTeam(instructor, 'Team Beta');
 
+    await expect(instructor.locator('#instructorExerciseStatus')).toHaveText('1 staged Case Study available');
+    await instructor.getByLabel('Staged Case Study').selectOption('browser-staged-simulation');
+    await instructor.getByRole('button', { name: 'Create draft' }).click();
+    await expect(instructor.locator('#instructorExerciseStatus')).toHaveText('Draft · draft created');
+    await instructor.getByRole('button', { name: 'Start exercise' }).click();
+    await expect(instructor.locator('#instructorExerciseStatus')).toHaveText('In progress · exercise started');
+
     await joinLiveStudent(studentA, { name: 'Student Alpha One', classCode });
     await joinLiveStudent(studentB, { name: 'Student Alpha Two', classCode });
 
@@ -186,6 +193,22 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
 
     await expect(lateStudent.locator('#oneLine')).toHaveValue(betaUpdate);
     await expect(studentB.locator('#oneLine')).toHaveValue(alphaUpdate);
+
+    await expect(studentB.locator('#studentCaseReference')).toBeVisible();
+    await expect(studentB.locator('#studentCaseReferenceStatus')).toHaveText('Work');
+
+    await instructor.getByRole('button', { name: 'Begin debrief' }).click();
+    await expect(instructor.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing frozen during debrief');
+    await expect(studentB.locator('#studentCaseReferenceStatus')).toHaveText('Debrief · editing frozen', { timeout: 10000 });
+    await expect(studentB.locator('#studentCaseReferenceMessage')).toContainText('frozen Student editing');
+    await expect(studentB.locator('#oneLine')).toHaveJSProperty('readOnly', true);
+    await expect(studentB.locator('#studentClassLeaveBtn')).toBeEnabled();
+
+    await instructor.getByRole('button', { name: 'Allow editing' }).click();
+    await expect(instructor.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing allowed during debrief');
+    await expect(studentB.locator('#studentCaseReferenceStatus')).toHaveText('Debrief · editing open', { timeout: 10000 });
+    await expect(studentB.locator('#oneLine')).toHaveJSProperty('readOnly', false);
+    await expect(studentB.locator('#studentClassLeaveBtn')).toBeEnabled();
 
     await expectNoBlockingA11yViolations(instructor);
     await expectNoBlockingA11yViolations(studentA);
