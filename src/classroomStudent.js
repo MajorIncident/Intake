@@ -200,6 +200,9 @@ export function createStudentClassroomController({
   let liveEpoch = 0;
   let statusTimer = null;
   let statusAbort = null;
+  const mobileContextQuery = windowRef?.matchMedia?.('(max-width: 700px)') || null;
+  let contextExpanded = !mobileContextQuery?.matches;
+  let contextPreferenceTouched = false;
 
   const element = id => documentRef?.getElementById(id) || null;
   const intakeWrap = () => documentRef?.querySelector?.('.wrap[data-experience-surface="intake"]') || null;
@@ -240,6 +243,24 @@ export function createStudentClassroomController({
     session?.mode === 'live' ? session.assignment : session?.workspace
   );
 
+  const renderContextExpansion = () => {
+    const panel = element('studentExperienceNotice');
+    const toggle = element('studentClassContextToggle');
+    const effectiveExpanded = !mobileContextQuery?.matches || contextExpanded;
+    panel?.classList?.toggle('is-collapsed', !effectiveExpanded);
+    if (toggle) {
+      toggle.setAttribute('aria-expanded', String(effectiveExpanded));
+      toggle.textContent = effectiveExpanded ? 'Collapse class' : 'Open class';
+    }
+    return effectiveExpanded;
+  };
+
+  const setContextExpanded = (expanded, { user = false } = {}) => {
+    contextExpanded = Boolean(expanded);
+    if (user) contextPreferenceTouched = true;
+    return renderContextExpansion();
+  };
+
   const renderContext = session => {
     const assignment = sessionAssignment(session);
     const title = element('studentClassContextTitle');
@@ -251,12 +272,17 @@ export function createStudentClassroomController({
     if (workspace) workspace.textContent = assignment?.label || 'Assigned workspace';
     if (identity) identity.textContent = session?.participant?.displayName || 'Student';
     if (kind) kind.textContent = assignment?.kind === 'group' ? 'Team workspace' : 'Individual workspace';
+    const compact = element('studentClassCompactSummary');
+    if (compact) {
+      compact.textContent = `${assignment?.label || 'Assigned workspace'} · ${session?.participant?.displayName || 'Student'}`;
+    }
     if (expiry) {
       const stamp = Date.parse(session?.class?.expiresAt || '');
       expiry.textContent = Number.isFinite(stamp)
         ? `Class access expires ${new Date(stamp).toLocaleDateString()}`
         : 'Instructor-managed class';
     }
+    renderContextExpansion();
   };
 
   const setEntryPanels = ({ form = false, waiting = false, resume = false } = {}) => {
@@ -918,6 +944,11 @@ export function createStudentClassroomController({
 
   const handleRetry = () => { void resume(); };
   const handleLeave = () => leaveClass();
+  const handleContextToggle = () => { setContextExpanded(!contextExpanded, { user: true }); };
+  const handleContextMediaChange = event => {
+    if (!contextPreferenceTouched) contextExpanded = !event.matches;
+    renderContextExpansion();
+  };
 
   const handleRoleChange = event => {
     const role = event?.detail?.role;
@@ -937,6 +968,8 @@ export function createStudentClassroomController({
     element('studentClassRetryBtn')?.addEventListener('click', handleRetry);
     element('studentClassLeaveBtn')?.addEventListener('click', handleLeave);
     element('studentClassWaitingLeaveBtn')?.addEventListener('click', handleLeave);
+    element('studentClassContextToggle')?.addEventListener('click', handleContextToggle);
+    mobileContextQuery?.addEventListener?.('change', handleContextMediaChange);
     windowRef?.addEventListener?.('intake:experience-role-changed', handleRoleChange);
     if (getActiveExperienceRole() === EXPERIENCE_ROLE_IDS.STUDENT) {
       if (!applyJoinIntent()) void resume();
@@ -955,6 +988,8 @@ export function createStudentClassroomController({
     element('studentClassRetryBtn')?.removeEventListener('click', handleRetry);
     element('studentClassLeaveBtn')?.removeEventListener('click', handleLeave);
     element('studentClassWaitingLeaveBtn')?.removeEventListener('click', handleLeave);
+    element('studentClassContextToggle')?.removeEventListener('click', handleContextToggle);
+    mobileContextQuery?.removeEventListener?.('change', handleContextMediaChange);
     windowRef?.removeEventListener?.('intake:experience-role-changed', handleRoleChange);
   };
 
@@ -965,12 +1000,14 @@ export function createStudentClassroomController({
     resume,
     refreshStatus: () => activeSession?.mode === 'live' ? syncLiveStatus(liveEpoch) : false,
     leaveClass,
+    setContextExpanded: expanded => setContextExpanded(expanded, { user: true }),
     getState: () => ({
       activeSession,
       activeWorkspaceToken,
       connecting,
       lastError,
-      liveEpoch
+      liveEpoch,
+      contextExpanded: !mobileContextQuery?.matches || contextExpanded
     })
   };
 }
