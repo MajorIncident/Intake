@@ -607,6 +607,12 @@ function browserInstructorDebrief(token) {
         .filter(item => item.stageId === exercise.currentStageId)
         .map(item => structuredClone(item))
     : [];
+  const currentStage = exercise?.currentStageId
+    ? BROWSER_STAGED_CASE.simulation.stages.find(stage => stage.id === exercise.currentStageId) || null
+    : null;
+  const recommendedTargetIds = Array.isArray(currentStage?.intakeTargetIds)
+    ? [...currentStage.intakeTargetIds]
+    : [];
   const feedback = roster.workspaces.flatMap(workspace => (
     [...(classroomCoachingFeedback.get(workspace.id) || new Map()).values()]
       .map(item => ({ workspaceId: workspace.id, ...structuredClone(item) }))
@@ -615,7 +621,7 @@ function browserInstructorDebrief(token) {
   return buildClassroomDebriefModel({
     classroom: roster.class,
     exercise: exercise ? structuredClone(exercise) : null,
-    recommendedTargetIds: [],
+    recommendedTargetIds,
     workspaces: structuredClone(roster.workspaces),
     currentSnapshots,
     checkpoints,
