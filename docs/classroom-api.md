@@ -34,6 +34,13 @@ Raw capabilities are returned only when created or rotated and are never persist
 
 ## Endpoints
 
+### Deployment routing invariant
+
+The public endpoint paths documented below are stable API contracts. To stay within the Vercel Hobby Serverless Function budget, `vercel.json` rewrites every `/api/classes/**` path to the single `api/classroom.js` deployment entrypoint. `api/_classroomRouter.js` then delegates to the existing handler factory for that route.
+
+The internal `__classroomRoute` marker is **routing only**. It is not a capability, does not select a class/workspace, and does not weaken the method/authentication/authorization checks inside the delegated handler. Do not recreate one physical `api/classes/**/*.js` wrapper per public route; extend the rewrite/dispatcher mapping and keep `npm run verify:vercel-functions` green instead.
+
+
 ### `POST /api/classes`
 
 Creates a class from a title and returns:
