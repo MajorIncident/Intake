@@ -31,7 +31,7 @@ Current product priority is **#320 — join sharing and compact mobile workspace
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
 | Universal Intake target identity | #318 | Planned | Open | Shared target contract for coaching, future staged guidance, and #319; template-independent |
 | Class debrief comparison | #319 | Planned after #318 | Open | Template-independent cross-team checkpoint/live comparison using stable target IDs |
-| Join/mobile polish | #320 | **Active — 320A + 320B1 complete** | PR #324 / `feature/classroom-join-mobile-polish` | Safe join link + native share green; 320B2 local QR next; 320C compact mobile chrome after |
+| Join/mobile polish | #320 | **Active — 320A + 320B complete** | PR #324 / `feature/classroom-join-mobile-polish` | Safe join link, native share, and local QR green; 320C compact mobile chrome next |
 
 ## Current architecture decisions
 
@@ -77,50 +77,45 @@ Product/architecture decision:
 
 ## Last completed action
 
-Completed and validated two bounded #320 checkpoints:
+Completed and validated **#320B2 — local/in-app QR rendering** on implementation head `22b370dc3f29ce70c8fabb024bec8fb7c5979ae0`.
 
-### #320A — Join-link contract + safe prefill
+B2 behavior:
+- `src/classroomJoinQr.js` is a self-contained in-browser QR Model 2 renderer; it makes no remote QR/image/tracking request;
+- QR payload comes exclusively from `buildClassroomJoinUrl()`, so QR, native share, and copy all use the same fragment-only human-code URL;
+- the fixed auditable profile is Version 5-L, byte mode, with a 106-byte payload limit; unsupported longer URLs fail closed to Share/Copy guidance;
+- Instructor **Show QR / Hide QR** renders a local SVG beneath the existing human join code;
+- the QR panel visibly repeats the human class code and provides a screen-reader label;
+- raw join URL is not stored in SVG/DOM attributes, Intake persistence, summaries, exports, or resume state;
+- native Web Share and copy fallback from B1 are unchanged.
 
-Validated implementation head: `bf7c018ff2c6c3d51b66865511880eb1255bd346`.
+Validation on `22b370d...`:
+- repository quality: **322 tests / 321 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **29 passed / 11 intentional project-scoped skips / 0 failed**;
+- CI: **green**;
+- CodeQL: **green**;
+- Dependency Review: **green**;
+- Template Manifest Guard: **green**.
 
-- `src/classroomJoinLink.js` owns the client-only `#join=<human-code>` share contract;
-- share-link construction strips current query state so Standalone `?workspace=` or other URL authority cannot be forwarded;
-- no Instructor, Student-session, assignment, workspace, collaboration, or other bearer capability belongs in the join URL;
-- valid join intent selects Student experience, prefills normal admission, and is removed client-side;
-- saved Student class access is never silently replaced;
-- Instructor **Share class** and existing **Copy code** both preserve the human-code-only boundary;
-- integrated browser acceptance proves the shared link reaches normal Student admission.
+Earlier completed #320 checkpoints remain:
+- #320A safe join-link/prefill green on `bf7c018...`;
+- #320B1 native Web Share/copy fallback green on `ea2e6b6...`.
 
-Validation: repository quality, required Chromium browser regression, CodeQL, Dependency Review, and Template Manifest Guard all **green**.
-
-### #320B1 — Native Web Share + copy fallback
-
-Validated implementation head: `ea2e6b6e589e00894a892d63b4f1c5541985619f`.
-
-- `Share class` prefers `navigator.share()` when supported;
-- native payload contains only class title, visible human join code, and the exact safe fragment-only join URL;
-- native-share cancellation does not silently copy;
-- unsupported/failed native share falls back to copying the same safe link;
-- feature coverage proves native share receives no bearer/query authority and does not also write the clipboard.
-
-Validation: repository quality, required Chromium browser regression, CodeQL, Dependency Review, and Template Manifest Guard all **green**.
-
-PR #324 contains durable mini-milestone comments for the 320A implementation, the browser-fixture repair, the 320A green gate, cold-start ledger sync, 320B1 implementation, and 320B1 green gate. Issue #320 requires this checkpoint discipline before long waits or tranche transitions.
+PR #324 contains mini-milestone comments before/after long validation and issue #320 requires that discipline for all remaining slices.
 
 ## Next recommended action
 
-Implement **#320B2 — local/in-app QR rendering only**.
+Implement **#320C — compact mobile workspace chrome**.
 
 Required next slice:
-1. continue to obtain the payload exclusively from `buildClassroomJoinUrl()`; QR must encode that exact safe fragment-only human-code URL;
-2. use a local browser implementation — **no third-party QR image/API/tracking service and no remote runtime dependency**;
-3. expose QR from the Instructor join/share area with visible human code and a clear accessible label/instruction so scanning is optional convenience rather than hidden authority;
-4. keep QR data out of Intake persistence, summaries, exports, resume envelopes, logs, and DOM attributes that could accidentally carry bearer authority;
-5. preserve native Web Share and copy fallback unchanged;
-6. add focused QR correctness/contract tests plus keyboard/screen-reader/browser acceptance;
-7. leave another PR mini milestone and update this restart ledger before beginning 320C.
+1. inventory the current narrow-screen behavior of Notes, Student Case reference, Student class/team context, and Instructor class rail before changing CSS/DOM;
+2. design one consistent compact-launcher pattern rather than four unrelated floating surfaces;
+3. keep secondary surfaces default-collapsed on narrow screens when practical, but always one action away and keyboard/screen-reader discoverable;
+4. prevent fixed-surface overlap, nested scroll traps, and excessive vertical occupation of the Intake;
+5. preserve desktop behavior, Notes persistence, Student staged-content disclosure, frozen-debrief read-only projection, Instructor observer/coaching behavior, and join QR/share controls;
+6. add focused mobile Playwright coverage and serious/critical axe checks for Student and Instructor states;
+7. leave mini milestones after inventory/design, implementation, and validation before starting 320D.
 
-**Not started yet:** 320B2 QR implementation; 320C Notes/Class/Case mobile chrome; 320D final acceptance/production verification.
+**Not started yet:** 320C mobile chrome; 320D final acceptance/production verification.
 
 ## Completed #300 implementation
 
