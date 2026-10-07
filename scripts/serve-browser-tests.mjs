@@ -115,6 +115,105 @@ const BROWSER_STAGED_CASE = Object.freeze({
     ]
   }
 });
+function browserStudentReleasedContent(exercise, releases = []) {
+  const stageIndex = BROWSER_STAGED_CASE.simulation.stages.findIndex(
+    stage => stage.id === exercise?.currentStageId
+  );
+  if (stageIndex < 0 || exercise?.status === 'draft') return [];
+  const blocks = new Map(BROWSER_STAGED_CASE.simulation.studentContent.map(item => [item.id, item]));
+  const releaseMap = new Map();
+  releases.forEach(item => {
+    const items = releaseMap.get(item.stageId) || [];
+    items.push(item);
+    releaseMap.set(item.stageId, items);
+  });
+  const result = [];
+  const seen = new Set();
+  const append = (stageId, contentId, releaseType, releasedAt = null) => {
+    if (seen.has(contentId)) return;
+    const content = blocks.get(contentId);
+    if (!content) return;
+    seen.add(contentId);
+    result.push({
+      stageId,
+      releaseType,
+      releasedAt,
+      content: structuredClone(content)
+    });
+  };
+  BROWSER_STAGED_CASE.simulation.stages.slice(0, stageIndex + 1).forEach(stage => {
+    stage.initialReleaseIds.forEach(contentId => append(stage.id, contentId, 'initial'));
+    const allowed = new Set(stage.optionalReleaseIds);
+    (releaseMap.get(stage.id) || []).forEach(item => {
+      if (allowed.has(item.contentId)) append(stage.id, item.contentId, 'optional', item.releasedAt || null);
+    });
+  });
+  return result;
+}
+
+function browserStudentExercisePayload(session) {
+  const classContext = session.classContext || STUDENT_LIVE_CLASS;
+  const participant = {
+    id: session.participantId,
+    displayName: session.displayName
+  };
+  const assignment = session.assignment ? structuredClone(session.assignment) : null;
+  let exercise;
+  let releases;
+  if (session.integrated) {
+    exercise = classroomExercises.get(INTEGRATED_INSTRUCTOR_TOKEN) || null;
+    releases = classroomExerciseReleases.get(INTEGRATED_INSTRUCTOR_TOKEN) || [];
+  } else {
+    exercise = {
+      id: 'browser-student-live-exercise',
+      caseStudyId: BROWSER_STAGED_CASE.id,
+      status: 'active',
+      stagePhase: 'work',
+      exerciseRevision: 2,
+      studentEditingEnabled: true,
+      currentStageId: BROWSER_STAGED_CASE.simulation.stages[0].id
+    };
+    releases = [{
+      stageId: BROWSER_STAGED_CASE.simulation.stages[0].id,
+      contentId: 'browser-hint-1',
+      releasedAt: '2099-12-31T23:31:00.000Z'
+    }];
+  }
+  if (!exercise) return { class: classContext, participant, assignment, exercise: null };
+  const stage = BROWSER_STAGED_CASE.simulation.stages.find(
+    item => item.id === exercise.currentStageId
+  ) || null;
+  return {
+    class: classContext,
+    participant,
+    assignment,
+    exercise: {
+      id: exercise.id,
+      caseStudyId: BROWSER_STAGED_CASE.id,
+      caseStudy: {
+        id: BROWSER_STAGED_CASE.id,
+        name: BROWSER_STAGED_CASE.name,
+        description: BROWSER_STAGED_CASE.description,
+        supportedModes: structuredClone(BROWSER_STAGED_CASE.supportedModes)
+      },
+      status: exercise.status,
+      stagePhase: exercise.stagePhase,
+      exerciseRevision: exercise.exerciseRevision,
+      studentEditingEnabled: exercise.studentEditingEnabled !== false,
+      editFreezeEnforced: true,
+      currentStage: stage
+        ? {
+            id: stage.id,
+            title: stage.title,
+            studentObjective: stage.studentObjective
+          }
+        : null,
+      releasedContent: browserStudentReleasedContent(exercise, releases),
+      readiness: null
+    }
+  };
+}
+
 let liveClassState = null;
 let liveInstructorWorkspaces = [];
 let liveInstructorParticipants = [];
@@ -653,6 +752,21 @@ async function handleClassroomApi(request, response, url) {
       return true;
     }
     sendJson(response, 200, studentLiveStatus(session));
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/exercise/student') {
+    if (request.method !== 'GET') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const studentSessionToken = bearerToken(request);
+    const session = studentLiveSessions.get(studentSessionToken);
+    if (!session) {
+      sendJson(response, 404, { error: 'Student class session not found.' });
+      return true;
+    }
+    sendJson(response, 200, browserStudentExercisePayload(session));
     return true;
   }
 
