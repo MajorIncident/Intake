@@ -55,6 +55,8 @@ function mount({
   fetchImpl,
   onClassConnected = () => {},
   onClassDisconnected = () => {},
+  onSessionConnected = () => {},
+  onSessionDisconnected = () => {},
   fakeTimers = false
 } = {}) {
   dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
@@ -112,6 +114,8 @@ function mount({
     toast: () => {},
     onClassConnected,
     onClassDisconnected,
+    onSessionConnected,
+    onSessionDisconnected,
     setTimeoutImpl: fakeTimers
       ? fn => {
           calls.timers.push(fn);
@@ -279,6 +283,66 @@ test('live Student assignment, reassignment, and unassign rotate workspace autho
   const storedWaiting = JSON.parse(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY));
   assert.equal(storedWaiting.assignment, null);
   assert.equal(storedWaiting.assignmentRevision, 3);
+});
+
+test('live Student session lifecycle is stable across assignment changes and disconnects on role exit', async () => {
+  let assignment = {
+    id: WORKSPACE_A,
+    kind: 'group',
+    label: 'Team Alpha'
+  };
+  let revision = 1;
+  const sessionConnections = [];
+  let sessionDisconnects = 0;
+  const accessTokens = [WORKSPACE_TOKEN, WORKSPACE_TOKEN_B];
+
+  const env = mount({
+    fakeTimers: true,
+    onSessionConnected: token => sessionConnections.push(token),
+    onSessionDisconnected: () => { sessionDisconnects += 1; },
+    fetchImpl: async url => {
+      if (url === '/api/classes/admit') {
+        return response(200, {
+          class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
+          participant: { id: PARTICIPANT_ID, displayName: 'Alex', assignmentRevision: revision },
+          assignment,
+          studentSessionToken: LIVE_SESSION_TOKEN
+        });
+      }
+      if (url === '/api/classes/student') {
+        return response(200, {
+          class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
+          participant: { id: PARTICIPANT_ID, displayName: 'Alex', assignmentRevision: revision },
+          assignment
+        });
+      }
+      if (url === '/api/classes/student/access') {
+        return response(200, {
+          class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
+          participant: { id: PARTICIPANT_ID, displayName: 'Alex', assignmentRevision: revision },
+          assignment,
+          workspaceToken: accessTokens.shift()
+        });
+      }
+      return response(500, {});
+    }
+  });
+  await settle();
+
+  assert.equal(await env.controller.join({ classCode: 'K7FM-P4Q2', displayName: 'Alex' }), true);
+  assert.deepEqual(sessionConnections, [LIVE_SESSION_TOKEN]);
+  assert.equal(sessionDisconnects, 0);
+
+  assignment = { id: WORKSPACE_B, kind: 'group', label: 'Team Beta' };
+  revision = 2;
+  assert.equal(await env.controller.refreshStatus(), true);
+  assert.deepEqual(sessionConnections, [LIVE_SESSION_TOKEN], 'workspace reassignment does not reconnect the class-session capability');
+  assert.equal(sessionDisconnects, 0, 'workspace reassignment does not disconnect the class-session capability');
+
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
+  await settle();
+  assert.equal(sessionDisconnects, 1);
+  assert.ok(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY), 'role exit keeps the Student resume envelope');
 });
 
 test('Student join uses one-time class and assignment codes then attaches the issued workspace capability', async () => {
