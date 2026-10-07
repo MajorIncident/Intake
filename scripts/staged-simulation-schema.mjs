@@ -8,6 +8,8 @@
  *   facilitation/model content and rejects ambiguous or orphan references.
  */
 
+import { isAuthorableIntakeTargetId } from '../src/intakeTargets.js';
+
 export const STAGED_SIMULATION_VERSION = 1;
 
 export const STUDENT_CONTENT_KINDS = Object.freeze([
@@ -182,7 +184,14 @@ function validateStage(stage, index, errors) {
 
   checkStringArray(stage.initialReleaseIds, `${ctx}.initialReleaseIds`, errors, { stableIds: true });
   checkStringArray(stage.optionalReleaseIds, `${ctx}.optionalReleaseIds`, errors, { stableIds: true });
-  checkStringArray(stage.intakeTargetIds, `${ctx}.intakeTargetIds`, errors);
+  const intakeTargetIds = checkStringArray(stage.intakeTargetIds, `${ctx}.intakeTargetIds`, errors);
+  intakeTargetIds.forEach((targetId, targetIndex) => {
+    if (!isAuthorableIntakeTargetId(targetId)) {
+      errors.push(
+        `${ctx}.intakeTargetIds[${targetIndex}] references an unknown or unauthorable Intake target id: ${targetId}`
+      );
+    }
+  });
   checkStringArray(stage.instructorContentIds, `${ctx}.instructorContentIds`, errors, { stableIds: true });
 
   if (
