@@ -210,6 +210,47 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
     await expect(studentB.locator('#oneLine')).toHaveJSProperty('readOnly', false);
     await expect(studentB.locator('#studentClassLeaveBtn')).toBeEnabled();
 
+    const afterDebriefUpdate = 'Team Alpha refined its reasoning after debrief began.';
+    const afterDebriefSave = studentB.waitForResponse(response => (
+      response.request().method() === 'PUT'
+      && new URL(response.url()).pathname === '/api/workspaces/session'
+      && response.ok()
+    ));
+    await studentB.locator('#oneLine').fill(afterDebriefUpdate);
+    await studentB.locator('#oneLine').blur();
+    await afterDebriefSave;
+    await expect(instructor.locator('#oneLine')).toHaveValue(afterDebriefUpdate, { timeout: 10000 });
+
+    const checkpointResponse = instructor.waitForResponse(response => (
+      response.request().method() === 'GET'
+      && new URL(response.url()).pathname === '/api/classes/exercise/checkpoint'
+      && response.ok()
+    ));
+    await instructor.getByRole('button', {
+      name: 'Inspect Team Alpha checkpoint, revision 2'
+    }).click();
+    await checkpointResponse;
+    await expect(instructor.locator('#oneLine')).toHaveValue(alphaUpdate);
+    await expect(instructor.locator('#oneLine')).not.toHaveValue(betaUpdate);
+    await expect(instructor.locator('#instructorObservedRevision')).toHaveText(
+      'Checkpoint at debrief start · Revision 2'
+    );
+    await expect(instructor.locator('#instructorObserverStatus')).toHaveText(
+      'Immutable checkpoint · live updates paused'
+    );
+    await expect(instructor.getByRole('button', { name: 'View current live Intake' })).toBeVisible();
+
+    const liveObservation = instructor.waitForResponse(response => (
+      response.request().method() === 'GET'
+      && new URL(response.url()).pathname === '/api/classes/observe'
+      && response.ok()
+    ));
+    await instructor.getByRole('button', { name: 'View current live Intake' }).click();
+    await liveObservation;
+    await expect(instructor.locator('#oneLine')).toHaveValue(afterDebriefUpdate);
+    await expect(instructor.locator('#instructorObservedRevision')).toHaveText('Revision 3');
+    await expect(instructor.locator('#instructorObserverStatus')).toHaveText('Live read-only view');
+
     await expectNoBlockingA11yViolations(instructor);
     await expectNoBlockingA11yViolations(studentA);
 
