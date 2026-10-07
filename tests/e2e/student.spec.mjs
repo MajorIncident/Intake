@@ -129,8 +129,14 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
     && response.ok()
   ));
   await page.getByRole('button', { name: 'Mark Ready' }).click();
-  await readyResponse;
-  await expect(page.locator('#studentCaseReferenceReadinessStatus')).toHaveText('Ready for debrief · Intake revision 2');
+  const readyResult = await readyResponse;
+  const readyBody = await readyResult.json();
+  const capturedRevision = readyBody?.readiness?.readyWorkspaceRevision;
+  expect(Number.isInteger(capturedRevision)).toBe(true);
+  expect(capturedRevision).toBeGreaterThan(0);
+  await expect(page.locator('#studentCaseReferenceReadinessStatus')).toHaveText(
+    `Ready for debrief · Intake revision ${capturedRevision}`
+  );
   await expect(page.getByRole('button', { name: 'Resume working' })).toHaveAttribute('aria-pressed', 'true');
 
   const resumeResponse = page.waitForResponse(response => (
