@@ -201,6 +201,38 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   expect(pageErrors).toEqual([]);
 });
 
+test('mobile Instructor can open and run the staged exercise console accessibly', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-mobile', 'Focused staged-console mobile acceptance.');
+  const pageErrors = watchPageErrors(page);
+  const instructorCode = `i${'m'.repeat(40)}${testInfo.retry}m`;
+
+  await startFresh(page);
+  await page.getByRole('button', { name: /Teach a class/ }).click();
+  await page.locator('#instructorExistingClass > summary').click();
+  await page.getByLabel('Instructor access code').fill(instructorCode);
+  await page.getByRole('button', { name: 'Open class' }).click();
+
+  await expect(page.locator('#instructorClassDashboard')).toBeVisible();
+  await expect(page.locator('#instructorClassDashboard')).toHaveClass(/is-collapsed/);
+  await page.getByRole('button', { name: 'Open class panel' }).click();
+  await expect(page.locator('#instructorClassDashboard')).not.toHaveClass(/is-collapsed/);
+
+  await expect(page.locator('#instructorExerciseConsole')).toBeVisible();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('1 staged Case Study available');
+  await page.getByLabel('Staged Case Study').selectOption('browser-staged-simulation');
+  await page.getByRole('button', { name: 'Create draft' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Draft · draft created');
+
+  await page.getByRole('button', { name: 'Start exercise' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('In progress · exercise started');
+  await expect(page.locator('#instructorExerciseStageTitle')).toHaveText('Clarify the browser case');
+  await expect(page.locator('#instructorExerciseFacilitation')).toContainText('Browser facilitation note');
+  await expect(page.getByRole('button', { name: 'Pause exercise' })).toBeVisible();
+
+  await expectNoBlockingA11yViolations(page);
+  expect(pageErrors).toEqual([]);
+});
+
 test('Instructor opens a class, observes work read-only, switches workspaces, and resumes after reload', async ({ page }, testInfo) => {
   const pageErrors = watchPageErrors(page);
   const suffix = testInfo.project.name === 'chromium-mobile' ? 'm' : 'd';
