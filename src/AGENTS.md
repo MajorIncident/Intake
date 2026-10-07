@@ -10,7 +10,7 @@ Keep feature modules independently initialisable, own only their feature-specifi
 
 ## Classroom coaching modules
 
-`coachableFields.js` owns stable coaching target identity and deterministic field fingerprints. Persistence identity must remain domain-based (`problem.one-line`, `kt.where-location`, etc.); DOM IDs and KT row bindings are rendering hooks only. Do not add ephemeral Possible Cause identifiers to the durable registry without first defining stable lifecycle identity.
+`intakeTargets.js` owns universal semantic Intake target identity, serialized snapshot projection, live placement resolution, and deterministic evidence fingerprints. Existing domain IDs (`problem.one-line`, `kt.where-location`, etc.) are compatibility contracts; Template IDs, DOM IDs, selectors, KT row position, and Classroom workspace IDs must never become semantic target identity. `coachableFields.js` is a backward-compatible facade over this universal registry for Classroom coaching and must not grow a second target-definition source. Dynamic Possible Cause targets belong to the `possible-cause` family defined by `docs/intake-target-identity.md`; when implemented, reuse the already-persisted `cause.id` lifecycle identity and never use card order to align causes across teams.
 
 `classroomCoaching.js` owns Instructor coaching controls and Student read-only feedback presentation. Coaching is presentation plus a separate Classroom API channel: never add it to `collectAppState()`, `kt-intake-full-v2`, summaries, templates, or collaboration snapshot revisions. Student mode may only read feedback; Instructor controls must remain interactive while the observed Student Intake remains read-only.
 
