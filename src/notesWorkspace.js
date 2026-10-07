@@ -10,6 +10,10 @@ let onSave = () => {};
 let showToast = () => {};
 let lastFocusedField = null;
 let editingNoteId = null;
+let mobileQuery = null;
+let mobileExpanded = true;
+let mobileExpansionTouched = false;
+let mobileMediaHandler = null;
 
 /** Normalizes a candidate notes-workspace snapshot. @param {unknown} value - Raw snapshot. @returns {{notes: Array<{id:string,text:string}>, open:boolean}} Safe state. */
 function normalizeState(value) {
@@ -46,6 +50,10 @@ function createWorkspaceControl(tag, className, noteId) {
   return control;
 }
 
+function effectiveWorkspaceOpen() {
+  return mobileQuery?.matches ? mobileExpanded : isOpen;
+}
+
 /** Renders notes and the workspace visibility affordances. @returns {void} */
 function render({ focusNoteId = null, focusEdit = false } = {}) {
   const workspace = document.querySelector('#notesWorkspace');
@@ -53,13 +61,14 @@ function render({ focusNoteId = null, focusEdit = false } = {}) {
   const toggle = document.querySelector('#notesWorkspaceToggle');
   const addControls = document.querySelector('#notesWorkspaceControls');
   if (!workspace || !list) return;
-  workspace.classList.toggle('is-collapsed', !isOpen);
+  const open = effectiveWorkspaceOpen();
+  workspace.classList.toggle('is-collapsed', !open);
   // The dock remains mounted so its collapse control stays discoverable.
   workspace.setAttribute('aria-hidden', 'false');
-  if (toggle) { toggle.setAttribute('aria-expanded', String(isOpen)); toggle.textContent = isOpen ? 'Collapse notes' : 'Open notes'; }
-  document.querySelector('#notesWorkspaceMenuBtn')?.setAttribute('aria-expanded', String(isOpen));
-  if (addControls) addControls.hidden = !isOpen;
-  list.hidden = !isOpen;
+  if (toggle) { toggle.setAttribute('aria-expanded', String(open)); toggle.textContent = open ? 'Collapse notes' : 'Open notes'; }
+  document.querySelector('#notesWorkspaceMenuBtn')?.setAttribute('aria-expanded', String(open));
+  if (addControls) addControls.hidden = !open;
+  list.hidden = !open;
   list.replaceChildren();
   if (!notes.length) {
     const empty = document.createElement('li'); empty.className = 'notes-workspace__empty'; empty.textContent = 'No captured notes yet.'; list.append(empty); return;
@@ -145,6 +154,16 @@ export function initNotesWorkspace({ onSave: save = () => {}, showToast: toast =
   const workspace = document.querySelector('#notesWorkspace');
   if (!workspace || workspace.dataset.initialized === 'true') return workspace;
   workspace.dataset.initialized = 'true';
+
+  mobileQuery?.removeEventListener?.('change', mobileMediaHandler);
+  mobileQuery = globalThis.window?.matchMedia?.('(max-width: 700px)') || null;
+  mobileExpanded = !mobileQuery?.matches;
+  mobileExpansionTouched = false;
+  mobileMediaHandler = event => {
+    if (!mobileExpansionTouched) mobileExpanded = !event.matches;
+    render();
+  };
+  mobileQuery?.addEventListener?.('change', mobileMediaHandler);
   document.querySelector('#notesWorkspaceAddBtn')?.addEventListener('click', () => {
     const input = document.querySelector('#notesWorkspaceInput'); const text = input?.value.trim();
     if (!text) return;
@@ -173,8 +192,22 @@ export function initNotesWorkspace({ onSave: save = () => {}, showToast: toast =
   render(); return workspace;
 }
 
-/** Toggles the dock's collapsed state and restores focus to its launcher when closing. @returns {void} */
-export function toggleNotesWorkspace() { isOpen = !isOpen; render(); onSave(); if (isOpen) document.querySelector('#notesWorkspaceInput')?.focus(); else document.querySelector('#notesWorkspaceToggle')?.focus(); }
+/** Toggles the dock's collapsed state and restores focus to its launcher when closing. Mobile collapse is presentation-only. @returns {void} */
+export function toggleNotesWorkspace() {
+  if (mobileQuery?.matches) {
+    mobileExpanded = !mobileExpanded;
+    mobileExpansionTouched = true;
+    render();
+    if (mobileExpanded) document.querySelector('#notesWorkspaceInput')?.focus();
+    else document.querySelector('#notesWorkspaceToggle')?.focus();
+    return;
+  }
+  isOpen = !isOpen;
+  render();
+  onSave();
+  if (isOpen) document.querySelector('#notesWorkspaceInput')?.focus();
+  else document.querySelector('#notesWorkspaceToggle')?.focus();
+}
 /** Returns a serializable notes workspace snapshot. @returns {{notes:Array<{id:string,text:string}>,open:boolean}} Notes and dock preference. */
 export function getNotesWorkspaceState() { return { notes: notes.map(note => ({ ...note })), open: isOpen }; }
 /** Applies a serialized notes workspace snapshot. @param {unknown} state - State to hydrate. @returns {void} */
