@@ -220,6 +220,40 @@ test('Instructor Share class copies a fragment-only join URL without forwarding 
   env.controller.destroy();
 });
 
+test('Instructor Share class prefers native Web Share with the same safe human-code URL', async () => {
+  const env = setup(async (url) => {
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  });
+  const shares = [];
+  const copied = [];
+  Object.defineProperty(dom.window.navigator, 'share', {
+    configurable: true,
+    value: async payload => shares.push(payload)
+  });
+  Object.defineProperty(dom.window.navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: async value => copied.push(value) }
+  });
+
+  await env.controller.openClass(TOKEN);
+  dom.window.history.replaceState(null, '', '/?workspace=must-not-leak');
+
+  assert.equal(await env.controller.shareClass(), true);
+  assert.equal(shares.length, 1);
+  assert.equal(shares[0].title, 'Join Problem Solving 101');
+  assert.equal(shares[0].text, 'Join this KT Intake class with code K7FM-P4Q2.');
+  assert.equal(shares[0].url, 'https://intake.test/#join=K7FMP4Q2');
+  assert.equal(shares[0].url.includes(TOKEN), false);
+  assert.equal(shares[0].url.includes('workspace='), false);
+  assert.deepEqual(copied, []);
+  assert.equal(env.calls.toasts.at(-1), 'Class join link shared.');
+
+  env.controller.destroy();
+});
+
 test('Instructor opens one class, renders roster, and observes through the GET-only class endpoint', async () => {
   const requests = [];
   const env = setup(async (url, options) => {
