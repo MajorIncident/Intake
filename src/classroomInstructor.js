@@ -10,6 +10,7 @@
 
 import { getActiveExperienceRole } from './experienceRoleController.js';
 import { EXPERIENCE_ROLE_IDS } from './experienceRoles.js';
+import { buildClassroomJoinUrl } from './classroomJoinLink.js';
 
 export const INSTRUCTOR_SESSION_STORAGE_KEY = 'kt-classroom-instructor-session-v1';
 export const INSTRUCTOR_SESSION_VERSION = 1;
@@ -187,7 +188,8 @@ export function createInstructorClassroomController({
       'instructorClassOpenBtn',
       'instructorClassRetryBtn',
       'instructorWorkspaceCreateBtn',
-      'instructorCopyJoinCodeBtn'
+      'instructorCopyJoinCodeBtn',
+      'instructorShareClassBtn'
     ].forEach(id => {
       if (element(id)) element(id).disabled = value;
     });
@@ -260,6 +262,7 @@ export function createInstructorClassroomController({
     const joinCode = formatInstructorJoinCode(activeSession.joinCode || activeSession.class?.joinCode || '');
     if (element('instructorJoinCode')) element('instructorJoinCode').textContent = joinCode || 'Unavailable';
     if (element('instructorCopyJoinCodeBtn')) element('instructorCopyJoinCodeBtn').disabled = !joinCode || busy;
+    if (element('instructorShareClassBtn')) element('instructorShareClassBtn').disabled = !joinCode || busy;
     setError('');
   };
 
@@ -1059,18 +1062,17 @@ export function createInstructorClassroomController({
     }
   };
 
-  const copyJoinCode = async () => {
-    const joinCode = formatInstructorJoinCode(activeSession?.joinCode || '');
-    if (!joinCode) return false;
+  const copyText = async (value, successMessage) => {
+    if (!value) return false;
     try {
       if (windowRef?.navigator?.clipboard?.writeText) {
-        await windowRef.navigator.clipboard.writeText(joinCode);
-        toast('Student join code copied.');
+        await windowRef.navigator.clipboard.writeText(value);
+        toast(successMessage);
         return true;
       }
       const temporary = documentRef?.createElement?.('textarea');
       if (!temporary) return false;
-      temporary.value = joinCode;
+      temporary.value = value;
       temporary.setAttribute('readonly', '');
       temporary.style.position = 'fixed';
       temporary.style.opacity = '0';
@@ -1078,12 +1080,28 @@ export function createInstructorClassroomController({
       temporary.select();
       const copied = documentRef.execCommand?.('copy') === true;
       temporary.remove();
-      if (copied) toast('Student join code copied.');
+      if (copied) toast(successMessage);
       return copied;
     } catch {
-      toast(`Student join code: ${joinCode}`);
       return false;
     }
+  };
+
+  const copyJoinCode = async () => {
+    const joinCode = formatInstructorJoinCode(activeSession?.joinCode || '');
+    if (!joinCode) return false;
+    const copied = await copyText(joinCode, 'Student join code copied.');
+    if (!copied) toast(`Student join code: ${joinCode}`);
+    return copied;
+  };
+
+  const shareClass = async () => {
+    const joinCode = formatInstructorJoinCode(activeSession?.joinCode || '');
+    const joinUrl = buildClassroomJoinUrl(joinCode, windowRef?.location);
+    if (!joinUrl) return false;
+    const copied = await copyText(joinUrl, 'Class join link copied.');
+    if (!copied) toast(`Class join link: ${joinUrl}`);
+    return copied;
   };
 
   const resume = async () => {
@@ -1148,6 +1166,7 @@ export function createInstructorClassroomController({
     );
   };
   const handleCopyJoinCode = () => { void copyJoinCode(); };
+  const handleShareClass = () => { void shareClass(); };
   const handleRailToggle = () => { setRailExpanded(!railExpanded, { user: true }); };
   const handleRailMediaChange = event => {
     if (railPreferenceTouched) return;
@@ -1184,6 +1203,7 @@ export function createInstructorClassroomController({
     element('instructorClassForm')?.addEventListener('submit', handleSubmit);
     element('instructorWorkspaceCreateForm')?.addEventListener('submit', handleWorkspaceCreate);
     element('instructorCopyJoinCodeBtn')?.addEventListener('click', handleCopyJoinCode);
+    element('instructorShareClassBtn')?.addEventListener('click', handleShareClass);
     element('instructorClassPanelToggle')?.addEventListener('click', handleRailToggle);
     mobileRailQuery?.addEventListener?.('change', handleRailMediaChange);
     element('instructorClassRetryBtn')?.addEventListener('click', handleRetry);
@@ -1208,6 +1228,7 @@ export function createInstructorClassroomController({
     element('instructorClassForm')?.removeEventListener('submit', handleSubmit);
     element('instructorWorkspaceCreateForm')?.removeEventListener('submit', handleWorkspaceCreate);
     element('instructorCopyJoinCodeBtn')?.removeEventListener('click', handleCopyJoinCode);
+    element('instructorShareClassBtn')?.removeEventListener('click', handleShareClass);
     element('instructorClassPanelToggle')?.removeEventListener('click', handleRailToggle);
     mobileRailQuery?.removeEventListener?.('change', handleRailMediaChange);
     element('instructorClassRetryBtn')?.removeEventListener('click', handleRetry);
@@ -1227,6 +1248,7 @@ export function createInstructorClassroomController({
     createWorkspace,
     assignParticipant,
     copyJoinCode,
+    shareClass,
     resume,
     refreshRoster,
     selectWorkspace,
