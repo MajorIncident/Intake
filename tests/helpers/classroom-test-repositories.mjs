@@ -939,7 +939,6 @@ export function createClassroomRepository() {
               workspaceLabel: workspace?.label || null,
               stageId: checkpoint.stageId,
               workspaceRevision: checkpoint.workspaceRevision,
-              snapshot: cloneValue(checkpoint.snapshot),
               capturedAt: checkpoint.capturedAt
             };
           })
