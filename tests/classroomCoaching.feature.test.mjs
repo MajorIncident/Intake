@@ -259,3 +259,69 @@ test('late Instructor feedback from a previous workspace cannot replace the curr
   assert.match(panel.textContent, /Current workspace/);
   controller.destroy();
 });
+
+
+test('dynamic Possible Cause coaching follows persisted cause identity after card rerender', async () => {
+  const cause = {
+    id: 'cause-cache-rule',
+    suspect: 'Cache rule',
+    accusation: 'Routes checkout incorrectly',
+    impact: 'Requests time out',
+    summaryText: 'Cache rule routes checkout incorrectly',
+    confidence: 'medium',
+    evidence: 'Timeouts correlate with the rule.',
+    findings: {},
+    editing: false,
+    testingOpen: false
+  };
+  const targetId = 'possible-cause.cause-cache-rule';
+  dom = new JSDOM(`<main><article class="cause-card" data-cause-id="${cause.id}"></article></main>`);
+  const documentRef = dom.window.document;
+  const requests = [];
+  const controller = createClassroomCoachingController({
+    documentRef,
+    getRows: () => [],
+    getCauses: () => [cause],
+    fetchImpl: async (_url, options) => {
+      requests.push(options);
+      if (options.method === 'GET') return response(200, { feedback: [] });
+      const sent = JSON.parse(options.body);
+      return response(200, { feedback: { ...sent, feedbackRevision: 1 } });
+    },
+    setTimeoutImpl: () => 1,
+    clearTimeoutImpl: () => {}
+  });
+
+  controller.init();
+  controller.showInstructorWorkspace({
+    instructorToken: INSTRUCTOR_TOKEN,
+    workspaceId: WORKSPACE_ID,
+    workspaceRevision: 7
+  });
+  await settle();
+
+  let panel = documentRef.querySelector(`[data-coaching-target-id="${targetId}"]`);
+  assert.ok(panel);
+  [...panel.querySelectorAll('button')]
+    .find(button => button.textContent === 'Needs improvement')
+    .click();
+  await settle();
+
+  const put = requests.find(options => options.method === 'PUT');
+  assert.ok(put);
+  assert.equal(JSON.parse(put.body).targetId, targetId);
+
+  cause.evidence = 'Changed evidence';
+  documentRef.querySelector('.cause-card').remove();
+  const replacement = documentRef.createElement('article');
+  replacement.className = 'cause-card';
+  replacement.dataset.causeId = cause.id;
+  documentRef.querySelector('main').append(replacement);
+  documentRef.dispatchEvent(new dom.window.CustomEvent('intake:possible-causes-rendered'));
+
+  panel = documentRef.querySelector(`[data-coaching-target-id="${targetId}"]`);
+  assert.ok(panel);
+  assert.match(panel.textContent, /Changed since review/);
+  assert.equal(panel.closest('.cause-card').dataset.causeId, cause.id);
+  controller.destroy();
+});
