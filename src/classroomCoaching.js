@@ -38,6 +38,7 @@ export function createClassroomCoachingController({
   fetchImpl = globalThis.fetch?.bind(globalThis),
   documentRef = globalThis.document,
   getRows = () => [],
+  getCauses = () => [],
   setTimeoutImpl = globalThis.setTimeout?.bind(globalThis),
   clearTimeoutImpl = globalThis.clearTimeout?.bind(globalThis),
   toast = () => {}
@@ -81,8 +82,13 @@ export function createClassroomCoachingController({
       mount.removeAttribute(`data-coaching-has-${kind}`);
     });
   };
-  const resolvedTargets = () => listResolvedCoachableTargets({ documentRef, rows: getRows?.() || [] });
-  const resolvedTarget = targetId => resolveCoachableTarget(targetId, { documentRef, rows: getRows?.() || [] });
+  const resolutionOptions = () => ({
+    documentRef,
+    rows: getRows?.() || [],
+    causes: getCauses?.() || []
+  });
+  const resolvedTargets = () => listResolvedCoachableTargets(resolutionOptions());
+  const resolvedTarget = targetId => resolveCoachableTarget(targetId, resolutionOptions());
 
   const requestJson = async (url, options) => {
     const response = await fetchImpl(url, options);
@@ -352,15 +358,24 @@ export function createClassroomCoachingController({
     clearPanels('student');
   };
 
-  const handleInput = event => {
-    if (event?.target?.closest?.('.classroom-coaching')) return;
+  const refreshRenderedCoaching = () => {
     if (studentToken) renderStudent();
     if (instructorContext) renderInstructor();
+  };
+
+  const handleInput = event => {
+    if (event?.target?.closest?.('.classroom-coaching')) return;
+    refreshRenderedCoaching();
+  };
+
+  const handlePossibleCausesRendered = () => {
+    refreshRenderedCoaching();
   };
 
   const init = () => {
     documentRef?.addEventListener?.('input', handleInput);
     documentRef?.addEventListener?.('change', handleInput);
+    documentRef?.addEventListener?.('intake:possible-causes-rendered', handlePossibleCausesRendered);
     return true;
   };
 
@@ -371,6 +386,7 @@ export function createClassroomCoachingController({
     hideInstructorWorkspace();
     documentRef?.removeEventListener?.('input', handleInput);
     documentRef?.removeEventListener?.('change', handleInput);
+    documentRef?.removeEventListener?.('intake:possible-causes-rendered', handlePossibleCausesRendered);
   };
 
   return {

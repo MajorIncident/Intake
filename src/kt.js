@@ -1555,6 +1555,22 @@ export function ensurePossibleCausesUI(){
 }
 
 /**
+ * Notify presentation consumers that Possible Cause cards were rebuilt.
+ *
+ * Dynamic target identity remains in the persisted cause model; this event is
+ * presentation-only and lets features such as Classroom coaching reattach UI
+ * after renderCauses() replaces the card DOM.
+ *
+ * @returns {void}
+ */
+function notifyPossibleCausesRendered(){
+  if(typeof document === 'undefined') return;
+  const EventCtor = document.defaultView?.CustomEvent || globalThis.CustomEvent;
+  if(typeof EventCtor !== 'function') return;
+  document.dispatchEvent(new EventCtor('intake:possible-causes-rendered'));
+}
+
+/**
  * Re-renders the Possible Causes list, syncing status indicators, action
  * counts, and cause-testing panels.
  * @returns {void}
@@ -1582,6 +1598,7 @@ export function renderCauses(){
     empty.textContent = 'No possible causes captured yet.';
     causeList.appendChild(empty);
     updateCauseEvidencePreviews();
+    notifyPossibleCausesRendered();
     return;
   }
   possibleCauses.forEach((cause, index) => {
@@ -1891,6 +1908,7 @@ export function renderCauses(){
     callShowToast(clearedMessage);
   }
   updateCauseEvidencePreviews();
+  notifyPossibleCausesRendered();
 }
 
 /**

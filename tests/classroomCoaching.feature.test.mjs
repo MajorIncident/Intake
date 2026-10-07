@@ -259,3 +259,163 @@ test('late Instructor feedback from a previous workspace cannot replace the curr
   assert.match(panel.textContent, /Current workspace/);
   controller.destroy();
 });
+
+
+test('dynamic Possible Cause coaching follows persisted cause identity after card rerender', async () => {
+  const cause = {
+    id: 'cause-cache-rule',
+    suspect: 'Cache rule',
+    accusation: 'Routes checkout incorrectly',
+    impact: 'Requests time out',
+    summaryText: 'Cache rule routes checkout incorrectly',
+    confidence: 'medium',
+    evidence: 'Timeouts correlate with the rule.',
+    findings: {},
+    editing: false,
+    testingOpen: false
+  };
+  const targetId = 'possible-cause.cause-cache-rule';
+  dom = new JSDOM(`<main><article class="cause-card" data-cause-id="${cause.id}"></article></main>`);
+  const documentRef = dom.window.document;
+  const requests = [];
+  const controller = createClassroomCoachingController({
+    documentRef,
+    getRows: () => [],
+    getCauses: () => [cause],
+    fetchImpl: async (_url, options) => {
+      requests.push(options);
+      if (options.method === 'GET') return response(200, { feedback: [] });
+      const sent = JSON.parse(options.body);
+      return response(200, { feedback: { ...sent, feedbackRevision: 1 } });
+    },
+    setTimeoutImpl: () => 1,
+    clearTimeoutImpl: () => {}
+  });
+
+  controller.init();
+  controller.showInstructorWorkspace({
+    instructorToken: INSTRUCTOR_TOKEN,
+    workspaceId: WORKSPACE_ID,
+    workspaceRevision: 7
+  });
+  await settle();
+
+  let panel = documentRef.querySelector(`[data-coaching-target-id="${targetId}"]`);
+  assert.ok(panel);
+  [...panel.querySelectorAll('button')]
+    .find(button => button.textContent === 'Needs improvement')
+    .click();
+  await settle();
+
+  const put = requests.find(options => options.method === 'PUT');
+  assert.ok(put);
+  assert.equal(JSON.parse(put.body).targetId, targetId);
+
+  cause.evidence = 'Changed evidence';
+  documentRef.querySelector('.cause-card').remove();
+  const replacement = documentRef.createElement('article');
+  replacement.className = 'cause-card';
+  replacement.dataset.causeId = cause.id;
+  documentRef.querySelector('main').append(replacement);
+  documentRef.dispatchEvent(new dom.window.CustomEvent('intake:possible-causes-rendered'));
+
+  panel = documentRef.querySelector(`[data-coaching-target-id="${targetId}"]`);
+  assert.ok(panel);
+  assert.match(panel.textContent, /Changed since review/);
+  assert.equal(panel.closest('.cause-card').dataset.causeId, cause.id);
+  controller.destroy();
+});
+
+
+test('Student dynamic Possible Cause coaching stays read-only after card rerender', async () => {
+  const cause = {
+    id: 'cause-cache-rule',
+    suspect: 'Cache rule',
+    accusation: 'Routes checkout incorrectly',
+    impact: 'Requests time out',
+    summaryText: 'Cache rule routes checkout incorrectly',
+    confidence: 'medium',
+    evidence: 'Timeouts correlate with the rule.',
+    findings: {},
+    editing: false,
+    testingOpen: false
+  };
+  const targetId = 'possible-cause.cause-cache-rule';
+  dom = new JSDOM(`<main><article class="cause-card" data-cause-id="${cause.id}"></article></main>`);
+  const documentRef = dom.window.document;
+  let reviewedFingerprint = '';
+  const controller = createClassroomCoachingController({
+    documentRef,
+    getRows: () => [],
+    getCauses: () => [cause],
+    fetchImpl: async () => {
+      if (!reviewedFingerprint) {
+        const resolved = documentRef.querySelector(`[data-coaching-target-id="${targetId}"]`);
+        void resolved;
+      }
+      return response(200, {
+        workspace: { id: WORKSPACE_ID },
+        feedback: [{
+          targetId,
+          status: 'meets-standard',
+          note: 'Well tested.',
+          reviewedWorkspaceRevision: 5,
+          reviewedFieldFingerprint: reviewedFingerprint || 'v1-0000000000000000',
+          feedbackRevision: 2
+        }]
+      });
+    },
+    setTimeoutImpl: () => 1,
+    clearTimeoutImpl: () => {}
+  });
+
+  controller.init();
+
+  const instructorProbe = createClassroomCoachingController({
+    documentRef,
+    getRows: () => [],
+    getCauses: () => [cause],
+    fetchImpl: async (_url, options) => {
+      if (options.method === 'GET') return response(200, { feedback: [] });
+      const sent = JSON.parse(options.body);
+      reviewedFingerprint = sent.reviewedFieldFingerprint;
+      return response(200, { feedback: { ...sent, feedbackRevision: 1 } });
+    }
+  });
+  instructorProbe.init();
+  instructorProbe.showInstructorWorkspace({
+    instructorToken: INSTRUCTOR_TOKEN,
+    workspaceId: WORKSPACE_ID,
+    workspaceRevision: 5
+  });
+  await settle();
+  const probePanel = documentRef.querySelector(`.classroom-coaching--instructor[data-coaching-target-id="${targetId}"]`);
+  [...probePanel.querySelectorAll('button')]
+    .find(button => button.textContent === 'Meets standard' || button.textContent === '✓ Meets standard')
+    .click();
+  await settle();
+  instructorProbe.destroy();
+
+  controller.connectStudent(STUDENT_TOKEN);
+  await settle();
+
+  let panel = documentRef.querySelector(`.classroom-coaching--student[data-coaching-target-id="${targetId}"]`);
+  assert.ok(panel);
+  assert.match(panel.textContent, /Instructor feedback · Meets standard/);
+  assert.match(panel.textContent, /Well tested/);
+  assert.equal(panel.querySelector('button, textarea, input, select'), null);
+
+  cause.summaryText = 'Revised Possible Cause reasoning';
+  documentRef.querySelector('.cause-card').remove();
+  const replacement = documentRef.createElement('article');
+  replacement.className = 'cause-card';
+  replacement.dataset.causeId = cause.id;
+  documentRef.querySelector('main').append(replacement);
+  documentRef.dispatchEvent(new dom.window.CustomEvent('intake:possible-causes-rendered'));
+
+  panel = documentRef.querySelector(`.classroom-coaching--student[data-coaching-target-id="${targetId}"]`);
+  assert.ok(panel);
+  assert.match(panel.textContent, /Changed since review/);
+  assert.equal(panel.querySelector('button, textarea, input, select'), null);
+  controller.destroy();
+});

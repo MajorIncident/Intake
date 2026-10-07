@@ -43,7 +43,8 @@ jobs:
         run: npm run quality
 
       - name: Install Chromium for required browser gate
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 8
+        run: ./node_modules/.bin/playwright install --with-deps chromium
 
       - name: Run required browser regression suite
         run: npm run test:browser
