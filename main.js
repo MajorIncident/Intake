@@ -17,7 +17,8 @@ import {
   initTable,
   ensurePossibleCausesUI,
   renderCauses,
-  getRowsBuilt
+  getRowsBuilt,
+  getPossibleCauses
 } from './src/kt.js';
 import { generateSummary, setSummaryStateProvider } from './src/summary.js';
 import { mountActionListCard, refreshActionList } from './components/actions/ActionListCard.js';
@@ -247,6 +248,7 @@ function boot() {
   });
   classroomCoachingController = initClassroomCoaching({
     getRows: getRowsBuilt,
+    getCauses: getPossibleCauses,
     toast: showToast
   });
   studentClassroomController = initStudentClassroom({
