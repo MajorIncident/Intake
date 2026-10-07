@@ -20,6 +20,10 @@ function text(value) {
   return typeof value === 'string' ? value : '';
 }
 
+function createLocalElement(documentRef, tagName) {
+  return documentRef.createElement(tagName);
+}
+
 function positiveInteger(value) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : null;
@@ -96,7 +100,7 @@ function comparisonText(projection) {
 }
 
 function button(documentRef, label, onClick, className = 'btn-secondary') {
-  const control = documentRef.createElement('button');
+  const control = createLocalElement(documentRef, 'button');
   control.type = 'button';
   control.className = className;
   control.textContent = label;
@@ -169,7 +173,7 @@ export function createClassroomDebriefComparisonController({
       const group = documentRef.createElement('optgroup');
       group.label = section;
       items.forEach(item => {
-        const option = documentRef.createElement('option');
+        const option = createLocalElement(documentRef, 'option');
         option.value = item.id;
         option.textContent = item.label;
         option.setAttribute('data-persistence', 'local-only');
