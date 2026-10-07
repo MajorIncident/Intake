@@ -880,18 +880,48 @@ Validation on `91d7029bec5cddaf251d02301a4fd1ce97dc908c`:
 - required Browser E2E: **26 passed / 8 intentional project-scoped skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
 
+## Implementation checkpoint — Tranche 7B Student Ready / Resume Working
+
+Student readiness interaction contract:
+- readiness controls exist only while the represented exercise is `active + work`, a current stage exists, and the Student has a current assignment;
+- the browser uses only the stable Student class-session capability with `PUT /api/classes/exercise/student/ready` and sends exactly `{ ready: boolean }`;
+- the client never submits a workspace identifier, workspace capability, or claimed workspace revision for readiness;
+- Ready state is authoritative server state and displays `readyWorkspaceRevision`, which was observed by the server from the currently assigned collaboration workspace;
+- **Resume working** clears readiness with `ready:false` while work remains active;
+- Waiting, paused, debrief, and completed states expose no usable readiness action;
+- assignment/phase conflicts return to one authoritative Student exercise read; stale Ready/Working intent is never replayed;
+- readiness remains memory-only/local-only and is not merged into collaboration snapshot state, Intake export/summary, browser storage, or URLs.
+
+Implementation spans `e43b84c...` through `247479f...`, with deterministic browser support through `d311b7b...`.
+
+## Implementation checkpoint — Tranche 7C frozen-debrief Student Intake projection
+
+Frozen Student UX contract:
+- when the Student-safe staged response reports `stagePhase=debrief`, `studentEditingEnabled=false`, `editFreezeEnforced=true`, and the exercise is not completed, the existing Intake surface is projected read-only/disabled;
+- this projection is not an authorization boundary: the server-side `PUT /api/workspaces/session` HTTP **423 Locked** / `classroom-editing-locked` policy from Tranche 5 remains authoritative;
+- projection records original disabled/readOnly/tabindex/ARIA/contenteditable/draggable state and restores it when editing reopens, the exercise advances/completes, staged context disappears, or the Student session disconnects;
+- a paused frozen debrief stays read-only because Pause/Resume deliberately preserves the current editing policy;
+- `#studentExperienceNotice` controls are excluded so **Leave class** remains available during a freeze;
+- Notes are intentionally included because `notesWorkspace` is serialized by `collectAppState()` and therefore participates in the same collaboration snapshot mutation boundary;
+- released case-reference material remains readable throughout the freeze;
+- integrated browser acceptance exercises the real Instructor lifecycle: staged Start -> frozen Begin Debrief -> Student read-only projection -> Instructor Allow Editing -> Student projection restoration.
+
+Implementation spans `8d70e84...` through `50435c3...`.
+
+Validation status for the combined 7B/7C implementation is finalized on the documented head after repository/browser/security checks complete. Repository quality already passed on implementation head `50435c30e7d43f906eeff88d32265ba585fad079`.
+
 ## Exact next implementation action
 
-Implement **Tranche 7B — Student Ready/Resume Working interaction**.
+Implement **Tranche 8A — Instructor immutable checkpoint inspection versus current live work**.
 
 Required next slice:
-- add readiness controls to the Student reference only while the represented exercise is `active + work` and the Student has a current assignment;
-- use only the stable Student class-session capability with `PUT /api/classes/exercise/student/ready` and body `{ ready: boolean }`;
-- show authoritative current-workspace readiness returned by GET/PUT; when Ready, show the server-captured collaboration revision rather than inventing client evidence;
-- allow returning from Ready to Working with `ready:false` while still in active work;
-- Waiting/unassigned Students must see no usable Ready mutation, and paused/debrief/completed phases must not expose readiness actions;
-- an assignment-race or phase 409 must trigger authoritative status/exercise refresh instead of replaying the mutation or attaching readiness to an old workspace;
-- keep readiness local-only/summary-excluded and separate from collaboration snapshot revision state;
-- extend focused and deterministic browser coverage so a Student marks a team Ready and the Instructor sees that existing `workspaceState` signal.
+- checkpoint snapshots remain Instructor-authorized, class/workspace/stage scoped, memory-only, and excluded from Intake persistence/export/summary;
+- expose an explicit Instructor action from the current-stage debrief checkpoint list to inspect the immutable snapshot captured at debrief start;
+- reuse the existing read-only Intake rendering/observer surface instead of building a second form renderer;
+- clearly label **Checkpoint at debrief start · Revision N** versus **Current live Intake** so facilitation can compare pre-discussion reasoning with subsequent live changes;
+- inspecting a checkpoint must never overwrite, restore, merge, or mutate the live Student workspace and must not mint Student workspace authority;
+- preserve the existing live observer/coaching path and provide an explicit action back to current live observation;
+- do not reveal exemplar/model content, future-stage content, or another class/team's checkpoint;
+- add focused controller tests plus integrated browser coverage for checkpoint -> live switching and workspace isolation.
 
-Do **not** implement the temporary frozen-debrief Intake read-only projection in 7B; keep that as the next bounded Student slice after readiness. Do not invent production official Case Study staging.
+Production official Case Study staging remains deferred until authoritative case pages/evidence/facilitation material is supplied and reviewed.
