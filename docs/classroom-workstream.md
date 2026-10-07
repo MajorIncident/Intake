@@ -8,7 +8,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 The secure Classroom foundation (#288), live-class management (#312), and staged-simulation engine (#313) are **merged and production-published**. The Vercel function-budget blocker #321 was resolved by PR #322; exact merged-main SHA `21bff1d1c5a70caff0aa94aadd58abcb0644f397` reached production **READY** with a clean runtime-error scan.
 
-The immediate next implementation issue is **#316 — protected staged case assets and rich Student case rendering**. Do not author the first production staged KT Case Study (#317) until #316 provides the secure rich-content path.
+Current product priority is **#320 — join sharing and compact mobile workspace chrome**, active on `feature/classroom-join-mobile-polish`. Production staged-case work (#316/#317) is intentionally deferred while the reusable Template/field surface continues to expand. Before #319 cross-team debrief UI is built, #318 should establish a universal stable Intake-target contract so future Templates remain compatible without template-specific comparison code.
 
 ## Program issues
 
@@ -27,11 +27,11 @@ The immediate next implementation issue is **#316 — protected staged case asse
 | Live class management | #312 | Complete / published | PR #314 merged | Start Class, one-code admission, Waiting/late join, teams, reassignment, observer/coaching |
 | Staged simulation | #313 | Complete / published | PR #315 merged | Staged release, Ready/debrief/freeze/checkpoints/advance/complete |
 | Publish recovery | #321 | Complete | PR #322 merged | Vercel function count consolidated to 5/12; exact-main production READY |
-| Rich staged assets | #316 | **Next** | Open | Secure protected image/table/document-page delivery + Student rendering |
-| First production staged case | #317 | Blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
-| Stage-linked Intake guidance | #318 | Open | Open | Runtime `intakeTargetIds` + dynamic Possible Cause coaching identity |
-| Class debrief comparison | #319 | Open | Open | Cross-team checkpoint/live comparison; benefits from #318 target identity |
-| Join/mobile polish | #320 | Open | Open | QR/share convenience + compact Notes/Class/Case mobile chrome |
+| Rich staged assets | #316 | Deferred | Open | Secure protected image/table/document-page delivery; resume before #317 production simulation |
+| First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
+| Universal Intake target identity | #318 | Planned | Open | Shared target contract for coaching, future staged guidance, and #319; template-independent |
+| Class debrief comparison | #319 | Planned after #318 | Open | Template-independent cross-team checkpoint/live comparison using stable target IDs |
+| Join/mobile polish | #320 | **Active** | `feature/classroom-join-mobile-polish` | 320A join-link contract first; then QR/share and compact mobile chrome |
 
 ## Current architecture decisions
 
@@ -66,46 +66,36 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-There is no unfinished #288/#312/#313 implementation branch. #321 is closed and production is current through `21bff1d1c5a70caff0aa94aadd58abcb0644f397`.
+**#320 is active** on `feature/classroom-join-mobile-polish`.
 
-**Next implementation:** #316.
+Product/architecture decision:
+- expand Templates/fields independently; do not rush official production simulations;
+- #318 becomes the universal stable Intake-target contract used by coaching, future staged guidance, and #319;
+- #319 must be template-independent: blank Intake, current/future Standard Templates, and later staged Case Studies all use the same target IDs;
+- #316/#317 remain deferred until production simulation content becomes a priority.
 
 ## Last completed action
 
-PR #322 merged and restored production publishing after #314/#315 exceeded the Vercel Hobby Serverless Function limit. The recovery preserves every public `/api/classes/**` URL through rewrites into one `api/classroom.js` function and keeps authorization inside the existing handlers.
+Closed the #312/#313 production-publish cycle and restored Vercel production under the function budget. Final documentation handoff PR #323 merged as `ea24a0dca2f960e8c49691740e42d1ec4b1f94e4` and reached production READY.
 
-Deployment evidence:
-- exact PR-head verification `9094a3fa2a56c8720e9c149278ef03165ecd0b17` -> Vercel preview `dpl_87aJLUvqaSc3wQ45gecTiGVMdCVq` -> **READY**;
-- Vercel build guard: **5/12** conservative Serverless Function candidates;
-- protected authored `templates/*.json` excluded and protected/public manifest boundary re-verified;
-- PR #322 squash-merged as `21bff1d1c5a70caff0aa94aadd58abcb0644f397`;
-- exact merged-main production deployment `dpl_VZoSoWJsDs6Eb727EN5hmrFSgAcA` -> **READY**;
-- post-deploy Vercel runtime-error scan -> **clean**.
-
-#312 and #313 are therefore both merged **and production-published**.
+For the next product direction:
+- issue #318 was rewritten around a universal target registry rather than simulation-only guidance;
+- issue #319 now explicitly forbids template-specific/DOM-specific comparison architecture and requires future-template compatibility tests;
+- issue #320 now defines four bounded tranches.
 
 ## Next recommended action
 
-Start **#316 — Protected staged case assets and rich Student case rendering** from current `main`.
+Implement **#320A — Join-link contract + safe prefill**.
 
-Why #316 is first:
-1. #313 deliberately supports rich staged block kinds (`image`, `table`, `document-page`) in the protected authoring schema.
-2. The Student runtime still projects/renders released staged material primarily as `id/kind/title/body`; it cannot yet faithfully present protected pages, images, or structured tables.
-3. #317 must not flatten, guess, or publish official case material around that missing secure rendering layer.
+Required first slice:
+1. define one documented client-only join-link fragment format carrying only the human class code — never Instructor, Student-session, assignment, or workspace bearer capabilities;
+2. add an Instructor **Share class** action that can produce/copy that link while preserving existing **Copy code**;
+3. make Student entry safely prefill/consume the human code through the normal admission UI rather than bypassing admission;
+4. clear/normalize the fragment after consumption where practical so ordinary navigation/referrer/logging never receives the code;
+5. add focused unit/feature/browser tests for valid/invalid fragment parsing, no bearer leakage, normal manual join compatibility, and Student join prefill;
+6. update #320/PR/cold-start checkpoint before moving to QR or mobile chrome.
 
-#316 must preserve:
-- protected assets remain server-gated and absent from public `dist/`;
-- Student receives only currently authorized/released assets;
-- future-stage, Instructor-only, exemplar/model, and full protected source material remain withheld;
-- stable Student class-session authority remains separate from assignment/workspace edit authority;
-- asset or exercise state must not enter `kt-intake-full-v2`, file exports, summaries, or URLs;
-- deterministic API/client/browser tests must prove unauthorized/non-released asset denial and accessible rich rendering.
-
-Parallel work that is safe:
-- #318 can proceed independently on stable Intake target identity / `intakeTargetIds`, provided it does not depend on guessed official case stages.
-- #320 can proceed independently as join/mobile polish.
-- #317 may inventory/map authoritative source material, but must not ship production-selectable staged content until #316 is complete.
-- #319 should preferably consume #318's stable target identity rather than invent a second comparison-target model.
+Do not bundle QR generation or mobile Notes/Class/Case redesign into 320A unless the join-link contract needs a tiny reusable seam for the next tranche.
 
 ## Completed #300 implementation
 
