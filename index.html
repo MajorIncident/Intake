@@ -599,7 +599,8 @@ Anchors present:
       <div class="student-class-context__main">
         <span class="experience-role-notice__eyebrow">Student class</span>
         <strong id="studentClassContextTitle">Student class</strong>
-        <div class="student-class-context__meta">
+        <span class="student-class-context__compact" id="studentClassCompactSummary" aria-live="polite">Assigned workspace · Student</span>
+        <div class="student-class-context__meta" id="studentClassContextDetails">
           <span><span class="student-class-context__label">Workspace</span><strong id="studentClassWorkspace">Assigned workspace</strong></span>
           <span><span class="student-class-context__label">Format</span><strong id="studentClassWorkspaceKind">Team workspace</strong></span>
           <span><span class="student-class-context__label">You</span><strong id="studentClassIdentity">Student</strong></span>
@@ -607,7 +608,10 @@ Anchors present:
         </div>
         <small id="studentClassExpiry">Instructor-managed class</small>
       </div>
-      <button type="button" class="btn-secondary" id="studentClassLeaveBtn" data-persistence="local-only" data-summary="exclude">Leave class</button>
+      <div class="student-class-context__actions">
+        <button type="button" class="btn-secondary student-class-context__toggle" id="studentClassContextToggle" aria-controls="studentClassContextDetails" aria-expanded="true" data-persistence="local-only" data-summary="exclude">Collapse class</button>
+        <button type="button" class="btn-secondary" id="studentClassLeaveBtn" data-persistence="local-only" data-summary="exclude">Leave class</button>
+      </div>
     </section>
     <!-- [feature:student-experience-notice] end -->
     <!-- [feature:major-incident-role-legend] start -->
