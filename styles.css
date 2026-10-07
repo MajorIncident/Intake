@@ -2324,9 +2324,12 @@ textarea.tableta.tableta--muted:focus{
 .collaboration-dialog[hidden],.collaboration-dialog-backdrop[hidden]{display:none;}
 .collaboration-dialog form{display:contents;}
 @media (max-width:720px){
+  .collaboration-workspace{padding:16px;gap:14px;}
+  .collaboration-workspace__edit{padding:7px 10px;}
+}
+@media (max-width:700px){
   .collaboration-workspace{padding:12px;gap:10px;}
   .collaboration-workspace__toggle{display:inline-flex;padding:6px 8px;font-size:10px;white-space:nowrap;}
-  .collaboration-workspace__edit{padding:7px 10px;}
   .collaboration-workspace.is-collapsed{gap:0;}
   .collaboration-workspace.is-collapsed .collaboration-workspace__body{display:none;}
   .collaboration-workspace.is-collapsed .collaboration-workspace__eyebrow{display:none;}
