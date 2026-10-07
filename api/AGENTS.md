@@ -8,6 +8,8 @@ These rules apply to all server-only modules below `api/`.
 
 - Never return or log database connection values, raw capability hashes, authorization headers, or production Intake snapshots.
 - Keep route files thin and inject repositories into handlers for deterministic tests.
+- Vercel Classroom deployment uses one `api/classroom.js` entrypoint plus `api/_classroomRouter.js`; preserve public `/api/classes/**` URLs through `vercel.json` rewrites instead of creating new `api/classes/**/*.js` function wrappers. Routing never replaces handler authorization.
+- Keep the conservative deployable-function count at or below 12 and preserve `npm run verify:vercel-functions` in both `quality` and the Vercel build command.
 - Schema changes must remain additive/idempotent and be documented in the README plus the owning architecture document.
 - Validate method, authorization, identifiers, names, and payload size before expensive or mutating work.
 - Responses containing capabilities or private Intake data use `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
