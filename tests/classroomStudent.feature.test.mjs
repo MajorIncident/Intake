@@ -53,13 +53,14 @@ function mount({
   connectResult = true,
   terminal = false,
   fetchImpl,
+  url = 'https://intake.test/',
   onClassConnected = () => {},
   onClassDisconnected = () => {},
   onSessionConnected = () => {},
   onSessionDisconnected = () => {},
   fakeTimers = false
 } = {}) {
-  dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  dom = new JSDOM(INDEX_HTML, { url });
   persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.STUDENT, dom.window.localStorage);
   if (storedSession) persistStudentSession(dom.window.localStorage, storedSession);
   if (recovery) dom.window.localStorage.setItem(STUDENT_RECOVERY_STORAGE_KEY, JSON.stringify({ savedAt: 'now', snapshot: recovery }));
@@ -136,6 +137,68 @@ async function settle() {
 afterEach(() => {
   dom?.window.close();
   dom = null;
+});
+
+test('Student join link prefills the human class code, consumes the fragment, and still uses normal admission', async () => {
+  const requests = [];
+  const env = mount({
+    url: 'https://intake.test/#join=K7FMP4Q2',
+    fakeTimers: true,
+    fetchImpl: async (url, options = {}) => {
+      requests.push([url, options]);
+      if (url === '/api/classes/admit') {
+        const sent = JSON.parse(options.body);
+        assert.equal(sent.joinCode, 'K7FMP4Q2');
+        return response(200, {
+          class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
+          participant: { id: PARTICIPANT_ID, displayName: 'Alex', assignmentRevision: 0 },
+          assignment: null,
+          studentSessionToken: LIVE_SESSION_TOKEN
+        });
+      }
+      if (url === '/api/classes/student') {
+        return response(200, {
+          class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
+          participant: { id: PARTICIPANT_ID, displayName: 'Alex', assignmentRevision: 0 },
+          assignment: null
+        });
+      }
+      return response(500, {});
+    }
+  });
+  await settle();
+
+  assert.equal(dom.window.document.body.dataset.experienceRole, EXPERIENCE_ROLE_IDS.STUDENT);
+  assert.equal(dom.window.document.getElementById('studentClassCode').value, 'K7FM-P4Q2');
+  assert.equal(dom.window.location.hash, '');
+  assert.equal(dom.window.document.activeElement, dom.window.document.getElementById('studentDisplayName'));
+
+  dom.window.document.getElementById('studentDisplayName').value = 'Alex';
+  dom.window.document.getElementById('studentClassJoinForm').dispatchEvent(
+    new dom.window.Event('submit', { bubbles: true, cancelable: true })
+  );
+  await settle();
+
+  assert.equal(requests[0][0], '/api/classes/admit');
+  assert.equal(JSON.stringify(requests).includes('workspace='), false);
+  const stored = JSON.parse(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY));
+  assert.equal(stored.studentSessionToken, LIVE_SESSION_TOKEN);
+  assert.equal(JSON.stringify(stored).includes('K7FMP4Q2'), false);
+  env.controller.destroy();
+});
+
+test('saved Student session wins over a new join fragment instead of silently replacing class access', async () => {
+  const env = mount({
+    url: 'https://intake.test/#join=K7FMP4Q2',
+    storedSession: session()
+  });
+  await settle();
+
+  assert.equal(dom.window.document.body.dataset.studentClassStatus, 'connected');
+  assert.equal(dom.window.document.getElementById('studentClassCode').value, '');
+  assert.equal(dom.window.location.hash, '#join=K7FMP4Q2');
+  assert.deepEqual(env.calls.connect, [[WORKSPACE_TOKEN, { displayName: 'Alex', classroom: true }]]);
+  env.controller.destroy();
 });
 
 test('Student one-code admission persists only the class session and waits without collaboration access', async () => {
