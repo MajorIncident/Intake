@@ -255,7 +255,7 @@ Depends on #316. Use only authoritative participant/instructor source material. 
 
 **#318 — Universal Intake target identity + staged guidance/coaching — ACTIVE**
 
-Active branch: `feature/universal-intake-target-identity`, based on merged-main `273ae6437c0898b9e35778587c7053580db14e22`. Canonical contract: `docs/intake-target-identity.md`. **318A/B/C are complete; 318D Template/staged compatibility guards are the active tranche.**
+Active branch: `feature/universal-intake-target-identity`, based on merged-main `273ae6437c0898b9e35778587c7053580db14e22`. Canonical contract: `docs/intake-target-identity.md`. **318A/B/C/D are complete; 318E integrated acceptance/final audit is the active tranche.**
 
 Evolve the existing coaching target registry into one domain-neutral, stable Intake-target contract used by coaching, future staged guidance, and #319 cross-team debrief comparison. Templates remain serialized Intake data: adding a new Template that uses existing fields must require no #319-specific wiring. Static targets compare by semantic ID; dynamic Possible Causes use their already-persisted lifecycle ID as per-workspace instances within a `possible-cause` family rather than matching teams by list position. Snapshot projection must work without mounting the DOM. Staged `simulation.stages[].intakeTargetIds` becomes an optional consumer of this registry; simulation is **not** required for the registry or #319.
 
@@ -276,7 +276,7 @@ COMPLETED UX TRACK
 #320  join sharing + compact mobile workspace chrome   [merged]
 
 ACTIVE DEBRIEF / TEMPLATE-COMPATIBILITY TRACK
-#318  universal stable Intake target identity          <-- 318D active (A/B/C green)
+#318  universal stable Intake target identity          <-- 318E active (A/B/C/D green)
    |
   #319  template-independent class debrief comparison
 
