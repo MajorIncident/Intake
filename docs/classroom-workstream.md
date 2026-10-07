@@ -521,7 +521,25 @@ Continue #295 on draft PR #307 from the current branch head.
   - deterministic Student fixture responses intentionally omit complete `simulation`, future-stage metadata, and Instructor facilitation; browser acceptance proves Stage 1 released content appears while Stage 2 and Instructor-only text do not;
   - validation on `91d7029bec5cddaf251d02301a4fd1ce97dc908c`: repository quality **295 tests / 294 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
 - Mobile workspace UX follow-on remains open beyond the overlap fix: converge the Student team/presence workspace and Notes workspace on compact discoverable headers/default-collapsed behavior so normal-flow mobile layout remains useful without excessive vertical footprint.
-- Exact next action: implement **Tranche 7B — Student Ready/Resume Working interaction** using the existing server contract only. Show readiness controls only during active work when the represented Student currently has an assignment; PUT `/api/classes/exercise/student/ready` with the stable Student class-session capability and `{ ready: boolean }`; display the authoritative workspace readiness returned by the server, including the captured collaboration revision when Ready; hide/disable readiness outside work or while Waiting; on assignment-race/phase conflicts refresh authoritative Student status/exercise state rather than attaching readiness to a stale workspace. Keep temporary Intake read-only projection for a frozen debrief as the following bounded Student slice, and keep production official-case staging deferred.
+- Tranche 7B — Student Ready / Resume Working:
+  - implementation spans `e43b84c...` through `247479f...`, with browser fixture/acceptance through `d311b7b...`;
+  - readiness appears only during `active + work` while the Student has a current assignment;
+  - **Mark Ready** / **Resume working** use only the stable Student class-session capability with `PUT /api/classes/exercise/student/ready` and body `{ ready: boolean }`; no workspace ID/token or client-supplied collaboration revision is sent;
+  - Ready displays the server-captured collaboration revision; team readiness stays workspace-scoped across reassignment;
+  - assignment/phase `409` refreshes authoritative exercise state and never replays stale readiness intent;
+  - Waiting, paused, debrief, and completed states expose no readiness mutation;
+  - deterministic browser acceptance proves a Team Alpha edit advances the shared Intake revision, Ready captures that revision, Resume Working clears readiness, and both writes use the stable Student session credential.
+- Tranche 7C — frozen-debrief Student Intake read-only projection:
+  - implementation spans `8d70e84...` through `50435c3...`;
+  - a non-completed debrief with `studentEditingEnabled=false` and `editFreezeEnforced=true` projects the existing Student Intake surface read-only/disabled while the Tranche 5 HTTP **423 Locked** server guard remains the actual authorization boundary;
+  - original disabled/readOnly/tabindex/ARIA/contenteditable/draggable state is restored exactly when editing reopens, the exercise advances/completes, staged state disappears, or the Student session disconnects;
+  - paused frozen debrief remains read-only because Pause/Resume preserves edit policy;
+  - **Leave class** remains usable during a freeze;
+  - Notes are intentionally frozen with Intake because `notesWorkspace` is part of `collectAppState()` and therefore the collaborative snapshot;
+  - focused tests prove freeze/unfreeze and paused-freeze/disconnect restoration;
+  - integrated browser acceptance starts the staged exercise through the real Instructor console, enters the authored frozen debrief, proves Student Intake read-only, then **Allow editing** restores it through normal Student polling.
+- Combined 7B/7C validation: repository quality passed on implementation head `50435c30e7d43f906eeff88d32265ba585fad079`; final browser/security gate evidence will be recorded on the documented head.
+- Exact next action: implement **Tranche 8A — Instructor immutable checkpoint inspection versus current live work**. Expose an Instructor-only action from the current-stage checkpoint list to inspect the immutable debrief-start snapshot in the existing read-only Intake renderer; clearly distinguish checkpoint revision from current live Intake; never overwrite/merge/restore Student work or mint Student workspace authority; preserve an explicit path back to live observation/coaching; keep snapshots memory-only and excluded from Intake persistence/export/summary; do not reveal exemplar/model or future-stage content. Add focused controller tests and integrated browser coverage for checkpoint -> live switching and workspace isolation. Keep production official-case staging deferred.
 
 ## Approved Classroom follow-on direction
 
