@@ -95,10 +95,45 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
 
   await expect(page.locator('#studentCaseReference')).toBeVisible();
   if (testInfo.project.name === 'chromium-mobile') {
+    const classContext = page.locator('#studentExperienceNotice');
+    const teamWorkspace = page.locator('#collaborationWorkspace');
+    const notesWorkspace = page.locator('#notesWorkspace');
+
+    await expect(classContext).toHaveClass(/is-collapsed/);
+    await expect(page.getByRole('button', { name: 'Open class' })).toBeVisible();
+    await expect(page.locator('#studentClassCompactSummary')).toContainText('Team Alpha');
+    await page.getByRole('button', { name: 'Open class' }).click();
+    await expect(classContext).not.toHaveClass(/is-collapsed/);
+    await page.getByRole('button', { name: 'Collapse class' }).click();
+    await expect(classContext).toHaveClass(/is-collapsed/);
+
     await expect(page.locator('#studentCaseReference')).toHaveClass(/is-collapsed/);
     await expect(page.getByRole('button', { name: 'Open case reference' })).toBeVisible();
     await page.getByRole('button', { name: 'Open case reference' }).click();
     await expect(page.locator('#studentCaseReference')).not.toHaveClass(/is-collapsed/);
+
+    await expect(teamWorkspace).toBeVisible();
+    await expect(teamWorkspace).toHaveClass(/is-collapsed/);
+    await expect(page.getByRole('button', { name: 'Open team' })).toBeVisible();
+    await page.getByRole('button', { name: 'Open team' }).click();
+    await expect(teamWorkspace).not.toHaveClass(/is-collapsed/);
+    await page.getByRole('button', { name: 'Collapse team' }).click();
+    await expect(teamWorkspace).toHaveClass(/is-collapsed/);
+
+    await expect(notesWorkspace).toHaveClass(/is-collapsed/);
+    await expect(page.getByRole('button', { name: 'Open notes' })).toBeVisible();
+    await page.getByRole('button', { name: 'Open notes' }).click();
+    await expect(notesWorkspace).not.toHaveClass(/is-collapsed/);
+    await page.getByRole('button', { name: 'Collapse notes' }).click();
+    await expect(notesWorkspace).toHaveClass(/is-collapsed/);
+
+    const mobileLayout = await page.evaluate(() => ({
+      dockPosition: getComputedStyle(document.querySelector('.workspace-dock')).position,
+      scrollWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth
+    }));
+    expect(mobileLayout.dockPosition).toBe('static');
+    expect(mobileLayout.scrollWidth).toBeLessThanOrEqual(mobileLayout.viewportWidth + 1);
   }
   await expect(page.locator('#studentCaseReferenceTitle')).toHaveText('Browser Staged Simulation');
   await expect(page.locator('#studentCaseReferenceStatus')).toHaveText('Work');
