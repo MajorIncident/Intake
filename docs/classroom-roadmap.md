@@ -229,6 +229,19 @@ The eight-slice #288 program establishes the secure Classroom foundation; it doe
 
 The secure classroom/orchestration engine is complete, but a **real production KT simulation is not yet runnable from source-faithful case material**. The remaining roadmap is now product/content enablement rather than another exercise-engine tranche.
 
+### Publish recovery — #321 / PR #322
+
+#312 and #313 were both green in GitHub, but their first `main` deployments exceeded the Vercel Hobby limit of 12 Serverless Functions. Production therefore remained on the older #308 baseline even after PR #315 merged.
+
+#321 resolves the deployment packaging without changing public API or authorization semantics:
+- keep every public `/api/classes/**` URL;
+- rewrite those paths to one `api/classroom.js` Vercel function;
+- delegate through `api/_classroomRouter.js` to the existing tested handlers;
+- keep collaboration workspace functions separate;
+- enforce the <=12 budget in `npm run quality` and in the Vercel build.
+
+**Roadmap gate:** do not begin #316 as production work until #321/#322 has a READY Vercel deployment from the exact merged `main` SHA. Once that publish recovery is verified, #316 is the next implementation issue.
+
 ### P0 — production case material delivery
 
 **#316 — Protected staged case assets and rich Student case rendering**
@@ -259,6 +272,8 @@ Add QR/share-link convenience around the human join code without putting bearer 
 
 ```text
 #315 merge
+   |
+  #321 / #322  restore production deployment under Vercel function budget
    |
   #316  protected rich staged content
    |
