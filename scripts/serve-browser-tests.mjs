@@ -183,6 +183,12 @@ function browserStudentExercisePayload(session) {
   const stage = BROWSER_STAGED_CASE.simulation.stages.find(
     item => item.id === exercise.currentStageId
   ) || null;
+  const readinessKey = assignment && stage
+    ? `${assignment.id}:${stage.id}`
+    : '';
+  const readiness = readinessKey
+    ? session.exerciseReadiness?.get(readinessKey) || null
+    : null;
   return {
     class: classContext,
     participant,
@@ -209,7 +215,7 @@ function browserStudentExercisePayload(session) {
           }
         : null,
       releasedContent: browserStudentReleasedContent(exercise, releases),
-      readiness: null
+      readiness: readiness ? structuredClone(readiness) : null
     }
   };
 }
@@ -674,7 +680,8 @@ async function handleClassroomApi(request, response, url) {
         integrated: true,
         statusReads: 0,
         accessCount: 0,
-        activeWorkspaceToken: ''
+        activeWorkspaceToken: '',
+        exerciseReadiness: new Map()
       };
       integratedInstructorParticipants.push({
         id: participantId,
@@ -719,7 +726,8 @@ async function handleClassroomApi(request, response, url) {
         ]),
         statusReads: 0,
         accessCount: 0,
-        activeWorkspaceToken: ''
+        activeWorkspaceToken: '',
+        exerciseReadiness: new Map()
       };
     } else {
       sendJson(response, 404, { error: 'Class not available.' });
@@ -767,6 +775,61 @@ async function handleClassroomApi(request, response, url) {
       return true;
     }
     sendJson(response, 200, browserStudentExercisePayload(session));
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/exercise/student/ready') {
+    if (request.method !== 'PUT') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const studentSessionToken = bearerToken(request);
+    const session = studentLiveSessions.get(studentSessionToken);
+    if (!session) {
+      sendJson(response, 404, { error: 'Student class session not found.' });
+      return true;
+    }
+    const body = await readJson(request).catch(() => null);
+    if (typeof body?.ready !== 'boolean') {
+      sendJson(response, 400, { error: 'Invalid readiness state.' });
+      return true;
+    }
+
+    const current = browserStudentExercisePayload(session);
+    const exercise = current.exercise;
+    if (!exercise?.currentStage?.id || exercise.status !== 'active' || exercise.stagePhase !== 'work') {
+      sendJson(response, 409, { error: 'Readiness is not available in the current exercise phase.' });
+      return true;
+    }
+    if (!session.assignment) {
+      sendJson(response, 409, { status: 'waiting', error: 'Assign a workspace before marking Ready.' });
+      return true;
+    }
+
+    const workspace = session.workspaceStates.get(session.assignment.id);
+    if (!workspace) {
+      sendJson(response, 404, { error: 'Assigned workspace not found.' });
+      return true;
+    }
+
+    const key = `${session.assignment.id}:${exercise.currentStage.id}`;
+    const previous = session.exerciseReadiness.get(key) || null;
+    const readiness = {
+      stageId: exercise.currentStage.id,
+      readyForDebrief: body.ready,
+      readyAt: body.ready ? '2099-12-31T23:32:00.000Z' : null,
+      readyWorkspaceRevision: body.ready ? workspace.revision : null
+    };
+    session.exerciseReadiness.set(key, readiness);
+    sendJson(response, 200, {
+      class: current.class,
+      participant: current.participant,
+      assignment: structuredClone(session.assignment),
+      readiness: structuredClone(readiness),
+      changed: !previous
+        || previous.readyForDebrief !== readiness.readyForDebrief
+        || previous.readyWorkspaceRevision !== readiness.readyWorkspaceRevision
+    });
     return true;
   }
 
