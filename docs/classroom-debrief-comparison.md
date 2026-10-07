@@ -5,7 +5,9 @@
 Tracking issue: #319  
 Active branch: `feature/classroom-debrief-comparison`  
 Base: `main` at `ef6949100ddac28c646338ee55cb6e7a74beb067` (#318 / PR #325 merge)  
-Current tranche: **319A — architecture and source inventory**
+319A architecture checkpoint: `22d5d9ee056f6ddd70f7e5d9a97f2322c5d3c41f`  
+319B GREEN implementation head: `c6986b330fab31509c1697b3d77c8a5e907ef279`  
+Current tranche: **319C — Instructor-only debrief API**
 
 This document is the canonical architecture contract for #319.
 
@@ -376,12 +378,34 @@ Prove:
 - update roadmap/workstream/issue/PR;
 - no runtime behavior change.
 
-### 319B — derived comparison model
+### 319B — derived comparison model — complete
 
-- add pure helpers that assemble workspace progress and current/checkpoint target projections;
-- keep helpers snapshot-native and DOM-free;
-- include coaching change-state derivation;
-- prove dynamic-family non-alignment and template independence.
+Validated implementation head: `c6986b330fab31509c1697b3d77c8a5e907ef279`.
+
+Implemented `src/classroomDebriefModel.js`:
+- pure DOM/network/persistence-free comparison model;
+- projects already-authorized current and immutable checkpoint snapshots through `projectIntakeTargets()`;
+- preserves current/checkpoint workspace revisions and checkpoint metadata without returning raw snapshot copies;
+- derives Ready/Working metadata without inventing a signal when none exists;
+- summarizes coaching as neutral Meets standard / Needs improvement / Changed since review counts and per-target metadata while deliberately omitting coaching notes;
+- filters staged recommendations through `isAuthorableIntakeTargetId()`, so static/KT/family IDs are accepted and runtime dynamic instance IDs are rejected;
+- static/KT semantic selection returns at most one projection per workspace;
+- family selection returns each workspace's independent dynamic collection and never aligns Possible Causes by text/order/instance ID across teams;
+- source snapshots are not mutated.
+
+Focused unit coverage proves:
+- static + KT current/checkpoint projection;
+- source non-mutation;
+- honest missing-checkpoint behavior;
+- dynamic Possible Cause per-workspace independence even when teams use identical wording;
+- coaching changed-since-review semantics with aggregate-note exclusion;
+- staged recommendation filtering;
+- runtime dynamic instance IDs cannot become cross-team semantic selector IDs.
+
+Validation:
+- repository quality: **352 tests / 351 pass / 0 fail / 1 intentional skip**;
+- Browser E2E: **29 passed / 11 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
 
 ### 319C — Instructor-only debrief API
 
@@ -439,4 +463,4 @@ Read:
 - existing Classroom coaching modules;
 - the consolidated Classroom router/server modules.
 
-Continue the existing #319 branch/PR. Leave a mini milestone after every meaningful sub-slice and before long validation waits.
+Continue the existing #319 branch/PR. 319A/B are complete; begin 319C with the Instructor-only derived debrief API. Leave a mini milestone after every meaningful sub-slice and before long validation waits.
