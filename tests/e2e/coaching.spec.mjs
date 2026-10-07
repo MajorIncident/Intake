@@ -82,6 +82,20 @@ test('Instructor feedback reaches only the assigned Student and becomes stale af
   await expect(refreshedCoaching).toContainText('Needs improvement');
   await expect(refreshedCoaching).toContainText('Make the deviation measurable before continuing.');
 
+  const causeTargetId = 'possible-cause.cause-cdn-rule';
+  const causeCoaching = page.locator(`.classroom-coaching--instructor[data-coaching-target-id="${causeTargetId}"]`);
+  await expect(causeCoaching).toBeVisible();
+  const causeFeedbackSaved = page.waitForResponse(response => (
+    response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === '/api/classes/coaching'
+    && response.ok()
+  ));
+  await causeCoaching.getByRole('button', { name: /Meets standard/ }).click();
+  await causeFeedbackSaved;
+  await expect(
+    page.locator(`.classroom-coaching--instructor[data-coaching-target-id="${causeTargetId}"]`)
+  ).toContainText('Meets standard');
+
   // Start a separate Student browser session while retaining only server-side coaching state.
   await page.evaluate(() => {
     window.localStorage.clear();
@@ -103,8 +117,31 @@ test('Instructor feedback reaches only the assigned Student and becomes stale af
   await expect(studentFeedback).not.toContainText('Changed since review');
   await expect(studentFeedback.locator('button, textarea, input, select')).toHaveCount(0);
 
+  const studentCauseFeedback = page.locator(
+    `.classroom-coaching--student[data-coaching-target-id="${causeTargetId}"]`
+  );
+  await expect(studentCauseFeedback).toBeVisible();
+  await expect(studentCauseFeedback).toContainText('Instructor feedback · Meets standard');
+  await expect(studentCauseFeedback).not.toContainText('Changed since review');
+  await expect(studentCauseFeedback.locator('button, textarea, input, select')).toHaveCount(0);
+
   await page.locator('#oneLine').fill('Student revised the problem after Instructor review.');
   await expect(studentFeedback).toContainText('Changed since review');
+
+  const causeCard = page.locator('.cause-card[data-cause-id="cause-cdn-rule"]');
+  await expect(causeCard).toBeVisible();
+  await causeCard.getByRole('button', { name: 'Edit' }).click();
+  await causeCard.locator('#cause-cdn-rule-suspect').fill('Revised CDN cache rule');
+  await causeCard.getByRole('button', { name: 'Save hypothesis' }).click();
+
+  await expect(studentCauseFeedback).toBeVisible();
+  await expect(studentCauseFeedback).toContainText('Changed since review');
+  await expect(studentCauseFeedback.locator('button, textarea, input, select')).toHaveCount(0);
+  await expect(
+    page.locator('.cause-card[data-cause-id="cause-cdn-rule"]')
+      .locator(`.classroom-coaching--student[data-coaching-target-id="${causeTargetId}"]`)
+  ).toBeVisible();
+
   expect(studentCoachingWrites).toEqual([]);
 
   await expectNoBlockingA11yViolations(page);
