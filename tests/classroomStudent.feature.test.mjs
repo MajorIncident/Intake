@@ -58,9 +58,20 @@ function mount({
   onClassDisconnected = () => {},
   onSessionConnected = () => {},
   onSessionDisconnected = () => {},
-  fakeTimers = false
+  fakeTimers = false,
+  mobile = false
 } = {}) {
   dom = new JSDOM(INDEX_HTML, { url });
+  const mediaListeners = new Set();
+  Object.defineProperty(dom.window, 'matchMedia', {
+    configurable: true,
+    value: query => ({
+      media: query,
+      matches: mobile && query === '(max-width: 700px)',
+      addEventListener: (_event, listener) => mediaListeners.add(listener),
+      removeEventListener: (_event, listener) => mediaListeners.delete(listener)
+    })
+  });
   persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.STUDENT, dom.window.localStorage);
   if (storedSession) persistStudentSession(dom.window.localStorage, storedSession);
   if (recovery) dom.window.localStorage.setItem(STUDENT_RECOVERY_STORAGE_KEY, JSON.stringify({ savedAt: 'now', snapshot: recovery }));
@@ -452,6 +463,31 @@ test('Student join uses one-time class and assignment codes then attaches the is
   assert.equal(dom.window.document.getElementById('studentClassContextTitle').textContent, 'Problem Solving 101');
   assert.equal(dom.window.document.getElementById('studentClassWorkspace').textContent, 'Team Alpha');
   assert.equal(dom.window.document.getElementById('studentClassIdentity').textContent, 'Alex');
+});
+
+test('Student class context defaults compact on mobile and expands without changing class persistence', async () => {
+  const env = mount({ storedSession: session(), mobile: true });
+  await settle();
+
+  const panel = dom.window.document.getElementById('studentExperienceNotice');
+  const toggle = dom.window.document.getElementById('studentClassContextToggle');
+  const before = dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY);
+
+  assert.equal(panel.classList.contains('is-collapsed'), true);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  assert.equal(toggle.textContent, 'Open class');
+  assert.equal(dom.window.document.getElementById('studentClassCompactSummary').textContent, 'Team Alpha · Alex');
+  assert.equal(env.controller.getState().contextExpanded, false);
+
+  toggle.click();
+
+  assert.equal(panel.classList.contains('is-collapsed'), false);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  assert.equal(toggle.textContent, 'Collapse class');
+  assert.equal(env.controller.getState().contextExpanded, true);
+  assert.equal(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY), before, 'presentation toggle does not rewrite Student class authority');
+
+  env.controller.destroy();
 });
 
 test('Student resume reconnects from workspace capability without replaying join or assignment codes', async () => {
