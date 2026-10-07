@@ -11,6 +11,10 @@ import {
   listIntakeTargetDefinitions,
   listIntakeTargetFamilyDefinitions
 } from './intakeTargets.js';
+import {
+  DEBRIEF_EVIDENCE_MODES,
+  selectDebriefTargetAcrossWorkspaces
+} from './classroomDebriefModel.js';
 
 export const INSTRUCTOR_DEBRIEF_ENDPOINT = '/api/classes/debrief';
 const CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
@@ -63,6 +67,9 @@ function modelLooksValid(model) {
 
 function chooseDefaultTarget(model, options) {
   const allowed = new Set(options.map(option => option.id));
+  for (const targetId of model?.recommendedTargetIds || []) {
+    if (allowed.has(targetId)) return targetId;
+  }
   for (const workspace of model?.workspaces || []) {
     for (const projection of workspace?.current?.targets || []) {
       if (projection?.empty) continue;
@@ -73,15 +80,30 @@ function chooseDefaultTarget(model, options) {
   return allowed.has('problem.one-line') ? 'problem.one-line' : options[0]?.id || '';
 }
 
-function selectWorkspaceProjections(workspace, targetId) {
-  const targets = Array.isArray(workspace?.current?.targets) ? workspace.current.targets : [];
-  const isFamily = listIntakeTargetFamilyDefinitions().some(family => family.id === targetId);
-  return isFamily
-    ? targets.filter(target => target?.familyId === targetId)
-    : targets.filter(target => target?.id === targetId);
+function hasAnyCheckpoint(model) {
+  return (Array.isArray(model?.workspaces) ? model.workspaces : [])
+    .some(workspace => Boolean(workspace?.checkpoint));
+}
+
+function evidenceMetaLabel(workspace, mode) {
+  if (mode === DEBRIEF_EVIDENCE_MODES.CHECKPOINT) {
+    const revision = positiveInteger(workspace?.checkpoint?.workspaceRevision);
+    return workspace?.checkpoint
+      ? revision ? `Checkpoint · Revision ${revision}` : 'Checkpoint captured'
+      : 'Checkpoint unavailable';
+  }
+  return progressLabel(workspace);
 }
 
 function progressLabel(workspace) {
+  if (workspace?.readiness && typeof workspace.readiness.readyForDebrief === 'boolean') {
+    const ready = workspace.readiness.readyForDebrief;
+    const revision = ready
+      ? positiveInteger(workspace.readiness.workspaceRevision)
+      : positiveInteger(workspace?.current?.workspaceRevision);
+    const state = ready ? 'Ready' : 'Working';
+    return revision ? `${state} · Revision ${revision}` : state;
+  }
   if (!workspace?.current) return 'No live Intake';
   const active = Math.max(0, Number(workspace.activeParticipantCount) || 0);
   const editing = Math.max(0, Number(workspace.editingParticipantCount) || 0);
@@ -128,6 +150,7 @@ export function createClassroomDebriefComparisonController({
   let instructorToken = '';
   let model = null;
   let selectedTargetId = '';
+  let evidenceMode = DEBRIEF_EVIDENCE_MODES.CURRENT;
   let loading = false;
   let lastError = '';
   let refreshTimer = null;
@@ -186,6 +209,65 @@ export function createClassroomDebriefComparisonController({
     select.value = selectedTargetId;
   };
 
+  const renderRecommendations = () => {
+    const panel = element('instructorDebriefRecommendations');
+    const list = element('instructorDebriefRecommendationList');
+    if (!panel || !list) return;
+    list.replaceChildren();
+
+    const ids = (Array.isArray(model?.recommendedTargetIds) ? model.recommendedTargetIds : [])
+      .filter(targetId => optionById.has(targetId));
+    panel.hidden = ids.length === 0;
+    if (!ids.length) return;
+
+    ids.forEach(targetId => {
+      const definition = optionById.get(targetId);
+      const control = button(
+        documentRef,
+        definition?.label || targetId,
+        () => {
+          selectedTargetId = targetId;
+          renderTargetOptions();
+          renderRecommendations();
+          renderComparison();
+        },
+        'instructor-debrief-recommendation'
+      );
+      control.setAttribute('aria-pressed', selectedTargetId === targetId ? 'true' : 'false');
+      list.append(control);
+    });
+  };
+
+  const renderEvidenceMode = () => {
+    const group = element('instructorDebriefEvidenceMode');
+    const current = element('instructorDebriefCurrentBtn');
+    const checkpoint = element('instructorDebriefCheckpointBtn');
+    const sourceLabel = element('instructorDebriefEvidenceSourceLabel');
+    const help = element('instructorDebriefTargetHelp');
+    const checkpointAvailable = hasAnyCheckpoint(model);
+
+    if (evidenceMode === DEBRIEF_EVIDENCE_MODES.CHECKPOINT && !checkpointAvailable) {
+      evidenceMode = DEBRIEF_EVIDENCE_MODES.CURRENT;
+    }
+
+    if (group) group.hidden = !checkpointAvailable;
+    if (current) current.setAttribute('aria-pressed', evidenceMode === DEBRIEF_EVIDENCE_MODES.CURRENT ? 'true' : 'false');
+    if (checkpoint) {
+      checkpoint.setAttribute('aria-pressed', evidenceMode === DEBRIEF_EVIDENCE_MODES.CHECKPOINT ? 'true' : 'false');
+      checkpoint.disabled = !checkpointAvailable;
+    }
+    if (sourceLabel) {
+      sourceLabel.textContent = evidenceMode === DEBRIEF_EVIDENCE_MODES.CHECKPOINT
+        ? 'Immutable debrief checkpoint'
+        : 'Current live evidence';
+    }
+    if (help) {
+      help.textContent = checkpointAvailable
+        ? 'Switch between current live evidence and the immutable current-stage checkpoint. Stage focus suggestions never hide or score other Intake targets.'
+        : 'Compare current live evidence. Stage focus suggestions never hide or score other Intake targets.';
+    }
+  };
+
   const renderProgress = () => {
     const summary = element('instructorDebriefProgressSummary');
     const list = element('instructorDebriefProgressList');
@@ -193,11 +275,21 @@ export function createClassroomDebriefComparisonController({
     list.replaceChildren();
 
     const workspaces = Array.isArray(model?.workspaces) ? model.workspaces : [];
-    const activeCount = workspaces.filter(workspace => Number(workspace.activeParticipantCount) > 0).length;
-    const editingCount = workspaces.filter(workspace => Number(workspace.editingParticipantCount) > 0).length;
-    summary.textContent = workspaces.length
-      ? `${workspaces.length} workspace${workspaces.length === 1 ? '' : 's'} · ${activeCount} active${editingCount ? ` · ${editingCount} editing` : ''}`
-      : 'No workspaces';
+    const readinessRows = workspaces.filter(workspace => (
+      workspace?.readiness && typeof workspace.readiness.readyForDebrief === 'boolean'
+    ));
+    if (readinessRows.length) {
+      const readyCount = readinessRows.filter(workspace => workspace.readiness.readyForDebrief).length;
+      const workingCount = readinessRows.length - readyCount;
+      const unknownCount = workspaces.length - readinessRows.length;
+      summary.textContent = `${workspaces.length} workspace${workspaces.length === 1 ? '' : 's'} · ${readyCount} ready · ${workingCount} working${unknownCount ? ` · ${unknownCount} no stage status` : ''}`;
+    } else {
+      const activeCount = workspaces.filter(workspace => Number(workspace.activeParticipantCount) > 0).length;
+      const editingCount = workspaces.filter(workspace => Number(workspace.editingParticipantCount) > 0).length;
+      summary.textContent = workspaces.length
+        ? `${workspaces.length} workspace${workspaces.length === 1 ? '' : 's'} · ${activeCount} active${editingCount ? ` · ${editingCount} editing` : ''}`
+        : 'No workspaces';
+    }
 
     if (!workspaces.length) {
       const empty = documentRef.createElement('p');
@@ -227,6 +319,11 @@ export function createClassroomDebriefComparisonController({
 
       const state = documentRef.createElement('span');
       state.className = 'instructor-debrief-progress__state';
+      if (workspace?.readiness?.readyForDebrief === true) {
+        state.classList.add('instructor-debrief-progress__state--ready');
+      } else if (workspace?.readiness?.readyForDebrief === false) {
+        state.classList.add('instructor-debrief-progress__state--working');
+      }
       state.textContent = progressLabel(workspace);
 
       row.append(identity, state);
@@ -244,6 +341,14 @@ export function createClassroomDebriefComparisonController({
     title.textContent = definition?.label || 'Selected Intake target';
 
     const workspaces = Array.isArray(model?.workspaces) ? model.workspaces : [];
+    const selectedCells = selectDebriefTargetAcrossWorkspaces(
+      model,
+      selectedTargetId,
+      { mode: evidenceMode }
+    );
+    const cellByWorkspace = new Map(
+      selectedCells.map(cell => [cell.workspace.id, cell])
+    );
     if (!workspaces.length) {
       const empty = documentRef.createElement('p');
       empty.className = 'instructor-debrief-comparison__empty';
@@ -262,25 +367,33 @@ export function createClassroomDebriefComparisonController({
       const name = documentRef.createElement('strong');
       name.textContent = workspace.label || 'Workspace';
       const meta = documentRef.createElement('span');
-      meta.textContent = progressLabel(workspace);
+      meta.textContent = evidenceMetaLabel(workspace, evidenceMode);
       identity.append(name, meta);
       const open = button(
         documentRef,
-        'Observe',
+        evidenceMode === DEBRIEF_EVIDENCE_MODES.CHECKPOINT ? 'Observe live' : 'Observe',
         () => { void onSelectWorkspace(workspace.id); },
         'btn-secondary instructor-debrief-cell__observe'
       );
-      open.setAttribute('aria-label', `Observe ${workspace.label || 'workspace'}`);
+      open.setAttribute(
+        'aria-label',
+        evidenceMode === DEBRIEF_EVIDENCE_MODES.CHECKPOINT
+          ? `Observe current live Intake for ${workspace.label || 'workspace'}`
+          : `Observe ${workspace.label || 'workspace'}`
+      );
       header.append(identity, open);
 
       const body = documentRef.createElement('div');
       body.className = 'instructor-debrief-cell__evidence';
-      const projections = selectWorkspaceProjections(workspace, selectedTargetId);
+      const selectedCell = cellByWorkspace.get(workspace.id) || null;
+      const projections = selectedCell?.projections || [];
 
-      if (!workspace.current) {
+      if (!selectedCell?.sourceAvailable) {
         const empty = documentRef.createElement('p');
         empty.className = 'instructor-debrief-cell__empty';
-        empty.textContent = 'Live Intake unavailable.';
+        empty.textContent = evidenceMode === DEBRIEF_EVIDENCE_MODES.CHECKPOINT
+          ? 'Checkpoint unavailable for this workspace.'
+          : 'Live Intake unavailable.';
         body.append(empty);
       } else if (!projections.length) {
         const empty = documentRef.createElement('p');
@@ -316,6 +429,8 @@ export function createClassroomDebriefComparisonController({
 
     renderProgress();
     renderTargetOptions();
+    renderRecommendations();
+    renderEvidenceMode();
     renderComparison();
 
     const refresh = element('instructorDebriefRefreshBtn');
@@ -370,6 +485,9 @@ export function createClassroomDebriefComparisonController({
       }
 
       model = body;
+      if (evidenceMode === DEBRIEF_EVIDENCE_MODES.CHECKPOINT && !hasAnyCheckpoint(model)) {
+        evidenceMode = DEBRIEF_EVIDENCE_MODES.CURRENT;
+      }
       if (!selectedTargetId || !optionById.has(selectedTargetId)) {
         selectedTargetId = chooseDefaultTarget(model, options);
       }
@@ -393,6 +511,7 @@ export function createClassroomDebriefComparisonController({
     instructorToken = normalized;
     model = null;
     selectedTargetId = '';
+    evidenceMode = DEBRIEF_EVIDENCE_MODES.CURRENT;
     lastError = '';
     clearTimer();
     render();
@@ -406,6 +525,7 @@ export function createClassroomDebriefComparisonController({
     instructorToken = '';
     model = null;
     selectedTargetId = '';
+    evidenceMode = DEBRIEF_EVIDENCE_MODES.CURRENT;
     loading = false;
     lastError = '';
     const panel = element('instructorDebriefComparison');
@@ -421,13 +541,28 @@ export function createClassroomDebriefComparisonController({
     const next = text(event?.target?.value);
     if (!optionById.has(next)) return;
     selectedTargetId = next;
+    renderRecommendations();
     renderComparison();
   };
+  const setEvidenceMode = mode => {
+    const next = mode === DEBRIEF_EVIDENCE_MODES.CHECKPOINT
+      ? DEBRIEF_EVIDENCE_MODES.CHECKPOINT
+      : DEBRIEF_EVIDENCE_MODES.CURRENT;
+    if (next === DEBRIEF_EVIDENCE_MODES.CHECKPOINT && !hasAnyCheckpoint(model)) return false;
+    evidenceMode = next;
+    renderEvidenceMode();
+    renderComparison();
+    return true;
+  };
+  const handleCurrentMode = () => { setEvidenceMode(DEBRIEF_EVIDENCE_MODES.CURRENT); };
+  const handleCheckpointMode = () => { setEvidenceMode(DEBRIEF_EVIDENCE_MODES.CHECKPOINT); };
 
   const init = () => {
     renderTargetOptions();
     element('instructorDebriefRefreshBtn')?.addEventListener('click', handleRefresh);
     element('instructorDebriefTargetSelect')?.addEventListener('change', handleTargetChange);
+    element('instructorDebriefCurrentBtn')?.addEventListener('click', handleCurrentMode);
+    element('instructorDebriefCheckpointBtn')?.addEventListener('click', handleCheckpointMode);
     return true;
   };
 
@@ -437,6 +572,8 @@ export function createClassroomDebriefComparisonController({
     disconnect();
     element('instructorDebriefRefreshBtn')?.removeEventListener('click', handleRefresh);
     element('instructorDebriefTargetSelect')?.removeEventListener('change', handleTargetChange);
+    element('instructorDebriefCurrentBtn')?.removeEventListener('click', handleCurrentMode);
+    element('instructorDebriefCheckpointBtn')?.removeEventListener('click', handleCheckpointMode);
   };
 
   return {
@@ -449,6 +586,8 @@ export function createClassroomDebriefComparisonController({
       connected: Boolean(instructorToken),
       loading,
       selectedTargetId,
+      evidenceMode,
+      checkpointAvailable: hasAnyCheckpoint(model),
       workspaceCount: Array.isArray(model?.workspaces) ? model.workspaces.length : 0,
       lastError
     })
