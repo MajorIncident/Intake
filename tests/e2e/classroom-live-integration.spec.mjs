@@ -186,6 +186,15 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
     await expect(studentFeedback).toContainText('Instructor feedback · Needs improvement', { timeout: 10000 });
     await expect(studentFeedback).toContainText('Make the deviation measurable before the debrief.');
 
+    const alphaReadyResponse = studentA.waitForResponse(response => (
+      response.request().method() === 'PUT'
+      && new URL(response.url()).pathname === '/api/classes/exercise/student/ready'
+      && response.ok()
+    ));
+    await studentA.getByRole('button', { name: 'Mark Ready' }).click();
+    await alphaReadyResponse;
+    await expect(studentA.locator('#studentCaseReferenceReadinessStatus')).toContainText('Ready for debrief');
+
     expect(studentATokens.length).toBeGreaterThanOrEqual(1);
     const staleAlphaToken = studentATokens.at(-1);
 
@@ -196,6 +205,8 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
     await expect(studentA.locator('#studentCaseReference')).toBeVisible();
     await expect(studentA.locator('#studentCaseReferenceStageTitle')).toHaveText('Clarify the browser case');
     await expect(studentA.locator('#studentCaseReferenceStatus')).toHaveText('Work');
+    await expect(studentA.locator('#studentCaseReferenceReadinessStatus')).toHaveText('Working');
+    await expect(studentA.getByRole('button', { name: 'Mark Ready' })).toHaveAttribute('aria-pressed', 'false');
     await expect(studentB.locator('#studentClassWorkspace')).toHaveText('Team Alpha');
     await expect(studentB.locator('#oneLine')).toHaveValue(alphaUpdate);
     expect(studentATokens.length).toBeGreaterThanOrEqual(2);
