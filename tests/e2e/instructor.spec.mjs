@@ -68,6 +68,38 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.locator('[data-participant-id="99999999-9999-4999-8999-999999999999"]')).toContainText('Waiting Student');
   await expect(page.getByLabel('Assignment for Waiting Student')).toHaveValue('');
 
+  await expect(page.locator('#instructorExerciseConsole')).toBeVisible();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('1 staged Case Study available');
+  await page.getByLabel('Staged Case Study').selectOption('browser-staged-simulation');
+  await page.getByRole('button', { name: 'Create draft' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Draft · draft created');
+  await expect(page.locator('#instructorExerciseCaseName')).toHaveText('Browser Staged Simulation');
+  await expect(page.locator('#instructorExerciseCreateBtn')).toBeDisabled();
+  await expect(page.locator('#instructorExerciseStartBtn')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Start exercise' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('In progress · exercise started');
+  await expect(page.locator('#instructorExerciseStageTitle')).toHaveText('Clarify the browser case');
+  await expect(page.locator('#instructorExerciseStageObjective')).toHaveText('Capture the initial situation in Intake.');
+  await expect(page.locator('#instructorExerciseStageTiming')).toHaveText('Suggested time: 5 min');
+  await expect(page.locator('#instructorExerciseFacilitation')).toContainText('Browser facilitation note');
+  await expect(page.locator('#instructorExerciseFacilitation')).toContainText('Synthetic Instructor-only browser facilitation.');
+  await expect(page.locator('#instructorExerciseReleasePanel')).toContainText('Optional browser evidence');
+  await expect(page.locator('#instructorExercisePauseBtn')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Release Optional browser evidence to Students' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('In progress · content released');
+  await expect(page.locator('#instructorExerciseReleaseList')).toContainText('Released');
+
+  await page.getByRole('button', { name: 'Pause exercise' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Paused · exercise paused');
+  await expect(page.locator('#instructorExerciseResumeBtn')).toBeVisible();
+  await expect(page.locator('#instructorExerciseLifecycleHelp')).toContainText('Pause controls class pacing only');
+
+  await page.getByRole('button', { name: 'Resume exercise' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('In progress · exercise resumed');
+  await expect(page.locator('#instructorExercisePauseBtn')).toBeVisible();
+
   const storedAfterStart = await page.evaluate(key => window.localStorage.getItem(key), INSTRUCTOR_SESSION_STORAGE_KEY);
   expect(storedAfterStart).toContain('K7FM-P4Q2');
   expect(storedAfterStart).not.toContain('studentJoinToken');
@@ -88,8 +120,56 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(assignment).not.toHaveValue('');
   await expect(page.locator('[data-participant-id="99999999-9999-4999-8999-999999999999"]')).toContainText('Team · Team Alpha');
 
+  await page.locator('#instructorExerciseRefreshBtn').click();
+  await expect(page.locator('#instructorExerciseProgressSummary')).toHaveText('1 ready · 0 working');
+  await expect(page.getByRole('button', { name: 'Observe Team Alpha, Ready' })).toBeVisible();
+  await page.getByRole('button', { name: 'Observe Team Alpha, Ready' }).click();
+  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
+
+  await page.getByRole('button', { name: 'Begin debrief' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Debrief · debrief started');
+  await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing frozen during debrief');
+  await expect(page.locator('#instructorExerciseCheckpointSummary')).toHaveText('1 captured');
+  await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Team Alpha');
+  await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Revision 1');
+  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
+
+  await page.getByRole('button', { name: 'Allow editing' }).click();
+  await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing allowed during debrief');
+  await page.getByRole('button', { name: 'Freeze editing' }).click();
+  await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing frozen during debrief');
+
+  await page.getByRole('button', { name: 'Advance to next stage' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('In progress · advanced to next stage');
+  await expect(page.locator('#instructorExerciseStageTitle')).toHaveText('Analyze the browser case');
+  await expect(page.locator('#instructorExerciseStageObjective')).toHaveText('Use the second-stage information to refine the analysis.');
+  await expect(page.locator('#instructorExerciseStageTiming')).toHaveText('Suggested time: 4 min');
+  await expect(page.locator('#instructorExerciseFacilitation')).toContainText('Second-stage browser facilitation');
+  await expect(page.locator('#instructorExerciseFacilitation')).toContainText('Synthetic Instructor-only guidance for the final browser stage.');
+  await expect(page.locator('#instructorExerciseDebriefPanel')).toBeHidden();
+  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
+
+  await page.getByRole('button', { name: 'Begin debrief' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Debrief · debrief started');
+  await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing allowed during debrief');
+  await expect(page.locator('#instructorExerciseCheckpointSummary')).toHaveText('1 captured');
+  await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Team Alpha');
+  await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Revision 1');
+  await expect(page.getByRole('button', { name: 'Complete exercise' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Complete exercise' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Completed · exercise completed');
+  await expect(page.locator('#instructorExerciseDetail')).toContainText('No additional Student material is released automatically.');
+  await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Exercise completed; staged editing policy no longer applies');
+  await expect(page.getByRole('button', { name: 'Complete exercise' })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Freeze editing' })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Allow editing' })).toBeHidden();
+  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
+
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes')).toBe(true);
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes/workspaces')).toBe(true);
+  expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes/exercise')).toBe(true);
+  expect(classroomRequests.filter(request => request.method === 'PATCH' && request.pathname === '/api/classes/exercise')).toHaveLength(10);
   expect(classroomRequests.some(request => request.method === 'PATCH' && request.pathname === '/api/classes/participants')).toBe(true);
   expect(classroomRequests.some(request => request.pathname === '/api/classes/join')).toBe(false);
   expect(classroomRequests.some(request => request.body.includes('assignmentToken'))).toBe(false);
@@ -103,6 +183,51 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.locator('#instructorJoinCode')).toHaveText('K7FM-P4Q2');
   await expect(page.locator('#instructorParticipantSummary')).toHaveText('1 student · 0 waiting');
   await expect(page.getByLabel('Assignment for Waiting Student')).not.toHaveValue('');
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Completed');
+  await expect(page.locator('#instructorExerciseCaseName')).toHaveText('Browser Staged Simulation');
+  await expect(page.getByLabel('Staged Case Study')).toHaveValue('browser-staged-simulation');
+  await expect(page.locator('#instructorExerciseCreateBtn')).toBeDisabled();
+  await expect(page.locator('#instructorExerciseStageTitle')).toHaveText('Analyze the browser case');
+  await expect(page.locator('#instructorExerciseProgressSummary')).toHaveText('1 ready · 0 working');
+  await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Exercise completed; staged editing policy no longer applies');
+  await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Team Alpha');
+  await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Revision 1');
+  await expect(page.locator('#instructorExerciseLifecycleHelp')).toContainText('completion does not release additional case or exemplar material');
+  await expect(page.locator('#instructorExercisePauseBtn')).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Advance to next stage' })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Complete exercise' })).toBeHidden();
+
+  await expectNoBlockingA11yViolations(page);
+  expect(pageErrors).toEqual([]);
+});
+
+test('mobile Instructor can open and run the staged exercise console accessibly', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-mobile', 'Focused staged-console mobile acceptance.');
+  const pageErrors = watchPageErrors(page);
+  const instructorCode = `i${'m'.repeat(40)}${testInfo.retry}m`;
+
+  await startFresh(page);
+  await page.getByRole('button', { name: /Teach a class/ }).click();
+  await page.locator('#instructorExistingClass > summary').click();
+  await page.getByLabel('Instructor access code').fill(instructorCode);
+  await page.getByRole('button', { name: 'Open class' }).click();
+
+  await expect(page.locator('#instructorClassDashboard')).toBeVisible();
+  await expect(page.locator('#instructorClassDashboard')).toHaveClass(/is-collapsed/);
+  await page.getByRole('button', { name: 'Open class panel' }).click();
+  await expect(page.locator('#instructorClassDashboard')).not.toHaveClass(/is-collapsed/);
+
+  await expect(page.locator('#instructorExerciseConsole')).toBeVisible();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('1 staged Case Study available');
+  await page.getByLabel('Staged Case Study').selectOption('browser-staged-simulation');
+  await page.getByRole('button', { name: 'Create draft' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Draft · draft created');
+
+  await page.getByRole('button', { name: 'Start exercise' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('In progress · exercise started');
+  await expect(page.locator('#instructorExerciseStageTitle')).toHaveText('Clarify the browser case');
+  await expect(page.locator('#instructorExerciseFacilitation')).toContainText('Browser facilitation note');
+  await expect(page.getByRole('button', { name: 'Pause exercise' })).toBeVisible();
 
   await expectNoBlockingA11yViolations(page);
   expect(pageErrors).toEqual([]);
@@ -133,6 +258,12 @@ test('Instructor opens a class, observes work read-only, switches workspaces, an
 
   await expect(page.locator('#instructorClassDashboard')).toBeVisible();
   await expect(page.locator('#instructorClassTitle')).toHaveText('Browser Test Classroom');
+  if (testInfo.project.name === 'chromium-mobile') {
+    await expect(page.locator('#instructorClassDashboard')).toHaveClass(/is-collapsed/);
+    await expect(page.getByRole('button', { name: 'Open class panel' })).toBeVisible();
+    await page.getByRole('button', { name: 'Open class panel' }).click();
+    await expect(page.locator('#instructorClassDashboard')).not.toHaveClass(/is-collapsed/);
+  }
   await expect(page.locator('#instructorRosterSummary')).toHaveText('2 workspaces');
   await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Alex Student');
   await expect(page.locator('#instructorObserverStatus')).toHaveText('Live read-only view');

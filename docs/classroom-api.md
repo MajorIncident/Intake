@@ -229,6 +229,106 @@ The build produces two generated resources:
 - `api/protected-case-studies.manifest.js` — server-only Case Study metadata and payloads.
 
 Authored `templates/*.json` files are excluded from Vercel uploads. Production functions consume the committed server-only manifest, while GitHub CI continues to validate all authored JSON and generated-file freshness.
+## Staged exercise orchestration (#313)
+
+#313 adds class-level exercise orchestration without changing collaboration authority.
+
+### `POST /api/classes/exercise`
+
+Requires the Instructor class capability.
+
+Body:
+- `caseStudyId` for a protected Case Study carrying an explicit server-only `simulation` definition.
+
+Creates the represented class's draft exercise when no non-completed exercise exists. The exercise pins the normalized simulation version plus canonical SHA-256 definition fingerprint. Repeating the same selection returns the existing exercise; selecting a different case while another exercise is open conflicts.
+
+### `GET /api/classes/exercise`
+
+Requires the Instructor class capability.
+
+Returns only the represented class's current non-completed exercise plus:
+- complete Instructor-authorized staged definition;
+- optional-content releases;
+- workspace readiness/progress state;
+- **metadata only** for current-stage immutable debrief checkpoints: workspace identity, captured workspace revision, stage, and capture time.
+
+Normal exercise reads never include checkpoint snapshot bytes. Every read fails closed if the pinned simulation version/fingerprint no longer matches the current protected definition.
+
+### `GET /api/classes/exercise/checkpoint?workspaceId=<public UUID>`
+
+Requires the Instructor class capability.
+
+This is the explicit, read-only path for inspecting one immutable checkpoint during the represented exercise's current debrief stage. The server re-resolves the Instructor's current class/exercise, validates the pinned staged definition, scopes the requested workspace to that class/stage, and returns only that workspace's captured checkpoint snapshot plus its captured collaboration revision.
+
+Security/behavior rules:
+- Student class-session, workspace-edit, assignment, human join-code, or unrelated Instructor authority does not grant checkpoint access;
+- the endpoint is GET-only and never mints Student workspace authority;
+- reading a checkpoint never writes, restores, merges, or replaces the live collaboration snapshot;
+- checkpoint snapshot bytes are fetched only after an explicit Instructor inspection action and remain outside normal exercise state, Intake persistence/export/summary, and browser resume state;
+- returning to current live Intake uses the existing Instructor observer endpoint rather than treating the checkpoint as collaboration state.
+
+### `PATCH /api/classes/exercise`
+
+Requires the Instructor class capability and positive `expectedRevision`.
+
+Supported actions:
+- `start`;
+- `pause`;
+- `resume`;
+- `release-content` with current-stage optional `contentId`;
+- `begin-debrief`;
+- `advance`;
+- `complete`.
+
+Lifecycle changes use optimistic `exercise_revision`. Optional-content replay is idempotent; a stale request for a different release conflicts. `begin-debrief` captures immutable class/workspace-scoped snapshot/revision checkpoints before later live changes. Stage ordering comes from the pinned staged definition, never client-provided next-stage IDs.
+
+`begin-debrief` also applies the current stage's authored `defaultDebriefEditPolicy`. During debrief, Instructor action `set-editing` with boolean `enabled` provides an explicit revision-safe freeze/unfreeze override. Pause/Resume preserve the current editing policy; pause is not synonymous with freeze.
+
+### Server-enforced Student editing lock
+
+For an active `classroom-student` workspace alias, `PUT /api/workspaces/session` enforces the current exercise's `student_editing_enabled` before any collaboration snapshot revision mutation.
+
+When editing is frozen:
+- the response is **423 Locked**;
+- body includes stable `code: "classroom-editing-locked"` plus current exercise context;
+- snapshot and collaboration revision remain unchanged;
+- GET workspace reads remain available;
+- presence, Instructor observation/coaching, Student exercise reads, and readiness are not blocked.
+
+The production mutation repeats the freeze predicate atomically inside the SQL UPDATE, rather than relying only on a preflight policy lookup. This closes the race where an Instructor freezes between a Student's permission check and snapshot write.
+
+Primary/Standalone collaboration tokens bypass Classroom policy entirely. Classroom classes with no current staged exercise remain writable. Both current live-participant and legacy Classroom membership `classroom-student` aliases are covered.
+
+Exercise responses now expose `editFreezeEnforced: true` and the authoritative `studentEditingEnabled` value.
+
+### `GET /api/classes/exercise/student`
+
+Requires the stable Student **class-session** capability, not a workspace edit capability or human join code.
+
+Returns:
+- represented public class/participant/current assignment context;
+- public exercise identity/status/phase/revision;
+- current Student-visible stage title/objective;
+- cumulative released Student content through the current stage;
+- represented workspace readiness when assigned.
+
+It never returns future-stage metadata, Instructor content/IDs, complete Case Study `state`, another workspace's readiness, or workspace enumeration. Waiting Students can read the current class release safely.
+
+### `PUT /api/classes/exercise/student/ready`
+
+Requires the Student class-session capability.
+
+Body:
+- `ready: boolean`.
+
+When setting Ready, the server resolves the participant's current assigned workspace and records the collaboration revision observed server-side. Waiting is rejected. A reassignment race conflicts rather than attaching readiness to the old workspace.
+
+### Protected full-payload interaction
+
+When a class has a staged exercise record for Case Study X, Student `POST /api/classes/case-studies/student` must not return X's complete protected payload. The Student must use the staged exercise endpoint instead. This block remains after exercise completion; completing a simulation is not an implicit exemplar/model-answer release. Instructor full protected access remains class-scoped and unchanged, and unrelated protected resources keep their existing behavior.
+
+All exercise responses are private/no-store/no-referrer. Exercise state, releases, readiness, and checkpoints remain outside Intake serialization and collaboration revision state.
+
 ## Individual and group semantics
 
 ### Individual
@@ -268,6 +368,15 @@ Slices #291–#294 establish:
 The legacy membership table remains supported for two-code compatibility. Live assignment does not copy or merge collaboration snapshots; `classroom_workspaces` still points at the existing collaboration workspace that owns snapshot/revision/presence state.
 
 Database foreign keys and handler authorization jointly enforce class/workspace isolation. Existing collaboration tables, Standalone secret links, and the legacy Classroom path remain valid.
+
+#313 adds the following persistence primitives beneath the exercise HTTP/UI layers:
+
+- `classroom_exercises` — class-scoped exercise run with protected Case Study ID, pinned simulation version + definition fingerprint, status/stage/phase, optimistic `exercise_revision`, editing-policy state, timestamps, and owning-class expiry;
+- `classroom_exercise_releases` — idempotent optional-content release records;
+- `classroom_exercise_workspace_state` — workspace-scoped Ready state and workspace-revision evidence;
+- `classroom_exercise_checkpoints` — immutable exercise/stage/workspace snapshot + revision evidence captured for debrief.
+
+At most one non-completed exercise exists per class in the initial model. Exercise mutation is optimistic-revision protected; replaying an already-recorded optional release does not advance revision. Ready state follows the workspace, not the participant, and checkpoint rows are first-write-wins. All repository access is class/workspace scoped and bounded by the class expiry.
 
 No classroom credential is stored in browser Intake state.
 

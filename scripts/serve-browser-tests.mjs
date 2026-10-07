@@ -48,6 +48,178 @@ const STUDENT_LIVE_CLASS = Object.freeze({
   title: 'Browser Student Live Classroom',
   expiresAt: CLASSROOM_EXPIRY
 });
+const BROWSER_STAGED_CASE = Object.freeze({
+  id: 'browser-staged-simulation',
+  name: 'Browser Staged Simulation',
+  description: 'Synthetic staged Case Study used only by deterministic browser acceptance.',
+  supportedModes: ['full'],
+  simulation: {
+    version: 1,
+    studentContent: [
+      {
+        id: 'browser-brief-1',
+        kind: 'narrative',
+        title: 'Initial browser briefing',
+        body: 'Synthetic Student-safe browser briefing.'
+      },
+      {
+        id: 'browser-hint-1',
+        kind: 'evidence',
+        title: 'Optional browser evidence',
+        body: 'Synthetic optional Student evidence released only by the Instructor.'
+      },
+      {
+        id: 'browser-brief-2',
+        kind: 'narrative',
+        title: 'Second browser briefing',
+        body: 'Synthetic Student-safe content authored for the second browser stage.'
+      }
+    ],
+    instructorContent: [
+      {
+        id: 'browser-teach-1',
+        kind: 'facilitation',
+        title: 'Browser facilitation note',
+        body: 'Synthetic Instructor-only browser facilitation.'
+      },
+      {
+        id: 'browser-teach-2',
+        kind: 'facilitation',
+        title: 'Second-stage browser facilitation',
+        body: 'Synthetic Instructor-only guidance for the final browser stage.'
+      }
+    ],
+    stages: [
+      {
+        id: 'browser-stage-1',
+        title: 'Clarify the browser case',
+        studentObjective: 'Capture the initial situation in Intake.',
+        initialReleaseIds: ['browser-brief-1'],
+        optionalReleaseIds: ['browser-hint-1'],
+        intakeTargetIds: ['problem.one-line'],
+        suggestedMinutes: 5,
+        instructorContentIds: ['browser-teach-1'],
+        defaultDebriefEditPolicy: 'frozen'
+      },
+      {
+        id: 'browser-stage-2',
+        title: 'Analyze the browser case',
+        studentObjective: 'Use the second-stage information to refine the analysis.',
+        initialReleaseIds: ['browser-brief-2'],
+        optionalReleaseIds: [],
+        intakeTargetIds: ['kt.where-location'],
+        suggestedMinutes: 4,
+        instructorContentIds: ['browser-teach-2'],
+        defaultDebriefEditPolicy: 'open'
+      }
+    ]
+  }
+});
+function browserStudentReleasedContent(exercise, releases = []) {
+  const stageIndex = BROWSER_STAGED_CASE.simulation.stages.findIndex(
+    stage => stage.id === exercise?.currentStageId
+  );
+  if (stageIndex < 0 || exercise?.status === 'draft') return [];
+  const blocks = new Map(BROWSER_STAGED_CASE.simulation.studentContent.map(item => [item.id, item]));
+  const releaseMap = new Map();
+  releases.forEach(item => {
+    const items = releaseMap.get(item.stageId) || [];
+    items.push(item);
+    releaseMap.set(item.stageId, items);
+  });
+  const result = [];
+  const seen = new Set();
+  const append = (stageId, contentId, releaseType, releasedAt = null) => {
+    if (seen.has(contentId)) return;
+    const content = blocks.get(contentId);
+    if (!content) return;
+    seen.add(contentId);
+    result.push({
+      stageId,
+      releaseType,
+      releasedAt,
+      content: structuredClone(content)
+    });
+  };
+  BROWSER_STAGED_CASE.simulation.stages.slice(0, stageIndex + 1).forEach(stage => {
+    stage.initialReleaseIds.forEach(contentId => append(stage.id, contentId, 'initial'));
+    const allowed = new Set(stage.optionalReleaseIds);
+    (releaseMap.get(stage.id) || []).forEach(item => {
+      if (allowed.has(item.contentId)) append(stage.id, item.contentId, 'optional', item.releasedAt || null);
+    });
+  });
+  return result;
+}
+
+function browserStudentExercisePayload(session) {
+  const classContext = session.classContext || STUDENT_LIVE_CLASS;
+  const participant = {
+    id: session.participantId,
+    displayName: session.displayName
+  };
+  const assignment = session.assignment ? structuredClone(session.assignment) : null;
+  let exercise;
+  let releases;
+  if (session.integrated) {
+    exercise = classroomExercises.get(INTEGRATED_INSTRUCTOR_TOKEN) || null;
+    releases = classroomExerciseReleases.get(INTEGRATED_INSTRUCTOR_TOKEN) || [];
+  } else {
+    exercise = {
+      id: 'browser-student-live-exercise',
+      caseStudyId: BROWSER_STAGED_CASE.id,
+      status: 'active',
+      stagePhase: 'work',
+      exerciseRevision: 2,
+      studentEditingEnabled: true,
+      currentStageId: BROWSER_STAGED_CASE.simulation.stages[0].id
+    };
+    releases = [{
+      stageId: BROWSER_STAGED_CASE.simulation.stages[0].id,
+      contentId: 'browser-hint-1',
+      releasedAt: '2099-12-31T23:31:00.000Z'
+    }];
+  }
+  if (!exercise) return { class: classContext, participant, assignment, exercise: null };
+  const stage = BROWSER_STAGED_CASE.simulation.stages.find(
+    item => item.id === exercise.currentStageId
+  ) || null;
+  const readinessKey = assignment && stage
+    ? `${assignment.id}:${stage.id}`
+    : '';
+  const readiness = readinessKey
+    ? session.exerciseReadiness?.get(readinessKey) || null
+    : null;
+  return {
+    class: classContext,
+    participant,
+    assignment,
+    exercise: {
+      id: exercise.id,
+      caseStudyId: BROWSER_STAGED_CASE.id,
+      caseStudy: {
+        id: BROWSER_STAGED_CASE.id,
+        name: BROWSER_STAGED_CASE.name,
+        description: BROWSER_STAGED_CASE.description,
+        supportedModes: structuredClone(BROWSER_STAGED_CASE.supportedModes)
+      },
+      status: exercise.status,
+      stagePhase: exercise.stagePhase,
+      exerciseRevision: exercise.exerciseRevision,
+      studentEditingEnabled: exercise.studentEditingEnabled !== false,
+      editFreezeEnforced: true,
+      currentStage: stage
+        ? {
+            id: stage.id,
+            title: stage.title,
+            studentObjective: stage.studentObjective
+          }
+        : null,
+      releasedContent: browserStudentReleasedContent(exercise, releases),
+      readiness: readiness ? structuredClone(readiness) : null
+    }
+  };
+}
+
 let liveClassState = null;
 let liveInstructorWorkspaces = [];
 let liveInstructorParticipants = [];
@@ -61,6 +233,9 @@ const studentLiveSessions = new Map();
 const studentLiveAccessContexts = new Map();
 const classroomWorkspaces = new Map();
 const classroomCoachingFeedback = new Map();
+const classroomExercises = new Map();
+const classroomExerciseReleases = new Map();
+const classroomExerciseCheckpoints = new Map();
 
 const CONTENT_TYPES = Object.freeze({
   '.css': 'text/css; charset=utf-8',
@@ -177,6 +352,28 @@ function freshClassroomSnapshot() {
 
 function getWorkspace(workspaceToken) {
   return classroomWorkspaces.get(workspaceToken) || null;
+}
+
+function studentLiveSessionForWorkspaceToken(workspaceToken) {
+  for (const session of studentLiveSessions.values()) {
+    if (session?.activeWorkspaceToken === workspaceToken) return session;
+  }
+  return null;
+}
+
+function frozenStudentExerciseForWorkspaceToken(workspaceToken) {
+  const session = studentLiveSessionForWorkspaceToken(workspaceToken);
+  if (!session) return null;
+  const exercise = browserStudentExercisePayload(session).exercise;
+  if (
+    exercise
+    && exercise.status !== 'completed'
+    && exercise.stagePhase === 'debrief'
+    && exercise.studentEditingEnabled === false
+  ) {
+    return exercise;
+  }
+  return null;
 }
 
 function ensureWorkspace(workspaceToken) {
@@ -315,6 +512,45 @@ function managedInstructorParticipantRoster(token) {
     class: fixture.classContext,
     participants: structuredClone(fixture.participants)
   };
+}
+
+function browserExerciseWorkspaceState(token, exercise) {
+  if (!exercise?.currentStageId) return [];
+  const fixture = managedInstructorFixture(token);
+  const workspaces = fixture?.workspaces || instructorRoster().workspaces;
+  return workspaces.map((workspace, index) => {
+    const observed = fixture?.workspaceStates?.get(workspace.id);
+    const ready = index === 0;
+    return {
+      workspaceId: workspace.id,
+      workspaceKind: workspace.kind,
+      workspaceLabel: workspace.label,
+      stageId: exercise.currentStageId,
+      readyForDebrief: ready,
+      readyAt: ready ? '2099-12-31T23:30:00.000Z' : null,
+      readyWorkspaceRevision: ready ? (observed?.revision || 1) : null,
+      createdAt: '2099-12-31T23:29:00.000Z',
+      updatedAt: '2099-12-31T23:30:00.000Z'
+    };
+  });
+}
+
+function captureBrowserExerciseCheckpoints(token, exercise) {
+  if (!exercise?.currentStageId) return [];
+  const fixture = managedInstructorFixture(token);
+  const workspaces = fixture?.workspaces || instructorRoster().workspaces;
+  return workspaces.map(workspace => {
+    const observed = fixture?.workspaceStates?.get(workspace.id);
+    return {
+      workspaceId: workspace.id,
+      workspaceKind: workspace.kind,
+      workspaceLabel: workspace.label,
+      stageId: exercise.currentStageId,
+      workspaceRevision: observed?.revision || 1,
+      snapshot: structuredClone(observed?.snapshot || freshClassroomSnapshot()),
+      capturedAt: '2099-12-31T23:35:00.000Z'
+    };
+  });
 }
 
 function managedInstructorObservation(token, workspaceId) {
@@ -466,7 +702,8 @@ async function handleClassroomApi(request, response, url) {
         integrated: true,
         statusReads: 0,
         accessCount: 0,
-        activeWorkspaceToken: ''
+        activeWorkspaceToken: '',
+        exerciseReadiness: new Map()
       };
       integratedInstructorParticipants.push({
         id: participantId,
@@ -511,7 +748,8 @@ async function handleClassroomApi(request, response, url) {
         ]),
         statusReads: 0,
         accessCount: 0,
-        activeWorkspaceToken: ''
+        activeWorkspaceToken: '',
+        exerciseReadiness: new Map()
       };
     } else {
       sendJson(response, 404, { error: 'Class not available.' });
@@ -544,6 +782,76 @@ async function handleClassroomApi(request, response, url) {
       return true;
     }
     sendJson(response, 200, studentLiveStatus(session));
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/exercise/student') {
+    if (request.method !== 'GET') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const studentSessionToken = bearerToken(request);
+    const session = studentLiveSessions.get(studentSessionToken);
+    if (!session) {
+      sendJson(response, 404, { error: 'Student class session not found.' });
+      return true;
+    }
+    sendJson(response, 200, browserStudentExercisePayload(session));
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/exercise/student/ready') {
+    if (request.method !== 'PUT') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const studentSessionToken = bearerToken(request);
+    const session = studentLiveSessions.get(studentSessionToken);
+    if (!session) {
+      sendJson(response, 404, { error: 'Student class session not found.' });
+      return true;
+    }
+    const body = await readJson(request).catch(() => null);
+    if (typeof body?.ready !== 'boolean') {
+      sendJson(response, 400, { error: 'Invalid readiness state.' });
+      return true;
+    }
+
+    const current = browserStudentExercisePayload(session);
+    const exercise = current.exercise;
+    if (!exercise?.currentStage?.id || exercise.status !== 'active' || exercise.stagePhase !== 'work') {
+      sendJson(response, 409, { error: 'Readiness is not available in the current exercise phase.' });
+      return true;
+    }
+    if (!session.assignment) {
+      sendJson(response, 409, { status: 'waiting', error: 'Assign a workspace before marking Ready.' });
+      return true;
+    }
+
+    const workspace = session.workspaceStates.get(session.assignment.id);
+    if (!workspace) {
+      sendJson(response, 404, { error: 'Assigned workspace not found.' });
+      return true;
+    }
+
+    const key = `${session.assignment.id}:${exercise.currentStage.id}`;
+    const previous = session.exerciseReadiness.get(key) || null;
+    const readiness = {
+      stageId: exercise.currentStage.id,
+      readyForDebrief: body.ready,
+      readyAt: body.ready ? '2099-12-31T23:32:00.000Z' : null,
+      readyWorkspaceRevision: body.ready ? workspace.revision : null
+    };
+    session.exerciseReadiness.set(key, readiness);
+    sendJson(response, 200, {
+      class: current.class,
+      participant: current.participant,
+      assignment: structuredClone(session.assignment),
+      readiness: structuredClone(readiness),
+      changed: !previous
+        || previous.readyForDebrief !== readiness.readyForDebrief
+        || previous.readyWorkspaceRevision !== readiness.readyWorkspaceRevision
+    });
     return true;
   }
 
@@ -606,6 +914,9 @@ async function handleClassroomApi(request, response, url) {
       integratedInstructorWorkspaces = [];
       integratedInstructorWorkspaceStates.clear();
       integratedInstructorParticipants = [];
+      classroomExercises.delete(INTEGRATED_INSTRUCTOR_TOKEN);
+      classroomExerciseReleases.delete(INTEGRATED_INSTRUCTOR_TOKEN);
+      classroomExerciseCheckpoints.delete(INTEGRATED_INSTRUCTOR_TOKEN);
       sendJson(response, 201, {
         class: integratedInstructorClass(),
         instructorToken: INTEGRATED_INSTRUCTOR_TOKEN,
@@ -623,6 +934,9 @@ async function handleClassroomApi(request, response, url) {
     };
     liveInstructorWorkspaces = [];
     liveInstructorWorkspaceStates.clear();
+    classroomExercises.delete(LIVE_INSTRUCTOR_TOKEN);
+    classroomExerciseReleases.delete(LIVE_INSTRUCTOR_TOKEN);
+    classroomExerciseCheckpoints.delete(LIVE_INSTRUCTOR_TOKEN);
     liveInstructorParticipants = [{
       id: LIVE_PARTICIPANT_ID,
       displayName: 'Waiting Student',
@@ -637,6 +951,358 @@ async function handleClassroomApi(request, response, url) {
       studentJoinToken: `${'c'.repeat(42)}s`,
       joinCode: LIVE_JOIN_CODE
     });
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/exercise/checkpoint') {
+    if (request.method !== 'GET') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const instructorToken = bearerToken(request);
+    if (!activeInstructorCapability(instructorToken)) {
+      sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
+      return true;
+    }
+    const exercise = classroomExercises.get(instructorToken) || null;
+    if (!exercise) {
+      sendJson(response, 404, { error: 'Exercise checkpoint not found.' });
+      return true;
+    }
+    if (exercise.stagePhase !== 'debrief' || !exercise.currentStageId) {
+      sendJson(response, 409, { error: 'Checkpoint inspection is available during debrief.' });
+      return true;
+    }
+    const workspaceId = url.searchParams.get('workspaceId') || '';
+    const checkpoint = (classroomExerciseCheckpoints.get(instructorToken) || []).find(item => (
+      item.workspaceId === workspaceId && item.stageId === exercise.currentStageId
+    ));
+    if (!checkpoint) {
+      sendJson(response, 404, { error: 'Exercise checkpoint not found.' });
+      return true;
+    }
+    const managedFixture = managedInstructorFixture(instructorToken);
+    const classContext = managedFixture?.classContext || instructorClass();
+    sendJson(response, 200, {
+      class: classContext,
+      exercise: {
+        id: exercise.id,
+        currentStageId: exercise.currentStageId,
+        stagePhase: exercise.stagePhase,
+        exerciseRevision: exercise.exerciseRevision
+      },
+      workspace: {
+        id: checkpoint.workspaceId,
+        kind: checkpoint.workspaceKind,
+        label: checkpoint.workspaceLabel
+      },
+      checkpoint: {
+        stageId: checkpoint.stageId,
+        workspaceRevision: checkpoint.workspaceRevision,
+        capturedAt: checkpoint.capturedAt,
+        snapshot: structuredClone(checkpoint.snapshot)
+      }
+    });
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/exercise') {
+    const instructorToken = bearerToken(request);
+    if (!activeInstructorCapability(instructorToken)) {
+      sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
+      return true;
+    }
+
+    const managedFixture = managedInstructorFixture(instructorToken);
+    const classContext = managedFixture?.classContext || instructorClass();
+    const availableCaseStudies = [{
+      id: BROWSER_STAGED_CASE.id,
+      name: BROWSER_STAGED_CASE.name,
+      description: BROWSER_STAGED_CASE.description,
+      supportedModes: [...BROWSER_STAGED_CASE.supportedModes]
+    }];
+    const exerciseReleases = () => structuredClone(classroomExerciseReleases.get(instructorToken) || []);
+    const exerciseProgress = exercise => structuredClone(
+      browserExerciseWorkspaceState(instructorToken, exercise)
+    );
+    const exerciseCheckpoints = () => (
+      classroomExerciseCheckpoints.get(instructorToken) || []
+    ).map(item => ({
+      workspaceId: item.workspaceId,
+      workspaceKind: item.workspaceKind,
+      workspaceLabel: item.workspaceLabel,
+      stageId: item.stageId,
+      workspaceRevision: item.workspaceRevision,
+      capturedAt: item.capturedAt
+    }));
+
+    if (request.method === 'GET') {
+      const exercise = classroomExercises.get(instructorToken) || null;
+      sendJson(response, 200, exercise
+        ? {
+            class: classContext,
+            exercise: structuredClone(exercise),
+            caseStudy: structuredClone(BROWSER_STAGED_CASE),
+            releases: exerciseReleases(),
+            workspaceState: exerciseProgress(exercise),
+            checkpoints: exerciseCheckpoints(),
+            editFreezeEnforced: true,
+            availableCaseStudies
+          }
+        : {
+            class: classContext,
+            exercise: null,
+            availableCaseStudies
+          });
+      return true;
+    }
+
+    if (request.method === 'POST') {
+      const body = await readJson(request).catch(() => null);
+      const caseStudyId = typeof body?.caseStudyId === 'string' ? body.caseStudyId.trim() : '';
+      if (caseStudyId !== BROWSER_STAGED_CASE.id) {
+        sendJson(response, 404, { error: 'Staged Case Study not found.' });
+        return true;
+      }
+
+      const existing = classroomExercises.get(instructorToken);
+      if (existing) {
+        if (existing.caseStudyId !== caseStudyId) {
+          sendJson(response, 409, {
+            error: 'Another exercise is already open for this class.',
+            exercise: structuredClone(existing)
+          });
+          return true;
+        }
+        sendJson(response, 200, {
+          class: classContext,
+          exercise: structuredClone(existing),
+          caseStudy: structuredClone(BROWSER_STAGED_CASE),
+          releases: exerciseReleases(),
+          workspaceState: exerciseProgress(existing),
+          checkpoints: exerciseCheckpoints(),
+          editFreezeEnforced: true,
+          created: false
+        });
+        return true;
+      }
+
+      const exercise = {
+        id: `browser-exercise-${instructorToken.slice(-1)}`,
+        caseStudyId,
+        status: 'draft',
+        currentStageId: null,
+        stagePhase: 'work',
+        studentEditingEnabled: true,
+        exerciseRevision: 1,
+        simulationVersion: BROWSER_STAGED_CASE.simulation.version,
+        simulationFingerprint: 'b'.repeat(64)
+      };
+      classroomExercises.set(instructorToken, exercise);
+      classroomExerciseReleases.set(instructorToken, []);
+      classroomExerciseCheckpoints.set(instructorToken, []);
+      sendJson(response, 201, {
+        class: classContext,
+        exercise: structuredClone(exercise),
+        caseStudy: structuredClone(BROWSER_STAGED_CASE),
+        releases: exerciseReleases(),
+        workspaceState: exerciseProgress(exercise),
+        checkpoints: exerciseCheckpoints(),
+        editFreezeEnforced: true,
+        created: true
+      });
+      return true;
+    }
+
+    if (request.method === 'PATCH') {
+      const body = await readJson(request).catch(() => null);
+      const exercise = classroomExercises.get(instructorToken) || null;
+      if (!exercise) {
+        sendJson(response, 404, { error: 'Exercise not found.' });
+        return true;
+      }
+
+      if (body?.action === 'release-content') {
+        const contentId = typeof body.contentId === 'string' ? body.contentId.trim() : '';
+        const stage = BROWSER_STAGED_CASE.simulation.stages.find(item => item.id === exercise.currentStageId);
+        if (
+          exercise.status !== 'active'
+          || exercise.stagePhase !== 'work'
+          || !stage
+          || !stage.optionalReleaseIds.includes(contentId)
+        ) {
+          sendJson(response, 400, { error: 'Invalid current-stage content release.' });
+          return true;
+        }
+
+        const releases = classroomExerciseReleases.get(instructorToken) || [];
+        const existingRelease = releases.find(item => (
+          item.stageId === stage.id && item.contentId === contentId
+        ));
+        if (existingRelease) {
+          sendJson(response, 200, {
+            class: classContext,
+            exercise: structuredClone(exercise),
+            caseStudy: structuredClone(BROWSER_STAGED_CASE),
+            releases: exerciseReleases(),
+            workspaceState: exerciseProgress(exercise),
+            checkpoints: exerciseCheckpoints(),
+            editFreezeEnforced: true,
+            changed: false
+          });
+          return true;
+        }
+
+        if (!Number.isInteger(body.expectedRevision) || body.expectedRevision !== exercise.exerciseRevision) {
+          sendJson(response, 409, {
+            error: 'Exercise changed. Refresh and retry.',
+            exercise: structuredClone(exercise)
+          });
+          return true;
+        }
+
+        releases.push({
+          stageId: stage.id,
+          contentId,
+          releasedAt: '2099-12-31T23:31:00.000Z'
+        });
+        classroomExerciseReleases.set(instructorToken, releases);
+        exercise.exerciseRevision += 1;
+        classroomExercises.set(instructorToken, exercise);
+        sendJson(response, 200, {
+          class: classContext,
+          exercise: structuredClone(exercise),
+          caseStudy: structuredClone(BROWSER_STAGED_CASE),
+          releases: exerciseReleases(),
+          workspaceState: exerciseProgress(exercise),
+          checkpoints: exerciseCheckpoints(),
+          editFreezeEnforced: true,
+          changed: true
+        });
+        return true;
+      }
+
+      if (!Number.isInteger(body?.expectedRevision) || body.expectedRevision !== exercise.exerciseRevision) {
+        sendJson(response, 409, {
+          error: 'Exercise changed. Refresh and retry.',
+          exercise: structuredClone(exercise)
+        });
+        return true;
+      }
+
+      let capturedCount;
+      if (body.action === 'start') {
+        if (exercise.status !== 'draft' || exercise.currentStageId !== null) {
+          sendJson(response, 409, {
+            error: 'Exercise cannot be started from its current state.',
+            exercise: structuredClone(exercise)
+          });
+          return true;
+        }
+        exercise.status = 'active';
+        exercise.currentStageId = BROWSER_STAGED_CASE.simulation.stages[0].id;
+        exercise.stagePhase = 'work';
+        exercise.studentEditingEnabled = true;
+      } else if (body.action === 'pause') {
+        if (exercise.status !== 'active') {
+          sendJson(response, 409, {
+            error: 'Exercise is not active.',
+            exercise: structuredClone(exercise)
+          });
+          return true;
+        }
+        exercise.status = 'paused';
+      } else if (body.action === 'resume') {
+        if (exercise.status !== 'paused') {
+          sendJson(response, 409, {
+            error: 'Exercise is not paused.',
+            exercise: structuredClone(exercise)
+          });
+          return true;
+        }
+        exercise.status = 'active';
+      } else if (body.action === 'begin-debrief') {
+        if (exercise.status !== 'active' || exercise.stagePhase !== 'work' || !exercise.currentStageId) {
+          sendJson(response, 409, {
+            error: 'Exercise is not ready to enter debrief.',
+            exercise: structuredClone(exercise)
+          });
+          return true;
+        }
+        const stage = BROWSER_STAGED_CASE.simulation.stages.find(item => item.id === exercise.currentStageId);
+        const checkpoints = captureBrowserExerciseCheckpoints(instructorToken, exercise);
+        const priorCheckpoints = classroomExerciseCheckpoints.get(instructorToken) || [];
+        classroomExerciseCheckpoints.set(instructorToken, [
+          ...priorCheckpoints.filter(item => item.stageId !== exercise.currentStageId),
+          ...checkpoints
+        ]);
+        capturedCount = checkpoints.length;
+        exercise.stagePhase = 'debrief';
+        exercise.studentEditingEnabled = stage?.defaultDebriefEditPolicy !== 'frozen';
+      } else if (body.action === 'set-editing') {
+        if (
+          exercise.status !== 'active'
+          || exercise.stagePhase !== 'debrief'
+          || typeof body.enabled !== 'boolean'
+        ) {
+          sendJson(response, 400, { error: 'Invalid debrief editing policy.' });
+          return true;
+        }
+        exercise.studentEditingEnabled = body.enabled;
+      } else if (body.action === 'advance') {
+        const currentIndex = BROWSER_STAGED_CASE.simulation.stages.findIndex(
+          item => item.id === exercise.currentStageId
+        );
+        const nextStage = currentIndex >= 0
+          ? BROWSER_STAGED_CASE.simulation.stages[currentIndex + 1]
+          : null;
+        if (exercise.status !== 'active' || exercise.stagePhase !== 'debrief' || !nextStage) {
+          sendJson(response, 409, {
+            error: 'Exercise is not ready to advance.',
+            exercise: structuredClone(exercise)
+          });
+          return true;
+        }
+        exercise.currentStageId = nextStage.id;
+        exercise.stagePhase = 'work';
+        exercise.studentEditingEnabled = true;
+      } else if (body.action === 'complete') {
+        const finalStage = BROWSER_STAGED_CASE.simulation.stages.at(-1);
+        if (
+          exercise.status !== 'active'
+          || exercise.stagePhase !== 'debrief'
+          || exercise.currentStageId !== finalStage?.id
+        ) {
+          sendJson(response, 409, {
+            error: 'Exercise cannot be completed from its current state.',
+            exercise: structuredClone(exercise)
+          });
+          return true;
+        }
+        exercise.status = 'completed';
+        exercise.studentEditingEnabled = true;
+      } else {
+        sendJson(response, 400, { error: 'Invalid exercise action.' });
+        return true;
+      }
+
+      exercise.exerciseRevision += 1;
+      classroomExercises.set(instructorToken, exercise);
+      sendJson(response, 200, {
+        class: classContext,
+        exercise: structuredClone(exercise),
+        caseStudy: structuredClone(BROWSER_STAGED_CASE),
+        releases: exerciseReleases(),
+        workspaceState: exerciseProgress(exercise),
+        checkpoints: exerciseCheckpoints(),
+        editFreezeEnforced: true,
+        changed: true,
+        ...(Number.isInteger(capturedCount) ? { capturedCount } : {})
+      });
+      return true;
+    }
+
+    sendJson(response, 405, { error: 'Method not allowed.' });
     return true;
   }
 
@@ -926,6 +1592,23 @@ async function handleClassroomApi(request, response, url) {
     }
 
     if (request.method === 'PUT') {
+      const frozenExercise = frozenStudentExerciseForWorkspaceToken(workspaceToken);
+      if (frozenExercise) {
+        sendJson(response, 423, {
+          error: 'Student editing is frozen during debrief.',
+          code: 'classroom-editing-locked',
+          exercise: {
+            id: frozenExercise.id,
+            status: frozenExercise.status,
+            stagePhase: frozenExercise.stagePhase,
+            exerciseRevision: frozenExercise.exerciseRevision,
+            studentEditingEnabled: false,
+            currentStageId: frozenExercise.currentStage?.id || null
+          }
+        });
+        return true;
+      }
+
       let body;
       try {
         body = await readJson(request);
@@ -1030,6 +1713,18 @@ async function handleClassroomApi(request, response, url) {
     if (request.method === 'POST') {
       const body = await readJson(request).catch(() => null);
       const caseStudyId = typeof body?.caseStudyId === 'string' ? body.caseStudyId.trim() : '';
+
+      if (!isInstructorRequest) {
+        const session = studentLiveSessionForWorkspaceToken(token);
+        const stagedExercise = session ? browserStudentExercisePayload(session).exercise : null;
+        if (stagedExercise?.caseStudyId === caseStudyId && caseStudyId === BROWSER_STAGED_CASE.id) {
+          sendJson(response, 409, {
+            error: 'This Case Study is being delivered through the staged exercise.'
+          });
+          return true;
+        }
+      }
+
       const record = PROTECTED_CASE_STUDY_MANIFEST.find(item => item.id === caseStudyId);
       if (!record) {
         sendJson(response, 404, { error: 'Case Study not found.' });

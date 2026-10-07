@@ -43,13 +43,25 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
   const displayName = testInfo.project.name === 'chromium-mobile' ? 'Mobile Live Student' : 'Desktop Live Student';
   const classCode = 'M7QR-T4P2';
   const workspaceTokens = [];
+  const exerciseTokens = [];
+  const readinessTokens = [];
+  const readinessBodies = [];
 
   page.on('request', request => {
     const url = new URL(request.url());
-    if (url.pathname !== '/api/workspaces/session') return;
     const header = request.headers().authorization || '';
     const match = /^Bearer\s+(.+)$/u.exec(header);
-    if (match && !workspaceTokens.includes(match[1])) workspaceTokens.push(match[1]);
+    if (!match) return;
+    if (url.pathname === '/api/workspaces/session' && !workspaceTokens.includes(match[1])) {
+      workspaceTokens.push(match[1]);
+    }
+    if (url.pathname === '/api/classes/exercise/student' && !exerciseTokens.includes(match[1])) {
+      exerciseTokens.push(match[1]);
+    }
+    if (url.pathname === '/api/classes/exercise/student/ready') {
+      readinessTokens.push(match[1]);
+      readinessBodies.push(request.postDataJSON());
+    }
   });
 
   await startFresh(page);
@@ -81,6 +93,27 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
   await expect(page.locator('#oneLine')).toHaveValue('Team Alpha destination Intake.');
   expect(workspaceTokens.length).toBeGreaterThanOrEqual(1);
 
+  await expect(page.locator('#studentCaseReference')).toBeVisible();
+  if (testInfo.project.name === 'chromium-mobile') {
+    await expect(page.locator('#studentCaseReference')).toHaveClass(/is-collapsed/);
+    await expect(page.getByRole('button', { name: 'Open case reference' })).toBeVisible();
+    await page.getByRole('button', { name: 'Open case reference' }).click();
+    await expect(page.locator('#studentCaseReference')).not.toHaveClass(/is-collapsed/);
+  }
+  await expect(page.locator('#studentCaseReferenceTitle')).toHaveText('Browser Staged Simulation');
+  await expect(page.locator('#studentCaseReferenceStatus')).toHaveText('Work');
+  await expect(page.locator('#studentCaseReferenceStageTitle')).toHaveText('Clarify the browser case');
+  await expect(page.locator('#studentCaseReferenceObjective')).toHaveText('Capture the initial situation in Intake.');
+  await expect(page.locator('#studentCaseReferenceContent')).toContainText('Initial browser briefing');
+  await expect(page.locator('#studentCaseReferenceContent')).toContainText('Optional browser evidence');
+  await expect(page.locator('#studentCaseReference')).not.toContainText('Second browser briefing');
+  await expect(page.locator('#studentCaseReference')).not.toContainText('Browser facilitation note');
+  if (testInfo.project.name === 'chromium-mobile') {
+    await expectNoBlockingA11yViolations(page);
+  }
+  expect(exerciseTokens).toContain(storedWaiting.studentSessionToken);
+  expect(exerciseTokens.every(token => token === storedWaiting.studentSessionToken)).toBe(true);
+
   const alphaMarker = `${displayName} wrote in Team Alpha.`;
   const alphaSave = page.waitForResponse(response => (
     response.request().method() === 'PUT'
@@ -91,6 +124,36 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
   await page.locator('#oneLine').blur();
   await alphaSave;
 
+  await expect(page.locator('#studentCaseReferenceReadiness')).toBeVisible();
+  await expect(page.locator('#studentCaseReferenceReadinessStatus')).toHaveText('Working');
+  const readyResponse = page.waitForResponse(response => (
+    response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === '/api/classes/exercise/student/ready'
+    && response.ok()
+  ));
+  await page.getByRole('button', { name: 'Mark Ready' }).click();
+  const readyResult = await readyResponse;
+  const readyBody = await readyResult.json();
+  const capturedRevision = readyBody?.readiness?.readyWorkspaceRevision;
+  expect(Number.isInteger(capturedRevision)).toBe(true);
+  expect(capturedRevision).toBeGreaterThan(0);
+  await expect(page.locator('#studentCaseReferenceReadinessStatus')).toHaveText(
+    `Ready for debrief · Intake revision ${capturedRevision}`
+  );
+  await expect(page.getByRole('button', { name: 'Resume working' })).toHaveAttribute('aria-pressed', 'true');
+
+  const resumeResponse = page.waitForResponse(response => (
+    response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === '/api/classes/exercise/student/ready'
+    && response.ok()
+  ));
+  await page.getByRole('button', { name: 'Resume working' }).click();
+  await resumeResponse;
+  await expect(page.locator('#studentCaseReferenceReadinessStatus')).toHaveText('Working');
+  await expect(page.getByRole('button', { name: 'Mark Ready' })).toHaveAttribute('aria-pressed', 'false');
+  expect(readinessTokens).toEqual([storedWaiting.studentSessionToken, storedWaiting.studentSessionToken]);
+  expect(readinessBodies).toEqual([{ ready: true }, { ready: false }]);
+
   await page.reload();
 
   await expect(page.locator('#experienceRoleGate')).toBeHidden();
@@ -98,7 +161,10 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
   await expect(page.locator('body')).toHaveAttribute('data-student-class-status', 'connected', { timeout: 10000 });
   await expect(page.locator('#studentClassWorkspace')).toHaveText('Team Alpha');
   await expect(page.locator('#oneLine')).toHaveValue(alphaMarker);
+  await expect(page.locator('#studentCaseReference')).toBeVisible();
+  await expect(page.locator('#studentCaseReferenceTitle')).toHaveText('Browser Staged Simulation');
   expect(workspaceTokens.length).toBeGreaterThanOrEqual(2);
+  expect(exerciseTokens.every(token => token === storedWaiting.studentSessionToken)).toBe(true);
   const resumedAlphaToken = workspaceTokens.at(-1);
 
   await expect(page.locator('#studentClassWorkspace')).toHaveText('Team Beta', { timeout: 10000 });
@@ -114,6 +180,7 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
   await expect(page.locator('body')).toHaveAttribute('data-student-class-status', 'waiting', { timeout: 10000 });
   await expect(page.locator('#studentClassWaitingPanel')).toBeVisible();
   await expect(page.locator('.wrap')).toBeHidden();
+  await expect(page.locator('#studentCaseReference')).toBeHidden();
 
   const staleBetaResponse = await page.request.get('/api/workspaces/session', {
     headers: { Authorization: `Bearer ${betaToken}` }

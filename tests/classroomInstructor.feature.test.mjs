@@ -88,8 +88,22 @@ function observeBody(id, statement) {
   };
 }
 
-function setup(fetchImpl, { onObservation = () => {}, onObservationEnd = () => {}, onClassConnected = () => {}, onClassDisconnected = () => {} } = {}) {
+function setup(fetchImpl, {
+  onObservation = () => {},
+  onObservationEnd = () => {},
+  onClassConnected = () => {},
+  onClassDisconnected = () => {},
+  mobile = false
+} = {}) {
   dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  if (mobile) {
+    dom.window.matchMedia = query => ({
+      matches: query === '(max-width: 700px)',
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    });
+  }
   persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.INSTRUCTOR, dom.window.localStorage);
   initExperienceRoleController({
     documentRef: dom.window.document,
@@ -147,6 +161,37 @@ async function settle() {
 afterEach(() => {
   dom?.window.close();
   dom = null;
+});
+
+test('Instructor class rail defaults collapsed on mobile and remains explicitly expandable', async () => {
+  const env = setup(async (url) => {
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  }, { mobile: true });
+
+  await env.controller.openClass(TOKEN);
+
+  const dashboard = dom.window.document.getElementById('instructorClassDashboard');
+  const toggle = dom.window.document.getElementById('instructorClassPanelToggle');
+  assert.equal(env.controller.getState().railExpanded, false);
+  assert.equal(dashboard.classList.contains('is-collapsed'), true);
+  assert.equal(dom.window.document.body.classList.contains('instructor-rail-collapsed'), true);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  assert.equal(toggle.textContent, 'Open class panel');
+
+  toggle.click();
+  assert.equal(env.controller.getState().railExpanded, true);
+  assert.equal(dashboard.classList.contains('is-collapsed'), false);
+  assert.equal(dom.window.document.body.classList.contains('instructor-rail-collapsed'), false);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  assert.equal(toggle.textContent, 'Collapse class panel');
+
+  toggle.click();
+  assert.equal(env.controller.getState().railExpanded, false);
+  assert.equal(dashboard.classList.contains('is-collapsed'), true);
+  env.controller.destroy();
 });
 
 test('Instructor opens one class, renders roster, and observes through the GET-only class endpoint', async () => {
@@ -453,4 +498,81 @@ test('Instructor class lifecycle exposes protected-resource capability hooks', a
   applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
   await settle();
   assert.ok(disconnected >= 2, 'activation reset and role pause both clear protected-resource context');
+});
+
+
+test('Instructor checkpoint view pauses live observation and returns explicitly to current live Intake', async () => {
+  let observeReads = 0;
+  const observed = [];
+  let ended = 0;
+  const env = setup(async url => {
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
+    if (url.includes(W1)) {
+      observeReads += 1;
+      return response(200, observeReads === 1
+        ? observeBody(W1, 'First')
+        : {
+            ...observeBody(W1, 'Second'),
+            workspace: {
+              ...observeBody(W1, 'Second').workspace,
+              revision: 2
+            }
+          });
+    }
+    return response(404, {});
+  }, {
+    onObservation: context => observed.push(context),
+    onObservationEnd: () => { ended += 1; }
+  });
+
+  await env.controller.openClass(TOKEN);
+  assert.equal(dom.window.document.getElementById('oneLine').value, 'First');
+  assert.equal(dom.window.document.getElementById('instructorObservationLiveBtn').hidden, true);
+
+  const endedBeforeCheckpoint = ended;
+  assert.equal(await env.controller.inspectCheckpoint({
+    workspace: { id: W1, kind: 'individual', label: 'Alex' },
+    checkpoint: {
+      stageId: 'stage-1',
+      workspaceRevision: 1,
+      capturedAt: '2026-10-01T00:05:00Z',
+      snapshot: { pre: { oneLine: 'Checkpoint before debrief' } }
+    }
+  }), true);
+
+  assert.equal(dom.window.document.getElementById('oneLine').value, 'Checkpoint before debrief');
+  assert.equal(dom.window.document.getElementById('oneLine').readOnly, true);
+  assert.equal(dom.window.document.body.dataset.instructorClassStatus, 'observing-checkpoint');
+  assert.equal(
+    dom.window.document.getElementById('instructorObservedRevision').textContent,
+    'Checkpoint at debrief start · Revision 1'
+  );
+  assert.equal(
+    dom.window.document.getElementById('instructorObserverStatus').textContent,
+    'Immutable checkpoint · live updates paused'
+  );
+  assert.equal(dom.window.document.getElementById('instructorObservationLiveBtn').hidden, false);
+  assert.equal(dom.window.document.getElementById('instructorObservationLiveBtn').textContent, 'View current live Intake');
+  assert.equal(ended, endedBeforeCheckpoint + 1, 'checkpoint inspection suspends live coaching context');
+  assert.deepEqual(env.controller.getState().checkpointView, {
+    workspaceId: W1,
+    workspaceLabel: 'Alex',
+    stageId: 'stage-1',
+    workspaceRevision: 1,
+    capturedAt: '2026-10-01T00:05:00Z'
+  });
+  assert.equal(JSON.stringify(env.controller.getState()).includes('Checkpoint before debrief'), false);
+  assert.equal(dom.window.localStorage.getItem('sentinel'), 'keep-me');
+
+  assert.equal(await env.controller.returnToLiveObservation(), true);
+  assert.equal(dom.window.document.getElementById('oneLine').value, 'Second');
+  assert.equal(dom.window.document.body.dataset.instructorClassStatus, 'observing');
+  assert.equal(dom.window.document.getElementById('instructorObservedRevision').textContent, 'Revision 2');
+  assert.equal(dom.window.document.getElementById('instructorObserverStatus').textContent, 'Live read-only view');
+  assert.equal(dom.window.document.getElementById('instructorObservationLiveBtn').hidden, true);
+  assert.equal(env.controller.getState().checkpointView, null);
+  assert.equal(observed.at(-1).workspaceRevision, 2);
+
+  env.controller.destroy();
 });

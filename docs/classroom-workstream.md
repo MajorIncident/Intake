@@ -381,6 +381,211 @@ Continue #295 on draft PR #307 from the current branch head.
   - #312 browser acceptance now covers the complete live-class lifecycle without adding #313 staged simulation state.
 - Exact next action: perform the final #312 docs/security/merge-readiness review: reconcile API/architecture docs with the implemented one-code lifecycle, review the full `main -> #314` diff and unresolved review/security state, confirm additive rollback/legacy compatibility, and move #314 out of draft only if the final documented head remains green. Keep #313 as the next separate product slice.
 
+## #312 merge boundary
+
+- #312 completed in PR #314.
+- Squash merge on `main`: `b141d55050207e4cf7ce842a4452a220a5268968`.
+- Final #312 head before merge: `d6a2f27b95639340ad46f6e596368f064671a08f`.
+- Final gate: repository quality **252 tests / 251 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+- #312 issue closed.
+- #313 starts from the merge commit, not from the old #312 feature branch.
+
+## Active #313 implementation
+
+- Issue: #313 — Instructor-orchestrated case simulation and staged debrief.
+- Branch: `feature/classroom-staged-simulation`.
+- Base: #312 merge `b141d55050207e4cf7ce842a4452a220a5268968`.
+- Canonical contract: `docs/classroom-staged-simulation.md`.
+- Architecture checkpoint: `808bdfaa74e7e6a11a88173ee43c5c86d9a8da51`.
+- First tranche is architecture/governance only; no exercise tables/routes/UI yet.
+- Decided model:
+  - staged simulation is class-level orchestration layered over #312 assignment/workspaces;
+  - exercise lifecycle is separate from Intake/collaboration/coaching state;
+  - Student staged reads use the stable Student class-session capability, allowing safe current-stage access while Waiting;
+  - Student collaboration edits remain assignment-specific workspace-capability authorized;
+  - future-stage and Instructor-only content are withheld server-side;
+  - existing full protected Case Study `state` is source/exemplar material and cannot serve as the Student staged feed;
+  - a staged Case Study requires an explicit server-only `simulation` definition; never infer official stages from a completed Intake payload;
+  - while a staged exercise is active, the Student full-payload Case Study endpoint must not provide a bypass to the selected case's complete `state`;
+  - workspace readiness is team-scoped;
+  - beginning debrief captures immutable per-workspace checkpoints so pre-debrief reasoning can be discussed later without overwriting live Intake;
+  - optional edit freeze must be enforced on the Student collaboration write path, not only in the UI;
+  - late join enters the current class stage; reassignment preserves class stage while destination team Intake/readiness wins;
+  - Instructor lifecycle mutations use optimistic exercise revision so retries cannot double-advance.
+- Production stage content is intentionally **not authored yet**. Use synthetic deterministic staged content for infrastructure tests until authoritative case pages/evidence/facilitation material is supplied and reviewed.
+- Staged Case Study authoring-schema checkpoint:
+  - `46109491808bedfbf5e778d0979859b3cd96b56c` adds version-1 server-side simulation validation/normalization;
+  - `1f716470cfdf95a64c00a8a99a62735133feae61` integrates optional `simulation` into the protected Case Study manifest build only;
+  - `9322cecabe9a487e072dd279519b5f358f089ebd` / `1e22806b8a1e50e94150a13ecf3b7083f0747667` add synthetic schema and public-boundary regression coverage;
+  - `af6b6f21a8e4f25f014a8362857a1c15e252775b` restores #313 API guardrails alongside real tests.
+  - Standard Templates cannot carry `simulation`; Student and Instructor content are separate, stable-ID/cross-reference validated namespaces; unsafe arbitrary fields/URLs are rejected; existing non-staged Case Studies remain unchanged.
+  - no official production case has been staged or guessed.
+  - validation on `af6b6f21...`: repository quality **260 tests / 259 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; Template Manifest Guard and Dependency Review green.
+- Staged exercise persistence/repository checkpoint:
+  - `ea964de7afc002ca307a903db7e1493d56837f13` adds additive exercise, optional-release, workspace-readiness, and immutable-checkpoint tables with class/workspace foreign-key scoping and one-open-exercise-per-class enforcement.
+  - `3e519b8f4ab136404ade550376af0c80e06574f1` adds real repository primitives for draft creation, optimistic lifecycle mutation, release replay/idempotency, Student-session/current-workspace readiness, class-scoped checkpoint capture/listing, and class-bounded expiry.
+  - `8595e1ec1072b365e82f759494ea0edb25001a4c` mirrors those semantics in the deterministic repository.
+  - `f7c1e580ca8fdc5e818e1f6974af374850f6d3a6` proves one-open-exercise, optimistic conflict, completion/history, release idempotency, readiness staying with teams through reassignment, Waiting rejection, immutable snapshot-isolated checkpoints, and cross-class rejection.
+  - `09ffaa6c...` through `c01dfff2f2bd1f9d7625901860210cc00eee7051` additionally pin simulation version + definition fingerprint on each exercise and keep those columns migration-safe so later APIs can fail closed on definition drift.
+  - pre-hardening validation on `f7c1e58...`: repository quality **265 tests / 264 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+  - no exercise HTTP route, Student collaboration write lock, or exercise UI exists yet.
+- Staged exercise API / authorization checkpoint:
+  - Instructor `POST/GET/PATCH /api/classes/exercise` now owns class-scoped draft creation/read plus start/pause/resume/optional release/begin-debrief/advance/complete with optimistic exercise revision and immutable stage ordering.
+  - Student `GET /api/classes/exercise/student` uses the stable class-session capability and returns only current/cumulative Student-safe released content; future stage and Instructor-only material remain server-withheld.
+  - Student `PUT /api/classes/exercise/student/ready` resolves the current assignment server-side, records server-observed workspace revision, rejects Waiting, and fails closed on reassignment races.
+  - every read/mutation validates the pinned simulation version/fingerprint against the current protected definition.
+  - active/completed staged cases block Student full protected Case Study payload retrieval for that case; completion does not imply exemplar release.
+  - Instructor full protected access and unrelated protected resources retain their existing behavior.
+  - Tranche 4 deliberately returns `editFreezeEnforced: false`; no security claim is made until collaboration PUT enforcement lands.
+  - implementation/security-test checkpoint: `5afc0041db89348d97ca0986cab89491765d0e00`.
+  - validation: repository quality **273 tests / 272 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+- Server-enforced Student editing-policy checkpoint:
+  - `9eea334b1a7ea791f3edf3d3330ac512b06bbb32` adds capability-kind-aware workspace write policy preflight; `6a8fb4f55b653ca5acc66954fcc8d28fe375ace4` resolves current Classroom exercise write policy; `1aec6a17647871ab23c36572ab339f2dd3e63350` wires the production session route.
+  - `96eab74f64838775f544990e495fe62a3319827f` / `4eb7f5e6b8a719add994c79acbff31c04a4ebcbb` apply authored debrief defaults, expose truthful enforcement state, and add revision-safe debrief `set-editing`.
+  - `507da02269336fb414d2ccc5390be4cbb26ed97c` hardens the real Neon `classroom-student` mutation with an atomic SQL freeze predicate so Instructor freeze racing a Student PUT fails closed.
+  - `f3304a2f470b8c96468de13c787cbe0378b8f8b9` makes Pause/Resume preserve the current edit policy instead of silently unlocking a frozen debrief.
+  - `d66eeeace6f9e41dade765b6b0331a69a40ebbb0` / `261b28d488538964ccd73132ed568d73628f6411` prove allowed work writes, 423 frozen-write rejection with zero snapshot/revision mutation, frozen GET availability, Standalone isolation, freeze persistence through Pause/Resume, and explicit unfreeze restoring writes.
+  - stable temporary-lock contract: HTTP **423 Locked**, `code: classroom-editing-locked`.
+  - validation on `261b28d...`: repository quality **274 tests / 273 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+- Tranche 6A — Instructor exercise console foundation:
+  - implementation spans `2624f1e...` through `d20a303...`;
+  - `GET /api/classes/exercise` now returns `availableCaseStudies` containing **only** staged Case Study summaries; full `simulation` definitions and protected source `state` are not used for discovery;
+  - new `src/classroomExerciseInstructor.js` owns an in-memory Instructor exercise client and read-only console foundation;
+  - the existing Instructor dashboard now includes a `[feature:instructor-exercise-console]` section for current exercise status, staged availability, and explicit refresh;
+  - Instructor capability and exercise context remain outside Intake persistence, summaries, exports, URLs, and public manifests;
+  - no exercise mutations were added in 6A; selection/create and Start/Pause/Debrief controls remain intentionally deferred to the next slice;
+  - focused API/client tests cover staged-only discovery, absence of protected simulation/source material in the discovery list, capability non-persistence, draft rendering, disconnect cleanup, and transient refresh recovery.
+- Tranche 6B — staged Case Study selection and draft creation:
+  - implementation spans `6a69426...` through `5f3fb56...`, with deterministic browser fixture support at `c3440eb...`;
+  - the console now exposes an accessible staged Case Study selector and **Create draft** action only when no exercise is open;
+  - POST sends only the selected server-discovered `caseStudyId`; successful create and idempotent existing-draft reuse both hydrate the represented server exercise without persisting it locally;
+  - once an exercise exists, selector/create are disabled so the UI cannot imply a second simultaneous exercise;
+  - a 409 create conflict is never blindly retried: the controller performs an authoritative GET and renders the current exercise, with a visible "current state reloaded" status;
+  - public controller state continues to sanitize the protected Case Study to summary fields and never exposes the Instructor capability or Instructor-only simulation content;
+  - deterministic browser acceptance now uses a synthetic staged case owned only by `scripts/serve-browser-tests.mjs`; no official production case content was staged or guessed;
+  - the live Instructor browser journey proves draft create, server-backed reload/resume, disabled duplicate-create control, and no local exercise persistence;
+  - summary/persistence guards explicitly mark the staged selector, label, placeholder, and dynamic options as local-only / summary-excluded rather than incorrectly wiring Classroom exercise state into Intake serialization;
+  - 6A final-head repository quality was green, but the existing four-browser integration acceptance exceeded its 30s global timeout (historical green runtime was already 26.1s). 6B raises only that test budget to 45s; no failing product assertion was suppressed.
+- Tranche 6C — Start/Pause/Resume and current-stage Instructor context:
+  - implementation spans `53ce2b7...` through `2888beb...`;
+  - draft-only **Start exercise**, active-only **Pause exercise**, and paused-only **Resume exercise** controls use the current server `exerciseRevision`;
+  - lifecycle PATCH conflict behavior is fail-refresh: a 409 triggers authoritative GET and never replays stale Instructor intent;
+  - after Start, the console renders current stage title, Student objective, suggested timing, and only the current stage's Instructor-authorized facilitation blocks;
+  - Pause explicitly describes class pacing as distinct from Student editing freeze, preserving the later debrief-policy boundary;
+  - deterministic browser fixture now implements matching Start/Pause/Resume revision semantics against the synthetic staged case;
+  - focused controller coverage proves revision progression, stage/facilitation rendering, state-specific controls, and 409 refresh; real-browser Instructor acceptance proves Start -> Pause -> Resume -> reload;
+  - the unrelated four-browser acceptance timeout is raised narrowly from 30s to 45s after the previous run completed product assertions but timed out during teardown; no behavioral assertion was removed.
+- Tranche 6D — optional evidence release and team readiness/progress:
+  - implementation spans `1de00a1...` through green implementation head `2c8145b...`;
+  - the console renders optional Student evidence only from the **current stage's** explicit `optionalReleaseIds`; future-stage optional content is not projected into the Instructor release UI;
+  - **Release to Students** PATCHes `release-content` with the currently observed `exerciseRevision`; a genuinely new stale release 409 refreshes authoritative state and never replays stale intent;
+  - an already-recorded release remains idempotent and renders **Released** without a second revision bump;
+  - current-stage `workspaceState` rows render Ready/Working progress and progress buttons reuse the existing Instructor `selectWorkspace()` observer/coaching path rather than creating a second observer;
+  - exercise releases/readiness/progress remain memory-only and local-only / summary-excluded;
+  - deterministic browser coverage uses only synthetic optional evidence/readiness and proves release, persisted release after reload, Ready progress, and one-click observer navigation;
+  - the prior four-browser failure was traced to nested scrolling in the expanded Instructor rail, not product authorization; the rail layout now lets the outer dashboard own scrolling so workspace buttons remain genuinely clickable without forced test clicks;
+  - validation on `2c8145b...`: repository quality **285 tests / 284 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+- Tranche 6E — Begin Debrief, checkpoint review, Freeze/Allow Editing, and compact Instructor rail:
+  - implementation spans `044e4f82...` through green implementation head `61aa582...`;
+  - **Begin debrief** is exposed only for active current-stage work and PATCHes the current `exerciseRevision`; 409 conflicts authoritative-refresh and never replay stale intent;
+  - entering debrief renders the server-captured immutable checkpoint status per current-stage workspace as workspace label + captured collaboration revision; checkpoint snapshot bodies remain server-side/in-memory and are deliberately omitted from controller public state and the checkpoint UI;
+  - debrief shows the authoritative `studentEditingEnabled` state separately from Pause/Resume and exposes exactly one applicable **Freeze editing** or **Allow editing** action;
+  - `set-editing` is debrief-only and revision-safe; conflicts refresh without replay, while the existing HTTP 423 `classroom-editing-locked` write guard remains the actual Student enforcement boundary;
+  - deterministic browser acceptance proves work -> Begin Debrief -> immutable checkpoint capture -> stage-default freeze -> Allow Editing -> Freeze Editing -> reload while the existing observer remains active;
+  - the connected Instructor class/team rail now has explicit collapse/expand controls. At <=700px it defaults to a compact collapsed class header rather than consuming the full mobile viewport; the Instructor can reopen it normally, and desktop collapse also reclaims horizontal Intake space;
+  - mobile coaching/observer acceptance now explicitly reopens the compact class rail before switching teams, proving the collapsed state remains usable rather than relying on hidden/forced clicks;
+  - validation on `61aa582e9faee9a7e500796634c5cc06e256ff14`: repository quality **288 tests / 287 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+- Mobile workspace UX follow-on: align the Notes workspace and Instructor class rail around the same compact mobile principle. Prefer an always-discoverable collapsed header/launcher over fully hiding either workspace; evaluate making Notes default-collapsed on narrow screens and reducing its collapsed chrome so it does not obstruct primary Intake work.
+- Tranche 6F — Advance/Complete and Instructor-console lifecycle completion:
+  - implementation spans `e855df09...` through green implementation head `e2f5534...`;
+  - **Advance to next stage** is exposed only from active debrief when the protected Instructor definition has a next authored stage; it PATCHes the current `exerciseRevision` and follows the authored stage order rather than accepting a client-selected stage ID;
+  - successful Advance renders the next stage's title/objective/timing/current Instructor facilitation, returns the exercise to work, and reflects authoritative Student editing restored for work;
+  - **Complete exercise** is exposed only from active debrief on the final authored stage and also uses the current revision;
+  - Completed now takes precedence over the debrief phase label, hides further Advance/Complete and Freeze/Allow controls, retains final-stage checkpoint review, and explicitly states that completion does **not** release additional Student, Instructor-only, exemplar, or full protected Case Study material;
+  - lifecycle conflicts keep the same fail-refresh/no-replay behavior; focused coverage proves a stale Advance performs GET -> PATCH 409 -> authoritative GET with no mutation replay;
+  - the deterministic browser staged fixture now has two synthetic authored stages and preserves earlier-stage checkpoints while capturing final-stage checkpoints;
+  - the real Instructor journey proves Stage 1 work/debrief/freeze -> Advance -> Stage 2 work -> Stage 2 debrief -> Complete -> reload, while the existing observer remains available throughout;
+  - validation on `e2f5534aa0e85bccc2bee0e73275c9b77d000f3d`: repository quality **290 tests / 289 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+- Mobile workspace UX follow-on remains open: align the Notes workspace and Instructor class rail around the same compact mobile principle. Prefer an always-discoverable collapsed header/launcher over fully hiding either workspace; evaluate making Notes default-collapsed on narrow screens and reducing its collapsed chrome so it does not obstruct primary Intake work.
+- Tranche 7A — Student current-stage case-reference foundation:
+  - implementation spans `e307ca2...` through green implementation head `91d7029...`;
+  - new `src/classroomExerciseStudent.js` is a dedicated Student staged-exercise client rather than adding exercise authority to `classroomStudent.js`;
+  - the Student controller uses only the **stable live Student class-session capability** for `GET /api/classes/exercise/student`; assignment/workspace capabilities continue to authorize collaboration only and may rotate independently;
+  - `classroomStudent.js` now exposes separate session-level connect/disconnect hooks so the staged case reference survives Team A -> Team B reassignment but clears on live-session termination or Student-role exit;
+  - the browser controller sanitizes the response down to case summary, current stage/objective, phase/editing state, and cumulative released Student-safe content; unknown/future-stage and Instructor-only fields are discarded from DOM and public state;
+  - staged exercise credentials/content remain memory-only and never enter Intake persistence, localStorage/sessionStorage, summaries, exports, URLs, or public manifests;
+  - the Student surface reports Work, Paused, Debrief/editing-open, Debrief/editing-frozen, and Completed state; a frozen debrief explains that case material remains reviewable even while Intake writes are locked server-side;
+  - exercise polling follows the represented server revision and reload/resume restores the current Student-safe case reference without storing the protected material locally;
+  - the reference is compact/collapsible and defaults collapsed at <=700px; on very wide desktop it becomes a bounded left companion while Intake/Notes keep their existing space;
+  - real mobile acceptance exposed an existing fixed team/notes `.workspace-dock` overlapping the new reference toggle. Student narrow layouts now put that dock into normal document flow rather than floating over Intake; the acceptance test uses an ordinary click, not force/z-index workarounds;
+  - deterministic Student fixture responses intentionally omit complete `simulation`, future-stage metadata, and Instructor facilitation; browser acceptance proves Stage 1 released content appears while Stage 2 and Instructor-only text do not;
+  - validation on `91d7029bec5cddaf251d02301a4fd1ce97dc908c`: repository quality **295 tests / 294 pass / 0 fail / 1 intentional skip**; required Browser E2E **26 passed / 8 intentional skips / 0 failed**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+- Mobile workspace UX follow-on remains open beyond the overlap fix: converge the Student team/presence workspace and Notes workspace on compact discoverable headers/default-collapsed behavior so normal-flow mobile layout remains useful without excessive vertical footprint.
+- Tranche 7B — Student Ready / Resume Working:
+  - implementation spans `e43b84c...` through `247479f...`, with browser fixture/acceptance through `d311b7b...`;
+  - readiness appears only during `active + work` while the Student has a current assignment;
+  - **Mark Ready** / **Resume working** use only the stable Student class-session capability with `PUT /api/classes/exercise/student/ready` and body `{ ready: boolean }`; no workspace ID/token or client-supplied collaboration revision is sent;
+  - Ready displays the server-captured collaboration revision; team readiness stays workspace-scoped across reassignment;
+  - assignment/phase `409` refreshes authoritative exercise state and never replays stale readiness intent;
+  - Waiting, paused, debrief, and completed states expose no readiness mutation;
+  - deterministic browser acceptance proves a Team Alpha edit advances the shared Intake revision, Ready captures that revision, Resume Working clears readiness, and both writes use the stable Student session credential.
+- Tranche 7C — frozen-debrief Student Intake read-only projection:
+  - implementation spans `8d70e84...` through `50435c3...`;
+  - a non-completed debrief with `studentEditingEnabled=false` and `editFreezeEnforced=true` projects the existing Student Intake surface read-only/disabled while the Tranche 5 HTTP **423 Locked** server guard remains the actual authorization boundary;
+  - original disabled/readOnly/tabindex/ARIA/contenteditable/draggable state is restored exactly when editing reopens, the exercise advances/completes, staged state disappears, or the Student session disconnects;
+  - paused frozen debrief remains read-only because Pause/Resume preserves edit policy;
+  - **Leave class** remains usable during a freeze;
+  - Notes are intentionally frozen with Intake because `notesWorkspace` is part of `collectAppState()` and therefore the collaborative snapshot;
+  - focused tests prove freeze/unfreeze and paused-freeze/disconnect restoration;
+  - integrated browser acceptance starts the staged exercise through the real Instructor console, enters the authored frozen debrief, proves Student Intake read-only, then **Allow editing** restores it through normal Student polling.
+- Combined 7B/7C validation: repository quality passed on implementation head `50435c30e7d43f906eeff88d32265ba585fad079`; final browser/security gate evidence will be recorded on the documented head.
+- Tranche 8A — Instructor immutable checkpoint inspection versus current live work:
+  - implementation spans `0ce4b8d...` through `8530128...`, with browser isolation/test stabilization through `04587bf...`;
+  - normal Instructor exercise reads now expose checkpoint **metadata only**; snapshot bytes are omitted from the console payload/public state;
+  - new GET-only `/api/classes/exercise/checkpoint?workspaceId=<public UUID>` requires the represented Instructor capability, re-resolves the current exercise/stage/class, validates staged-definition identity, and returns one current-stage debrief checkpoint snapshot only after explicit Instructor inspection;
+  - Student/join/assignment/unrelated authority cannot use the checkpoint read, and the endpoint never mints Student workspace authority or mutates collaboration state;
+  - the checkpoint list exposes **Inspect checkpoint** per captured workspace/revision during debrief;
+  - `classroomExerciseInstructor.js` fetches the snapshot transiently and passes it directly to `classroomInstructor.js`; snapshot bytes never enter exercise controller public state, Intake persistence/export/summary, URLs, or resume state;
+  - the existing Instructor observer renderer displays the checkpoint read-only with **Checkpoint at debrief start · Revision N** and **Immutable checkpoint · live updates paused**;
+  - live observer polling and coaching projection are paused while the immutable checkpoint is represented, preventing current-review actions from being accidentally applied to historical evidence;
+  - **View current live Intake** explicitly returns to the existing observer endpoint and restores current workspace revision/coaching context;
+  - selecting another live workspace also exits checkpoint mode rather than carrying a historical snapshot across teams;
+  - focused API/controller tests cover metadata-only normal reads, explicit snapshot authorization, no public-state snapshot leak, checkpoint-to-live restoration, and Student credential rejection;
+  - integrated browser acceptance now has a dedicated two-browser checkpoint-vs-live journey instead of overloading the long four-browser lifecycle journey; the shared deterministic integrated fixture is serialized within that file to prevent parallel fixture reset races.
+- Tranche 8 now satisfies the planned checkpoint/debrief-view scope: immutable capture was implemented in earlier server tranches, Instructor facilitation prompts already render current-stage protected guidance, and 8A adds safe checkpoint inspection/comparison without overwriting Student work.
+- Validation baseline for the 8A implementation: repository quality **302 tests / 301 pass / 0 fail / 1 intentional skip**. Final required Browser E2E/CodeQL evidence is taken from the final documented PR head.
+- Tranche 9A — integrated staged security / late-join / reassignment acceptance:
+  - acceptance hardening spans `6391c39...` through `89a5321...`; browser-fixture/security additions span `523d245...` through `89a5321...`;
+  - the deterministic browser fixture now mirrors the production frozen-write boundary: a Classroom Student `PUT /api/workspaces/session` during a frozen debrief returns **423** with `code: classroom-editing-locked` before mutation;
+  - browser acceptance reads the workspace immediately before/after that rejected PUT and proves both collaboration revision and snapshot remain unchanged;
+  - the browser fixture now mirrors the production staged full-payload boundary: the Student protected Case Study POST cannot retrieve the synthetic staged Case Study while that staged exercise is active;
+  - raw Student staged reads are asserted directly with the stable Student class-session capability and contain current released Student material while excluding later-stage and Instructor-only facilitation;
+  - a Student joining after exercise Start is proved to enter the current Stage 1 work context and receive only the current cumulative Student release, never draft/future/Instructor material;
+  - reassignment during active work preserves the class exercise stage and stable staged-session authority while replacing only workspace Intake/edit authority; the old workspace token remains rejected;
+  - readiness is explicitly proved workspace-scoped: Ready on Team Alpha does not follow the Student to Team Beta, where the Student returns to Working at the same exercise stage;
+  - mobile Student acceptance expands the compact case-reference surface and runs the serious/critical axe scan while staged content is actually visible;
+  - a focused mobile Instructor acceptance opens the compact class rail, creates/starts the staged exercise, verifies current-stage facilitation/lifecycle controls, and runs the serious/critical axe scan;
+  - staged accessibility testing exposed two insufficient `#007aff`/white text uses in the Instructor exercise UI. Primary lifecycle buttons and Ready progress text now use the existing darker `--accent-text` token rather than changing the global accent;
+  - the checkpoint-vs-live browser proof now derives its captured collaboration revision from authoritative rendered checkpoint metadata instead of assuming a fixed revision, eliminating a serial-fixture retry flake without weakening the historical-vs-live assertions.
+- Tranche 9 is complete. Validation on implementation head `89a5321a750606cff6fbf34ccf75ef40dc3def07`: repository quality **302 tests / 301 pass / 0 fail / 1 intentional skip**; required Browser E2E **28 passed / 10 intentional project-scoped skips / 0 failed / 0 flaky**; CI, CodeQL, Dependency Review, and Template Manifest Guard all green.
+- Tranche 10 — final documentation, security, and merge-readiness audit:
+  - full diff audited from #312 merge base `b141d55050207e4cf7ce842a4452a220a5268968` through completed Tranche 9 head `b000ceab20d1c0bdc132cb0fede0aaa75c85fe17`: **198 commits / 46 changed files / 10,793 additions / 30 deletions** before final documentation reconciliation;
+  - README drift corrected: #313 is no longer described as below the HTTP/UI layer; it now documents the implemented Instructor/Student staged lifecycle, server-enforced freeze, checkpoint evidence, and continued separation from live Intake;
+  - Classroom API drift corrected: exercise persistence is no longer described as having no HTTP routes; it is explicitly the storage layer beneath the implemented endpoints;
+  - roadmap drift corrected: #313 is no longer described as just starting; Tranches 1–9 are complete and the branch is in final audit;
+  - authorization audit passed: Instructor lifecycle/checkpoint authority remains class-scoped; Student staged reads use only the stable Student class-session capability; collaboration edits remain assignment/workspace-authorized; Student credentials do not enumerate class workspaces;
+  - progressive-disclosure audit passed: normal Student staged responses exclude future-stage, Instructor-only, exemplar/model, and complete protected Case Study state; Student full protected payload is blocked for a staged case even after exercise completion;
+  - lifecycle integrity audit passed: Instructor mutations remain optimistic-revision protected; Advance follows server-authored stage order; readiness uses server-observed workspace revision; reassignment preserves class stage while stale workspace authority is revoked;
+  - debrief integrity audit passed: checkpoints are immutable class/workspace/stage-scoped evidence, normal exercise reads expose metadata only, explicit checkpoint reads are GET-only Instructor-authorized, and historical snapshots never replace live collaboration state;
+  - freeze audit passed: `classroom-student` PUT returns HTTP 423 `classroom-editing-locked` when frozen, rejected writes do not mutate snapshot/revision, and production SQL repeats the freeze predicate atomically; Standalone/primary collaboration remains unaffected;
+  - schema/retention audit passed: #313 tables are additive/idempotent, exercise rows inherit class expiry, foreign keys cascade with class/workspace cleanup, one-open-exercise constraint is scoped per class, and rollback can disable the staged feature without destructive schema removal;
+  - deployment/public-boundary audit passed: `src/templates.manifest.js` remains Standard-only, `api/protected-case-studies.manifest.js` remains server-only, authored `templates/*.json` stays excluded from Vercel source upload, and Vercel serves only generated `dist/`;
+  - production-content audit passed: no authored production Case Study contains a staged `simulation` definition; synthetic staged material remains deterministic test-fixture content only;
+  - persistence audit passed: exercise/session/checkpoint/capability state remains outside `kt-intake-full-v2`, templates, summaries, exports, and URLs;
+  - PR #315 has no unresolved review threads or reviews, is mergeable, and remains draft until this final documentation head passes all required gates.
+- Final audit documentation reconciliation spans `65390fc...` through the Tranche 10 ledger commits. The last fully green implementation/security head before documentation-only cleanup is `b000ceab20d1c0bdc132cb0fede0aaa75c85fe17`: repository quality **302 tests / 301 pass / 0 fail / 1 intentional skip**; required Browser E2E **28 passed / 10 intentional project-scoped skips / 0 failed / 0 flaky**; CI, CodeQL, Dependency Review, and Template Manifest Guard green.
+- Exact next action: validate the final Tranche 10 documentation head through all required gates. If green, synchronize PR #315 / issue #313 final status and mark PR #315 **ready for review**. Do **not** merge automatically.
+
 ## Approved Classroom follow-on direction
 
 The current #288 program establishes the secure Classroom foundation, but it is **not** the final Instructor-led teaching experience.
@@ -433,3 +638,45 @@ Migration / external settings:
 Known risk:
 Exact next action:
 ```
+
+
+## #313 closeout and post-merge handoff
+
+PR #315 final audited head before closeout: `8974519108d6735383b8358373d005188501a785`.
+
+Final validated evidence on that head:
+- repository quality: **302 tests / 301 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **28 passed / 10 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: green;
+- PR #315 has no unresolved review threads and is mergeable.
+
+What #313 completes:
+- secure class-level staged exercise lifecycle and persistence;
+- Instructor orchestration, protected facilitation, Ready/progress, debrief freeze, checkpoints, Advance/Complete;
+- Student current-stage case reference, Ready/Resume, frozen-debrief read-only projection, automatic stage transitions;
+- late join/reassignment safety, stale-authority cutoff, progressive-disclosure/full-payload denial, mobile/a11y acceptance;
+- checkpoint-vs-current-live facilitation without replacing Student work.
+
+What remains intentionally outside #313:
+1. **#316 — protected staged assets/rich rendering (P0 blocker).**
+   - Schema accepts `image`, `table`, and `document-page`, but Student runtime currently retains/renders only `title + body`.
+   - Real protected case pages/assets therefore need a server-gated asset path and rich accessible renderer before official production cases can be staged faithfully.
+2. **#317 — first production staged KT Case Study.**
+   - No production official Case Study currently carries a `simulation` definition.
+   - Staging must come from authoritative supplied participant/instructor sources and be explicitly reviewed; never infer it from completed Intake state.
+3. **#318 — stage-linked Intake guidance + target identity.**
+   - `intakeTargetIds` exists in the authoring schema but is not used in Student/Instructor runtime.
+   - Dynamic Possible Cause coaching remains the explicit #294 deferred target-identity gap.
+4. **#319 — class-level debrief comparison.**
+   - #313 supports one-team-at-a-time checkpoint/live inspection; it does not yet provide a cross-team selected-field/heatmap comparison surface for large-class debrief.
+5. **#320 — join/mobile polish.**
+   - Human join code + Copy Code exists; QR/share link remains deferred.
+   - Notes/Class/Case mobile chrome still needs the broader compact-launcher alignment called out during #313.
+
+Cold-start priority after #315 merges:
+1. read `AGENTS.md`, `docs/classroom-roadmap.md`, `docs/classroom-architecture.md`, `docs/classroom-api.md`, and `docs/classroom-staged-simulation.md`;
+2. inspect #316 first;
+3. preserve all #313 security boundaries while adding protected rich content;
+4. do **not** add an official production `simulation` definition until #316 is complete and the source material for #317 is present/reviewed.
+
+The #288 foundation roadmap plus #312/#313 orchestration generation are complete after #315 merges. The next program phase is **production case enablement and facilitator scale**, beginning with #316.

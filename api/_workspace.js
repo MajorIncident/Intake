@@ -190,6 +190,106 @@ async function initializeRepository() {
       const current = await sql`SELECT revision FROM collaboration_workspaces WHERE id = ${workspaceId} AND expires_at > NOW()`;
       return current[0] ? { status: 'conflict', revision: current[0].revision } : { status: 'missing' };
     },
+    async updateClassroomStudent(tokenHash, snapshot, revision) {
+      const rows = await sql`WITH scope AS (
+          SELECT cp.class_id, cap.workspace_id
+          FROM collaboration_workspace_capabilities cap
+          JOIN classroom_participants cp
+            ON cp.workspace_access_token_hash = cap.token_hash
+            AND cp.workspace_id = cap.workspace_id
+            AND cp.revoked_at IS NULL
+          WHERE cap.token_hash = ${tokenHash}
+            AND cap.capability_kind = 'classroom-student'
+            AND cap.revoked_at IS NULL
+            AND (cap.expires_at IS NULL OR cap.expires_at > NOW())
+          UNION ALL
+          SELECT cm.class_id, cap.workspace_id
+          FROM collaboration_workspace_capabilities cap
+          JOIN classroom_memberships cm
+            ON cm.access_token_hash = cap.token_hash
+            AND cm.workspace_id = cap.workspace_id
+          WHERE cap.token_hash = ${tokenHash}
+            AND cap.capability_kind = 'classroom-student'
+            AND cap.revoked_at IS NULL
+            AND (cap.expires_at IS NULL OR cap.expires_at > NOW())
+          LIMIT 1
+        )
+        UPDATE collaboration_workspaces w
+        SET snapshot_json = ${JSON.stringify(snapshot)}::jsonb,
+            revision = revision + 1,
+            updated_at = NOW()
+        WHERE w.id = (SELECT workspace_id FROM scope)
+          AND w.revision = ${revision}
+          AND w.expires_at > NOW()
+          AND NOT EXISTS (
+            SELECT 1
+            FROM classroom_exercises e
+            JOIN scope s ON s.class_id = e.class_id
+            WHERE e.status <> 'completed'
+              AND e.expires_at > NOW()
+              AND e.student_editing_enabled = FALSE
+          )
+        RETURNING w.revision, w.expires_at`;
+      if (rows[0]) return { status: 'updated', workspace: rows[0] };
+
+      const current = await sql`WITH scope AS (
+          SELECT cp.class_id, cap.workspace_id
+          FROM collaboration_workspace_capabilities cap
+          JOIN classroom_participants cp
+            ON cp.workspace_access_token_hash = cap.token_hash
+            AND cp.workspace_id = cap.workspace_id
+            AND cp.revoked_at IS NULL
+          WHERE cap.token_hash = ${tokenHash}
+            AND cap.capability_kind = 'classroom-student'
+            AND cap.revoked_at IS NULL
+            AND (cap.expires_at IS NULL OR cap.expires_at > NOW())
+          UNION ALL
+          SELECT cm.class_id, cap.workspace_id
+          FROM collaboration_workspace_capabilities cap
+          JOIN classroom_memberships cm
+            ON cm.access_token_hash = cap.token_hash
+            AND cm.workspace_id = cap.workspace_id
+          WHERE cap.token_hash = ${tokenHash}
+            AND cap.capability_kind = 'classroom-student'
+            AND cap.revoked_at IS NULL
+            AND (cap.expires_at IS NULL OR cap.expires_at > NOW())
+          LIMIT 1
+        )
+        SELECT
+          w.revision,
+          e.public_id AS "exerciseId",
+          e.status AS "exerciseStatus",
+          e.stage_phase AS "stagePhase",
+          e.exercise_revision AS "exerciseRevision",
+          e.student_editing_enabled AS "studentEditingEnabled"
+        FROM scope s
+        JOIN collaboration_workspaces w
+          ON w.id = s.workspace_id AND w.expires_at > NOW()
+        LEFT JOIN LATERAL (
+          SELECT public_id, status, stage_phase, exercise_revision, student_editing_enabled
+          FROM classroom_exercises
+          WHERE class_id = s.class_id
+            AND status <> 'completed'
+            AND expires_at > NOW()
+          ORDER BY created_at DESC, id DESC
+          LIMIT 1
+        ) e ON TRUE`;
+      if (!current[0]) return { status: 'missing' };
+      if (current[0].studentEditingEnabled === false) {
+        return {
+          status: 'locked',
+          revision: current[0].revision,
+          exercise: {
+            id: current[0].exerciseId,
+            status: current[0].exerciseStatus,
+            stagePhase: current[0].stagePhase,
+            exerciseRevision: current[0].exerciseRevision,
+            studentEditingEnabled: false
+          }
+        };
+      }
+      return { status: 'conflict', revision: current[0].revision };
+    },
     async upsertPresence(tokenHash, participantId, requestedName, activity = {}) {
       const workspaceId = await resolveWorkspaceId(tokenHash);
       if (!workspaceId) return null;
@@ -334,6 +434,14 @@ async function initializeRepository() {
         WHERE token_hash = ${tokenHash} AND revoked_at IS NULL
         RETURNING token_hash`;
       return rows.length > 0;
+    },
+    async getCapabilityKind(tokenHash) {
+      const rows = await sql`SELECT capability_kind AS kind
+        FROM collaboration_workspace_capabilities
+        WHERE token_hash = ${tokenHash}
+          AND revoked_at IS NULL
+          AND (expires_at IS NULL OR expires_at > NOW())`;
+      return rows[0]?.kind || null;
     }
   };
 }
@@ -413,7 +521,10 @@ export function presenceHandler({ getRepository = getWorkspaceRepository } = {})
 }
 
 /** Creates a Vercel load/update handler. @param {object} [dependencies] Dependencies. @returns {Function} Handler. */
-export function workspaceHandler({ getRepository = getWorkspaceRepository } = {}) {
+export function workspaceHandler({
+  getRepository = getWorkspaceRepository,
+  getWritePolicy = null
+} = {}) {
   return async (req, res) => {
     const authorization = req.headers?.authorization;
     if (authorization === undefined) return send(res, 401, { error: 'Authorization required.' });
@@ -439,7 +550,39 @@ export function workspaceHandler({ getRepository = getWorkspaceRepository } = {}
       const validation = validateSnapshot(req.body?.snapshot);
       if (!validation.ok) return send(res, validation.status, { error: validation.status === 413 ? 'Snapshot is too large.' : 'Invalid request.' });
       if (!Number.isInteger(req.body?.revision) || req.body.revision < 1) return send(res, 400, { error: 'Invalid request.' });
-      const result = await repository.update(hashWorkspaceToken(token), req.body.snapshot, req.body.revision);
+
+      const tokenHash = hashWorkspaceToken(token);
+      let writePolicy = null;
+      if (getWritePolicy && repository.getCapabilityKind) {
+        const capabilityKind = await repository.getCapabilityKind(tokenHash);
+        if (capabilityKind === 'classroom-student') {
+          writePolicy = await getWritePolicy(tokenHash);
+          if (!writePolicy) return send(res, 404, { error: 'Workspace not found.' });
+          if (writePolicy.allowed === false) {
+            return send(res, 423, {
+              error: 'Student editing is temporarily locked by the Instructor.',
+              code: 'classroom-editing-locked',
+              exercise: writePolicy.exercise || null
+            });
+          }
+        }
+      }
+
+      const result = writePolicy && repository.updateClassroomStudent
+        ? await repository.updateClassroomStudent(
+            tokenHash,
+            req.body.snapshot,
+            req.body.revision,
+            writePolicy
+          )
+        : await repository.update(tokenHash, req.body.snapshot, req.body.revision);
+      if (result.status === 'locked') {
+        return send(res, 423, {
+          error: 'Student editing is temporarily locked by the Instructor.',
+          code: 'classroom-editing-locked',
+          exercise: result.exercise || writePolicy?.exercise || null
+        });
+      }
       if (result.status === 'conflict') return send(res, 409, { error: 'Revision conflict.', revision: result.revision });
       if (result.status === 'missing') return send(res, 404, { error: 'Workspace not found.' });
       return send(res, 200, result.workspace);

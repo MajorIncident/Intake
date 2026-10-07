@@ -70,11 +70,13 @@ Class
        independent feedback revision
        created/updated metadata
 
-  -> Classroom Exercise / Stage State [future #313]
-       selected protected Case Study
-       exercise status / current stage
-       released Student content
-       Instructor-only facilitation/debrief material
+  -> Classroom Exercise / Stage State [#313]
+       selected protected Case Study + pinned staged-definition identity
+       exercise status / current stage / phase / optimistic revision
+       optional Student-content release state
+       per-workspace readiness
+       immutable per-workspace debrief checkpoints
+       Instructor-only facilitation/debrief material remains in protected definition
 ```
 
 The **Classroom Workspace** references the existing collaboration workspace rather than duplicating its snapshot, revision, participant, or presence engine. #312 deliberately separates stable class participation from mutable workspace assignment so a Student can wait unassigned, move between teams, or be unassigned again without changing identity or merging team Intake state.
@@ -260,7 +262,14 @@ The Classroom persistence model is additive:
 - `classroom_participants` — #312 live participant identity, optional current assignment, `assignment_revision`, Student class-session capability hash, and current workspace-access capability hash;
 - `classroom_coaching_feedback` — separate class/workspace/target coaching channel.
 
-Protected Case Study delivery (#295) adds no public/browser data table and remains server-gated. #313 should add exercise/stage state separately from Intake snapshots and from participant authorization; it must not overload collaboration revision or coaching state.
+Protected Case Study delivery (#295) adds no public/browser data table and remains server-gated. #313 Tranche 3 now adds exercise orchestration persistence separately from Intake snapshots and participant authorization:
+
+- `classroom_exercises` — one exercise run, owning class, protected Case Study identity, pinned simulation version/fingerprint, lifecycle/stage/phase, optimistic revision, editing-policy state, and class-bounded expiry;
+- `classroom_exercise_releases` — explicitly released optional Student content by exercise/stage/content ID;
+- `classroom_exercise_workspace_state` — workspace/team Ready state plus collaboration-revision evidence;
+- `classroom_exercise_checkpoints` — immutable pre-debrief workspace snapshot/revision evidence.
+
+These tables do not replace or duplicate collaboration state. Checkpoints are historical facilitation evidence only; the live Intake remains in `collaboration_workspaces`. Normal Instructor exercise reads expose only checkpoint metadata. Snapshot bytes are available only through an explicit Instructor-authorized current-stage debrief inspection read, are rendered through the existing read-only observer surface, and never become live collaboration state or browser-persisted exercise state. Exercise state must not overload collaboration revision or coaching revision.
 
 Schema initialization/migration must remain idempotent and documented. Browser boot for Standalone must never depend on Classroom schema creation.
 
