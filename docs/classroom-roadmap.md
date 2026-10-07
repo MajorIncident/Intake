@@ -223,7 +223,57 @@ The eight-slice #288 program establishes the secure Classroom foundation; it doe
 
 #312 is complete and merged as PR #314 at `b141d55050207e4cf7ce842a4452a220a5268968`: Start Class, one human Student join code, Waiting/late roster, stable Student class sessions, accessible team creation/assignment, safe reassignment/unassign with stale-authority cutoff, observer/coaching integration, and integrated multi-browser acceptance are the live substrate.
 
-#313 is implemented on `feature/classroom-staged-simulation`, based directly on the #312 merge. Its canonical contract is `docs/classroom-staged-simulation.md`. Tranches 1–9 are complete: server-only staged authoring schema, additive exercise persistence, Instructor/Student APIs, server-enforced Student freeze, Instructor orchestration console, Student case reference/readiness, immutable checkpoint inspection, and integrated browser/security/mobile/accessibility acceptance. Production official Case Study stage definitions remain intentionally deferred; the branch is in Tranche 10 final documentation/security/merge-readiness audit.
+#313 is implementation-complete on `feature/classroom-staged-simulation`, based directly on the #312 merge. Its canonical contract is `docs/classroom-staged-simulation.md`. Tranches 1–10 are complete: server-only staged authoring schema, additive exercise persistence, Instructor/Student APIs, server-enforced Student freeze, Instructor orchestration console, Student case reference/readiness, immutable checkpoint inspection, integrated browser/security/mobile/accessibility acceptance, and final security/documentation audit. PR #315 is the publish/merge vehicle.
+
+## Next production-Classroom roadmap
+
+The secure classroom/orchestration engine is complete, but a **real production KT simulation is not yet runnable from source-faithful case material**. The remaining roadmap is now product/content enablement rather than another exercise-engine tranche.
+
+### P0 — production case material delivery
+
+**#316 — Protected staged case assets and rich Student case rendering**
+
+This is the immediate blocker. The staged schema already allows `image`, `table`, and `document-page` Student blocks, but the current Student case-reference projects released content to `id/kind/title/body` and therefore cannot faithfully render protected case pages/images/tables. Implement server-gated asset delivery and accessible rich rendering without weakening progressive disclosure or the public-static boundary.
+
+**#317 — Author and validate the first production staged KT Case Study**
+
+Depends on #316. Use only authoritative participant/instructor source material. Author reviewed stage boundaries/releases/facilitation/assets, then run a complete real-case Instructor + multi-team Student rehearsal. Do not infer stage structure from completed Intake state or similarly named cases.
+
+### P1 — facilitation completeness
+
+**#318 — Stage-linked Intake guidance and complete coachable target identity**
+
+The `simulation.stages[].intakeTargetIds` authoring contract exists but is not consumed by Student/Instructor runtime. Wire those targets to stable Intake identities so a stage can point learners toward the relevant work without revealing answers. In the same identity layer, close #294's intentionally deferred dynamic Possible Cause coaching gap.
+
+**#319 — Instructor class debrief comparison and progress view**
+
+Build on Ready/Working, coaching, immutable checkpoints, and live observation to provide a class-level comparison/heatmap-style debrief surface. Keep it read-only and Instructor-only; compare selected checkpoint/current targets without duplicating or grading Intake state.
+
+### P2 — delivery polish
+
+**#320 — Join sharing and compact mobile workspace chrome**
+
+Add QR/share-link convenience around the human join code without putting bearer capabilities in URLs, and finish the acknowledged mobile Notes/Class/Case chrome alignment so these persistent workspaces remain discoverable without consuming excessive Intake real estate.
+
+### Recommended dependency/order
+
+```text
+#315 merge
+   |
+  #316  protected rich staged content
+   |
+  #317  first production staged KT Case Study
+   |
+   +----------> production classroom rehearsal / case-specific acceptance
+
+#318  stage-linked Intake targets + dynamic coaching identity
+   |
+  #319  scalable class debrief comparison
+
+#320  join/mobile polish (can proceed in parallel after #315)
+```
+
+The first next implementation action after #315 merges is **#316**, not authoring an official case prematurely. #317 may prepare source mapping in parallel, but must not ship production staged content until #316 provides the secure rich-content path.
 
 ## Stacked PR rules
 
