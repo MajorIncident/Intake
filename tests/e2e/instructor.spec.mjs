@@ -139,10 +139,37 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await page.getByRole('button', { name: 'Freeze editing' }).click();
   await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing frozen during debrief');
 
+  await page.getByRole('button', { name: 'Advance to next stage' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('In progress · advanced to next stage');
+  await expect(page.locator('#instructorExerciseStageTitle')).toHaveText('Analyze the browser case');
+  await expect(page.locator('#instructorExerciseStageObjective')).toHaveText('Use the second-stage information to refine the analysis.');
+  await expect(page.locator('#instructorExerciseStageTiming')).toHaveText('Suggested time: 4 min');
+  await expect(page.locator('#instructorExerciseFacilitation')).toContainText('Second-stage browser facilitation');
+  await expect(page.locator('#instructorExerciseFacilitation')).toContainText('Synthetic Instructor-only guidance for the final browser stage.');
+  await expect(page.locator('#instructorExerciseDebriefPanel')).toBeHidden();
+  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
+
+  await page.getByRole('button', { name: 'Begin debrief' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Debrief · debrief started');
+  await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing allowed during debrief');
+  await expect(page.locator('#instructorExerciseCheckpointSummary')).toHaveText('1 captured');
+  await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Team Alpha');
+  await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Revision 1');
+  await expect(page.getByRole('button', { name: 'Complete exercise' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Complete exercise' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Completed · exercise completed');
+  await expect(page.locator('#instructorExerciseDetail')).toContainText('No additional Student material is released automatically.');
+  await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Exercise completed; staged editing policy no longer applies');
+  await expect(page.getByRole('button', { name: 'Complete exercise' })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Freeze editing' })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Allow editing' })).toBeHidden();
+  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
+
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes')).toBe(true);
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes/workspaces')).toBe(true);
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes/exercise')).toBe(true);
-  expect(classroomRequests.filter(request => request.method === 'PATCH' && request.pathname === '/api/classes/exercise')).toHaveLength(7);
+  expect(classroomRequests.filter(request => request.method === 'PATCH' && request.pathname === '/api/classes/exercise')).toHaveLength(10);
   expect(classroomRequests.some(request => request.method === 'PATCH' && request.pathname === '/api/classes/participants')).toBe(true);
   expect(classroomRequests.some(request => request.pathname === '/api/classes/join')).toBe(false);
   expect(classroomRequests.some(request => request.body.includes('assignmentToken'))).toBe(false);
@@ -156,17 +183,19 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.locator('#instructorJoinCode')).toHaveText('K7FM-P4Q2');
   await expect(page.locator('#instructorParticipantSummary')).toHaveText('1 student · 0 waiting');
   await expect(page.getByLabel('Assignment for Waiting Student')).not.toHaveValue('');
-  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Debrief');
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Completed');
   await expect(page.locator('#instructorExerciseCaseName')).toHaveText('Browser Staged Simulation');
   await expect(page.getByLabel('Staged Case Study')).toHaveValue('browser-staged-simulation');
   await expect(page.locator('#instructorExerciseCreateBtn')).toBeDisabled();
-  await expect(page.locator('#instructorExerciseStageTitle')).toHaveText('Clarify the browser case');
-  await expect(page.locator('#instructorExerciseReleaseList')).toContainText('Released');
+  await expect(page.locator('#instructorExerciseStageTitle')).toHaveText('Analyze the browser case');
   await expect(page.locator('#instructorExerciseProgressSummary')).toHaveText('1 ready · 0 working');
-  await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing frozen during debrief');
+  await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Exercise completed; staged editing policy no longer applies');
   await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Team Alpha');
   await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Revision 1');
-  await expect(page.locator('#instructorExercisePauseBtn')).toBeVisible();
+  await expect(page.locator('#instructorExerciseLifecycleHelp')).toContainText('completion does not release additional case or exemplar material');
+  await expect(page.locator('#instructorExercisePauseBtn')).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Advance to next stage' })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Complete exercise' })).toBeHidden();
 
   await expectNoBlockingA11yViolations(page);
   expect(pageErrors).toEqual([]);
