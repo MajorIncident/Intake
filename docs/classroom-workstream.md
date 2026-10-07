@@ -8,7 +8,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 The secure Classroom foundation (#288), live-class management (#312), and staged-simulation engine (#313) are **merged and production-published**. The Vercel function-budget blocker #321 was resolved by PR #322; exact merged-main SHA `21bff1d1c5a70caff0aa94aadd58abcb0644f397` reached production **READY** with a clean runtime-error scan.
 
-**#320 is complete and merged** via PR #324 at `273ae6437c0898b9e35778587c7053580db14e22`. The active implementation target is now **#318 — universal stable Intake target identity** on `feature/universal-intake-target-identity`. #318 establishes the shared semantic layer for coaching, future staged guidance, and #319 template-independent debrief comparison. Production staged-case work (#316/#317) remains intentionally deferred while the reusable Template/field surface continues to expand.
+**#320 is complete and merged** via PR #324 at `273ae6437c0898b9e35778587c7053580db14e22`. **#318 implementation is complete on PR #325 and is in final documentation/review readiness.** #318 establishes the shared semantic layer for coaching, future staged guidance, and #319 template-independent debrief comparison. After #325 merges, #319 is the next debrief-track implementation target. Production staged-case work (#316/#317) remains intentionally deferred while the reusable Template/field surface continues to expand.
 
 ## Program issues
 
@@ -29,7 +29,7 @@ The secure Classroom foundation (#288), live-class management (#312), and staged
 | Publish recovery | #321 | Complete | PR #322 merged | Vercel function count consolidated to 5/12; exact-main production READY |
 | Rich staged assets | #316 | Deferred | Open | Secure protected image/table/document-page delivery; resume before #317 production simulation |
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
-| Universal Intake target identity | #318 | **Active — 318D complete / 318E next** | PR #325 / `feature/universal-intake-target-identity` | Universal targets, dynamic coaching, Template coverage, and staged target validation green; integrated acceptance/final audit next |
+| Universal Intake target identity | #318 | **Implementation complete — final docs/review readiness** | PR #325 / `feature/universal-intake-target-identity` | 318A–E complete; full diff/persistence/security audit clean; final documentation-head gates pending |
 | Class debrief comparison | #319 | Planned after #318 | Open | Template-independent cross-team checkpoint/live comparison using stable target IDs |
 | Join/mobile polish | #320 | Complete | PR #324 merged as `273ae643...` | Fragment-only share/QR + compact mobile Class/Case/Team/Notes/Instructor chrome published to `main` |
 
@@ -67,45 +67,45 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-**#318 is active** on `feature/universal-intake-target-identity`, based on merged `main` SHA `273ae6437c0898b9e35778587c7053580db14e22`.
+**#318 implementation is complete** on `feature/universal-intake-target-identity` / PR #325, based on merged `main` SHA `273ae6437c0898b9e35778587c7053580db14e22`.
 
-Current tranche: **318E — integrated acceptance and final audit**.
+Current state: **318E complete — final documentation/review readiness**.
 
 Canonical contract: `docs/intake-target-identity.md`.
 
-Completed:
+Completed checkpoints:
 - **318A** architecture/inventory — `5638a8211056954fe29eb1f5892a53517f62f0c7`;
 - **318B** universal static/KT registry + snapshot projection — GREEN `e716ee1f4933124caa052b1a21cfae097ca8d23e`;
 - **318C** dynamic Possible Cause family + Classroom coaching — GREEN runtime/test head `052125de3c73c963e91ab1054124983ed87f7403`;
-- **318D** Template/staged compatibility guards — GREEN `b312a23a2cc90a6d792d3f4a11ff47024e920ebd`.
+- **318D** Template/staged compatibility guards — GREEN `b312a23a2cc90a6d792d3f4a11ff47024e920ebd`;
+- **318E** integrated acceptance/final audit — GREEN acceptance/audit head `55da51daaf77b31de7218a5d78ca06a75a51444c`.
 
-318D delivered:
-- every public Standard Template projects through the universal target layer without template-specific mapping;
-- Standard Template build validation fails loudly for unclassified fields inside designated target-bearing serialized areas;
-- canonical normalized app-state is coverage-tested so new fields in covered reasoning areas require a stable target or explicit reviewed exclusion;
-- KT question rows and Possible Cause lifecycle IDs are coverage-validated;
-- staged `simulation.stages[].intakeTargetIds` accepts only shared static/KT IDs or family IDs such as `possible-cause`;
-- learner-created dynamic instance target IDs cannot be authored into staged definitions;
-- no production Case Study content was authored or modified.
+318E acceptance/audit proved:
+- current vs immutable checkpoint projections work without DOM for static, KT, and dynamic targets and do not mutate source snapshots;
+- dynamic Possible Causes remain per-workspace collections and are not aligned across teams by position or similar text;
+- real-browser Instructor -> Student dynamic coaching works end-to-end, remains Student read-only, survives cause-card rerenders, and reports **Changed since review** correctly;
+- browser accessibility coverage exposed and retained a real contrast assertion; the small-text Possible Cause contrast defect was repaired without domain/persistence changes;
+- the full `main -> PR #325` diff contains no `api/**`, `src/appState.js`, `src/storage.js`, summary/export, collaboration-revision, or Intake-persistence schema changes;
+- coaching still uses the existing separate feedback API/revision channel;
+- Standard Template/public-manifest changes are validation-only and template-independent;
+- staged `intakeTargetIds` use only the shared static/KT + family namespace, and no production protected Case Study content changed;
+- PR base remains the documented merged `main` SHA, PR #325 is mergeable, and there are no unresolved review threads.
 
-318D final implementation validation:
-- repository quality: **345 tests / 344 pass / 0 fail / 1 intentional skip**;
+Validation on `55da51daaf77b31de7218a5d78ca06a75a51444c`:
+- repository quality: **346 tests / 345 pass / 0 fail / 1 intentional skip**;
 - Browser E2E: **29 passed / 11 intentional project-scoped skips / 0 failed**;
 - CI / CodeQL / Dependency Review / Template Manifest Guard: **green**.
 
 ## Next recommended action
 
-Begin **318E — integrated acceptance and final audit**.
+Validate the **final documentation head** after this closeout update. If all required gates remain green:
+1. synchronize PR #325 and issue #318 to the exact final SHA;
+2. mark PR #325 **ready for review**;
+3. do **not** merge automatically;
+4. keep issue #318 open until merge;
+5. after #325 lands on `main`, begin **#319 — template-independent Instructor class debrief comparison/progress** from updated `main`.
 
-318E should:
-1. add/confirm comparison acceptance proving current and immutable checkpoint snapshots produce stable static/KT projections without a DOM;
-2. prove dynamic Possible Cause collections remain per-workspace collections and are not aligned across teams by ordinal position;
-3. add real-browser coverage for dynamic Instructor/Student coaching where needed, including keyboard/accessibility expectations and card rerender continuity;
-4. audit the full #318 diff for persistence, summary/export, Template/public-manifest, protected-content, and coaching-revision isolation;
-5. reconcile README/architecture/API/authoring guidance and final cold-start state;
-6. run all exact-head repository/browser/security/template gates and move PR #325 to review-ready only if the complete #318 diff remains clean.
-
-**Not started yet:** #319 debrief comparison UI or #316/#317 production simulation work.
+**Not started:** #319 implementation or #316/#317 production simulation work.
 
 
 ## Completed #300 implementation
