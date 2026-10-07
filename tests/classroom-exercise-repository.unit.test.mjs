@@ -431,5 +431,31 @@ test('debrief checkpoints are class-scoped, immutable, idempotent, and snapshot-
   assert.equal(listed.checkpoints.length, 1);
   assert.equal(listed.checkpoints[0].workspaceId, WORKSPACE_A_ID);
   assert.equal(listed.checkpoints[0].workspaceRevision, 9);
-  assert.equal(listed.checkpoints[0].snapshot.pre.oneLine, 'Team A before debrief');
+  assert.equal(Object.hasOwn(listed.checkpoints[0], 'snapshot'), false);
+
+  const inspected = await classrooms.getExerciseCheckpointForInstructor(
+    testTokenHash('A'),
+    EXERCISE_A_ID,
+    'stage-1',
+    WORKSPACE_A_ID
+  );
+  assert.equal(inspected.workspace.id, WORKSPACE_A_ID);
+  assert.equal(inspected.checkpoint.workspaceRevision, 9);
+  assert.equal(inspected.checkpoint.snapshot.pre.oneLine, 'Team A before debrief');
+
+  const crossClassRead = await classrooms.getExerciseCheckpointForInstructor(
+    testTokenHash('A'),
+    EXERCISE_A_ID,
+    'stage-1',
+    WORKSPACE_C_ID
+  );
+  assert.equal(crossClassRead, null);
+
+  const wrongInstructorRead = await classrooms.getExerciseCheckpointForInstructor(
+    testTokenHash('B'),
+    EXERCISE_A_ID,
+    'stage-1',
+    WORKSPACE_A_ID
+  );
+  assert.equal(wrongInstructorRead, null);
 });
