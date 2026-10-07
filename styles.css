@@ -3268,6 +3268,9 @@ body.dialog-open{overflow:hidden;}
 .instructor-observer-readonly [data-instructor-readonly-control]{cursor:default;}
 .instructor-observer-readonly button:disabled,.instructor-observer-readonly select:disabled,.instructor-observer-readonly input:disabled{opacity:1;}
 .instructor-observer-readonly input[readonly],.instructor-observer-readonly textarea[readonly]{cursor:text;}
+.student-exercise-readonly [data-student-exercise-readonly-control]{cursor:default;}
+.student-exercise-readonly button:disabled,.student-exercise-readonly select:disabled,.student-exercise-readonly input:disabled{opacity:.72;}
+.student-exercise-readonly input[readonly],.student-exercise-readonly textarea[readonly]{cursor:text;}
 body[data-experience-role="instructor"].instructor-class-connected .instructor-shell{position:fixed;left:16px;top:132px;bottom:16px;width:330px;max-width:none;margin:0;padding:0;z-index:35;}
 body[data-experience-role="instructor"].instructor-class-connected .instructor-shell .experience-shell__card{height:100%;padding:18px;border-radius:18px;overflow:hidden;}
 body[data-experience-role="instructor"].instructor-class-connected .instructor-shell .instructor-dashboard{overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;}
