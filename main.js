@@ -209,7 +209,8 @@ function boot() {
   classroomCaseStudiesController = initClassroomCaseStudies({ windowRef: window });
   instructorExerciseConsoleController = initInstructorExerciseConsole({
     documentRef: document,
-    onSelectWorkspace: workspaceId => instructorClassroomController?.selectWorkspace?.(workspaceId)
+    onSelectWorkspace: workspaceId => instructorClassroomController?.selectWorkspace?.(workspaceId),
+    onInspectCheckpoint: context => instructorClassroomController?.inspectCheckpoint?.(context)
   });
   studentExerciseReferenceController = initStudentExerciseReference({
     documentRef: document,
