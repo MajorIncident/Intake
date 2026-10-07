@@ -564,6 +564,222 @@ test('Instructor evidence-release conflict refreshes authoritative released stat
   controller.destroy();
 });
 
+test('Instructor begins debrief, renders immutable checkpoint revisions, and controls Student editing explicitly', async () => {
+  dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  const requests = [];
+  let exerciseState = {
+    id: 'exercise-1',
+    caseStudyId: 'staged-a',
+    status: 'active',
+    stagePhase: 'work',
+    studentEditingEnabled: true,
+    exerciseRevision: 4,
+    currentStageId: 'stage-1'
+  };
+  let checkpoints = [];
+  const caseStudy = {
+    id: 'staged-a',
+    name: 'Staged Case A',
+    description: 'Instructor simulation.',
+    supportedModes: ['full'],
+    simulation: {
+      studentContent: [],
+      instructorContent: [],
+      stages: [{
+        id: 'stage-1',
+        title: 'Clarify',
+        studentObjective: 'Clarify the problem.',
+        suggestedMinutes: 5,
+        optionalReleaseIds: [],
+        instructorContentIds: [],
+        defaultDebriefEditPolicy: 'frozen'
+      }]
+    }
+  };
+  const body = () => ({
+    class: { id: 'class-1', title: 'PSDM Class' },
+    exercise: { ...exerciseState },
+    caseStudy,
+    releases: [],
+    workspaceState: [{
+      workspaceId: 'workspace-a',
+      workspaceKind: 'group',
+      workspaceLabel: 'Team Alpha',
+      stageId: 'stage-1',
+      readyForDebrief: true,
+      readyWorkspaceRevision: 7
+    }],
+    checkpoints: checkpoints.map(item => ({ ...item })),
+    editFreezeEnforced: true,
+    availableCaseStudies: discoveryBody().availableCaseStudies
+  });
+
+  const controller = createInstructorExerciseConsoleController({
+    documentRef: dom.window.document,
+    fetchImpl: async (_url, options) => {
+      requests.push({
+        method: options.method,
+        body: options.body ? JSON.parse(options.body) : null
+      });
+      if (options.method === 'GET') return response(200, body());
+      if (options.method === 'PATCH') {
+        const payload = JSON.parse(options.body);
+        if (payload.action === 'begin-debrief') {
+          assert.deepEqual(payload, { action: 'begin-debrief', expectedRevision: 4 });
+          exerciseState = {
+            ...exerciseState,
+            stagePhase: 'debrief',
+            studentEditingEnabled: false,
+            exerciseRevision: 5
+          };
+          checkpoints = [{
+            workspaceId: 'workspace-a',
+            workspaceKind: 'group',
+            workspaceLabel: 'Team Alpha',
+            stageId: 'stage-1',
+            workspaceRevision: 7,
+            snapshot: { pre: { oneLine: 'Captured but not exposed by controller state.' } },
+            capturedAt: 'captured'
+          }];
+          return response(200, { ...body(), changed: true, capturedCount: 1 });
+        }
+        if (payload.action === 'set-editing') {
+          assert.equal(payload.expectedRevision, exerciseState.exerciseRevision);
+          exerciseState = {
+            ...exerciseState,
+            studentEditingEnabled: payload.enabled,
+            exerciseRevision: exerciseState.exerciseRevision + 1
+          };
+          return response(200, { ...body(), changed: true });
+        }
+        return response(400, {});
+      }
+      return response(405, {});
+    }
+  });
+
+  assert.equal(await controller.connectInstructor(TOKEN), true);
+  assert.equal(dom.window.document.getElementById('instructorExerciseBeginDebriefBtn').hidden, false);
+
+  assert.equal(await controller.beginDebrief(), true);
+  assert.equal(dom.window.document.getElementById('instructorExerciseStatus').textContent, 'Debrief · debrief started');
+  assert.equal(dom.window.document.getElementById('instructorExerciseDebriefPanel').hidden, false);
+  assert.equal(
+    dom.window.document.getElementById('instructorExerciseEditingStatus').textContent,
+    'Student editing frozen during debrief'
+  );
+  assert.equal(dom.window.document.getElementById('instructorExerciseCheckpointSummary').textContent, '1 captured');
+  assert.equal(dom.window.document.getElementById('instructorExerciseCheckpointList').textContent.includes('Team Alpha'), true);
+  assert.equal(dom.window.document.getElementById('instructorExerciseCheckpointList').textContent.includes('Revision 7'), true);
+  assert.equal(JSON.stringify(controller.getState()).includes('Captured but not exposed'), false);
+  assert.equal(dom.window.document.getElementById('instructorExerciseAllowEditingBtn').hidden, false);
+  assert.equal(dom.window.document.getElementById('instructorExerciseFreezeBtn').hidden, true);
+
+  assert.equal(await controller.setEditing(true), true);
+  assert.deepEqual(requests.at(-1), {
+    method: 'PATCH',
+    body: { action: 'set-editing', expectedRevision: 5, enabled: true }
+  });
+  assert.equal(
+    dom.window.document.getElementById('instructorExerciseEditingStatus').textContent,
+    'Student editing allowed during debrief'
+  );
+  assert.equal(dom.window.document.getElementById('instructorExerciseFreezeBtn').hidden, false);
+
+  assert.equal(await controller.setEditing(false), true);
+  assert.deepEqual(requests.at(-1), {
+    method: 'PATCH',
+    body: { action: 'set-editing', expectedRevision: 6, enabled: false }
+  });
+  assert.equal(controller.getState().exercise.exerciseRevision, 7);
+  assert.equal(controller.getState().exercise.studentEditingEnabled, false);
+  assert.equal(controller.getState().checkpoints[0].workspaceRevision, 7);
+  controller.destroy();
+});
+
+test('Instructor debrief editing conflict refreshes authoritative policy without replaying stale intent', async () => {
+  dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  const requests = [];
+  let getCount = 0;
+  const caseStudy = {
+    id: 'staged-a',
+    name: 'Staged Case A',
+    description: 'Instructor simulation.',
+    supportedModes: ['full'],
+    simulation: {
+      studentContent: [],
+      instructorContent: [],
+      stages: [{
+        id: 'stage-1',
+        title: 'Clarify',
+        studentObjective: 'Clarify the problem.',
+        suggestedMinutes: 5,
+        optionalReleaseIds: [],
+        instructorContentIds: [],
+        defaultDebriefEditPolicy: 'frozen'
+      }]
+    }
+  };
+  const payload = ({ revision, enabled }) => ({
+    class: { id: 'class-1', title: 'PSDM Class' },
+    exercise: {
+      id: 'exercise-1',
+      caseStudyId: 'staged-a',
+      status: 'active',
+      stagePhase: 'debrief',
+      studentEditingEnabled: enabled,
+      exerciseRevision: revision,
+      currentStageId: 'stage-1'
+    },
+    caseStudy,
+    releases: [],
+    workspaceState: [],
+    checkpoints: [{
+      workspaceId: 'workspace-a',
+      workspaceKind: 'group',
+      workspaceLabel: 'Team Alpha',
+      stageId: 'stage-1',
+      workspaceRevision: 7,
+      snapshot: { pre: { oneLine: 'Immutable checkpoint' } },
+      capturedAt: 'captured'
+    }],
+    editFreezeEnforced: true,
+    availableCaseStudies: discoveryBody().availableCaseStudies
+  });
+
+  const controller = createInstructorExerciseConsoleController({
+    documentRef: dom.window.document,
+    fetchImpl: async (_url, options) => {
+      requests.push(options.method);
+      if (options.method === 'GET') {
+        getCount += 1;
+        return response(200, getCount === 1
+          ? payload({ revision: 5, enabled: false })
+          : payload({ revision: 6, enabled: true }));
+      }
+      if (options.method === 'PATCH') {
+        return response(409, {
+          error: 'Exercise changed. Refresh and retry.',
+          exercise: payload({ revision: 6, enabled: true }).exercise
+        });
+      }
+      return response(405, {});
+    }
+  });
+
+  await controller.connectInstructor(TOKEN);
+  assert.equal(await controller.setEditing(true), false);
+  assert.deepEqual(requests, ['GET', 'PATCH', 'GET']);
+  assert.equal(controller.getState().exercise.exerciseRevision, 6);
+  assert.equal(controller.getState().exercise.studentEditingEnabled, true);
+  assert.equal(dom.window.document.getElementById('instructorExerciseStatus').textContent, 'Debrief · current state reloaded');
+  assert.equal(
+    dom.window.document.getElementById('instructorExerciseEditingStatus').textContent,
+    'Student editing allowed during debrief'
+  );
+  controller.destroy();
+});
+
 test('Instructor exercise console keeps a connected shell on transient read failure and can refresh', async () => {
   dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
   let attempt = 0;
