@@ -30,7 +30,7 @@ The secure Classroom foundation (#288), live-class management (#312), and staged
 | Rich staged assets | #316 | Deferred | Open | Secure protected image/table/document-page delivery; resume before #317 production simulation |
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
 | Universal Intake target identity | #318 | Complete | PR #325 merged as `ef694910...` | Shared static/KT/dynamic target projection and compatibility guards merged to `main` |
-| Class debrief comparison | #319 | **Active — 319C complete / 319D next** | PR #326 / `feature/classroom-debrief-comparison` | Pure model + Instructor-only derived debrief API green; UI next |
+| Class debrief comparison | #319 | **Active — 319D complete / 319E next** | PR #326 / `feature/classroom-debrief-comparison` | Pure model + API + current-live comparison UI green; checkpoint/staged/coaching integration next |
 | Join/mobile polish | #320 | Complete | PR #324 merged as `273ae643...` | Fragment-only share/QR + compact mobile Class/Case/Team/Notes/Instructor chrome published to `main` |
 
 ## Current architecture decisions
@@ -69,13 +69,14 @@ See `docs/classroom-architecture.md` for the full contract.
 
 **#319 is active** on `feature/classroom-debrief-comparison` / PR #326, based on merged `main` SHA `ef6949100ddac28c646338ee55cb6e7a74beb067`.
 
-Current tranche: **319D — Instructor progress + target comparison UI**.
+Current tranche: **319E — checkpoint/staged/coaching integration**.
 
 Canonical contract: `docs/classroom-debrief-comparison.md`.
 
 Architecture checkpoint: `22d5d9ee056f6ddd70f7e5d9a97f2322c5d3c41f`.
 319B GREEN implementation head: `c6986b330fab31509c1697b3d77c8a5e907ef279`.
 319C GREEN implementation head: `676ccbc963fb60c59851e3beda5962f2fdaa9ca5`.
+319D GREEN implementation head: `54845e82e71c69b471019d6f24f01b36d1077894`.
 
 Frozen decisions:
 - #319 is an Instructor-only **derived read model**; it creates no second snapshot/checkpoint/coaching persistence model;
@@ -99,39 +100,43 @@ Planned tranches:
 
 ## Last completed action
 
-Completed **319C — Instructor-only debrief API**.
+Completed **319D — Instructor progress + semantic target comparison UI**.
 
 Delivered:
-- GET-only `/api/classes/debrief` inside the existing consolidated Classroom function/router;
-- Instructor class capability is the only accepted authority;
-- class-scoped **batch** reads collect current collaboration snapshots, compact coaching metadata, staged readiness, and current-stage immutable checkpoint snapshots;
-- raw live/checkpoint snapshots are consumed server-side only and projected through the 319B model before response;
-- aggregate response contains no raw snapshot objects, coaching notes, internal workspace IDs, Student/assignment/join/collaboration capabilities, or editable authority;
-- no new persistence table or mutation path;
-- classes without a current non-completed staged exercise still receive current-live comparison with staged context honestly absent;
-- route is preserved through the existing `api/classroom.js` Serverless Function and Vercel function count does not increase;
-- API/security tests cover GET-only behavior, privacy headers, staged readiness/checkpoint projection, and denial of non-Instructor capabilities.
+- dedicated `src/classroomDebriefComparison.js` presentation-only controller;
+- GET-only `/api/classes/debrief` consumption using the active Instructor capability;
+- wide Instructor comparison surface with compact workspace progress and shared semantic target picker;
+- desktop side-by-side evidence matrix and narrow-screen stacked workspace cards;
+- current-live static/KT comparison plus per-workspace dynamic Possible Cause family collections;
+- **Observe** actions reuse `classroomInstructor.selectWorkspace()`; aggregate evidence is never applied into the Intake DOM;
+- comparison controls stay interactive while observed Intake stays read-only;
+- comparison state is memory-only and excluded from Intake persistence/export/summary/Templates/collaboration revisions;
+- retryable loading/error/periodic refresh behavior;
+- deterministic browser fixture now serves the real 319B comparison model;
+- desktop/mobile/Axe acceptance covers target switching, drill-down, no comparison persistence, responsive layout, and no horizontal overflow;
+- the new acceptance exposed and fixed a pre-existing content-box overflow on the global `.menu-bar`.
 
-Validation on `676ccbc963fb60c59851e3beda5962f2fdaa9ca5`:
-- repository quality: **355 tests / 354 pass / 0 fail / 1 intentional skip**;
-- Browser E2E: **29 passed / 11 intentional skips / 0 failed**;
+Validation on `54845e82e71c69b471019d6f24f01b36d1077894`:
+- repository quality: **359 tests / 358 pass / 0 fail / 1 intentional skip**;
+- Browser E2E: **31 passed / 11 intentional skips / 0 failed**;
 - CI / CodeQL / Dependency Review / Template Manifest Guard: **green**;
-- PR #326 remained mergeable with **0 unresolved review threads**.
+- PR #326 remained mergeable with **0 unresolved review threads** before the documentation checkpoint.
 
 ## Next recommended action
 
-Begin **319D — Instructor progress + target comparison UI**.
+Begin **319E — checkpoint/staged/coaching integration**.
 
-319D should:
-1. create the dedicated `src/classroomDebriefComparison.js` presentation/controller module;
-2. consume GET-only `/api/classes/debrief` using the active Instructor capability;
-3. render compact per-workspace progress plus semantic target selection/comparison;
-4. use desktop matrix and narrow-screen stacked workspace cards rather than a horizontally unusable table;
-5. keep comparison/filter/mode state presentation-only and outside Intake persistence;
-6. reuse the existing Instructor `selectWorkspace()` observer/coaching path for drill-down rather than applying comparison snapshots into the Intake DOM;
-7. cover refresh/loading/error, keyboard behavior, mobile layout, and no Student exposure.
+319E should:
+1. derive optional current-stage `intakeTargetIds` from the existing server-only staged Case Study definition and pass them as `recommendedTargetIds` through the 319B model;
+2. keep target recommendations advisory only — never hide non-recommended semantic targets or turn them into validation/scoring;
+3. add explicit **Current / Checkpoint** evidence mode when immutable current-stage checkpoints exist, with honest per-workspace unavailable states;
+4. show staged **Ready / Working** facilitation state when present while preserving the ordinary non-staged activity presentation;
+5. show neutral per-target coaching metadata (**Meets standard / Needs improvement / Changed since review**) without notes, grades, rankings, or cross-team scoring;
+6. preserve dynamic Possible Cause independence in both current/checkpoint modes;
+7. keep all mode/target/recommendation presentation state outside Intake persistence and continue using existing observer/coaching surfaces for drill-down/editing;
+8. extend unit/feature/browser coverage before 319F closeout.
 
-**Not started:** 319D UI, 319E checkpoint/staged/coaching presentation integration, or #316/#317 production simulation work.
+**Not started:** 319E presentation integration, 319F integrated closeout, or #316/#317 production simulation work.
 
 
 ## Completed #300 implementation
