@@ -69,7 +69,7 @@ See `docs/classroom-architecture.md` for the full contract.
 
 **#319 is active** on `feature/classroom-debrief-comparison` / PR #326, based on merged `main` SHA `ef6949100ddac28c646338ee55cb6e7a74beb067`.
 
-Current tranche: **319E — checkpoint/staged/coaching integration**.
+Current tranche: **319E-B — Current / Checkpoint + Ready / Working presentation**.
 
 Canonical contract: `docs/classroom-debrief-comparison.md`.
 
@@ -77,6 +77,7 @@ Architecture checkpoint: `22d5d9ee056f6ddd70f7e5d9a97f2322c5d3c41f`.
 319B GREEN implementation head: `c6986b330fab31509c1697b3d77c8a5e907ef279`.
 319C GREEN implementation head: `676ccbc963fb60c59851e3beda5962f2fdaa9ca5`.
 319D GREEN implementation head: `54845e82e71c69b471019d6f24f01b36d1077894`.
+319E-A GREEN implementation head: `dd0f3d28f2741c89c714e0c23a8a475acbdc8de3`.
 
 Frozen decisions:
 - #319 is an Instructor-only **derived read model**; it creates no second snapshot/checkpoint/coaching persistence model;
@@ -136,7 +137,7 @@ Begin **319E — checkpoint/staged/coaching integration**.
 7. keep all mode/target/recommendation presentation state outside Intake persistence and continue using existing observer/coaching surfaces for drill-down/editing;
 8. extend unit/feature/browser coverage before 319F closeout.
 
-**Not started:** 319E presentation integration, 319F integrated closeout, or #316/#317 production simulation work.
+**319E-A complete:** staged current-target recommendations are now fingerprint-guarded and green. **Next:** 319E-B Current / Checkpoint evidence mode + Ready / Working presentation. 319E-C coaching badges, 319F integrated closeout, and #316/#317 production simulation work remain not started.
 
 
 ## Completed #300 implementation
