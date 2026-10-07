@@ -386,3 +386,82 @@ test('Student readiness controls are unavailable outside active work', async () 
 
   controller.destroy();
 });
+
+
+test('frozen Student debrief projects Intake read only and restores when editing reopens', async () => {
+  dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  let reads = 0;
+  const controller = createStudentExerciseReferenceController({
+    documentRef: dom.window.document,
+    windowRef: dom.window,
+    fetchImpl: async () => {
+      reads += 1;
+      return response(200, reads === 1
+        ? payload({ stagePhase: 'debrief', editing: false })
+        : payload({ stagePhase: 'debrief', editing: true }));
+    },
+    setTimeoutImpl: () => 1,
+    clearTimeoutImpl: () => {}
+  });
+
+  const oneLine = dom.window.document.getElementById('oneLine');
+  const addCause = dom.window.document.getElementById('addCauseBtn');
+  const leaveClass = dom.window.document.getElementById('studentClassLeaveBtn');
+  const wrap = dom.window.document.querySelector('.wrap[data-experience-surface="intake"]');
+
+  assert.equal(oneLine.readOnly, false);
+  assert.equal(addCause.disabled, false);
+  assert.equal(leaveClass.disabled, false);
+
+  await controller.connectStudent(TOKEN);
+
+  assert.equal(wrap.classList.contains('student-exercise-readonly'), true);
+  assert.equal(oneLine.readOnly, true);
+  assert.equal(oneLine.getAttribute('aria-readonly'), 'true');
+  assert.equal(addCause.disabled, true);
+  assert.equal(addCause.hasAttribute('data-student-exercise-readonly-control'), true);
+  assert.equal(leaveClass.disabled, false, 'Leave class remains available during a frozen debrief');
+  assert.equal(leaveClass.hasAttribute('data-student-exercise-readonly-control'), false);
+
+  await controller.refresh();
+
+  assert.equal(wrap.classList.contains('student-exercise-readonly'), false);
+  assert.equal(oneLine.readOnly, false);
+  assert.equal(oneLine.hasAttribute('aria-readonly'), false);
+  assert.equal(addCause.disabled, false);
+  assert.equal(addCause.hasAttribute('data-student-exercise-readonly-control'), false);
+  assert.equal(leaveClass.disabled, false);
+
+  controller.destroy();
+});
+
+test('paused frozen debrief remains read only and disconnect restores original control state', async () => {
+  dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  const controller = createStudentExerciseReferenceController({
+    documentRef: dom.window.document,
+    windowRef: dom.window,
+    fetchImpl: async () => response(200, payload({
+      status: 'paused',
+      stagePhase: 'debrief',
+      editing: false
+    })),
+    setTimeoutImpl: () => 1,
+    clearTimeoutImpl: () => {}
+  });
+
+  const oneLine = dom.window.document.getElementById('oneLine');
+  const addCause = dom.window.document.getElementById('addCauseBtn');
+  await controller.connectStudent(TOKEN);
+
+  assert.equal(oneLine.readOnly, true);
+  assert.equal(addCause.disabled, true);
+  assert.equal(dom.window.document.getElementById('studentCaseReferenceStatus').textContent, 'Paused · debrief · editing frozen');
+
+  controller.disconnect();
+
+  assert.equal(oneLine.readOnly, false);
+  assert.equal(addCause.disabled, false);
+  assert.equal(dom.window.document.querySelector('.wrap[data-experience-surface="intake"]').classList.contains('student-exercise-readonly'), false);
+
+  controller.destroy();
+});
