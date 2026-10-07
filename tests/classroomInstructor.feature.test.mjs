@@ -88,8 +88,22 @@ function observeBody(id, statement) {
   };
 }
 
-function setup(fetchImpl, { onObservation = () => {}, onObservationEnd = () => {}, onClassConnected = () => {}, onClassDisconnected = () => {} } = {}) {
+function setup(fetchImpl, {
+  onObservation = () => {},
+  onObservationEnd = () => {},
+  onClassConnected = () => {},
+  onClassDisconnected = () => {},
+  mobile = false
+} = {}) {
   dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  if (mobile) {
+    dom.window.matchMedia = query => ({
+      matches: query === '(max-width: 700px)',
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    });
+  }
   persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.INSTRUCTOR, dom.window.localStorage);
   initExperienceRoleController({
     documentRef: dom.window.document,
@@ -147,6 +161,37 @@ async function settle() {
 afterEach(() => {
   dom?.window.close();
   dom = null;
+});
+
+test('Instructor class rail defaults collapsed on mobile and remains explicitly expandable', async () => {
+  const env = setup(async (url) => {
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  }, { mobile: true });
+
+  await env.controller.openClass(TOKEN);
+
+  const dashboard = dom.window.document.getElementById('instructorClassDashboard');
+  const toggle = dom.window.document.getElementById('instructorClassPanelToggle');
+  assert.equal(env.controller.getState().railExpanded, false);
+  assert.equal(dashboard.classList.contains('is-collapsed'), true);
+  assert.equal(dom.window.document.body.classList.contains('instructor-rail-collapsed'), true);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  assert.equal(toggle.textContent, 'Open class panel');
+
+  toggle.click();
+  assert.equal(env.controller.getState().railExpanded, true);
+  assert.equal(dashboard.classList.contains('is-collapsed'), false);
+  assert.equal(dom.window.document.body.classList.contains('instructor-rail-collapsed'), false);
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  assert.equal(toggle.textContent, 'Collapse class panel');
+
+  toggle.click();
+  assert.equal(env.controller.getState().railExpanded, false);
+  assert.equal(dashboard.classList.contains('is-collapsed'), true);
+  env.controller.destroy();
 });
 
 test('Instructor opens one class, renders roster, and observes through the GET-only class endpoint', async () => {
