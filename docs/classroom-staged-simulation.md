@@ -809,17 +809,44 @@ Validation on `2c8145b31f96403f59ff3b41d9396fd2a3ac86ed`:
 - required Browser E2E: **26 passed / 8 intentional project-scoped skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
 
+## Implementation checkpoint — Tranche 6E Begin Debrief, checkpoint review, and editing policy
+
+Debrief/edit-policy contract:
+- **Begin debrief** is exposed only for an active exercise in current-stage work and PATCHes `{ action: "begin-debrief", expectedRevision }`;
+- successful debrief entry consumes the server response after immutable checkpoint capture and renders only checkpoint workspace identity + captured workspace revision for the current stage;
+- checkpoint snapshot bodies remain server-owned evidence: the browser controller sanitizes them away from public state and does not create an editable or persisted checkpoint copy;
+- the console presents `studentEditingEnabled` independently from Pause/Resume so class pacing and Student write authorization remain visibly separate concepts;
+- active debrief exposes **Freeze editing** when editing is allowed and **Allow editing** when editing is frozen; both use revision-safe `set-editing`;
+- idempotent local policy requests do not issue unnecessary PATCHes, while a 409 on a real mutation performs one authoritative GET and never replays stale intent;
+- the server-enforced HTTP 423 `classroom-editing-locked` boundary from Tranche 5 remains the actual authorization control; the Instructor toggle is not treated as client-side security;
+- existing observer/coaching remains available through debrief, including while Student editing is frozen;
+- real-browser acceptance proves work -> debrief checkpoint capture -> default frozen policy -> allow -> freeze -> reload with checkpoint/release/progress state restored.
+
+Instructor workspace/mobile UX added in the same bounded slice:
+- the existing class/team rail has an explicit accessible Collapse/Open control;
+- desktop collapse reclaims horizontal Intake space;
+- at <=700px the rail defaults collapsed to a compact class header instead of occupying the mobile page, but remains discoverable and can be reopened normally;
+- tests use the real Open class panel control before mobile team switching; no forced-click workaround is used;
+- broader Notes/mobile chrome alignment remains a follow-on: prefer compact discoverable launchers/default-collapsed behavior rather than making either workspace silently disappear.
+
+Implementation spans `044e4f82...` through `61aa582...`.
+
+Validation on `61aa582e9faee9a7e500796634c5cc06e256ff14`:
+- repository quality: **288 tests / 287 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **26 passed / 8 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
+
 ## Exact next implementation action
 
-Implement **Tranche 6E — Begin Debrief, checkpoint review, and Freeze/Allow Editing**.
+Implement **Tranche 6F — Advance/Complete and Instructor-console lifecycle completion**.
 
 Required next slice:
-- expose Begin Debrief only for an active current-stage work phase and send the current `exerciseRevision`;
-- after Begin Debrief, render authoritative current-stage checkpoint capture status/revision for represented workspaces without replacing live Intake;
-- render the authoritative `studentEditingEnabled` policy separately from Pause state;
-- expose explicit **Freeze editing** / **Allow editing** only in active current-stage debrief and PATCH revision-safe `set-editing`;
-- preserve the server-enforced 423 boundary already implemented in Tranche 5;
-- every 409 lifecycle/edit-policy conflict must authoritative-refresh rather than replay stale intent;
-- extend focused and synthetic-browser coverage for work -> debrief checkpoint capture -> freeze/unfreeze while observer/coaching remains available.
+- expose **Advance** only in active debrief when a next authored stage exists;
+- expose **Complete exercise** only in active debrief on the final authored stage;
+- send the current `exerciseRevision` for both actions and authoritative-refresh on 409 without replay;
+- after Advance, render the next authored stage in work phase and authoritative Student editing restored for work;
+- after Complete, render a terminal completed state without implying that Instructor-only/exemplar material becomes Student-visible;
+- keep observer/coaching usable across stage transition and completion where the existing Classroom session remains valid;
+- extend the synthetic staged fixture to at least two stages so browser acceptance proves Stage 1 debrief -> Advance -> Stage 2 work -> Stage 2 debrief -> Complete.
 
-Do **not** add Advance or Complete in 6E; reserve those for Tranche 6F. Keep Student staged-case UI and production official Case Study staging deferred.
+Keep Student staged-case reference/UI in Tranche 7. Do not invent production official Case Study staging.
