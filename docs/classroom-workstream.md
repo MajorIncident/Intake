@@ -8,7 +8,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 The secure Classroom foundation (#288), live-class management (#312), and staged-simulation engine (#313) are **merged and production-published**. The Vercel function-budget blocker #321 was resolved by PR #322; exact merged-main SHA `21bff1d1c5a70caff0aa94aadd58abcb0644f397` reached production **READY** with a clean runtime-error scan.
 
-**#320 is complete and merged** via PR #324 at `273ae6437c0898b9e35778587c7053580db14e22`. **#318 implementation is complete on PR #325 and is in final documentation/review readiness.** #318 establishes the shared semantic layer for coaching, future staged guidance, and #319 template-independent debrief comparison. After #325 merges, #319 is the next debrief-track implementation target. Production staged-case work (#316/#317) remains intentionally deferred while the reusable Template/field surface continues to expand.
+**#320 is complete and merged** via PR #324 at `273ae6437c0898b9e35778587c7053580db14e22`. **#318 is complete and merged** via PR #325 at `ef6949100ddac28c646338ee55cb6e7a74beb067`, establishing the shared semantic target layer. **#319 is now active** on `feature/classroom-debrief-comparison` / PR #326 to build the Instructor-only template-independent debrief comparison/progress surface. Production staged-case work (#316/#317) remains intentionally deferred.
 
 ## Program issues
 
@@ -29,8 +29,8 @@ The secure Classroom foundation (#288), live-class management (#312), and staged
 | Publish recovery | #321 | Complete | PR #322 merged | Vercel function count consolidated to 5/12; exact-main production READY |
 | Rich staged assets | #316 | Deferred | Open | Secure protected image/table/document-page delivery; resume before #317 production simulation |
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
-| Universal Intake target identity | #318 | **Implementation complete — final docs/review readiness** | PR #325 / `feature/universal-intake-target-identity` | 318A–E complete; full diff/persistence/security audit clean; final documentation-head gates pending |
-| Class debrief comparison | #319 | Planned after #318 | Open | Template-independent cross-team checkpoint/live comparison using stable target IDs |
+| Universal Intake target identity | #318 | Complete | PR #325 merged as `ef694910...` | Shared static/KT/dynamic target projection and compatibility guards merged to `main` |
+| Class debrief comparison | #319 | **Active — 319A architecture/inventory** | PR #326 / `feature/classroom-debrief-comparison` | Instructor-only derived read model; aggregate projected live/checkpoint evidence; no new persistence |
 | Join/mobile polish | #320 | Complete | PR #324 merged as `273ae643...` | Fragment-only share/QR + compact mobile Class/Case/Team/Notes/Instructor chrome published to `main` |
 
 ## Current architecture decisions
@@ -67,45 +67,47 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-**#318 implementation is complete** on `feature/universal-intake-target-identity` / PR #325, based on merged `main` SHA `273ae6437c0898b9e35778587c7053580db14e22`.
+**#319 is active** on `feature/classroom-debrief-comparison` / PR #326, based on merged `main` SHA `ef6949100ddac28c646338ee55cb6e7a74beb067`.
 
-Current state: **318E complete — final documentation/review readiness**.
+Current tranche: **319A — architecture and source inventory**.
 
-Canonical contract: `docs/intake-target-identity.md`.
+Canonical contract: `docs/classroom-debrief-comparison.md`.
 
-Completed checkpoints:
-- **318A** architecture/inventory — `5638a8211056954fe29eb1f5892a53517f62f0c7`;
-- **318B** universal static/KT registry + snapshot projection — GREEN `e716ee1f4933124caa052b1a21cfae097ca8d23e`;
-- **318C** dynamic Possible Cause family + Classroom coaching — GREEN runtime/test head `052125de3c73c963e91ab1054124983ed87f7403`;
-- **318D** Template/staged compatibility guards — GREEN `b312a23a2cc90a6d792d3f4a11ff47024e920ebd`;
-- **318E** integrated acceptance/final audit — GREEN acceptance/audit head `55da51daaf77b31de7218a5d78ca06a75a51444c`.
+Architecture checkpoint: `1e45cf295a3e00eefd20c64d5a46f4391eee0c7d`.
 
-318E acceptance/audit proved:
-- current vs immutable checkpoint projections work without DOM for static, KT, and dynamic targets and do not mutate source snapshots;
-- dynamic Possible Causes remain per-workspace collections and are not aligned across teams by position or similar text;
-- real-browser Instructor -> Student dynamic coaching works end-to-end, remains Student read-only, survives cause-card rerenders, and reports **Changed since review** correctly;
-- browser accessibility coverage exposed and retained a real contrast assertion; the small-text Possible Cause contrast defect was repaired without domain/persistence changes;
-- the full `main -> PR #325` diff contains no `api/**`, `src/appState.js`, `src/storage.js`, summary/export, collaboration-revision, or Intake-persistence schema changes;
-- coaching still uses the existing separate feedback API/revision channel;
-- Standard Template/public-manifest changes are validation-only and template-independent;
-- staged `intakeTargetIds` use only the shared static/KT + family namespace, and no production protected Case Study content changed;
-- PR base remains the documented merged `main` SHA, PR #325 is mergeable, and there are no unresolved review threads.
+Frozen decisions:
+- #319 is an Instructor-only **derived read model**; it creates no second snapshot/checkpoint/coaching persistence model;
+- add one GET-only `/api/classes/debrief` aggregate read so large classes do not require the browser to serially open every workspace;
+- authorization remains the Instructor class capability and class/workspace scope is proved server-side;
+- current live and immutable checkpoint snapshots are consumed server-side and projected through `src/intakeTargets.js`; raw snapshots/editable capabilities are not returned in the class comparison response;
+- static/KT targets compare by stable semantic ID;
+- dynamic Possible Causes remain per-workspace collections under family `possible-cause`; independent teams are never aligned by position or text;
+- Ready/Working, activity, checkpoint revision, and coaching change state are facilitation signals only, not scores;
+- staged `intakeTargetIds` may recommend targets but simulation is optional;
+- the existing Instructor observer/coaching path remains the drill-down/editing surface;
+- comparison state remains local/presentation-only and outside `kt-intake-full-v2`, summaries, exports, templates, and collaboration revisions.
 
-Validation on `55da51daaf77b31de7218a5d78ca06a75a51444c`:
-- repository quality: **346 tests / 345 pass / 0 fail / 1 intentional skip**;
-- Browser E2E: **29 passed / 11 intentional project-scoped skips / 0 failed**;
-- CI / CodeQL / Dependency Review / Template Manifest Guard: **green**.
+Planned tranches:
+1. **319A** architecture/source inventory.
+2. **319B** pure derived comparison model.
+3. **319C** Instructor-only debrief API.
+4. **319D** Instructor progress + target comparison UI.
+5. **319E** checkpoint/staged/coaching integration.
+6. **319F** integrated browser/accessibility/security closeout.
 
 ## Next recommended action
 
-Validate the **final documentation head** after this closeout update. If all required gates remain green:
-1. synchronize PR #325 and issue #318 to the exact final SHA;
-2. mark PR #325 **ready for review**;
-3. do **not** merge automatically;
-4. keep issue #318 open until merge;
-5. after #325 lands on `main`, begin **#319 — template-independent Instructor class debrief comparison/progress** from updated `main`.
+Complete **319A** by reconciling roadmap/issue/PR to this contract, then begin **319B** as a pure DOM-free comparison model with focused unit tests.
 
-**Not started:** #319 implementation or #316/#317 production simulation work.
+319B should:
+1. accept class/workspace metadata plus already-authorized current/checkpoint snapshots;
+2. project through the #318 target registry;
+3. derive neutral progress/coaching change metadata without scoring;
+4. preserve dynamic Possible Causes as workspace-local collections;
+5. remain mutation-free and independent of templates/DOM;
+6. leave API routing, server authorization, and UI for later tranches.
+
+**Not started:** #319 runtime/API/UI implementation beyond the architecture contract, or #316/#317 production simulation work.
 
 
 ## Completed #300 implementation
