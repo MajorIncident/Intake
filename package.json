@@ -16,12 +16,13 @@
     "verify:lockfile": "node scripts/verify-lockfile.js",
     "check:templates": "npm run build:templates && git diff --exit-code -- src/templates.manifest.js api/protected-case-studies.manifest.js",
     "repo:doctor": "node scripts/repo-doctor.js",
-    "quality": "npm run verify:lockfile && npm run repo:doctor && npm run verify:tests && npm run verify:summary && npm run verify:persistence && npm run lint && npm run check:templates && npm run verify:protected-cases && npm run build:vercel-public && npm run check:storage-docs && npm test",
+    "quality": "npm run verify:lockfile && npm run repo:doctor && npm run verify:vercel-functions && npm run verify:tests && npm run verify:summary && npm run verify:persistence && npm run lint && npm run check:templates && npm run verify:protected-cases && npm run build:vercel-public && npm run check:storage-docs && npm test",
     "verify:protected-cases": "node scripts/verify-protected-case-boundary.mjs",
     "build:vercel-public": "node scripts/build-vercel-public.mjs",
     "serve:browser-tests": "node scripts/serve-browser-tests.mjs",
     "test:browser": "playwright test",
-    "test:browser:headed": "playwright test --headed"
+    "test:browser:headed": "playwright test --headed",
+    "verify:vercel-functions": "node scripts/verify-vercel-function-budget.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0"
