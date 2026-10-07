@@ -29,7 +29,7 @@ The secure Classroom foundation (#288), live-class management (#312), and staged
 | Publish recovery | #321 | Complete | PR #322 merged | Vercel function count consolidated to 5/12; exact-main production READY |
 | Rich staged assets | #316 | Deferred | Open | Secure protected image/table/document-page delivery; resume before #317 production simulation |
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
-| Universal Intake target identity | #318 | **Active — 318B static/KT projection** | PR #325 / `feature/universal-intake-target-identity` | `src/intakeTargets.js` universal registry + snapshot projection implemented; coaching facade preserves IDs; dynamic Possible Causes next after B is fully green |
+| Universal Intake target identity | #318 | **Active — 318C complete / 318D next** | PR #325 / `feature/universal-intake-target-identity` | Static/KT + dynamic Possible Cause targets and coaching are green; Template/staged compatibility guards next |
 | Class debrief comparison | #319 | Planned after #318 | Open | Template-independent cross-team checkpoint/live comparison using stable target IDs |
 | Join/mobile polish | #320 | Complete | PR #324 merged as `273ae643...` | Fragment-only share/QR + compact mobile Class/Case/Team/Notes/Instructor chrome published to `main` |
 
@@ -69,15 +69,15 @@ See `docs/classroom-architecture.md` for the full contract.
 
 **#318 is active** on `feature/universal-intake-target-identity`, based on merged `main` SHA `273ae6437c0898b9e35778587c7053580db14e22`.
 
-Current tranche: **318B — universal static registry and snapshot projection**.
+Current tranche: **318D — Template/staged compatibility guards**.
 
 Canonical contract: `docs/intake-target-identity.md`.
 
 Decisions frozen in 318A:
-- one domain-neutral target registry will replace coaching-specific semantic ownership while preserving existing target IDs;
+- one domain-neutral target registry replaces coaching-specific semantic ownership while preserving existing target IDs;
 - static targets compare across workspaces by stable semantic ID;
-- dynamic Possible Causes use the already-persisted `cause.id` lifecycle identity and a dynamic target family; independent teams' cause instances are never matched by ordinal position;
-- target evidence must project directly from serialized Intake snapshots without mounting the DOM;
+- dynamic Possible Causes use the already-persisted `cause.id` lifecycle identity and the `possible-cause` family; independent teams' cause instances are never matched by ordinal position;
+- target evidence projects directly from serialized Intake snapshots without mounting the DOM;
 - live DOM hooks remain optional presentation resolvers for coaching;
 - #319 consumes snapshot projections, never template IDs or DOM selectors;
 - staged `intakeTargetIds` is an optional consumer of the same namespace and cannot create a second target registry;
@@ -85,42 +85,48 @@ Decisions frozen in 318A:
 - target-bearing schema changes must fail loudly when registry coverage is missing;
 - #316/#317 remain deferred.
 
-
 ## Last completed action
 
-Implemented **#318B1 — universal static/KT registry + snapshot-native projection**.
+Completed **#318C — dynamic Possible Cause target family + Classroom coaching**.
 
-Implementation checkpoint: `ce5e8bccc12e367e780ad1e31cacb7e713b2a1d4`.
+Key checkpoints:
+- 318A validated: `5638a8211056954fe29eb1f5892a53517f62f0c7`;
+- 318B GREEN: `e716ee1f4933124caa052b1a21cfae097ca8d23e`;
+- recovered 318C1 dynamic identity/projection head: `27fc2d9474925460df3d9166ba46684acdba2b33`;
+- 318C runtime/test validation head: `052125de3c73c963e91ab1054124983ed87f7403`.
 
-Delivered:
-- `src/intakeTargets.js` is now the semantic source of truth for the existing static + KT target IDs;
-- all existing coaching IDs and v1 fingerprint semantics remain compatible;
-- static evidence projects from serialized `pre`, `impact`, `ops`, Decision Analysis, and Potential Problem/Risk state without mounting the DOM;
-- KT evidence projects by stable `questionId`, not serialized row order;
-- projections expose normalized evidence, comparison text, empty state, and deterministic fingerprint for future current/checkpoint comparison;
-- live DOM/KT resolution is optional presentation wiring on the same definitions;
-- `src/coachableFields.js` delegates to the universal module as a compatibility facade, so existing Classroom coaching and stored feedback IDs are unchanged;
-- focused tests prove registry uniqueness/compatibility, static/KT snapshot extraction, nested Decision/Risk mappings, KT row-order independence, and unknown-target behavior;
-- README, architecture overview, runtime guidance, and the canonical target contract are being reconciled to the new ownership.
+Delivered through 318C:
+- `src/intakeTargets.js` is the universal semantic source of truth for static, KT, and dynamic Possible Cause targets;
+- existing coaching IDs and v1 fingerprint semantics remain compatible;
+- Possible Cause target identity is `possible-cause.<cause.id>` using persisted lifecycle identity rather than card position;
+- malformed/unsupported or duplicate dynamic IDs fail closed;
+- cause evidence/fingerprints include persisted reasoning/testing findings and exclude presentation-only open/edit state;
+- list reorder and finding insertion order do not change target identity;
+- serialized current/checkpoint snapshots project dynamic targets without a DOM;
+- live coaching resolves the matching cause card by persisted `cause.id`;
+- Instructor and Student Classroom coaching use the existing feedback API/revision channel for dynamic targets;
+- Possible Cause card rerenders emit presentation-only `intake:possible-causes-rendered` so coaching panels reattach after DOM rebuild;
+- Student dynamic feedback remains read-only;
+- no API, coaching persistence, collaboration revision, or Intake storage schema changed.
 
-318A repaired/validated documentation checkpoint: `5638a8211056954fe29eb1f5892a53517f62f0c7` — all required gates green.
-
-318B runtime head `ce5e8bc...` passed repository quality before documentation reconciliation. Exact final documentation-head browser/security validation is still required.
-
+Validation on `052125de3c73c963e91ab1054124983ed87f7403`:
+- repository quality: **339 tests / 338 pass / 0 fail / 1 intentional skip**;
+- Browser E2E: **29 passed / 11 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, Template Manifest Guard: **green**.
 
 ## Next recommended action
 
-Finish **318B closeout and exact-head validation**.
+Begin **318D — Template/staged compatibility guards**.
 
-Required before 318C:
-1. synchronize issue #318 and PR #325 with the implemented universal static/KT registry;
-2. validate the final documentation head through repository quality, required Browser E2E, CodeQL, Dependency Review, and Template Manifest Guard;
-3. confirm existing Classroom coaching behavior remains unchanged because `coachableFields.js` is only a facade;
-4. if fully green, leave a 318B GREEN mini milestone and begin **318C — dynamic Possible Cause target family + coaching**.
+318D should:
+1. run every public Standard Template through the universal target projection layer without template-specific mapping;
+2. add an actionable fail-loud guard for new fields added to target-bearing serialized schema areas without either a stable target definition or explicit reviewed exclusion;
+3. validate staged `simulation.stages[].intakeTargetIds` against shared static target IDs and family IDs such as `possible-cause`;
+4. keep dynamic learner-created Possible Cause instance IDs unauthorable in staged definitions;
+5. avoid authoring or changing any production Case Study content;
+6. leave #319 UI, #316, and #317 out of scope until 318D is separately green.
 
-318C must reuse persisted `cause.id` as per-workspace instance lifecycle identity, exclude presentation-only cause state from evidence/fingerprints, and never align independent teams' causes by ordinal position.
-
-**Not started yet:** 318C dynamic targets/coaching, 318D Template/staged guards, #319 UI, or #316/#317 work.
+**Not started yet:** 318D runtime/build guards, #319 debrief UI, or #316/#317 production simulation work.
 
 
 ## Completed #300 implementation
