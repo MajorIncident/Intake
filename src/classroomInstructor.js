@@ -138,6 +138,9 @@ export function createInstructorClassroomController({
   let searchQuery = '';
   let kindFilter = 'all';
   let lastError = '';
+  const mobileRailQuery = windowRef?.matchMedia?.('(max-width: 700px)') || null;
+  let railExpanded = !mobileRailQuery?.matches;
+  let railPreferenceTouched = false;
   const readonlyRecords = new Map();
 
   const element = id => documentRef?.getElementById(id) || null;
@@ -145,7 +148,29 @@ export function createInstructorClassroomController({
   const setStatus = status => {
     if (documentRef?.body) documentRef.body.dataset.instructorClassStatus = status;
   };
-  const setConnectedLayout = connected => documentRef?.body?.classList?.toggle('instructor-class-connected', connected);
+  const setConnectedLayout = connected => {
+    documentRef?.body?.classList?.toggle('instructor-class-connected', connected);
+    documentRef?.body?.classList?.toggle('instructor-rail-collapsed', Boolean(connected && !railExpanded));
+  };
+  const renderRailExpansion = () => {
+    const dashboard = element('instructorClassDashboard');
+    const toggle = element('instructorClassPanelToggle');
+    dashboard?.classList?.toggle('is-collapsed', !railExpanded);
+    if (toggle) {
+      toggle.setAttribute('aria-expanded', String(railExpanded));
+      toggle.textContent = railExpanded ? 'Collapse class panel' : 'Open class panel';
+    }
+    documentRef?.body?.classList?.toggle(
+      'instructor-rail-collapsed',
+      Boolean(activeSession && !railExpanded)
+    );
+  };
+  const setRailExpanded = (expanded, { user = false } = {}) => {
+    railExpanded = Boolean(expanded);
+    if (user) railPreferenceTouched = true;
+    renderRailExpansion();
+    return railExpanded;
+  };
   const setError = message => {
     lastError = message || '';
     const error = element('instructorClassError');
@@ -229,6 +254,7 @@ export function createInstructorClassroomController({
     if (element('instructorClassEntryCard')) element('instructorClassEntryCard').hidden = true;
     if (element('instructorClassDashboard')) element('instructorClassDashboard').hidden = false;
     if (element('instructorClassTitle')) element('instructorClassTitle').textContent = activeSession.class.title;
+    renderRailExpansion();
     renderExpiry(activeSession.class.expiresAt);
     const joinCode = formatInstructorJoinCode(activeSession.joinCode || activeSession.class?.joinCode || '');
     if (element('instructorJoinCode')) element('instructorJoinCode').textContent = joinCode || 'Unavailable';
@@ -1034,6 +1060,11 @@ export function createInstructorClassroomController({
     );
   };
   const handleCopyJoinCode = () => { void copyJoinCode(); };
+  const handleRailToggle = () => { setRailExpanded(!railExpanded, { user: true }); };
+  const handleRailMediaChange = event => {
+    if (railPreferenceTouched) return;
+    setRailExpanded(!event.matches);
+  };
   const handleRetry = () => { void resume(); };
   const handleLeave = () => leaveClass();
   const handleSearch = event => {
@@ -1064,6 +1095,8 @@ export function createInstructorClassroomController({
     element('instructorClassForm')?.addEventListener('submit', handleSubmit);
     element('instructorWorkspaceCreateForm')?.addEventListener('submit', handleWorkspaceCreate);
     element('instructorCopyJoinCodeBtn')?.addEventListener('click', handleCopyJoinCode);
+    element('instructorClassPanelToggle')?.addEventListener('click', handleRailToggle);
+    mobileRailQuery?.addEventListener?.('change', handleRailMediaChange);
     element('instructorClassRetryBtn')?.addEventListener('click', handleRetry);
     element('instructorClassLeaveBtn')?.addEventListener('click', handleLeave);
     element('instructorWorkspaceSearch')?.addEventListener('input', handleSearch);
@@ -1085,6 +1118,8 @@ export function createInstructorClassroomController({
     element('instructorClassForm')?.removeEventListener('submit', handleSubmit);
     element('instructorWorkspaceCreateForm')?.removeEventListener('submit', handleWorkspaceCreate);
     element('instructorCopyJoinCodeBtn')?.removeEventListener('click', handleCopyJoinCode);
+    element('instructorClassPanelToggle')?.removeEventListener('click', handleRailToggle);
+    mobileRailQuery?.removeEventListener?.('change', handleRailMediaChange);
     element('instructorClassRetryBtn')?.removeEventListener('click', handleRetry);
     element('instructorClassLeaveBtn')?.removeEventListener('click', handleLeave);
     element('instructorWorkspaceSearch')?.removeEventListener('input', handleSearch);
@@ -1105,9 +1140,10 @@ export function createInstructorClassroomController({
     refreshRoster,
     selectWorkspace,
     leaveClass,
+    setRailExpanded: expanded => setRailExpanded(expanded, { user: true }),
     getState: () => ({
       activeSession, workspaces, participants, selectedWorkspaceId, observerEpoch,
-      latestObservation, busy, searchQuery, kindFilter, lastError
+      latestObservation, busy, searchQuery, kindFilter, lastError, railExpanded
     })
   };
 }
