@@ -1099,6 +1099,23 @@ export function createInstructorClassroomController({
     const joinCode = formatInstructorJoinCode(activeSession?.joinCode || '');
     const joinUrl = buildClassroomJoinUrl(joinCode, windowRef?.location);
     if (!joinUrl) return false;
+
+    if (typeof windowRef?.navigator?.share === 'function') {
+      try {
+        await windowRef.navigator.share({
+          title: activeSession?.class?.title
+            ? `Join ${activeSession.class.title}`
+            : 'Join KT Intake class',
+          text: `Join this KT Intake class with code ${joinCode}.`,
+          url: joinUrl
+        });
+        toast('Class join link shared.');
+        return true;
+      } catch (error) {
+        if (error?.name === 'AbortError') return false;
+      }
+    }
+
     const copied = await copyText(joinUrl, 'Class join link copied.');
     if (!copied) toast(`Class join link: ${joinUrl}`);
     return copied;
