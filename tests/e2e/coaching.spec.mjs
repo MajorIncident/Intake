@@ -57,6 +57,9 @@ test('Instructor feedback reaches only the assigned Student and becomes stale af
 
   await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Alex Student');
   if (suffix === 'm') {
+    await expect(page.locator('#instructorClassDashboard')).toHaveClass(/is-collapsed/);
+    await page.getByRole('button', { name: 'Open class panel' }).click();
+    await expect(page.locator('#instructorClassDashboard')).not.toHaveClass(/is-collapsed/);
     await page.locator('[data-workspace-id="22222222-2222-4222-8222-222222222222"]').click();
     await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Beta');
   }
