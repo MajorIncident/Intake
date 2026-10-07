@@ -1,0 +1,266 @@
+# Universal Intake Target Identity
+
+## Status
+
+Tracking issue: #318  
+Active branch: `feature/universal-intake-target-identity`  
+Base: `main` at `273ae6437c0898b9e35778587c7053580db14e22` (PR #324 merge)
+
+This document is the canonical contract for #318. It defines the semantic identity layer that coaching, future staged guidance, and #319 cross-team debrief comparison must share.
+
+## Goal
+
+Create one domain-neutral target system for Intake evidence.
+
+A target identity answers **what part of the learner's reasoning this is**, independent of:
+- template name or template ID;
+- DOM ID, selector, position, or card order;
+- Classroom workspace ID;
+- staged-simulation presence;
+- coaching feedback state.
+
+Templates remain serialized Intake data. A new Template using existing Intake fields must require no #319-specific wiring.
+
+## Core model
+
+### 1. Static targets
+
+Static targets have one durable domain ID across every Intake, for example:
+
+- `problem.one-line`
+- `impact.current`
+- `kt.where-location`
+
+A static target definition owns:
+
+- stable `id`;
+- human `label`;
+- semantic `section`;
+- `kind`;
+- serialized evidence extractor;
+- comparison-safe canonical projection;
+- optional DOM rendering hook.
+
+DOM hooks are presentation only. They are never the persistence/debrief identity.
+
+### 2. Dynamic target families
+
+Some reasoning objects are created by the learner and therefore cannot have a globally shared instance ID.
+
+Possible Causes are the first dynamic family.
+
+Each persisted Possible Cause already has a durable `cause.id` that survives normal save/load and does not depend on list position. #318 will reuse that lifecycle identity rather than inventing another persisted identifier.
+
+The semantic model is:
+
+- family: `possible-cause`;
+- instance identity: persisted `cause.id`;
+- coaching target identity: a stable grammar-safe instance target derived from that cause ID;
+- comparison family identity: `possible-cause`.
+
+Important: two teams' independently created cause instance IDs do **not** imply that the causes correspond to one another. #319 may compare/display the family as per-team collections, but must not align dynamic instances across teams merely because of list position.
+
+A staged authoring contract may reference the family-level semantic target for guidance. It cannot know a learner-created instance ID in advance.
+
+### 3. Snapshot projection
+
+The universal registry must be able to project evidence directly from a serialized Intake snapshot without mounting the DOM.
+
+This is required for #319 because debrief comparison consumes current or immutable checkpoint snapshots.
+
+A projection should provide enough stable metadata for consumers to render or compare safely, including:
+
+- `id`;
+- `familyId` when dynamic;
+- label/section/kind;
+- normalized evidence;
+- a deterministic fingerprint;
+- an `empty` signal;
+- comparison-safe text/structure.
+
+The projection layer must never mutate the source snapshot.
+
+### 4. Live DOM resolution
+
+Coaching still needs a mounted control/card so Instructor and Student feedback can render in context.
+
+The same target definition may therefore expose a DOM resolver, but:
+- target identity comes from the semantic registry;
+- DOM resolution is optional;
+- snapshot projection must work with no DOM;
+- moving markup cannot rename a target.
+
+## Existing target compatibility
+
+The existing coaching target IDs are part of the compatibility contract.
+
+#318 should preserve the current IDs wherever possible:
+- 22 static coaching fields;
+- KT row IDs derived from stable `ROWS[].id`.
+
+`src/coachableFields.js` should become a compatibility facade over the universal target module rather than remaining a second semantic registry.
+
+Existing feedback rows must continue to resolve after migration.
+
+## Possible Cause evidence
+
+A Possible Cause instance is a card-level coaching/debrief target in v1.
+
+Its comparison/fingerprint evidence should be derived from persisted reasoning, not card position or presentation state. Include the meaningful cause fields and testing findings; exclude purely presentational flags such as whether the card is currently open/editing.
+
+At minimum the canonical evidence must account for:
+- suspect;
+- accusation;
+- impact;
+- summary/hypothesis text when present;
+- confidence;
+- free-form evidence;
+- row-keyed testing findings.
+
+`editing` and `testingOpen` are presentation state and must not make feedback stale.
+
+## Template compatibility and coverage
+
+The target layer must distinguish between:
+
+1. **target-bearing reasoning fields** — must be registered;
+2. **workflow/infrastructure state** — explicitly outside coaching/debrief target identity unless later promoted.
+
+Initial target-bearing domains:
+- `pre` reasoning fields represented by the current registry;
+- `impact` reasoning fields;
+- containment action;
+- Decision Analysis fields already coachable;
+- Potential Problem/Risk fields already coachable;
+- KT question rows;
+- Possible Cause instances.
+
+Examples of initially excluded workflow/infrastructure state:
+- persistence metadata;
+- theme;
+- bridge role names/timestamps;
+- detection/evidence checkboxes;
+- communications cadence/log;
+- Notes workspace chrome/items;
+- checklist/actions workflow state;
+- Classroom/session/coaching state.
+
+Coverage must be executable, not prose-only.
+
+Tests/build guards must:
+- prove registry IDs are unique and stable;
+- prove every static target has both snapshot projection and any required live resolver metadata;
+- load every public Standard Template and project it through the target layer;
+- reject duplicate/renamed target definitions;
+- fail loudly when a new field is added to a target-bearing schema area without a target definition or explicit reviewed exclusion;
+- validate staged `intakeTargetIds` against static/family semantic IDs once the shared validator lands.
+
+A new Template using existing fields must pass automatically.
+
+## Coaching contract
+
+Coaching remains a separate Classroom API/persistence channel.
+
+#318 changes target semantics, not that separation:
+- coaching feedback never enters `kt-intake-full-v2`;
+- feedback revision remains independent from collaboration revision;
+- reviewed workspace revision remains evidence context only;
+- field/target fingerprint remains change-detection evidence;
+- Student feedback is read-only;
+- Instructor feedback remains class/workspace authorized.
+
+Dynamic Possible Cause coaching must use the same feedback API and revision semantics as static targets.
+
+## Staged guidance contract
+
+`simulation.stages[].intakeTargetIds` is an optional consumer of the registry.
+
+It must not create a second target namespace.
+
+A staged case may select semantic target IDs to point learners toward relevant work, but:
+- no target implies an answer;
+- simulation is not required for coaching or #319;
+- runtime target metadata remains outside Intake persistence/export/summary;
+- dynamic learner-created instance IDs cannot be authored in advance.
+
+#318 should establish shared validation/projection. Rich production staged case work remains deferred under #316/#317.
+
+## #319 contract
+
+#319 must consume this registry rather than templates or DOM.
+
+For static targets:
+- compare the same stable target ID across workspace snapshots.
+
+For dynamic families:
+- present/compare each workspace's collection;
+- preserve instance IDs within a workspace;
+- do not equate independent instances by ordinal position.
+
+#319 remains read-only and must not copy, grade, or rewrite Intake state.
+
+## Planned tranches
+
+### 318A — architecture and coverage inventory
+
+- freeze this target/family/snapshot contract;
+- inventory current coaching IDs, serialized paths, Possible Cause lifecycle identity, Standard Template coverage, and staged target references;
+- record compatibility/failure rules;
+- no runtime behavior change.
+
+### 318B — universal static registry and snapshot projection
+
+- add domain-neutral target module;
+- preserve existing coaching target IDs;
+- add serialized extractors and comparison-safe projections for static + KT targets;
+- make `coachableFields.js` a compatibility facade;
+- add registry integrity and snapshot-projection tests.
+
+### 318C — dynamic Possible Cause target family
+
+- derive stable coaching target instance identity from persisted cause lifecycle identity;
+- project card-level evidence/fingerprint without presentation flags;
+- resolve the live cause card by persisted cause ID;
+- extend Instructor/Student coaching to dynamic cause targets;
+- prove save/load/reorder stability and feedback revision independence.
+
+### 318D — Template/staged compatibility guards
+
+- iterate every Standard Template through target projection;
+- add actionable fail-loud coverage for new target-bearing fields;
+- validate staged `intakeTargetIds` against the shared registry/family IDs;
+- do not author production simulation content.
+
+### 318E — integrated acceptance and closeout
+
+- Classroom coaching regression for static + dynamic targets;
+- checkpoint/current snapshot projection acceptance for #319 readiness;
+- accessibility/browser coverage where dynamic coaching UI changes require it;
+- documentation/security/final gates.
+
+## Non-goals
+
+#318 does not:
+- build the #319 debrief comparison UI;
+- author a production staged Case Study;
+- implement #316 protected rich assets;
+- move coaching into Intake state;
+- create template-specific target mappings;
+- create a second Possible Cause persisted ID;
+- infer correspondence between different teams' learner-created Possible Causes.
+
+## Cold restart
+
+Read:
+- this document;
+- issue #318;
+- `docs/classroom-workstream.md`;
+- `docs/classroom-roadmap.md`;
+- root and `src/AGENTS.md`;
+- `src/coachableFields.js`;
+- `src/classroomCoaching.js`;
+- `src/kt.js`;
+- `src/appState.js`;
+- `src/storage.js`.
+
+Continue the existing #318 branch/PR. Leave a mini milestone after every meaningful sub-slice and before long validation waits.
