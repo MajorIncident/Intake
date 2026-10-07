@@ -932,6 +932,58 @@ async function handleClassroomApi(request, response, url) {
     return true;
   }
 
+  if (url.pathname === '/api/classes/exercise/checkpoint') {
+    if (request.method !== 'GET') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const instructorToken = bearerToken(request);
+    if (!activeInstructorCapability(instructorToken)) {
+      sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
+      return true;
+    }
+    const exercise = classroomExercises.get(instructorToken) || null;
+    if (!exercise) {
+      sendJson(response, 404, { error: 'Exercise checkpoint not found.' });
+      return true;
+    }
+    if (exercise.stagePhase !== 'debrief' || !exercise.currentStageId) {
+      sendJson(response, 409, { error: 'Checkpoint inspection is available during debrief.' });
+      return true;
+    }
+    const workspaceId = url.searchParams.get('workspaceId') || '';
+    const checkpoint = (classroomExerciseCheckpoints.get(instructorToken) || []).find(item => (
+      item.workspaceId === workspaceId && item.stageId === exercise.currentStageId
+    ));
+    if (!checkpoint) {
+      sendJson(response, 404, { error: 'Exercise checkpoint not found.' });
+      return true;
+    }
+    const managedFixture = managedInstructorFixture(instructorToken);
+    const classContext = managedFixture?.classContext || instructorClass();
+    sendJson(response, 200, {
+      class: classContext,
+      exercise: {
+        id: exercise.id,
+        currentStageId: exercise.currentStageId,
+        stagePhase: exercise.stagePhase,
+        exerciseRevision: exercise.exerciseRevision
+      },
+      workspace: {
+        id: checkpoint.workspaceId,
+        kind: checkpoint.workspaceKind,
+        label: checkpoint.workspaceLabel
+      },
+      checkpoint: {
+        stageId: checkpoint.stageId,
+        workspaceRevision: checkpoint.workspaceRevision,
+        capturedAt: checkpoint.capturedAt,
+        snapshot: structuredClone(checkpoint.snapshot)
+      }
+    });
+    return true;
+  }
+
   if (url.pathname === '/api/classes/exercise') {
     const instructorToken = bearerToken(request);
     if (!activeInstructorCapability(instructorToken)) {
@@ -951,9 +1003,16 @@ async function handleClassroomApi(request, response, url) {
     const exerciseProgress = exercise => structuredClone(
       browserExerciseWorkspaceState(instructorToken, exercise)
     );
-    const exerciseCheckpoints = () => structuredClone(
+    const exerciseCheckpoints = () => (
       classroomExerciseCheckpoints.get(instructorToken) || []
-    );
+    ).map(item => ({
+      workspaceId: item.workspaceId,
+      workspaceKind: item.workspaceKind,
+      workspaceLabel: item.workspaceLabel,
+      stageId: item.stageId,
+      workspaceRevision: item.workspaceRevision,
+      capturedAt: item.capturedAt
+    }));
 
     if (request.method === 'GET') {
       const exercise = classroomExercises.get(instructorToken) || null;
