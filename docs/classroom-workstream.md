@@ -31,7 +31,7 @@ Current product priority is **#320 — join sharing and compact mobile workspace
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
 | Universal Intake target identity | #318 | Planned | Open | Shared target contract for coaching, future staged guidance, and #319; template-independent |
 | Class debrief comparison | #319 | Planned after #318 | Open | Template-independent cross-team checkpoint/live comparison using stable target IDs |
-| Join/mobile polish | #320 | **Active** | `feature/classroom-join-mobile-polish` | 320A join-link contract first; then QR/share and compact mobile chrome |
+| Join/mobile polish | #320 | **Active — 320A complete** | PR #324 / `feature/classroom-join-mobile-polish` | 320A safe join link green; 320B QR/native share next; 320C compact mobile chrome after |
 
 ## Current architecture decisions
 
@@ -62,7 +62,8 @@ See `docs/classroom-architecture.md` for the full contract.
 4. If an implementation PR is already open, continue that PR rather than creating competing work.
 5. Refresh the branch from its documented base before editing.
 6. Run/inspect `npm run quality`.
-7. Before handoff, update this table, record validation, and write the exact next action below.
+7. After every meaningful completed sub-slice or validation repair, add a **mini milestone** to the active PR with branch/head SHA, proven behavior, pending/failed checks, scope not yet started, and the exact next action. Do this before long validation waits and before moving to another tranche.
+8. Before handoff, update this table, record validation, and write the exact next action below.
 
 ## Active work
 
@@ -76,26 +77,46 @@ Product/architecture decision:
 
 ## Last completed action
 
-Closed the #312/#313 production-publish cycle and restored Vercel production under the function budget. Final documentation handoff PR #323 merged as `ea24a0dca2f960e8c49691740e42d1ec4b1f94e4` and reached production READY.
+Completed and validated **#320A — Join-link contract + safe prefill** on implementation head `bf7c018ff2c6c3d51b66865511880eb1255bd346`.
 
-For the next product direction:
-- issue #318 was rewritten around a universal target registry rather than simulation-only guidance;
-- issue #319 now explicitly forbids template-specific/DOM-specific comparison architecture and requires future-template compatibility tests;
-- issue #320 now defines four bounded tranches.
+320A behavior:
+- new `src/classroomJoinLink.js` owns one client-only share contract: `#join=<human-code>`;
+- share-link construction deliberately strips the current query string, so an existing Standalone `?workspace=` collaboration capability or other query state is never forwarded;
+- no Instructor, Student-session, assignment, workspace, collaboration, or other bearer capability is permitted in the join intent;
+- a valid join fragment selects Student experience before first-run role choice, while an existing Standalone `?workspace=` link retains precedence;
+- Student consumes the join fragment only when there is no saved Student class session, prefills the normal class-code field, removes the fragment with `history.replaceState`, and still uses ordinary `/api/classes/admit` admission;
+- an existing saved Student class session is never silently replaced by a new join fragment;
+- Instructor **Share class** copies the safe join URL while existing **Copy code** remains unchanged;
+- scoped AGENTS/commenting docs record the fragment-only authority boundary.
+
+Validation on `bf7c018...`:
+- repository quality gate: **success**;
+- required Chromium browser regression suite: **success**;
+- CodeQL: **success**;
+- Dependency Review: **success**;
+- Template Manifest Guard: **success**.
+
+Browser-test repair note:
+- the first standalone join-sharing Playwright spec failed because the ordinary Instructor fixture intentionally does not accept dynamic Student admission;
+- production join-link behavior was not weakened;
+- the proof now runs inside the existing serial **Integrated Browser Classroom** suite, which is the deterministic multi-browser admission fixture.
+
+Durable PR mini milestones are recorded in PR #324. Issue #320 also now requires a mini milestone after every meaningful sub-slice or validation repair so a cold AI can resume after timeout/conversation loss.
 
 ## Next recommended action
 
-Implement **#320A — Join-link contract + safe prefill**.
+Implement **#320B — QR/share affordance**, without touching the #320A authority contract.
 
-Required first slice:
-1. define one documented client-only join-link fragment format carrying only the human class code — never Instructor, Student-session, assignment, or workspace bearer capabilities;
-2. add an Instructor **Share class** action that can produce/copy that link while preserving existing **Copy code**;
-3. make Student entry safely prefill/consume the human code through the normal admission UI rather than bypassing admission;
-4. clear/normalize the fragment after consumption where practical so ordinary navigation/referrer/logging never receives the code;
-5. add focused unit/feature/browser tests for valid/invalid fragment parsing, no bearer leakage, normal manual join compatibility, and Student join prefill;
-6. update #320/PR/cold-start checkpoint before moving to QR or mobile chrome.
+Required next slice:
+1. keep `src/classroomJoinLink.js` as the single source for the safe share URL;
+2. add an accessible Instructor share affordance that uses native Web Share when available and retains copy-link fallback;
+3. add local/in-app QR rendering for that exact safe URL — **no third-party QR service, tracking endpoint, or remote image dependency**;
+4. ensure QR/share UI exposes the human class code in visible text and has keyboard/screen-reader labels; QR is convenience, never authority;
+5. keep bearer credentials out of DOM attributes, URLs, QR payloads, logs, Intake persistence, summaries, and exports;
+6. add focused unit/feature/browser accessibility coverage;
+7. leave a PR mini milestone and update this cold-start ledger before starting 320C mobile chrome.
 
-Do not bundle QR generation or mobile Notes/Class/Case redesign into 320A unless the join-link contract needs a tiny reusable seam for the next tranche.
+**Not started yet:** 320B QR/native-share implementation; 320C Notes/Class/Case mobile chrome; 320D final acceptance/production verification.
 
 ## Completed #300 implementation
 
