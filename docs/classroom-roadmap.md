@@ -253,9 +253,9 @@ Depends on #316. Use only authoritative participant/instructor source material. 
 
 ### P1 — facilitation completeness
 
-**#318 — Universal Intake target identity + staged guidance/coaching — ACTIVE**
+**#318 — Universal Intake target identity + staged guidance/coaching — IMPLEMENTATION COMPLETE / PR #325 REVIEW READINESS**
 
-Active branch: `feature/universal-intake-target-identity`, based on merged-main `273ae6437c0898b9e35778587c7053580db14e22`. Canonical contract: `docs/intake-target-identity.md`. **318A/B/C/D are complete; 318E integrated acceptance/final audit is the active tranche.**
+Active branch: `feature/universal-intake-target-identity`, based on merged-main `273ae6437c0898b9e35778587c7053580db14e22`. Canonical contract: `docs/intake-target-identity.md`. **318A–E are complete; final documentation-head validation/review readiness remains before merge.**
 
 Evolve the existing coaching target registry into one domain-neutral, stable Intake-target contract used by coaching, future staged guidance, and #319 cross-team debrief comparison. Templates remain serialized Intake data: adding a new Template that uses existing fields must require no #319-specific wiring. Static targets compare by semantic ID; dynamic Possible Causes use their already-persisted lifecycle ID as per-workspace instances within a `possible-cause` family rather than matching teams by list position. Snapshot projection must work without mounting the DOM. Staged `simulation.stages[].intakeTargetIds` becomes an optional consumer of this registry; simulation is **not** required for the registry or #319.
 
@@ -276,7 +276,7 @@ COMPLETED UX TRACK
 #320  join sharing + compact mobile workspace chrome   [merged]
 
 ACTIVE DEBRIEF / TEMPLATE-COMPATIBILITY TRACK
-#318  universal stable Intake target identity          <-- 318E active (A/B/C/D green)
+#318  universal stable Intake target identity          <-- implementation complete / PR #325 final gates
    |
   #319  template-independent class debrief comparison
 
@@ -286,7 +286,7 @@ PRODUCTION SIMULATION TRACK — intentionally deferred for now
   #317  first production staged KT Case Study
 ```
 
-Current product decision: **#318 is the active implementation target.** Before #319 UI is implemented, #318 establishes the universal target contract so future Templates remain compatible automatically when they use existing fields, and future new target-bearing fields fail loudly unless they register stable identity. #316/#317 remain valid future work but are intentionally deferred.
+Current product decision: **finish PR #325 review/merge readiness, then start #319 from updated `main`.** #318 now establishes the universal target contract so future Templates remain compatible automatically when they use existing fields, and future new target-bearing fields fail loudly unless they register stable identity. #316/#317 remain valid future work but are intentionally deferred.
 
 ## Stacked PR rules
 
