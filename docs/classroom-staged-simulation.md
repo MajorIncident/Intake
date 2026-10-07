@@ -179,7 +179,8 @@ Implemented:
 - protected image/document references use stable `assetId` values rather than arbitrary URLs;
 - image/document blocks require accessible alternate text; table blocks require a rectangular string matrix;
 - Instructor content kinds are `facilitation`, `debrief`, and `exemplar`;
-- stage `defaultDebriefEditPolicy` is explicitly `open | frozen`.
+- stage `defaultDebriefEditPolicy` is explicitly `open | frozen`;
+- stage `intakeTargetIds` is validated against the universal Intake target namespace: registered static/KT target IDs and registered family IDs are authorable, while learner/workspace-created dynamic instance IDs are not.
 
 Durable implementation commits:
 - `46109491808bedfbf5e778d0979859b3cd96b56c` — version-1 staged simulation validator/normalizer;
@@ -997,7 +998,7 @@ Tranche 10 is functionally complete. Remaining gate is repository validation of 
 Known remaining product gaps are now tracked separately:
 - **#316** — protected staged case assets + rich Student rendering. Immediate blocker: the schema supports `image`, `table`, and `document-page`, while the current Student projection/rendering path keeps only `id/kind/title/body`.
 - **#317** — source-faithful first production staged KT Case Study, after #316.
-- **#318** — runtime use of `intakeTargetIds` plus stable identity/coaching for dynamic Possible Cause cards.
+- **#318** — universal target identity/coaching plus authoring validation for `intakeTargetIds`; runtime debrief comparison consumption is prepared for #319.
 - **#319** — Instructor cross-team debrief comparison/progress view built on immutable checkpoints/live observation.
 - **#320** — share/QR join convenience and compact mobile Notes/Class/Case chrome.
 
