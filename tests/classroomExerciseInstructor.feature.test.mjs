@@ -7,6 +7,7 @@ import { afterEach, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
 import {
+  INSTRUCTOR_EXERCISE_CHECKPOINT_ENDPOINT,
   INSTRUCTOR_EXERCISE_ENDPOINT,
   createInstructorExerciseConsoleController
 } from '../src/classroomExerciseInstructor.js';
@@ -1066,5 +1067,106 @@ test('Instructor exercise console keeps a connected shell on transient read fail
   assert.equal(dom.window.document.getElementById('instructorExerciseConsole').hidden, false);
   assert.equal(await controller.refresh(), true);
   assert.equal(dom.window.document.getElementById('instructorExerciseStatus').textContent, '0 staged Case Studies available');
+  controller.destroy();
+});
+
+
+test('Instructor checkpoint inspection fetches one snapshot explicitly without exposing it in console state', async () => {
+  dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  const requests = [];
+  let inspected = null;
+  const exerciseBody = {
+    class: { id: 'class-1', title: 'PSDM Class' },
+    exercise: {
+      id: 'exercise-1',
+      caseStudyId: 'staged-a',
+      status: 'active',
+      stagePhase: 'debrief',
+      studentEditingEnabled: false,
+      exerciseRevision: 5,
+      currentStageId: 'stage-1'
+    },
+    caseStudy: {
+      id: 'staged-a',
+      name: 'Staged Case A',
+      description: 'Instructor simulation.',
+      supportedModes: ['full'],
+      simulation: {
+        studentContent: [],
+        instructorContent: [],
+        stages: [{
+          id: 'stage-1',
+          title: 'Clarify',
+          studentObjective: 'Clarify.',
+          suggestedMinutes: 5,
+          optionalReleaseIds: [],
+          instructorContentIds: [],
+          defaultDebriefEditPolicy: 'frozen'
+        }]
+      }
+    },
+    releases: [],
+    workspaceState: [],
+    checkpoints: [{
+      workspaceId: 'workspace-a',
+      workspaceKind: 'group',
+      workspaceLabel: 'Team Alpha',
+      stageId: 'stage-1',
+      workspaceRevision: 7,
+      snapshot: { pre: { oneLine: 'SHOULD NOT ENTER PUBLIC CONSOLE STATE' } },
+      capturedAt: 'captured'
+    }],
+    editFreezeEnforced: true,
+    availableCaseStudies: discoveryBody().availableCaseStudies
+  };
+
+  const controller = createInstructorExerciseConsoleController({
+    documentRef: dom.window.document,
+    onInspectCheckpoint: context => { inspected = context; },
+    fetchImpl: async (url, options) => {
+      requests.push([url, options]);
+      if (url === INSTRUCTOR_EXERCISE_ENDPOINT) return response(200, exerciseBody);
+      if (url === `${INSTRUCTOR_EXERCISE_CHECKPOINT_ENDPOINT}?workspaceId=workspace-a`) {
+        return response(200, {
+          class: exerciseBody.class,
+          exercise: {
+            id: 'exercise-1',
+            currentStageId: 'stage-1',
+            stagePhase: 'debrief',
+            exerciseRevision: 5
+          },
+          workspace: { id: 'workspace-a', kind: 'group', label: 'Team Alpha' },
+          checkpoint: {
+            stageId: 'stage-1',
+            workspaceRevision: 7,
+            capturedAt: 'captured',
+            snapshot: { pre: { oneLine: 'Immutable checkpoint snapshot' } }
+          }
+        });
+      }
+      return response(404, {});
+    }
+  });
+
+  assert.equal(await controller.connectInstructor(TOKEN), true);
+  assert.equal(controller.getState().checkpoints.length, 1);
+  assert.equal(Object.hasOwn(controller.getState().checkpoints[0], 'snapshot'), false);
+  assert.equal(
+    JSON.stringify(controller.getState()).includes('SHOULD NOT ENTER PUBLIC CONSOLE STATE'),
+    false
+  );
+
+  const inspectButton = dom.window.document.querySelector(
+    '[aria-label="Inspect Team Alpha checkpoint, revision 7"]'
+  );
+  assert.ok(inspectButton);
+  assert.equal(await controller.inspectCheckpoint('workspace-a'), true);
+  assert.equal(requests.at(-1)[0], `${INSTRUCTOR_EXERCISE_CHECKPOINT_ENDPOINT}?workspaceId=workspace-a`);
+  assert.equal(requests.at(-1)[1].headers.Authorization, `Bearer ${TOKEN}`);
+  assert.equal(inspected.workspace.id, 'workspace-a');
+  assert.equal(inspected.checkpoint.workspaceRevision, 7);
+  assert.equal(inspected.checkpoint.snapshot.pre.oneLine, 'Immutable checkpoint snapshot');
+  assert.equal(JSON.stringify(controller.getState()).includes('Immutable checkpoint snapshot'), false);
+
   controller.destroy();
 });
