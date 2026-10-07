@@ -5,6 +5,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+test.describe.configure({ mode: 'serial' });
+
 function watchPageErrors(page) {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
