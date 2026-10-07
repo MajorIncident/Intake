@@ -354,6 +354,28 @@ function getWorkspace(workspaceToken) {
   return classroomWorkspaces.get(workspaceToken) || null;
 }
 
+function studentLiveSessionForWorkspaceToken(workspaceToken) {
+  for (const session of studentLiveSessions.values()) {
+    if (session?.activeWorkspaceToken === workspaceToken) return session;
+  }
+  return null;
+}
+
+function frozenStudentExerciseForWorkspaceToken(workspaceToken) {
+  const session = studentLiveSessionForWorkspaceToken(workspaceToken);
+  if (!session) return null;
+  const exercise = browserStudentExercisePayload(session).exercise;
+  if (
+    exercise
+    && exercise.status !== 'completed'
+    && exercise.stagePhase === 'debrief'
+    && exercise.studentEditingEnabled === false
+  ) {
+    return exercise;
+  }
+  return null;
+}
+
 function ensureWorkspace(workspaceToken) {
   let workspace = getWorkspace(workspaceToken);
   if (!workspace) {
@@ -1570,6 +1592,23 @@ async function handleClassroomApi(request, response, url) {
     }
 
     if (request.method === 'PUT') {
+      const frozenExercise = frozenStudentExerciseForWorkspaceToken(workspaceToken);
+      if (frozenExercise) {
+        sendJson(response, 423, {
+          error: 'Student editing is frozen during debrief.',
+          code: 'classroom-editing-locked',
+          exercise: {
+            id: frozenExercise.id,
+            status: frozenExercise.status,
+            stagePhase: frozenExercise.stagePhase,
+            exerciseRevision: frozenExercise.exerciseRevision,
+            studentEditingEnabled: false,
+            currentStageId: frozenExercise.currentStage?.id || null
+          }
+        });
+        return true;
+      }
+
       let body;
       try {
         body = await readJson(request);
@@ -1674,6 +1713,18 @@ async function handleClassroomApi(request, response, url) {
     if (request.method === 'POST') {
       const body = await readJson(request).catch(() => null);
       const caseStudyId = typeof body?.caseStudyId === 'string' ? body.caseStudyId.trim() : '';
+
+      if (!isInstructorRequest) {
+        const session = studentLiveSessionForWorkspaceToken(token);
+        const stagedExercise = session ? browserStudentExercisePayload(session).exercise : null;
+        if (stagedExercise?.caseStudyId === caseStudyId && caseStudyId === BROWSER_STAGED_CASE.id) {
+          sendJson(response, 409, {
+            error: 'This Case Study is being delivered through the staged exercise.'
+          });
+          return true;
+        }
+      }
+
       const record = PROTECTED_CASE_STUDY_MANIFEST.find(item => item.id === caseStudyId);
       if (!record) {
         sendJson(response, 404, { error: 'Case Study not found.' });
