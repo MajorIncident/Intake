@@ -67,7 +67,7 @@ function sanitizeReadiness(value) {
   if (!value || typeof value !== 'object') return null;
   const stageId = typeof value.stageId === 'string' ? value.stageId.trim() : '';
   if (!stageId || typeof value.readyForDebrief !== 'boolean') return null;
-  const revision = Number(value.readyWorkspaceRevision);
+  const revision = value.readyWorkspaceRevision;
   return {
     stageId,
     readyForDebrief: value.readyForDebrief,
