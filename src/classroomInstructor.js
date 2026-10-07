@@ -133,6 +133,7 @@ export function createInstructorClassroomController({
   let observerEpoch = 0;
   let localRecovery = null;
   let latestObservation = null;
+  let checkpointView = null;
   let destroyed = false;
   let busy = false;
   let searchQuery = '';
@@ -405,9 +406,11 @@ export function createInstructorClassroomController({
     if (element('instructorObservedWorkspace')) element('instructorObservedWorkspace').textContent = body.workspace?.label || 'Selected workspace';
     if (element('instructorObservedRevision')) element('instructorObservedRevision').textContent = `Revision ${body.workspace?.revision || '—'}`;
     if (element('instructorObserverStatus')) element('instructorObserverStatus').textContent = 'Live read-only view';
+    if (element('instructorObservationLiveBtn')) element('instructorObservationLiveBtn').hidden = true;
 
     const list = element('instructorObservationParticipants');
     if (list) {
+      list.setAttribute('aria-label', 'Recent student activity');
       list.replaceChildren();
       const participants = Array.isArray(body.participants) ? body.participants : [];
       participants.forEach(participant => {
@@ -425,6 +428,31 @@ export function createInstructorClassroomController({
         item.textContent = 'No recent participant activity';
         list.append(item);
       }
+    }
+  };
+
+  const renderCheckpointObservation = checkpoint => {
+    if (element('instructorObservationNotice')) element('instructorObservationNotice').hidden = false;
+    if (element('instructorObservedWorkspace')) {
+      element('instructorObservedWorkspace').textContent = checkpoint.workspaceLabel || 'Selected workspace';
+    }
+    if (element('instructorObservedRevision')) {
+      element('instructorObservedRevision').textContent =
+        `Checkpoint at debrief start · Revision ${checkpoint.workspaceRevision}`;
+    }
+    if (element('instructorObserverStatus')) {
+      element('instructorObserverStatus').textContent = 'Immutable checkpoint · live updates paused';
+    }
+    if (element('instructorObservationLiveBtn')) element('instructorObservationLiveBtn').hidden = false;
+
+    const list = element('instructorObservationParticipants');
+    if (list) {
+      list.setAttribute('aria-label', 'Checkpoint inspection status');
+      list.replaceChildren();
+      const item = documentRef.createElement('li');
+      item.className = 'instructor-observation-person instructor-observation-person--muted';
+      item.textContent = 'Captured before debrief discussion';
+      list.append(item);
     }
   };
 
@@ -522,6 +550,8 @@ export function createInstructorClassroomController({
       try { apply?.(snapshot); } catch {}
     }
     latestObservation = null;
+    checkpointView = null;
+    if (element('instructorObservationLiveBtn')) element('instructorObservationLiveBtn').hidden = true;
     if (element('instructorObservationNotice')) element('instructorObservationNotice').hidden = true;
     const wrap = intakeWrap();
     if (wrap && getActiveExperienceRole() === EXPERIENCE_ROLE_IDS.INSTRUCTOR) {
@@ -531,6 +561,8 @@ export function createInstructorClassroomController({
   };
 
   const showObservedIntake = body => {
+    checkpointView = null;
+    if (element('instructorObservationLiveBtn')) element('instructorObservationLiveBtn').hidden = true;
     const revisionChanged = latestObservation?.workspace?.id !== body.workspace?.id
       || latestObservation?.workspace?.revision !== body.workspace?.revision;
     latestObservation = body;
@@ -620,7 +652,13 @@ export function createInstructorClassroomController({
 
   const scheduleObserver = epoch => {
     clearTimer(observerTimer);
-    if (!activeSession || !selectedWorkspaceId || destroyed || typeof setTimeoutImpl !== 'function') return;
+    if (
+      !activeSession
+      || !selectedWorkspaceId
+      || checkpointView
+      || destroyed
+      || typeof setTimeoutImpl !== 'function'
+    ) return;
     observerTimer = setTimeoutImpl(() => {
       observerTimer = null;
       void observeWorkspace(epoch);
@@ -642,7 +680,7 @@ export function createInstructorClassroomController({
   };
 
   const observeWorkspace = async epoch => {
-    if (!activeSession || !selectedWorkspaceId || destroyed) return false;
+    if (!activeSession || !selectedWorkspaceId || checkpointView || destroyed) return false;
     const requestedId = selectedWorkspaceId;
     abort(observerAbort);
     observerAbort = typeof AbortControllerImpl === 'function' ? new AbortControllerImpl() : null;
@@ -680,8 +718,58 @@ export function createInstructorClassroomController({
     }
   };
 
+  async function inspectCheckpoint({ workspace, checkpoint } = {}) {
+    const workspaceId = typeof workspace?.id === 'string' ? workspace.id : '';
+    const represented = workspaces.find(item => item.id === workspaceId);
+    const revision = Number(checkpoint?.workspaceRevision);
+    if (
+      !activeSession
+      || !represented
+      || !checkpoint?.snapshot
+      || typeof checkpoint.snapshot !== 'object'
+      || !Number.isInteger(revision)
+      || revision < 1
+    ) return false;
+
+    selectedWorkspaceId = workspaceId;
+    saveSession();
+    observerEpoch += 1;
+    abort(observerAbort);
+    observerAbort = null;
+    clearTimer(observerTimer);
+    observerTimer = null;
+    latestObservation = null;
+    checkpointView = {
+      workspaceId,
+      workspaceLabel: represented.label,
+      stageId: typeof checkpoint.stageId === 'string' ? checkpoint.stageId : '',
+      workspaceRevision: revision,
+      capturedAt: typeof checkpoint.capturedAt === 'string' ? checkpoint.capturedAt : null
+    };
+    onObservationEnd();
+    applyObservedSnapshot(checkpoint.snapshot);
+    const wrap = intakeWrap();
+    if (wrap) {
+      wrap.hidden = false;
+      wrap.setAttribute('aria-hidden', 'false');
+    }
+    setStatus('observing-checkpoint');
+    renderCheckpointObservation(checkpointView);
+    renderRoster();
+    return true;
+  }
+
+  async function returnToLiveObservation() {
+    if (!checkpointView || !selectedWorkspaceId) return false;
+    checkpointView = null;
+    if (element('instructorObservationLiveBtn')) element('instructorObservationLiveBtn').hidden = true;
+    return selectWorkspace(selectedWorkspaceId);
+  }
+
   async function selectWorkspace(workspaceId) {
     if (!activeSession || !workspaces.some(item => item.id === workspaceId)) return false;
+    checkpointView = null;
+    if (element('instructorObservationLiveBtn')) element('instructorObservationLiveBtn').hidden = true;
     selectedWorkspaceId = workspaceId;
     onObservationEnd();
     saveSession();
@@ -1067,6 +1155,7 @@ export function createInstructorClassroomController({
   };
   const handleRetry = () => { void resume(); };
   const handleLeave = () => leaveClass();
+  const handleReturnToLive = () => { void returnToLiveObservation(); };
   const handleSearch = event => {
     searchQuery = event?.target?.value || '';
     renderRoster();
@@ -1099,6 +1188,7 @@ export function createInstructorClassroomController({
     mobileRailQuery?.addEventListener?.('change', handleRailMediaChange);
     element('instructorClassRetryBtn')?.addEventListener('click', handleRetry);
     element('instructorClassLeaveBtn')?.addEventListener('click', handleLeave);
+    element('instructorObservationLiveBtn')?.addEventListener('click', handleReturnToLive);
     element('instructorWorkspaceSearch')?.addEventListener('input', handleSearch);
     element('instructorWorkspaceFilter')?.addEventListener('change', handleFilter);
     element('instructorWorkspaceList')?.addEventListener('keydown', handleRosterKeydown);
@@ -1122,6 +1212,7 @@ export function createInstructorClassroomController({
     mobileRailQuery?.removeEventListener?.('change', handleRailMediaChange);
     element('instructorClassRetryBtn')?.removeEventListener('click', handleRetry);
     element('instructorClassLeaveBtn')?.removeEventListener('click', handleLeave);
+    element('instructorObservationLiveBtn')?.removeEventListener('click', handleReturnToLive);
     element('instructorWorkspaceSearch')?.removeEventListener('input', handleSearch);
     element('instructorWorkspaceFilter')?.removeEventListener('change', handleFilter);
     element('instructorWorkspaceList')?.removeEventListener('keydown', handleRosterKeydown);
@@ -1139,11 +1230,15 @@ export function createInstructorClassroomController({
     resume,
     refreshRoster,
     selectWorkspace,
+    inspectCheckpoint,
+    returnToLiveObservation,
     leaveClass,
     setRailExpanded: expanded => setRailExpanded(expanded, { user: true }),
     getState: () => ({
       activeSession, workspaces, participants, selectedWorkspaceId, observerEpoch,
-      latestObservation, busy, searchQuery, kindFilter, lastError, railExpanded
+      latestObservation,
+      checkpointView: checkpointView ? { ...checkpointView } : null,
+      busy, searchQuery, kindFilter, lastError, railExpanded
     })
   };
 }
