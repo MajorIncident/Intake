@@ -39,6 +39,9 @@ export function createCollaborationController({
   let editingField = ''; let activityState = 'active'; let activitySequence = 0; let desiredPresence = null; let acknowledgedPresenceSequence = -1;
   let presenceTimer = null; let typingTimer = null; let idleTimer = null; let inFlightPresence = null; let dialogMode = null; let dialogReturnFocus = null; let dialogFocusTimer = null;
   let rosterExpanded = false; let lastAnnouncedCollision = '';
+  const mobileWorkspaceQuery = windowRef?.matchMedia?.('(max-width: 700px)') || null;
+  let workspaceExpanded = !mobileWorkspaceQuery?.matches;
+  let workspacePreferenceTouched = false;
   let baseDocumentTitle = documentRef?.title || 'KT Intake'; let lastCollaborationTitle = '';
   const activeLocation = location || documentRef?.location;
   const activeHistory = history || documentRef?.defaultView?.history;
@@ -104,9 +107,28 @@ export function createCollaborationController({
     lastCollaborationTitle = `${subject} · ${memberLabel} · KT Intake`;
     documentRef.title = lastCollaborationTitle;
   };
+  const renderWorkspaceExpansion = () => {
+    const workspace = element('collaborationWorkspace');
+    const toggle = element('collaborationWorkspaceToggle');
+    const effectiveExpanded = !mobileWorkspaceQuery?.matches || workspaceExpanded;
+    workspace?.classList?.toggle('is-collapsed', !effectiveExpanded);
+    if (toggle) {
+      toggle.setAttribute('aria-expanded', String(effectiveExpanded));
+      toggle.textContent = effectiveExpanded ? 'Collapse team' : 'Open team';
+    }
+    return effectiveExpanded;
+  };
+
+  const setWorkspaceExpanded = (expanded, { user = false } = {}) => {
+    workspaceExpanded = Boolean(expanded);
+    if (user) workspacePreferenceTouched = true;
+    return renderWorkspaceExpansion();
+  };
+
   const renderPresence = ({ stale = false, snapshot } = {}) => {
     const workspace = element('collaborationWorkspace');
     if (workspace) workspace.hidden = !token;
+    renderWorkspaceExpansion();
     const team = element('collaborationTeamName'); if (team) team.textContent = teamName || 'Shared intake';
     const list = element('collaborationParticipants');
     const rosterSignature = JSON.stringify(participants.map(participant => [participant.id, participant.displayName, participant.activityState, participant.editingField, participant.lastActiveAt, participant.lastSeenAt, participant.id === self?.id, rosterExpanded]));
@@ -129,7 +151,9 @@ export function createCollaborationController({
       });
     }
     const toggle = element('collaborationRosterToggle'); if (toggle) { const hiddenCount = Math.max(0, participants.length - ROSTER_VISIBLE_LIMIT); toggle.hidden = hiddenCount === 0; toggle.textContent = rosterExpanded ? 'Show fewer' : `+${hiddenCount} more`; toggle.setAttribute('aria-expanded', String(rosterExpanded)); }
-    const summary = element('collaborationPeopleSummary'); if (summary) summary.textContent = `${participants.length} ${participants.length === 1 ? 'person' : 'people'} here`;
+    const peopleText = `${participants.length} ${participants.length === 1 ? 'person' : 'people'} here`;
+    const summary = element('collaborationPeopleSummary'); if (summary) summary.textContent = peopleText;
+    const compactSummary = element('collaborationWorkspaceCompactSummary'); if (compactSummary) compactSummary.textContent = peopleText;
     const staleLabel = element('collaborationPresenceStale'); if (staleLabel) staleLabel.hidden = !stale;
     const remoteEditors = participants.filter(participant => participant.id !== self?.id && participant.editingField && ['editing', 'focused'].includes(participant.activityState || 'editing'));
     const fieldSignature = JSON.stringify(remoteEditors.map(participant => [participant.id, participant.displayName, participant.editingField, participant.activityState]));
@@ -457,6 +481,8 @@ export function createCollaborationController({
     documentRef?.addEventListener('focusin', handleActivityFocusIn); documentRef?.addEventListener('input', handleActivityInput);
     documentRef?.addEventListener('focusout', handleActivityFocusOut);
     element('collaborationRosterToggle')?.addEventListener('click', handleRosterToggle);
+    element('collaborationWorkspaceToggle')?.addEventListener('click', handleWorkspaceToggle);
+    mobileWorkspaceQuery?.addEventListener?.('change', handleWorkspaceMediaChange);
     windowRef?.addEventListener('focus', handleFocus); windowRef?.addEventListener('pageshow', handlePageShow); windowRef?.addEventListener('online', handleOnline); windowRef?.addEventListener('offline', handleOffline);
     statusTimer = scheduleTimeout(refreshStatus, 1000);
     return joinFromUrl();
@@ -473,10 +499,17 @@ export function createCollaborationController({
     element('copyCollaborationLinkBtn')?.removeEventListener('click', copyLink); element('leaveCollaborationBtn')?.removeEventListener('click', leave); element('syncCollaborationBtn')?.removeEventListener('click', syncNow); element('loadSharedVersionBtn')?.removeEventListener('click', loadNewest); element('exportRecoveryBtn')?.removeEventListener('click', exportRecovery);
     documentRef?.removeEventListener('visibilitychange', handleVisibilityChange); documentRef?.removeEventListener('focusin', handleActivityFocusIn); documentRef?.removeEventListener('input', handleActivityInput); documentRef?.removeEventListener('focusout', handleActivityFocusOut);
     element('collaborationRosterToggle')?.removeEventListener('click', handleRosterToggle);
+    element('collaborationWorkspaceToggle')?.removeEventListener('click', handleWorkspaceToggle);
+    mobileWorkspaceQuery?.removeEventListener?.('change', handleWorkspaceMediaChange);
     windowRef?.removeEventListener('focus', handleFocus); windowRef?.removeEventListener('pageshow', handlePageShow); windowRef?.removeEventListener('online', handleOnline); windowRef?.removeEventListener('offline', handleOffline);
   };
   function handleRosterToggle() { rosterExpanded = !rosterExpanded; renderPresence(); }
-  return { init, destroy, start, connect, leave, loadNewest, poll, flushSave, syncNow, heartbeat, renameTeam, joinPresence, notifyLocalChange, copyLink, exportRecovery, getState: () => ({ token, revision, applyingRemote, conflicted, pollingStopped, pendingSave, inFlightSave, inFlightGet, inFlightPresence, sessionEpoch, retryDelay, retrying, lastSuccessfulSync, terminalStatus, destroyed, teamName, participants, self, joinedPresence, editingField, activityState, activitySequence, acknowledgedPresenceSequence, desiredPresence, profile, sessionKind, linkSharingEnabled, legacyLeaveEnabled }) };
+  function handleWorkspaceToggle() { setWorkspaceExpanded(!workspaceExpanded, { user: true }); }
+  function handleWorkspaceMediaChange(event) {
+    if (!workspacePreferenceTouched) workspaceExpanded = !event.matches;
+    renderWorkspaceExpansion();
+  }
+  return { init, destroy, start, connect, leave, loadNewest, poll, flushSave, syncNow, heartbeat, renameTeam, joinPresence, notifyLocalChange, copyLink, exportRecovery, setWorkspaceExpanded: expanded => setWorkspaceExpanded(expanded, { user: true }), getState: () => ({ token, revision, applyingRemote, conflicted, pollingStopped, pendingSave, inFlightSave, inFlightGet, inFlightPresence, sessionEpoch, retryDelay, retrying, lastSuccessfulSync, terminalStatus, destroyed, teamName, participants, self, joinedPresence, editingField, activityState, activitySequence, acknowledgedPresenceSequence, desiredPresence, profile, sessionKind, linkSharingEnabled, legacyLeaveEnabled, workspaceExpanded: !mobileWorkspaceQuery?.matches || workspaceExpanded }) };
 }
 
 /** Initializes collaboration. @param {object} options Dependencies. @returns {object} Controller. */
