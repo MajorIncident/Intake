@@ -1001,7 +1001,9 @@ Known remaining product gaps are now tracked separately:
 - **#319** — Instructor cross-team debrief comparison/progress view built on immutable checkpoints/live observation.
 - **#320** — share/QR join convenience and compact mobile Notes/Class/Case chrome.
 
-After PR #315 merges, the exact next implementation action is **#316**.
+PR #315 is merged, but production publication requires the #321 Vercel function-budget recovery. #321/#322 consolidates the public Classroom URLs into one deployment function without changing staged authorization semantics.
+
+After #321 is merged **and the exact `main` SHA is verified Vercel production READY**, the exact next implementation action is **#316**.
 
 Do not begin production official-case staging as a shortcut. Preserve:
 - server-side progressive disclosure;

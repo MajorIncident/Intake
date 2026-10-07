@@ -14,6 +14,7 @@ After changing the runtime, update `.nvmrc` and `package.json#engines` together 
 
 - lockfile consistency;
 - repository contract checks (`repo:doctor`);
+- conservative Vercel Serverless Function budget verification (`verify:vercel-functions`);
 - changed-runtime test coverage guard for `src/`, `components/`, and server `api/` code;
 - summary integration guard;
 - persistence integration guard;
@@ -36,10 +37,26 @@ Case Study authoring source is intentionally present in Git but intentionally ab
 - `scripts/build-vercel-public.mjs` generates the **only** public static surface under `dist/`: `index.html`, `main.js`, `styles.css`, browser JavaScript under `src/` and `components/`, plus the explicitly public `docs/eula.md` linked from the app footer.
 - Vercel `outputDirectory` must remain `dist`. Serving `.` is prohibited because production previously exposed internal files such as `docs/classroom-workstream.md` and `scripts/build-templates-manifest.mjs`.
 - The public-bundle builder rejects all other Markdown plus JSON/MJS/AGENTS/internal files and scans all emitted text—including the EULA—for protected Case Study IDs/names.
-- Production Vercel builds run `npm run verify:protected-cases && npm run build:vercel-public`; they do not regenerate manifests because authored template JSON is intentionally excluded from the upload.
+- Production Vercel builds run `npm run verify:vercel-functions && npm run verify:protected-cases && npm run build:vercel-public`; they do not regenerate manifests because authored template JSON is intentionally excluded from the upload.
 - GitHub CI/local authoring remains responsible for `npm run build:templates` / `npm run check:templates` freshness, and `npm run quality` also builds/verifies the same minimal `dist/` surface.
 
 Any change to `vercel.json`, `.vercelignore`, template generation, static output layout, or protected-resource routing must re-run `npm run quality` and include a deployed HTTP check that raw `/templates/*.json` Case Study paths and internal `/docs/*` / `/scripts/*` paths are not served.
+
+### Vercel Serverless Function budget
+
+The linked `intake` project is intentionally compatible with Vercel Hobby's **12 Serverless Function** deployment limit. #312/#313 originally exceeded that limit when each new Classroom URL received its own thin `api/classes/**` wrapper, even though GitHub tests were green.
+
+Repository contract after #321:
+
+- every public `/api/classes/**` URL remains stable;
+- `vercel.json` rewrites those URLs to the single `api/classroom.js` deployment function;
+- `api/_classroomRouter.js` selects the existing handler; the route marker is not authentication and no handler authorization is bypassed;
+- do not add standalone JavaScript route wrappers back under `api/classes/**`; add the handler to the dispatcher + rewrite map instead;
+- underscore-prefixed `api/_*.js` files are server helper modules bundled into entrypoints;
+- `npm run verify:vercel-functions` conservatively counts every non-underscore JavaScript file under `api/` and fails above 12;
+- the same guard runs in `npm run quality` and before every Vercel production build.
+
+A PR that changes API routing is not publish-complete until the exact merged `main` SHA has a **READY** production deployment, not merely green GitHub checks.
 
 
 ### Vercel Git deployment policy
