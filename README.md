@@ -183,10 +183,10 @@ Need to know which module owns a given storage field? Jump to the [Storage-to-Mo
 
 ### Template manifest workflow
 - Curated resources live as authored JSON snapshots under `templates/` (one file per resource). Each file lists metadata (`id`, `name`, `description`, `templateKind`, `supportedModes`) plus a `SerializedAppState` payload.
-- `npm run build:templates` validates **all** authored resources and generates two explicit boundaries:
+- `npm run build:templates` validates **all** authored resources, including universal Intake-target coverage for public Standard Templates and shared-namespace validation for staged `intakeTargetIds`, then generates two explicit boundaries:
   - `src/templates.manifest.js` — public Standard Templates only;
   - `api/protected-case-studies.manifest.js` — server-only Case Study metadata and full payloads.
-- `templateKind: standard` means a reusable public **Template**. `templateKind: case-study` means a protected Classroom **Case Study**. `src/templateAvailability.js` still owns role semantics; `src/classroomCaseStudies.js` supplies only the currently authorized protected catalog/payloads.
+- `templateKind: standard` means a reusable public **Template**. Standard Template reasoning fields use the same target registry consumed by coaching/#319; adding a new Template that uses existing fields requires no template-specific mapping. `templateKind: case-study` means a protected Classroom **Case Study**. Staged `intakeTargetIds` may reference registered static/KT target IDs or family IDs such as `possible-cause`, but never learner-created dynamic instance IDs. `src/templateAvailability.js` still owns role semantics; `src/classroomCaseStudies.js` supplies only the currently authorized protected catalog/payloads.
 - Authored `templates/*.json` files are build-time source and are excluded from Vercel deployment by `.vercelignore`. Never import the server-only protected manifest from browser modules.
 - Run `npm run verify:protected-cases` after changing this boundary and `npm run quality` before handoff. The rotating Case Study mode password remains pedagogy only; Classroom capability authorization is the confidentiality boundary.
 - `npm run dev` and local `npm run build` still regenerate both manifests for maintainers. Commit the authored JSON and both generated manifests together.
