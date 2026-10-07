@@ -471,7 +471,7 @@ export function createInstructorExerciseConsoleController({
       label.textContent = item.workspaceLabel;
       const revision = documentRef.createElement('strong');
       revision.textContent = `Revision ${item.workspaceRevision}`;
-      const inspect = documentRef.createElement('button');
+      const inspect = documentRef.createElement('button'); // data-persistence="local-only" data-summary="exclude"
       inspect.type = 'button';
       inspect.className = 'btn-secondary instructor-exercise-checkpoint__inspect';
       inspect.setAttribute('data-persistence', 'local-only');
