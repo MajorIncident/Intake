@@ -18,6 +18,7 @@ import {
   validateSnapshot,
   validateToken
 } from './_workspace.js';
+import { buildClassroomDebriefModel } from '../src/classroomDebriefModel.js';
 
 export const CLASS_TITLE_MAX_LENGTH = 120;
 export const CLASS_WORKSPACE_LABEL_MAX_LENGTH = 120;
@@ -2236,6 +2237,145 @@ export function classObserveHandler({
       });
     } catch {
       return send(res, 500, { error: 'Unable to observe class workspace.' });
+    }
+  };
+}
+
+/**
+ * Create the Instructor-only aggregate class debrief comparison handler.
+ *
+ * This GET-only endpoint composes existing authorized Classroom/workspace
+ * sources and returns comparison-safe Intake target projections. Raw live or
+ * checkpoint snapshots, coaching notes, internal workspace IDs, and editable
+ * capabilities never leave this handler.
+ *
+ * @param {object} [dependencies] Injectable dependencies.
+ * @param {Function} [dependencies.getRepository=getClassroomRepository] Classroom repository accessor.
+ * @param {Function} [dependencies.getWorkspaceRepo=getWorkspaceRepository] Collaboration repository accessor.
+ * @param {Function} [dependencies.buildModel=buildClassroomDebriefModel] Pure comparison model builder.
+ * @returns {Function} Vercel handler.
+ */
+export function classDebriefHandler({
+  getRepository = getClassroomRepository,
+  getWorkspaceRepo = getWorkspaceRepository,
+  buildModel = buildClassroomDebriefModel
+} = {}) {
+  return async (req, res) => {
+    if (req.method !== 'GET') return methodNotAllowed(res, 'GET');
+
+    const authorization = requireBearer(req);
+    if (!authorization.ok) {
+      return send(res, authorization.status, { error: authorization.error });
+    }
+
+    const instructorHash = hashWorkspaceToken(authorization.token);
+
+    try {
+      const repository = await getRepository();
+      const roster = await repository.listWorkspaces(instructorHash);
+      if (!roster) return send(res, 404, { error: 'Class not found.' });
+
+      const workspaceRepository = await getWorkspaceRepo();
+      const workspaceReads = await Promise.all(
+        roster.workspaces.map(async workspace => {
+          const target = await repository.getWorkspaceForObservation(
+            instructorHash,
+            workspace.id
+          );
+          if (!target?.workspace?.internalId) {
+            return { currentSnapshot: null, feedback: [] };
+          }
+
+          const [observation, coaching] = await Promise.all([
+            workspaceRepository.observeById(target.workspace.internalId),
+            repository.listFeedbackForInstructor(instructorHash, workspace.id)
+          ]);
+
+          return {
+            currentSnapshot: observation
+              ? {
+                  workspaceId: workspace.id,
+                  workspaceRevision: observation.revision,
+                  updatedAt: observation.updatedAt,
+                  snapshot: observation.snapshot
+                }
+              : null,
+            feedback: Array.isArray(coaching?.feedback)
+              ? coaching.feedback.map(item => ({
+                  workspaceId: workspace.id,
+                  ...item
+                }))
+              : []
+          };
+        })
+      );
+
+      const currentSnapshots = workspaceReads
+        .map(item => item.currentSnapshot)
+        .filter(Boolean);
+      const feedback = workspaceReads.flatMap(item => item.feedback);
+
+      let exercise = null;
+      let readiness = [];
+      let checkpoints = [];
+
+      const currentExercise = await repository.getCurrentExerciseForInstructor(instructorHash);
+      if (currentExercise?.exercise) {
+        exercise = currentExercise.exercise;
+
+        const readinessResult = await repository.listExerciseWorkspaceStateForInstructor(
+          instructorHash,
+          exercise.id
+        );
+        readiness = Array.isArray(readinessResult?.workspaceState)
+          ? readinessResult.workspaceState
+          : [];
+
+        if (exercise.stagePhase === 'debrief' && exercise.currentStageId) {
+          const checkpointList = await repository.listExerciseCheckpointsForInstructor(
+            instructorHash,
+            exercise.id,
+            exercise.currentStageId
+          );
+          const checkpointMetadata = Array.isArray(checkpointList?.checkpoints)
+            ? checkpointList.checkpoints
+            : [];
+
+          checkpoints = (
+            await Promise.all(checkpointMetadata.map(async item => {
+              const result = await repository.getExerciseCheckpointForInstructor(
+                instructorHash,
+                exercise.id,
+                exercise.currentStageId,
+                item.workspaceId
+              );
+              if (!result?.checkpoint?.snapshot) return null;
+              return {
+                workspaceId: item.workspaceId,
+                stageId: result.checkpoint.stageId,
+                workspaceRevision: result.checkpoint.workspaceRevision,
+                capturedAt: result.checkpoint.capturedAt,
+                snapshot: result.checkpoint.snapshot
+              };
+            }))
+          ).filter(Boolean);
+        }
+      }
+
+      const model = buildModel({
+        classroom: roster.classroom,
+        exercise,
+        recommendedTargetIds: [],
+        workspaces: roster.workspaces,
+        currentSnapshots,
+        checkpoints,
+        readiness,
+        feedback
+      });
+
+      return send(res, 200, model);
+    } catch {
+      return send(res, 500, { error: 'Unable to load class debrief comparison.' });
     }
   };
 }
