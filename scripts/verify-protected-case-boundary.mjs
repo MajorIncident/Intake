@@ -47,10 +47,10 @@ async function main() {
   }
 
   const vercelConfig = JSON.parse(vercelConfigRaw);
-  const expectedBuildCommand = 'npm run verify:protected-cases && npm run build:vercel-public';
+  const expectedBuildCommand = 'npm run verify:vercel-functions && npm run verify:protected-cases && npm run build:vercel-public';
   if (vercelConfig.buildCommand !== expectedBuildCommand) {
     throw new Error(
-      'Vercel buildCommand must verify protected cases and then build the minimal public dist/ bundle.'
+      'Vercel buildCommand must verify the function budget, verify protected cases, and then build the minimal public dist/ bundle.'
     );
   }
   if (vercelConfig.outputDirectory !== 'dist') {
