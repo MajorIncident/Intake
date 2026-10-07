@@ -638,3 +638,45 @@ Migration / external settings:
 Known risk:
 Exact next action:
 ```
+
+
+## #313 closeout and post-merge handoff
+
+PR #315 final audited head before closeout: `8974519108d6735383b8358373d005188501a785`.
+
+Final validated evidence on that head:
+- repository quality: **302 tests / 301 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **28 passed / 10 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: green;
+- PR #315 has no unresolved review threads and is mergeable.
+
+What #313 completes:
+- secure class-level staged exercise lifecycle and persistence;
+- Instructor orchestration, protected facilitation, Ready/progress, debrief freeze, checkpoints, Advance/Complete;
+- Student current-stage case reference, Ready/Resume, frozen-debrief read-only projection, automatic stage transitions;
+- late join/reassignment safety, stale-authority cutoff, progressive-disclosure/full-payload denial, mobile/a11y acceptance;
+- checkpoint-vs-current-live facilitation without replacing Student work.
+
+What remains intentionally outside #313:
+1. **#316 — protected staged assets/rich rendering (P0 blocker).**
+   - Schema accepts `image`, `table`, and `document-page`, but Student runtime currently retains/renders only `title + body`.
+   - Real protected case pages/assets therefore need a server-gated asset path and rich accessible renderer before official production cases can be staged faithfully.
+2. **#317 — first production staged KT Case Study.**
+   - No production official Case Study currently carries a `simulation` definition.
+   - Staging must come from authoritative supplied participant/instructor sources and be explicitly reviewed; never infer it from completed Intake state.
+3. **#318 — stage-linked Intake guidance + target identity.**
+   - `intakeTargetIds` exists in the authoring schema but is not used in Student/Instructor runtime.
+   - Dynamic Possible Cause coaching remains the explicit #294 deferred target-identity gap.
+4. **#319 — class-level debrief comparison.**
+   - #313 supports one-team-at-a-time checkpoint/live inspection; it does not yet provide a cross-team selected-field/heatmap comparison surface for large-class debrief.
+5. **#320 — join/mobile polish.**
+   - Human join code + Copy Code exists; QR/share link remains deferred.
+   - Notes/Class/Case mobile chrome still needs the broader compact-launcher alignment called out during #313.
+
+Cold-start priority after #315 merges:
+1. read `AGENTS.md`, `docs/classroom-roadmap.md`, `docs/classroom-architecture.md`, `docs/classroom-api.md`, and `docs/classroom-staged-simulation.md`;
+2. inspect #316 first;
+3. preserve all #313 security boundaries while adding protected rich content;
+4. do **not** add an official production `simulation` definition until #316 is complete and the source material for #317 is present/reviewed.
+
+The #288 foundation roadmap plus #312/#313 orchestration generation are complete after #315 merges. The next program phase is **production case enablement and facilitator scale**, beginning with #316.
