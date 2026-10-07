@@ -1,11 +1,11 @@
 /**
  * @module classroomExerciseInstructor
- * @summary Owns Instructor staged-exercise setup, pacing, release, progress, and console state.
+ * @summary Owns Instructor staged-exercise setup, pacing, release, debrief, progress, and console state.
  * @description
  *   Receives the active Instructor capability from the class lifecycle, keeps it
  *   in memory only, and reads/writes the Instructor-authorized exercise endpoint.
- *   Tranche 6D adds current-stage optional evidence release plus team readiness
- *   and observer navigation; debrief/freeze/advance/complete remain deferred.
+ *   Tranche 6E adds revision-safe debrief entry, checkpoint status, and explicit
+ *   Student editing policy controls; advance/complete remain deferred.
  */
 
 export const INSTRUCTOR_EXERCISE_ENDPOINT = '/api/classes/exercise';
@@ -62,6 +62,25 @@ function sanitizeWorkspaceState(value) {
   };
 }
 
+function sanitizeCheckpoint(value) {
+  if (!value || typeof value !== 'object') return null;
+  const workspaceId = typeof value.workspaceId === 'string' ? value.workspaceId.trim() : '';
+  const workspaceLabel = typeof value.workspaceLabel === 'string' ? value.workspaceLabel.trim() : '';
+  const stageId = typeof value.stageId === 'string' ? value.stageId.trim() : '';
+  const workspaceRevision = Number(value.workspaceRevision);
+  if (!workspaceId || !workspaceLabel || !stageId || !Number.isInteger(workspaceRevision) || workspaceRevision < 1) {
+    return null;
+  }
+  return {
+    workspaceId,
+    workspaceKind: typeof value.workspaceKind === 'string' ? value.workspaceKind : '',
+    workspaceLabel,
+    stageId,
+    workspaceRevision,
+    capturedAt: typeof value.capturedAt === 'string' ? value.capturedAt : null
+  };
+}
+
 /**
  * Create the Instructor exercise console controller.
  *
@@ -86,6 +105,7 @@ export function createInstructorExerciseConsoleController({
   let selectedCaseStudyId = '';
   let releases = [];
   let workspaceState = [];
+  let checkpoints = [];
 
   const element = id => documentRef?.getElementById?.(id) || null;
 
@@ -199,12 +219,15 @@ export function createInstructorExerciseConsoleController({
     const start = element('instructorExerciseStartBtn');
     const pause = element('instructorExercisePauseBtn');
     const resume = element('instructorExerciseResumeBtn');
+    const beginDebrief = element('instructorExerciseBeginDebriefBtn');
+    const help = element('instructorExerciseLifecycleHelp');
     if (!lifecycle) return;
 
     lifecycle.hidden = !exercise;
     const canStart = exercise?.status === 'draft' && !exercise.currentStageId;
     const canPause = exercise?.status === 'active';
     const canResume = exercise?.status === 'paused';
+    const canBeginDebrief = exercise?.status === 'active' && exercise?.stagePhase === 'work' && Boolean(exercise.currentStageId);
 
     if (start) {
       start.hidden = !canStart;
@@ -217,6 +240,15 @@ export function createInstructorExerciseConsoleController({
     if (resume) {
       resume.hidden = !canResume;
       resume.disabled = loading || !canResume;
+    }
+    if (beginDebrief) {
+      beginDebrief.hidden = !canBeginDebrief;
+      beginDebrief.disabled = loading || !canBeginDebrief;
+    }
+    if (help) {
+      help.textContent = exercise?.stagePhase === 'debrief'
+        ? 'Debrief preserves the captured team checkpoints. Pause still controls class pacing; editing policy is controlled below.'
+        : 'Pause controls class pacing only. Student editing freeze is a separate debrief control.';
     }
   };
 
@@ -289,7 +321,11 @@ export function createInstructorExerciseConsoleController({
         button.className = 'btn-secondary';
         button.setAttribute('data-persistence', 'local-only');
         button.setAttribute('data-summary', 'exclude');
-        button.textContent = canRelease ? 'Release to Students' : 'Resume to release';
+        button.textContent = canRelease
+          ? 'Release to Students'
+          : exercise?.stagePhase === 'debrief'
+            ? 'Not released before debrief'
+            : 'Resume to release';
         button.disabled = !canRelease;
         button.setAttribute('aria-label', `Release ${item.content.title || 'optional evidence'} to Students`);
         button.addEventListener('click', () => { void releaseContent(item.content.id); });
@@ -354,6 +390,69 @@ export function createInstructorExerciseConsoleController({
     list.append(wrapper);
   };
 
+  const renderDebrief = () => {
+    const panel = element('instructorExerciseDebriefPanel');
+    const editingStatus = element('instructorExerciseEditingStatus');
+    const freezeButton = element('instructorExerciseFreezeBtn');
+    const allowButton = element('instructorExerciseAllowEditingBtn');
+    const summary = element('instructorExerciseCheckpointSummary');
+    const list = element('instructorExerciseCheckpointList');
+    if (!panel || !list) return;
+
+    const isDebrief = exercise?.stagePhase === 'debrief' && Boolean(exercise?.currentStageId);
+    panel.hidden = !isDebrief;
+    list.replaceChildren();
+    if (!isDebrief) {
+      if (editingStatus) editingStatus.textContent = 'Student editing status unavailable';
+      if (summary) summary.textContent = '0 captured';
+      return;
+    }
+
+    const editingAllowed = exercise.studentEditingEnabled !== false;
+    const canChangeEditing = exercise.status === 'active' && !loading;
+    if (editingStatus) {
+      editingStatus.textContent = editingAllowed
+        ? 'Student editing allowed during debrief'
+        : 'Student editing frozen during debrief';
+    }
+    if (freezeButton) {
+      freezeButton.hidden = !editingAllowed;
+      freezeButton.disabled = !canChangeEditing || !editingAllowed;
+    }
+    if (allowButton) {
+      allowButton.hidden = editingAllowed;
+      allowButton.disabled = !canChangeEditing || editingAllowed;
+    }
+
+    const stageCheckpoints = checkpoints.filter(item => item.stageId === exercise.currentStageId);
+    if (summary) {
+      summary.textContent = stageCheckpoints.length === 1
+        ? '1 captured'
+        : `${stageCheckpoints.length} captured`;
+    }
+    if (!stageCheckpoints.length) {
+      const empty = documentRef.createElement('p');
+      empty.className = 'instructor-exercise-checkpoint__empty';
+      empty.textContent = 'No workspace checkpoint was captured for this stage.';
+      list.append(empty);
+      return;
+    }
+
+    const wrapper = documentRef.createElement('div');
+    wrapper.className = 'instructor-exercise-checkpoint-list';
+    stageCheckpoints.forEach(item => {
+      const row = documentRef.createElement('div');
+      row.className = 'instructor-exercise-checkpoint__row';
+      const label = documentRef.createElement('span');
+      label.textContent = item.workspaceLabel;
+      const revision = documentRef.createElement('strong');
+      revision.textContent = `Revision ${item.workspaceRevision}`;
+      row.append(label, revision);
+      wrapper.append(row);
+    });
+    list.append(wrapper);
+  };
+
   const render = () => {
     const panel = element('instructorExerciseConsole');
     const status = element('instructorExerciseStatus');
@@ -400,6 +499,7 @@ export function createInstructorExerciseConsoleController({
     renderStage();
     renderReleases();
     renderProgress();
+    renderDebrief();
     renderAvailable();
   };
 
@@ -414,6 +514,7 @@ export function createInstructorExerciseConsoleController({
     selectedCaseStudyId = '';
     releases = [];
     workspaceState = [];
+    checkpoints = [];
   };
 
   const applyPayload = body => {
@@ -426,6 +527,9 @@ export function createInstructorExerciseConsoleController({
     workspaceState = Array.isArray(body?.workspaceState)
       ? body.workspaceState.map(sanitizeWorkspaceState).filter(Boolean)
       : exercise ? workspaceState : [];
+    checkpoints = Array.isArray(body?.checkpoints)
+      ? body.checkpoints.map(sanitizeCheckpoint).filter(Boolean)
+      : exercise ? checkpoints : [];
     if (Array.isArray(body?.availableCaseStudies)) {
       availableCaseStudies = body.availableCaseStudies
         .map(sanitizeCaseStudySummary)
@@ -567,6 +671,12 @@ export function createInstructorExerciseConsoleController({
       (action === 'start' && exercise.status === 'draft' && !exercise.currentStageId)
       || (action === 'pause' && exercise.status === 'active')
       || (action === 'resume' && exercise.status === 'paused')
+      || (
+        action === 'begin-debrief'
+        && exercise.status === 'active'
+        && exercise.stagePhase === 'work'
+        && Boolean(exercise.currentStageId)
+      )
     );
     if (!allowed) return false;
 
@@ -616,7 +726,9 @@ export function createInstructorExerciseConsoleController({
         ? 'exercise started'
         : action === 'pause'
           ? 'exercise paused'
-          : 'exercise resumed';
+          : action === 'resume'
+            ? 'exercise resumed'
+            : 'debrief started';
       return true;
     } catch {
       if (destroyed || localEpoch !== epoch) return false;
@@ -719,6 +831,94 @@ export function createInstructorExerciseConsoleController({
     }
   };
 
+  const setEditing = async enabled => {
+    if (
+      destroyed
+      || !capability
+      || !exercise
+      || loading
+      || typeof fetchImpl !== 'function'
+      || exercise.status !== 'active'
+      || exercise.stagePhase !== 'debrief'
+      || typeof enabled !== 'boolean'
+    ) return false;
+
+    const currentEnabled = exercise.studentEditingEnabled !== false;
+    if (currentEnabled === enabled) {
+      lastError = '';
+      lastNotice = enabled ? 'editing already allowed' : 'editing already frozen';
+      render();
+      return true;
+    }
+
+    const expectedRevision = Number(exercise.exerciseRevision);
+    if (!Number.isInteger(expectedRevision) || expectedRevision < 1) {
+      lastError = 'Exercise revision is unavailable. Refresh and retry.';
+      lastNotice = '';
+      render();
+      return false;
+    }
+
+    const localCapability = capability;
+    const localEpoch = epoch;
+    loading = true;
+    lastError = '';
+    lastNotice = '';
+    render();
+
+    try {
+      const response = await fetchImpl(INSTRUCTOR_EXERCISE_ENDPOINT, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${localCapability}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'set-editing',
+          expectedRevision,
+          enabled
+        })
+      });
+      const body = await response.json().catch(() => ({}));
+      if (destroyed || localEpoch !== epoch || capability !== localCapability) return false;
+
+      if (response.status === 409) {
+        loading = false;
+        const reloaded = await refresh();
+        if (reloaded && !destroyed && localEpoch === epoch) {
+          lastNotice = 'current state reloaded';
+          render();
+        } else if (!lastError) {
+          lastError = typeof body.error === 'string' ? body.error : 'Exercise changed. Refresh and retry.';
+          render();
+        }
+        return false;
+      }
+
+      if (!response.ok) {
+        lastError = response.status === 401 || response.status === 404
+          ? 'Exercise access is no longer available.'
+          : typeof body.error === 'string' && body.error
+            ? body.error
+            : 'Could not update Student editing.';
+        return false;
+      }
+
+      applyPayload(body);
+      lastNotice = enabled ? 'Student editing allowed' : 'Student editing frozen';
+      return true;
+    } catch {
+      if (destroyed || localEpoch !== epoch) return false;
+      lastError = 'Could not update Student editing.';
+      return false;
+    } finally {
+      if (!destroyed && localEpoch === epoch) {
+        loading = false;
+        render();
+      }
+    }
+  };
+
   const connectInstructor = async token => {
     if (!validCapability(token) || destroyed) return false;
     epoch += 1;
@@ -749,6 +949,9 @@ export function createInstructorExerciseConsoleController({
   const handleStart = () => { void mutateLifecycle('start'); };
   const handlePause = () => { void mutateLifecycle('pause'); };
   const handleResume = () => { void mutateLifecycle('resume'); };
+  const handleBeginDebrief = () => { void mutateLifecycle('begin-debrief'); };
+  const handleFreeze = () => { void setEditing(false); };
+  const handleAllowEditing = () => { void setEditing(true); };
 
   element('instructorExerciseRefreshBtn')?.addEventListener('click', handleRefresh);
   element('instructorExerciseCaseSelect')?.addEventListener('change', handleSelect);
@@ -756,6 +959,9 @@ export function createInstructorExerciseConsoleController({
   element('instructorExerciseStartBtn')?.addEventListener('click', handleStart);
   element('instructorExercisePauseBtn')?.addEventListener('click', handlePause);
   element('instructorExerciseResumeBtn')?.addEventListener('click', handleResume);
+  element('instructorExerciseBeginDebriefBtn')?.addEventListener('click', handleBeginDebrief);
+  element('instructorExerciseFreezeBtn')?.addEventListener('click', handleFreeze);
+  element('instructorExerciseAllowEditingBtn')?.addEventListener('click', handleAllowEditing);
   render();
 
   return {
@@ -766,6 +972,8 @@ export function createInstructorExerciseConsoleController({
     start: () => mutateLifecycle('start'),
     pause: () => mutateLifecycle('pause'),
     resume: () => mutateLifecycle('resume'),
+    beginDebrief: () => mutateLifecycle('begin-debrief'),
+    setEditing,
     releaseContent,
     getState: () => ({
       connected: Boolean(capability),
@@ -778,7 +986,8 @@ export function createInstructorExerciseConsoleController({
       caseStudy: caseStudy ? sanitizeCaseStudySummary(caseStudy) : null,
       availableCaseStudies: availableCaseStudies.map(item => ({ ...item })),
       releases: releases.map(item => ({ ...item })),
-      workspaceState: workspaceState.map(item => ({ ...item }))
+      workspaceState: workspaceState.map(item => ({ ...item })),
+      checkpoints: checkpoints.map(item => ({ ...item }))
     }),
     destroy: () => {
       if (destroyed) return;
@@ -788,6 +997,9 @@ export function createInstructorExerciseConsoleController({
       element('instructorExerciseStartBtn')?.removeEventListener('click', handleStart);
       element('instructorExercisePauseBtn')?.removeEventListener('click', handlePause);
       element('instructorExerciseResumeBtn')?.removeEventListener('click', handleResume);
+      element('instructorExerciseBeginDebriefBtn')?.removeEventListener('click', handleBeginDebrief);
+      element('instructorExerciseFreezeBtn')?.removeEventListener('click', handleFreeze);
+      element('instructorExerciseAllowEditingBtn')?.removeEventListener('click', handleAllowEditing);
       disconnect();
       destroyed = true;
     }
