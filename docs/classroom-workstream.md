@@ -30,7 +30,7 @@ The secure Classroom foundation (#288), live-class management (#312), and staged
 | Rich staged assets | #316 | Deferred | Open | Secure protected image/table/document-page delivery; resume before #317 production simulation |
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
 | Universal Intake target identity | #318 | Complete | PR #325 merged as `ef694910...` | Shared static/KT/dynamic target projection and compatibility guards merged to `main` |
-| Class debrief comparison | #319 | **Active — 319B complete / 319C next** | PR #326 / `feature/classroom-debrief-comparison` | Pure comparison model green; Instructor-only derived debrief API next |
+| Class debrief comparison | #319 | **Active — 319C complete / 319D next** | PR #326 / `feature/classroom-debrief-comparison` | Pure model + Instructor-only derived debrief API green; UI next |
 | Join/mobile polish | #320 | Complete | PR #324 merged as `273ae643...` | Fragment-only share/QR + compact mobile Class/Case/Team/Notes/Instructor chrome published to `main` |
 
 ## Current architecture decisions
@@ -69,12 +69,13 @@ See `docs/classroom-architecture.md` for the full contract.
 
 **#319 is active** on `feature/classroom-debrief-comparison` / PR #326, based on merged `main` SHA `ef6949100ddac28c646338ee55cb6e7a74beb067`.
 
-Current tranche: **319C — Instructor-only debrief API**.
+Current tranche: **319D — Instructor progress + target comparison UI**.
 
 Canonical contract: `docs/classroom-debrief-comparison.md`.
 
 Architecture checkpoint: `22d5d9ee056f6ddd70f7e5d9a97f2322c5d3c41f`.
 319B GREEN implementation head: `c6986b330fab31509c1697b3d77c8a5e907ef279`.
+319C GREEN implementation head: `676ccbc963fb60c59851e3beda5962f2fdaa9ca5`.
 
 Frozen decisions:
 - #319 is an Instructor-only **derived read model**; it creates no second snapshot/checkpoint/coaching persistence model;
@@ -98,36 +99,39 @@ Planned tranches:
 
 ## Last completed action
 
-Completed **319B — pure derived comparison model**.
+Completed **319C — Instructor-only debrief API**.
 
 Delivered:
-- new `src/classroomDebriefModel.js` is DOM/network/persistence-free;
-- current/checkpoint snapshots project through #318 semantic targets without mutating source state or returning raw snapshot copies;
-- Ready/Working metadata remains nullable when no staged signal exists;
-- coaching aggregates status/change metadata while omitting notes and any scoring/ranking;
-- static/KT selection aligns only by semantic ID;
-- `possible-cause` selection returns each workspace's independent collection and never pairs causes across teams;
-- staged recommendation filtering accepts only authorable static/KT/family IDs.
+- GET-only `/api/classes/debrief` inside the existing consolidated Classroom function/router;
+- Instructor class capability is the only accepted authority;
+- class-scoped **batch** reads collect current collaboration snapshots, compact coaching metadata, staged readiness, and current-stage immutable checkpoint snapshots;
+- raw live/checkpoint snapshots are consumed server-side only and projected through the 319B model before response;
+- aggregate response contains no raw snapshot objects, coaching notes, internal workspace IDs, Student/assignment/join/collaboration capabilities, or editable authority;
+- no new persistence table or mutation path;
+- classes without a current non-completed staged exercise still receive current-live comparison with staged context honestly absent;
+- route is preserved through the existing `api/classroom.js` Serverless Function and Vercel function count does not increase;
+- API/security tests cover GET-only behavior, privacy headers, staged readiness/checkpoint projection, and denial of non-Instructor capabilities.
 
-Validation on `c6986b330fab31509c1697b3d77c8a5e907ef279`:
-- repository quality: **352 tests / 351 pass / 0 fail / 1 intentional skip**;
+Validation on `676ccbc963fb60c59851e3beda5962f2fdaa9ca5`:
+- repository quality: **355 tests / 354 pass / 0 fail / 1 intentional skip**;
 - Browser E2E: **29 passed / 11 intentional skips / 0 failed**;
-- CI / CodeQL / Dependency Review / Template Manifest Guard: **green**.
+- CI / CodeQL / Dependency Review / Template Manifest Guard: **green**;
+- PR #326 remained mergeable with **0 unresolved review threads**.
 
 ## Next recommended action
 
-Begin **319C — Instructor-only debrief API**.
+Begin **319D — Instructor progress + target comparison UI**.
 
-319C should:
-1. add GET-only `/api/classes/debrief` to the existing consolidated Classroom router/function;
-2. authorize only the Instructor class capability;
-3. obtain current class workspace snapshots, readiness/current exercise/checkpoint evidence, and coaching rows from existing sources of truth;
-4. use the 319B model server-side so the response contains comparison-safe projections rather than raw live/checkpoint snapshots;
-5. return no edit capability/internal workspace IDs/coaching notes;
-6. prove Student/join/assignment/workspace capabilities cannot read the endpoint and cross-class data cannot leak;
-7. avoid any new persistence table or mutation path.
+319D should:
+1. create the dedicated `src/classroomDebriefComparison.js` presentation/controller module;
+2. consume GET-only `/api/classes/debrief` using the active Instructor capability;
+3. render compact per-workspace progress plus semantic target selection/comparison;
+4. use desktop matrix and narrow-screen stacked workspace cards rather than a horizontally unusable table;
+5. keep comparison/filter/mode state presentation-only and outside Intake persistence;
+6. reuse the existing Instructor `selectWorkspace()` observer/coaching path for drill-down rather than applying comparison snapshots into the Intake DOM;
+7. cover refresh/loading/error, keyboard behavior, mobile layout, and no Student exposure.
 
-**Not started:** 319C implementation, 319D UI, 319E checkpoint/staged/coaching presentation, or #316/#317 production simulation work.
+**Not started:** 319D UI, 319E checkpoint/staged/coaching presentation integration, or #316/#317 production simulation work.
 
 
 ## Completed #300 implementation
