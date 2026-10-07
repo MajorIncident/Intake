@@ -44,9 +44,18 @@ function positiveRevision(value) {
   return Number.isInteger(revision) && revision > 0 ? revision : null;
 }
 
+const CLASSROOM_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
 function requestedCaseStudyId(body) {
   const id = typeof body?.caseStudyId === 'string' ? body.caseStudyId.trim() : '';
   return id && id.length <= 160 ? id : null;
+}
+
+function requestedWorkspaceId(req) {
+  const value = Array.isArray(req.query?.workspaceId) ? '' : req.query?.workspaceId;
+  return typeof value === 'string' && CLASSROOM_UUID_PATTERN.test(value.trim())
+    ? value.trim()
+    : null;
 }
 
 function canonicalJson(value) {
@@ -212,6 +221,14 @@ async function instructorExercisePayload(repository, instructorHash, classroom, 
         exercise.currentStageId
       )
     : null;
+  const checkpointMetadata = (checkpoints?.checkpoints || []).map(item => ({
+    workspaceId: item.workspaceId,
+    workspaceKind: item.workspaceKind,
+    workspaceLabel: item.workspaceLabel,
+    stageId: item.stageId,
+    workspaceRevision: item.workspaceRevision,
+    capturedAt: item.capturedAt
+  }));
 
   return {
     class: classroom,
@@ -219,8 +236,86 @@ async function instructorExercisePayload(repository, instructorHash, classroom, 
     caseStudy: instructorDefinition(caseStudy),
     releases: releases?.releases || [],
     workspaceState: workspaceState?.workspaceState || [],
-    checkpoints: checkpoints?.checkpoints || [],
+    checkpoints: checkpointMetadata,
     editFreezeEnforced: true
+  };
+}
+
+/**
+ * Instructor-only explicit read of one immutable current-stage debrief checkpoint.
+ *
+ * Normal exercise reads return checkpoint metadata only. Snapshot bytes are
+ * returned only when an authorized Instructor explicitly selects one current
+ * workspace checkpoint for inspection.
+ *
+ * @param {object} [dependencies] Injectable dependencies.
+ * @returns {Function} Vercel handler.
+ */
+export function classExerciseCheckpointHandler({
+  getRepository = getClassroomRepository,
+  manifest = PROTECTED_CASE_STUDY_MANIFEST
+} = {}) {
+  return async (req, res) => {
+    if (req.method !== 'GET') return methodNotAllowed(res, 'GET');
+
+    const authorization = requireBearer(req);
+    if (!authorization.ok) return send(res, authorization.status, { error: authorization.error });
+
+    const workspaceId = requestedWorkspaceId(req);
+    if (!workspaceId) return send(res, 400, { error: 'Invalid workspace.' });
+
+    const instructorHash = hashWorkspaceToken(authorization.token);
+    try {
+      const repository = await getRepository();
+      const current = await repository.getCurrentExerciseForInstructor(instructorHash);
+      if (!current?.exercise) return send(res, 404, { error: 'Exercise checkpoint not found.' });
+
+      const exercise = current.exercise;
+      const caseStudy = stagedCaseStudy(manifest, exercise.caseStudyId);
+      if (!caseStudy || !definitionMatches(exercise, caseStudy)) {
+        return send(res, 409, { error: 'Exercise definition changed. Refresh the class.' });
+      }
+      if (exercise.stagePhase !== 'debrief' || !exercise.currentStageId) {
+        return send(res, 409, { error: 'Checkpoint inspection is available during debrief.' });
+      }
+
+      const result = await repository.getExerciseCheckpointForInstructor(
+        instructorHash,
+        exercise.id,
+        exercise.currentStageId,
+        workspaceId
+      );
+      if (!result?.checkpoint || !result?.workspace) {
+        return send(res, 404, { error: 'Exercise checkpoint not found.' });
+      }
+
+      return send(res, 200, {
+        class: {
+          id: result.classroom.id,
+          title: result.classroom.title,
+          expiresAt: result.classroom.expiresAt
+        },
+        exercise: {
+          id: exercise.id,
+          currentStageId: exercise.currentStageId,
+          stagePhase: exercise.stagePhase,
+          exerciseRevision: exercise.exerciseRevision
+        },
+        workspace: {
+          id: result.workspace.id,
+          kind: result.workspace.kind,
+          label: result.workspace.label
+        },
+        checkpoint: {
+          stageId: result.checkpoint.stageId,
+          workspaceRevision: result.checkpoint.workspaceRevision,
+          capturedAt: result.checkpoint.capturedAt,
+          snapshot: result.checkpoint.snapshot
+        }
+      });
+    } catch {
+      return send(res, 500, { error: 'Unable to inspect exercise checkpoint.' });
+    }
   };
 }
 
