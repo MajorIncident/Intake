@@ -67,6 +67,8 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
   const studentBErrors = watchPageErrors(studentB);
   const lateStudentErrors = watchPageErrors(lateStudent);
   const studentATokens = [];
+  const studentBTokens = [];
+  const studentBExerciseTokens = [];
 
   studentA.on('request', request => {
     const url = new URL(request.url());
@@ -74,6 +76,19 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
     const header = request.headers().authorization || '';
     const match = /^Bearer\s+(.+)$/u.exec(header);
     if (match && !studentATokens.includes(match[1])) studentATokens.push(match[1]);
+  });
+
+  studentB.on('request', request => {
+    const url = new URL(request.url());
+    const header = request.headers().authorization || '';
+    const match = /^Bearer\s+(.+)$/u.exec(header);
+    if (!match) return;
+    if (url.pathname === '/api/workspaces/session' && !studentBTokens.includes(match[1])) {
+      studentBTokens.push(match[1]);
+    }
+    if (url.pathname === '/api/classes/exercise/student' && !studentBExerciseTokens.includes(match[1])) {
+      studentBExerciseTokens.push(match[1]);
+    }
   });
 
   try {
@@ -130,6 +145,12 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
     await expect(lateStudent.locator('body')).toHaveAttribute('data-student-class-status', 'connected', { timeout: 10000 });
     await expect(lateStudent.locator('#studentClassWorkspace')).toHaveText('Team Beta');
     await expect(lateStudent.locator('#oneLine')).toHaveValue('Team Beta live-class Intake.');
+    await expect(lateStudent.locator('#studentCaseReference')).toBeVisible();
+    await expect(lateStudent.locator('#studentCaseReferenceStatus')).toHaveText('Work');
+    await expect(lateStudent.locator('#studentCaseReferenceStageTitle')).toHaveText('Clarify the browser case');
+    await expect(lateStudent.locator('#studentCaseReferenceContent')).toContainText('Initial browser briefing');
+    await expect(lateStudent.locator('#studentCaseReference')).not.toContainText('Second browser briefing');
+    await expect(lateStudent.locator('#studentCaseReference')).not.toContainText('Browser facilitation note');
 
     const betaUpdate = 'Team Beta stayed isolated with its own Intake.';
     const betaSave = lateStudent.waitForResponse(response => (
@@ -172,6 +193,9 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
 
     await expect(studentA.locator('#studentClassWorkspace')).toHaveText('Team Beta', { timeout: 10000 });
     await expect(studentA.locator('#oneLine')).toHaveValue(betaUpdate, { timeout: 10000 });
+    await expect(studentA.locator('#studentCaseReference')).toBeVisible();
+    await expect(studentA.locator('#studentCaseReferenceStageTitle')).toHaveText('Clarify the browser case');
+    await expect(studentA.locator('#studentCaseReferenceStatus')).toHaveText('Work');
     await expect(studentB.locator('#studentClassWorkspace')).toHaveText('Team Alpha');
     await expect(studentB.locator('#oneLine')).toHaveValue(alphaUpdate);
     expect(studentATokens.length).toBeGreaterThanOrEqual(2);
@@ -198,6 +222,25 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
 
     await expect(studentB.locator('#studentCaseReference')).toBeVisible();
     await expect(studentB.locator('#studentCaseReferenceStatus')).toHaveText('Work');
+    expect(studentBTokens.length).toBeGreaterThanOrEqual(1);
+    expect(studentBExerciseTokens.length).toBeGreaterThanOrEqual(1);
+
+    const stagedReadResponse = await studentB.request.get('/api/classes/exercise/student', {
+      headers: { Authorization: `Bearer ${studentBExerciseTokens.at(-1)}` }
+    });
+    expect(stagedReadResponse.status()).toBe(200);
+    const stagedReadText = JSON.stringify(await stagedReadResponse.json());
+    expect(stagedReadText).toContain('Initial browser briefing');
+    expect(stagedReadText).not.toContain('Second browser briefing');
+    expect(stagedReadText).not.toContain('Browser facilitation note');
+    expect(stagedReadText).not.toContain('Second-stage browser facilitation');
+
+    const fullPayloadBypass = await studentB.request.post('/api/classes/case-studies/student', {
+      headers: { Authorization: `Bearer ${studentBTokens.at(-1)}` },
+      data: { caseStudyId: 'browser-staged-simulation' }
+    });
+    expect(fullPayloadBypass.status()).toBe(409);
+    expect(JSON.stringify(await fullPayloadBypass.json())).not.toContain('Synthetic Instructor-only');
 
     await instructor.getByRole('button', { name: 'Begin debrief' }).click();
     await expect(instructor.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing frozen during debrief');
@@ -205,6 +248,37 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
     await expect(studentB.locator('#studentCaseReferenceMessage')).toContainText('frozen Student editing');
     await expect(studentB.locator('#oneLine')).toHaveJSProperty('readOnly', true);
     await expect(studentB.locator('#studentClassLeaveBtn')).toBeEnabled();
+
+    const frozenWorkspaceToken = studentBTokens.at(-1);
+    const frozenBeforeResponse = await studentB.request.get('/api/workspaces/session', {
+      headers: { Authorization: `Bearer ${frozenWorkspaceToken}` }
+    });
+    expect(frozenBeforeResponse.status()).toBe(200);
+    const frozenBefore = await frozenBeforeResponse.json();
+    const rejectedSnapshot = JSON.parse(JSON.stringify(frozenBefore.snapshot));
+    rejectedSnapshot.pre = rejectedSnapshot.pre && typeof rejectedSnapshot.pre === 'object'
+      ? rejectedSnapshot.pre
+      : {};
+    rejectedSnapshot.pre.oneLine = 'THIS FROZEN WRITE MUST NOT PERSIST';
+
+    const frozenWriteResponse = await studentB.request.put('/api/workspaces/session', {
+      headers: { Authorization: `Bearer ${frozenWorkspaceToken}` },
+      data: {
+        revision: frozenBefore.revision,
+        snapshot: rejectedSnapshot
+      }
+    });
+    expect(frozenWriteResponse.status()).toBe(423);
+    const frozenWriteBody = await frozenWriteResponse.json();
+    expect(frozenWriteBody.code).toBe('classroom-editing-locked');
+
+    const frozenAfterResponse = await studentB.request.get('/api/workspaces/session', {
+      headers: { Authorization: `Bearer ${frozenWorkspaceToken}` }
+    });
+    expect(frozenAfterResponse.status()).toBe(200);
+    const frozenAfter = await frozenAfterResponse.json();
+    expect(frozenAfter.revision).toBe(frozenBefore.revision);
+    expect(frozenAfter.snapshot).toEqual(frozenBefore.snapshot);
 
     await instructor.getByRole('button', { name: 'Allow editing' }).click();
     await expect(instructor.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing allowed during debrief');
