@@ -935,16 +935,46 @@ Validation baseline:
 - repository quality: **302 tests / 301 pass / 0 fail / 1 intentional skip**;
 - final required Browser E2E, CodeQL, Dependency Review, and Template Manifest Guard evidence is taken from the final documented PR head.
 
+## Implementation checkpoint — Tranche 9A integrated staged security / late-join / reassignment acceptance
+
+Acceptance/security contract:
+- the deterministic browser server now mirrors the production frozen Student collaboration-write boundary for staged exercises: a frozen debrief rejects the represented Student workspace PUT with HTTP **423 Locked** and stable `classroom-editing-locked` before any workspace mutation;
+- browser acceptance reads the live workspace before and after that rejected mutation and proves both collaboration revision and snapshot remain byte-for-byte equivalent at the JSON object level;
+- the deterministic browser protected-resource route mirrors the production staged bypass guard: a Student cannot POST for the complete synthetic staged Case Study while it is being delivered through the exercise;
+- browser acceptance also performs a raw stable-session `GET /api/classes/exercise/student` and proves current released Student material is present while later-stage and Instructor-only facilitation content is absent;
+- a late Student admitted after exercise Start is assigned normally and receives the represented current stage/release rather than draft state, future content, or Instructor content;
+- active-stage reassignment rotates only collaboration workspace authority. The stable Student class-session continues to represent the same exercise stage, destination workspace Intake becomes authoritative, and the stale source workspace token remains invalid;
+- readiness remains workspace-scoped. Browser acceptance marks the learner Ready on Team Alpha, reassigns the learner to Team Beta, and proves Team Beta begins Working rather than inheriting Team Alpha readiness;
+- Student mobile acceptance expands the compact staged case-reference surface and passes the serious/critical axe scan with staged content visible;
+- Instructor mobile acceptance opens the compact class rail, creates and starts the staged exercise, exposes current-stage protected facilitation/lifecycle controls, and passes the serious/critical axe scan;
+- staged a11y acceptance corrected two contrast failures by using the existing darker `--accent-text` token for Instructor exercise primary lifecycle buttons and Ready progress text; the global product accent remains unchanged;
+- checkpoint-vs-live acceptance derives the immutable checkpoint revision from the rendered server metadata and asserts the later live workspace is exactly the next collaboration revision, avoiding a deterministic serial-fixture assumption while preserving the comparison proof.
+
+Implementation/security acceptance spans `6391c39348d3e1a8c544f231833fdc71910b4363` through `89a5321a750606cff6fbf34ccf75ef40dc3def07`. Browser fixture/security additions span `523d2451a9b3327b3254c5f92086c8ae86935d53` through `89a5321a750606cff6fbf34ccf75ef40dc3def07`.
+
+Validation on `89a5321a750606cff6fbf34ccf75ef40dc3def07`:
+- repository quality: **302 tests / 301 pass / 0 fail / 1 intentional skip**;
+- required Browser E2E: **28 passed / 10 intentional project-scoped skips / 0 failed / 0 flaky** across 38 project cases;
+- CI: green;
+- CodeQL: green;
+- Dependency Review: green;
+- Template Manifest Guard: green.
+
+Tranche 9 is complete. The staged simulation now has browser-level proof for late join, reassignment/stale-authority cutoff, workspace-scoped readiness, progressive disclosure/full-payload denial, server freeze non-mutation, mobile Student/Instructor operation, accessibility, and historical-vs-live checkpoint comparison.
+
 ## Exact next implementation action
 
-Begin **Tranche 9A — integrated staged security / late-join / reassignment acceptance**.
+Perform **Tranche 10 — final documentation, security, and merge-readiness audit**.
 
-Required next slice:
-- inventory existing #313 browser/API coverage first and add only missing acceptance assertions;
-- prove a late Student joining after exercise Start receives the represented **current stage**, not draft/future content;
-- prove Student reassignment during an active stage keeps class exercise stage constant while destination workspace Intake/readiness wins and old workspace authority stays revoked;
-- retain a direct server/browser assertion that frozen Student snapshot PUT is HTTP **423 `classroom-editing-locked`** with no collaboration revision mutation;
-- prove Student clients cannot obtain future-stage metadata/content, Instructor facilitation/model/exemplar material, or the complete protected Case Study payload through staged/full-payload routes;
-- verify staged Student/Instructor mobile surfaces remain operable and run serious/critical axe checks on the staged states that matter;
-- keep tests focused and deterministic rather than expanding one global end-to-end scenario;
-- production official Case Study staging remains deferred until authoritative instructional material is supplied and reviewed.
+Required final tranche:
+- audit the complete `main...feature/classroom-staged-simulation` diff, not only recent commits;
+- reconcile README, `docs/classroom-api.md`, `docs/classroom-architecture.md`, `docs/classroom-roadmap.md`, `docs/classroom-workstream.md`, this staged-simulation contract, and applicable `AGENTS.md` guidance against the actual implemented end state;
+- audit every #313 authorization boundary: Instructor vs Student capabilities, stable Student session vs assignment/workspace authority, non-enumeration, staged/full-payload separation, future/Instructor/exemplar omission, revision-safe lifecycle mutations, immutable checkpoints, server-enforced freeze, and stale-authority cutoff after reassignment;
+- verify generated protected/public manifests and Vercel public-output controls remain current;
+- verify Classroom exercise/session state and bearer capabilities remain excluded from Intake persistence, templates, summaries, exports, and URLs;
+- confirm Standalone behavior and legacy Classroom compatibility remain additive;
+- inspect schema/migration/retention/rollback documentation and make sure the #313 data additions remain idempotent and class-bounded;
+- explicitly confirm that no production official Case Study stage boundaries/content were guessed or introduced; synthetic staged content remains test-only until authoritative material is supplied;
+- inspect PR #315 for unresolved review/security threads, mergeability, draft/readiness state, and final issue #313 consistency;
+- validate the final documentation/security head through repository quality, required Browser E2E, CodeQL, Dependency Review, and Template Manifest Guard;
+- do **not** merge automatically.
