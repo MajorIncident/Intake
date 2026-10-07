@@ -58,7 +58,8 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 | `src/fileTransfer.js` | Bridges `collectAppState()` / `applyAppState()` with Blob/FileReader APIs for Save/Load workflows. |
 | `components/actions/ActionListCard.js` | Renders the action list card UI, wires inline editing, and notifies listeners when actions change. |
 | `src/actionsStore.js` | Persists actions by analysis ID under `kt-actions-by-analysis-v1`, providing CRUD and sorting helpers for the card UI. |
-| `src/coachableFields.js` | Stable domain coaching-target registry and deterministic versioned field fingerprints; DOM IDs are placement hooks, not persistence identity. |
+| `src/intakeTargets.js` | Universal semantic Intake-target registry for static/KT targets, serialized snapshot projection, live placement resolution, and deterministic versioned fingerprints. Target IDs are domain identity; Templates and DOM placement are not. |
+| `src/coachableFields.js` | Backward-compatible coaching facade over `src/intakeTargets.js`; preserves existing coaching export names and stored target IDs without owning a second registry. |
 | `src/classroomCoaching.js` | Instructor coaching controls and Student read-only feedback UI backed by the separate Classroom coaching API. |
 | `src/classroomCaseStudies.js` | In-memory authorized Classroom Case Study catalog/payload client. It receives active Student/Instructor capabilities from their lifecycle controllers and never persists them. |
 | `main.js` | Entry point that imports every module, wires shared events, and runs `boot()`. |
