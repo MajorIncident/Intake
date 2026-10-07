@@ -126,10 +126,23 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await page.getByRole('button', { name: 'Observe Team Alpha, Ready' }).click();
   await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
 
+  await page.getByRole('button', { name: 'Begin debrief' }).click();
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Debrief · debrief started');
+  await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing frozen during debrief');
+  await expect(page.locator('#instructorExerciseCheckpointSummary')).toHaveText('1 captured');
+  await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Team Alpha');
+  await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Revision 1');
+  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
+
+  await page.getByRole('button', { name: 'Allow editing' }).click();
+  await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing allowed during debrief');
+  await page.getByRole('button', { name: 'Freeze editing' }).click();
+  await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing frozen during debrief');
+
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes')).toBe(true);
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes/workspaces')).toBe(true);
   expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes/exercise')).toBe(true);
-  expect(classroomRequests.filter(request => request.method === 'PATCH' && request.pathname === '/api/classes/exercise')).toHaveLength(4);
+  expect(classroomRequests.filter(request => request.method === 'PATCH' && request.pathname === '/api/classes/exercise')).toHaveLength(7);
   expect(classroomRequests.some(request => request.method === 'PATCH' && request.pathname === '/api/classes/participants')).toBe(true);
   expect(classroomRequests.some(request => request.pathname === '/api/classes/join')).toBe(false);
   expect(classroomRequests.some(request => request.body.includes('assignmentToken'))).toBe(false);
@@ -143,13 +156,16 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.locator('#instructorJoinCode')).toHaveText('K7FM-P4Q2');
   await expect(page.locator('#instructorParticipantSummary')).toHaveText('1 student · 0 waiting');
   await expect(page.getByLabel('Assignment for Waiting Student')).not.toHaveValue('');
-  await expect(page.locator('#instructorExerciseStatus')).toHaveText('In progress');
+  await expect(page.locator('#instructorExerciseStatus')).toHaveText('Debrief');
   await expect(page.locator('#instructorExerciseCaseName')).toHaveText('Browser Staged Simulation');
   await expect(page.getByLabel('Staged Case Study')).toHaveValue('browser-staged-simulation');
   await expect(page.locator('#instructorExerciseCreateBtn')).toBeDisabled();
   await expect(page.locator('#instructorExerciseStageTitle')).toHaveText('Clarify the browser case');
   await expect(page.locator('#instructorExerciseReleaseList')).toContainText('Released');
   await expect(page.locator('#instructorExerciseProgressSummary')).toHaveText('1 ready · 0 working');
+  await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing frozen during debrief');
+  await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Team Alpha');
+  await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Revision 1');
   await expect(page.locator('#instructorExercisePauseBtn')).toBeVisible();
 
   await expectNoBlockingA11yViolations(page);
@@ -181,6 +197,12 @@ test('Instructor opens a class, observes work read-only, switches workspaces, an
 
   await expect(page.locator('#instructorClassDashboard')).toBeVisible();
   await expect(page.locator('#instructorClassTitle')).toHaveText('Browser Test Classroom');
+  if (testInfo.project.name === 'chromium-mobile') {
+    await expect(page.locator('#instructorClassDashboard')).toHaveClass(/is-collapsed/);
+    await expect(page.getByRole('button', { name: 'Open class panel' })).toBeVisible();
+    await page.getByRole('button', { name: 'Open class panel' }).click();
+    await expect(page.locator('#instructorClassDashboard')).not.toHaveClass(/is-collapsed/);
+  }
   await expect(page.locator('#instructorRosterSummary')).toHaveText('2 workspaces');
   await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Alex Student');
   await expect(page.locator('#instructorObserverStatus')).toHaveText('Live read-only view');
