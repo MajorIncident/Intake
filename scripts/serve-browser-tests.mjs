@@ -107,6 +107,7 @@ const classroomWorkspaces = new Map();
 const classroomCoachingFeedback = new Map();
 const classroomExercises = new Map();
 const classroomExerciseReleases = new Map();
+const classroomExerciseCheckpoints = new Map();
 
 const CONTENT_TYPES = Object.freeze({
   '.css': 'text/css; charset=utf-8',
@@ -380,6 +381,24 @@ function browserExerciseWorkspaceState(token, exercise) {
       readyWorkspaceRevision: ready ? (observed?.revision || 1) : null,
       createdAt: '2099-12-31T23:29:00.000Z',
       updatedAt: '2099-12-31T23:30:00.000Z'
+    };
+  });
+}
+
+function captureBrowserExerciseCheckpoints(token, exercise) {
+  if (!exercise?.currentStageId) return [];
+  const fixture = managedInstructorFixture(token);
+  const workspaces = fixture?.workspaces || instructorRoster().workspaces;
+  return workspaces.map(workspace => {
+    const observed = fixture?.workspaceStates?.get(workspace.id);
+    return {
+      workspaceId: workspace.id,
+      workspaceKind: workspace.kind,
+      workspaceLabel: workspace.label,
+      stageId: exercise.currentStageId,
+      workspaceRevision: observed?.revision || 1,
+      snapshot: structuredClone(observed?.snapshot || freshClassroomSnapshot()),
+      capturedAt: '2099-12-31T23:35:00.000Z'
     };
   });
 }
@@ -675,6 +694,7 @@ async function handleClassroomApi(request, response, url) {
       integratedInstructorParticipants = [];
       classroomExercises.delete(INTEGRATED_INSTRUCTOR_TOKEN);
       classroomExerciseReleases.delete(INTEGRATED_INSTRUCTOR_TOKEN);
+      classroomExerciseCheckpoints.delete(INTEGRATED_INSTRUCTOR_TOKEN);
       sendJson(response, 201, {
         class: integratedInstructorClass(),
         instructorToken: INTEGRATED_INSTRUCTOR_TOKEN,
@@ -694,6 +714,7 @@ async function handleClassroomApi(request, response, url) {
     liveInstructorWorkspaceStates.clear();
     classroomExercises.delete(LIVE_INSTRUCTOR_TOKEN);
     classroomExerciseReleases.delete(LIVE_INSTRUCTOR_TOKEN);
+    classroomExerciseCheckpoints.delete(LIVE_INSTRUCTOR_TOKEN);
     liveInstructorParticipants = [{
       id: LIVE_PARTICIPANT_ID,
       displayName: 'Waiting Student',
@@ -730,6 +751,9 @@ async function handleClassroomApi(request, response, url) {
     const exerciseProgress = exercise => structuredClone(
       browserExerciseWorkspaceState(instructorToken, exercise)
     );
+    const exerciseCheckpoints = () => structuredClone(
+      classroomExerciseCheckpoints.get(instructorToken) || []
+    );
 
     if (request.method === 'GET') {
       const exercise = classroomExercises.get(instructorToken) || null;
@@ -740,7 +764,7 @@ async function handleClassroomApi(request, response, url) {
             caseStudy: structuredClone(BROWSER_STAGED_CASE),
             releases: exerciseReleases(),
             workspaceState: exerciseProgress(exercise),
-            checkpoints: [],
+            checkpoints: exerciseCheckpoints(),
             editFreezeEnforced: true,
             availableCaseStudies
           }
@@ -775,7 +799,7 @@ async function handleClassroomApi(request, response, url) {
           caseStudy: structuredClone(BROWSER_STAGED_CASE),
           releases: exerciseReleases(),
           workspaceState: exerciseProgress(existing),
-          checkpoints: [],
+          checkpoints: exerciseCheckpoints(),
           editFreezeEnforced: true,
           created: false
         });
@@ -795,13 +819,14 @@ async function handleClassroomApi(request, response, url) {
       };
       classroomExercises.set(instructorToken, exercise);
       classroomExerciseReleases.set(instructorToken, []);
+      classroomExerciseCheckpoints.set(instructorToken, []);
       sendJson(response, 201, {
         class: classContext,
         exercise: structuredClone(exercise),
         caseStudy: structuredClone(BROWSER_STAGED_CASE),
         releases: exerciseReleases(),
         workspaceState: exerciseProgress(exercise),
-        checkpoints: [],
+        checkpoints: exerciseCheckpoints(),
         editFreezeEnforced: true,
         created: true
       });
@@ -840,7 +865,7 @@ async function handleClassroomApi(request, response, url) {
             caseStudy: structuredClone(BROWSER_STAGED_CASE),
             releases: exerciseReleases(),
             workspaceState: exerciseProgress(exercise),
-            checkpoints: [],
+            checkpoints: exerciseCheckpoints(),
             editFreezeEnforced: true,
             changed: false
           });
@@ -869,7 +894,7 @@ async function handleClassroomApi(request, response, url) {
           caseStudy: structuredClone(BROWSER_STAGED_CASE),
           releases: exerciseReleases(),
           workspaceState: exerciseProgress(exercise),
-          checkpoints: [],
+          checkpoints: exerciseCheckpoints(),
           editFreezeEnforced: true,
           changed: true
         });
@@ -884,6 +909,7 @@ async function handleClassroomApi(request, response, url) {
         return true;
       }
 
+      let capturedCount;
       if (body.action === 'start') {
         if (exercise.status !== 'draft' || exercise.currentStageId !== null) {
           sendJson(response, 409, {
@@ -914,6 +940,30 @@ async function handleClassroomApi(request, response, url) {
           return true;
         }
         exercise.status = 'active';
+      } else if (body.action === 'begin-debrief') {
+        if (exercise.status !== 'active' || exercise.stagePhase !== 'work' || !exercise.currentStageId) {
+          sendJson(response, 409, {
+            error: 'Exercise is not ready to enter debrief.',
+            exercise: structuredClone(exercise)
+          });
+          return true;
+        }
+        const stage = BROWSER_STAGED_CASE.simulation.stages.find(item => item.id === exercise.currentStageId);
+        const checkpoints = captureBrowserExerciseCheckpoints(instructorToken, exercise);
+        classroomExerciseCheckpoints.set(instructorToken, checkpoints);
+        capturedCount = checkpoints.length;
+        exercise.stagePhase = 'debrief';
+        exercise.studentEditingEnabled = stage?.defaultDebriefEditPolicy !== 'frozen';
+      } else if (body.action === 'set-editing') {
+        if (
+          exercise.status !== 'active'
+          || exercise.stagePhase !== 'debrief'
+          || typeof body.enabled !== 'boolean'
+        ) {
+          sendJson(response, 400, { error: 'Invalid debrief editing policy.' });
+          return true;
+        }
+        exercise.studentEditingEnabled = body.enabled;
       } else {
         sendJson(response, 400, { error: 'Invalid exercise action.' });
         return true;
@@ -927,9 +977,10 @@ async function handleClassroomApi(request, response, url) {
         caseStudy: structuredClone(BROWSER_STAGED_CASE),
         releases: exerciseReleases(),
         workspaceState: exerciseProgress(exercise),
-        checkpoints: [],
+        checkpoints: exerciseCheckpoints(),
         editFreezeEnforced: true,
-        changed: true
+        changed: true,
+        ...(Number.isInteger(capturedCount) ? { capturedCount } : {})
       });
       return true;
     }
