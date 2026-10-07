@@ -107,6 +107,30 @@ test('existing collaboration links silently enter Standalone for backward compat
   assert.equal(dom.window.document.getElementById('experienceRoleGate').hidden, true);
 });
 
+test('a valid Classroom join fragment enters Student experience before the first-run chooser', () => {
+  dom.window.close();
+  mount('https://intake.test/#join=K7FMP4Q2');
+  dom.window.localStorage.clear();
+
+  const role = initialize();
+
+  assert.equal(role, EXPERIENCE_ROLE_IDS.STUDENT);
+  assert.equal(dom.window.document.getElementById('experienceRoleGate').hidden, true);
+  assert.equal(dom.window.document.getElementById('studentClassEntryShell').hidden, false);
+  assert.equal(JSON.parse(dom.window.localStorage.getItem(EXPERIENCE_ROLE_STORAGE_KEY)).role, EXPERIENCE_ROLE_IDS.STUDENT);
+});
+
+test('legacy collaboration query authority wins over a simultaneous Classroom join fragment', () => {
+  dom.window.close();
+  mount('https://intake.test/?workspace=existing-secret#join=K7FMP4Q2');
+  dom.window.localStorage.clear();
+
+  const role = initialize();
+
+  assert.equal(role, EXPERIENCE_ROLE_IDS.STANDALONE);
+  assert.equal(dom.window.document.querySelector('.wrap').hidden, false);
+});
+
 test('explicit legacy collaboration link overrides a stored Instructor preference', () => {
   dom.window.close();
   mount('https://intake.test/?workspace=existing-secret');
