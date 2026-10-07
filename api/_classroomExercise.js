@@ -7,9 +7,11 @@
  * collaboration edit authority.
  */
 
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 import { getClassroomRepository } from './_classroom.js';
+import { fingerprintStagedSimulation } from './_classroomSimulation.js';
+export { fingerprintStagedSimulation } from './_classroomSimulation.js';
 import { PROTECTED_CASE_STUDY_MANIFEST } from './protected-case-studies.manifest.js';
 import {
   getWorkspaceRepository,
@@ -58,28 +60,6 @@ function requestedWorkspaceId(req) {
     : null;
 }
 
-function canonicalJson(value) {
-  if (Array.isArray(value)) {
-    return '[' + value.map(canonicalJson).join(',') + ']';
-  }
-  if (value && typeof value === 'object') {
-    return '{' + Object.keys(value)
-      .sort()
-      .map(key => JSON.stringify(key) + ':' + canonicalJson(value[key]))
-      .join(',') + '}';
-  }
-  return JSON.stringify(value);
-}
-
-/**
- * Return a stable SHA-256 identity for one normalized staged definition.
- *
- * @param {object} simulation Normalized server-only simulation definition.
- * @returns {string} Lowercase SHA-256 hex digest.
- */
-export function fingerprintStagedSimulation(simulation) {
-  return createHash('sha256').update(canonicalJson(simulation)).digest('hex');
-}
 
 function stagedCaseStudy(manifest, caseStudyId) {
   const entry = manifest.find(candidate => candidate.id === caseStudyId) || null;
