@@ -255,7 +255,7 @@ export function createClassroomDebriefComparisonController({
     workspaces.forEach(workspace => {
       const card = documentRef.createElement('article');
       card.className = 'instructor-debrief-cell';
-      card.dataset.workspaceId = workspace.id || '';
+      card.dataset.debriefWorkspaceId = workspace.id || '';
 
       const header = documentRef.createElement('header');
       const identity = documentRef.createElement('div');
