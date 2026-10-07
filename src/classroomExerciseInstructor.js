@@ -4,8 +4,8 @@
  * @description
  *   Receives the active Instructor capability from the class lifecycle, keeps it
  *   in memory only, and reads/writes the Instructor-authorized exercise endpoint.
- *   Tranche 6E adds revision-safe debrief entry, checkpoint status, and explicit
- *   Student editing policy controls; advance/complete remain deferred.
+ *   Tranche 6F completes the Instructor lifecycle with revision-safe advance
+ *   and completion while preserving the debrief/checkpoint/edit-policy boundaries.
  */
 
 export const INSTRUCTOR_EXERCISE_ENDPOINT = '/api/classes/exercise';
@@ -113,8 +113,8 @@ export function createInstructorExerciseConsoleController({
     if (!exercise) return '';
     if (exercise.status === 'draft') return 'Draft';
     if (exercise.status === 'paused') return 'Paused';
-    if (exercise.stagePhase === 'debrief') return 'Debrief';
     if (exercise.status === 'completed') return 'Completed';
+    if (exercise.stagePhase === 'debrief') return 'Debrief';
     return 'In progress';
   };
 
@@ -220,14 +220,23 @@ export function createInstructorExerciseConsoleController({
     const pause = element('instructorExercisePauseBtn');
     const resume = element('instructorExerciseResumeBtn');
     const beginDebrief = element('instructorExerciseBeginDebriefBtn');
+    const advance = element('instructorExerciseAdvanceBtn');
+    const complete = element('instructorExerciseCompleteBtn');
     const help = element('instructorExerciseLifecycleHelp');
     if (!lifecycle) return;
 
     lifecycle.hidden = !exercise;
+    const stages = Array.isArray(caseStudy?.simulation?.stages) ? caseStudy.simulation.stages : [];
+    const currentStageIndex = stages.findIndex(item => item.id === exercise?.currentStageId);
+    const isActiveDebrief = exercise?.status === 'active'
+      && exercise?.stagePhase === 'debrief'
+      && currentStageIndex >= 0;
     const canStart = exercise?.status === 'draft' && !exercise.currentStageId;
     const canPause = exercise?.status === 'active';
     const canResume = exercise?.status === 'paused';
     const canBeginDebrief = exercise?.status === 'active' && exercise?.stagePhase === 'work' && Boolean(exercise.currentStageId);
+    const canAdvance = isActiveDebrief && currentStageIndex < stages.length - 1;
+    const canComplete = isActiveDebrief && currentStageIndex === stages.length - 1;
 
     if (start) {
       start.hidden = !canStart;
@@ -245,10 +254,20 @@ export function createInstructorExerciseConsoleController({
       beginDebrief.hidden = !canBeginDebrief;
       beginDebrief.disabled = loading || !canBeginDebrief;
     }
+    if (advance) {
+      advance.hidden = !canAdvance;
+      advance.disabled = loading || !canAdvance;
+    }
+    if (complete) {
+      complete.hidden = !canComplete;
+      complete.disabled = loading || !canComplete;
+    }
     if (help) {
-      help.textContent = exercise?.stagePhase === 'debrief'
-        ? 'Debrief preserves the captured team checkpoints. Pause still controls class pacing; editing policy is controlled below.'
-        : 'Pause controls class pacing only. Student editing freeze is a separate debrief control.';
+      help.textContent = exercise?.status === 'completed'
+        ? 'Exercise completed. Student work is preserved; completion does not release additional case or exemplar material.'
+        : exercise?.stagePhase === 'debrief'
+          ? 'Debrief preserves the captured team checkpoints. Pause still controls class pacing; editing policy is controlled below.'
+          : 'Pause controls class pacing only. Student editing freeze is a separate debrief control.';
     }
   };
 
@@ -410,17 +429,20 @@ export function createInstructorExerciseConsoleController({
 
     const editingAllowed = exercise.studentEditingEnabled !== false;
     const canChangeEditing = exercise.status === 'active' && !loading;
+    const completed = exercise.status === 'completed';
     if (editingStatus) {
-      editingStatus.textContent = editingAllowed
-        ? 'Student editing allowed during debrief'
-        : 'Student editing frozen during debrief';
+      editingStatus.textContent = completed
+        ? 'Exercise completed; staged editing policy no longer applies'
+        : editingAllowed
+          ? 'Student editing allowed during debrief'
+          : 'Student editing frozen during debrief';
     }
     if (freezeButton) {
-      freezeButton.hidden = !editingAllowed;
+      freezeButton.hidden = completed || !editingAllowed;
       freezeButton.disabled = !canChangeEditing || !editingAllowed;
     }
     if (allowButton) {
-      allowButton.hidden = editingAllowed;
+      allowButton.hidden = completed || editingAllowed;
       allowButton.disabled = !canChangeEditing || editingAllowed;
     }
 
@@ -486,7 +508,9 @@ export function createInstructorExerciseConsoleController({
         ? caseStudy.simulation.stages.find(item => item.id === exercise.currentStageId)
         : null;
       if (detail) detail.textContent = stage
-        ? `${stage.title} · ${stage.studentObjective}`
+        ? exercise.status === 'completed'
+          ? `${stage.title} · Exercise completed. No additional Student material is released automatically.`
+          : `${stage.title} · ${stage.studentObjective}`
         : 'Draft exercise — no stage has started and nothing has been released to Students.';
     } else {
       if (caseName) caseName.textContent = 'No staged exercise selected';
@@ -677,6 +701,21 @@ export function createInstructorExerciseConsoleController({
         && exercise.stagePhase === 'work'
         && Boolean(exercise.currentStageId)
       )
+      || (
+        action === 'advance'
+        && exercise.status === 'active'
+        && exercise.stagePhase === 'debrief'
+        && Array.isArray(caseStudy?.simulation?.stages)
+        && caseStudy.simulation.stages.findIndex(item => item.id === exercise.currentStageId) >= 0
+        && caseStudy.simulation.stages.findIndex(item => item.id === exercise.currentStageId) < caseStudy.simulation.stages.length - 1
+      )
+      || (
+        action === 'complete'
+        && exercise.status === 'active'
+        && exercise.stagePhase === 'debrief'
+        && Array.isArray(caseStudy?.simulation?.stages)
+        && caseStudy.simulation.stages.findIndex(item => item.id === exercise.currentStageId) === caseStudy.simulation.stages.length - 1
+      )
     );
     if (!allowed) return false;
 
@@ -728,7 +767,11 @@ export function createInstructorExerciseConsoleController({
           ? 'exercise paused'
           : action === 'resume'
             ? 'exercise resumed'
-            : 'debrief started';
+            : action === 'begin-debrief'
+              ? 'debrief started'
+              : action === 'advance'
+                ? 'advanced to next stage'
+                : 'exercise completed';
       return true;
     } catch {
       if (destroyed || localEpoch !== epoch) return false;
@@ -950,6 +993,8 @@ export function createInstructorExerciseConsoleController({
   const handlePause = () => { void mutateLifecycle('pause'); };
   const handleResume = () => { void mutateLifecycle('resume'); };
   const handleBeginDebrief = () => { void mutateLifecycle('begin-debrief'); };
+  const handleAdvance = () => { void mutateLifecycle('advance'); };
+  const handleComplete = () => { void mutateLifecycle('complete'); };
   const handleFreeze = () => { void setEditing(false); };
   const handleAllowEditing = () => { void setEditing(true); };
 
@@ -960,6 +1005,8 @@ export function createInstructorExerciseConsoleController({
   element('instructorExercisePauseBtn')?.addEventListener('click', handlePause);
   element('instructorExerciseResumeBtn')?.addEventListener('click', handleResume);
   element('instructorExerciseBeginDebriefBtn')?.addEventListener('click', handleBeginDebrief);
+  element('instructorExerciseAdvanceBtn')?.addEventListener('click', handleAdvance);
+  element('instructorExerciseCompleteBtn')?.addEventListener('click', handleComplete);
   element('instructorExerciseFreezeBtn')?.addEventListener('click', handleFreeze);
   element('instructorExerciseAllowEditingBtn')?.addEventListener('click', handleAllowEditing);
   render();
@@ -973,6 +1020,8 @@ export function createInstructorExerciseConsoleController({
     pause: () => mutateLifecycle('pause'),
     resume: () => mutateLifecycle('resume'),
     beginDebrief: () => mutateLifecycle('begin-debrief'),
+    advance: () => mutateLifecycle('advance'),
+    complete: () => mutateLifecycle('complete'),
     setEditing,
     releaseContent,
     getState: () => ({
@@ -998,6 +1047,8 @@ export function createInstructorExerciseConsoleController({
       element('instructorExercisePauseBtn')?.removeEventListener('click', handlePause);
       element('instructorExerciseResumeBtn')?.removeEventListener('click', handleResume);
       element('instructorExerciseBeginDebriefBtn')?.removeEventListener('click', handleBeginDebrief);
+      element('instructorExerciseAdvanceBtn')?.removeEventListener('click', handleAdvance);
+      element('instructorExerciseCompleteBtn')?.removeEventListener('click', handleComplete);
       element('instructorExerciseFreezeBtn')?.removeEventListener('click', handleFreeze);
       element('instructorExerciseAllowEditingBtn')?.removeEventListener('click', handleAllowEditing);
       disconnect();
