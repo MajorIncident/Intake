@@ -1460,7 +1460,6 @@ async function initializeClassroomRepository() {
           cw.label AS "workspaceLabel",
           cp.stage_id AS "stageId",
           cp.workspace_revision AS "workspaceRevision",
-          cp.snapshot,
           cp.captured_at AS "capturedAt"
         FROM classroom_exercise_checkpoints cp
         JOIN classroom_exercises e ON e.id = cp.exercise_id
