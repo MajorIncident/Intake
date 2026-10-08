@@ -420,7 +420,7 @@ Anchors present:
           <h3 id="adminRecoveryTitle">New Instructor access</h3>
           <p>Copy this value now and provide it securely to the Instructor. The previous Instructor credential stopped working when this one was created. Intake does not store this raw value.</p>
           <label data-persistence="session-only" data-summary="exclude" for="adminRecoveryToken">Instructor access</label>
-          <textarea id="adminRecoveryToken" rows="2" readonly spellcheck="false"></textarea>
+          <textarea id="adminRecoveryToken" rows="2" readonly spellcheck="false" data-persistence="session-only" data-summary="exclude"></textarea>
           <div class="admin-maintenance__actions">
             <button data-persistence="session-only" data-summary="exclude" type="button" class="btn" id="adminRecoveryCopyBtn">Copy Instructor access</button>
             <button data-persistence="session-only" data-summary="exclude" type="button" class="btn-secondary" id="adminRecoveryDismissBtn">Dismiss</button>
