@@ -3,7 +3,7 @@
  */
 
 /**
- * Current schema version for persisted app state, used by storage migrations to
- * decide when to transform saved data.
+ * Current canonical schema version for persisted app state. Pre-production
+ * snapshots from other versions are intentionally unsupported.
  */
-export const APP_STATE_VERSION = 2;
+export const APP_STATE_VERSION = 3;
