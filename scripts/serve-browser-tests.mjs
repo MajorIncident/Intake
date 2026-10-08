@@ -1387,10 +1387,7 @@ async function handleClassroomApi(request, response, url) {
         teamName: workspace.label,
         participants: new Map()
       });
-      sendJson(response, 201, {
-        workspace,
-        assignmentToken: `${'a'.repeat(42)}${String(managedFixture.workspaces.length).slice(-1)}`
-      });
+      sendJson(response, 201, { workspace });
       return true;
     }
 
