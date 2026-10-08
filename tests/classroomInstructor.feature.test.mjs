@@ -422,7 +422,7 @@ test('Instructor starts a live class, creates a team, and assigns a waiting Stud
       });
     }
     return response(404, {});
-  });
+  }, { savedSession: false });
 
   assert.equal(await env.controller.startClass('Live PSDM Class'), true);
   assert.equal(dom.window.document.getElementById('instructorClassTitle').textContent, 'Live PSDM Class');
