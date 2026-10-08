@@ -5,9 +5,10 @@
 
 /**
  * Persistence helpers for the intake app state. This module owns the
- * serialization contract for `localStorage`, including versioned migrations via
- * {@link migrateAppState}. Key exports cover cause list serialization,
- * app-state migrations, and storage lifecycle helpers (`saveToStorage`,
+ * current-only serialization contract for `localStorage`. {@link migrateAppState}
+ * now validates/sanitizes only the current schema; historical pre-production
+ * migrations are intentionally retired. Key exports cover cause list serialization,
+ * current-state normalization, and storage lifecycle helpers (`saveToStorage`,
  * `restoreFromStorage`, `clearStorage`). Collaboration status, manual sync actions, and capability tokens are deliberately
  * excluded; `src/collaboration.js` stores only conflict recovery in its separate local key.
  */
