@@ -8,7 +8,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 The secure Classroom foundation (#288), live-class management (#312), staged-simulation engine (#313), universal target layer (#318), debrief comparison (#319), and join/mobile polish (#320) are **merged**. PR #326 merged #319 to `main` as `400a6c5ee0b879b4a36705be6d8af075bc89d391`; that exact SHA reached Vercel production **READY** and the post-deploy runtime-error scan was clean. PR #327 then merged the small-slice/slow-gate operating rules as `dce82b1ddb94ff926464af4a9b9d81704ba05a5a`.
 
-There is currently **no active product implementation PR**. The approved next cycle is pre-production hardening, documented in `docs/preproduction-hardening.md`.
+Pre-production hardening is active. **#328** is implemented on `feature/preproduction-compat-reset` / draft PR #332 and is in final validation. The governing contract remains `docs/preproduction-hardening.md`.
 
 ## Program issues
 
@@ -30,7 +30,7 @@ There is currently **no active product implementation PR**. The approved next cy
 | Universal Intake target identity | #318 | Complete | PR #325 merged as `ef694910...` | Shared semantic target projection and compatibility guards |
 | Class debrief comparison | #319 | Complete / published | PR #326 merged as `400a6c5e...` | 319A–F complete; exact merged-main production READY + runtime clean |
 | Join/mobile polish | #320 | Complete | PR #324 merged as `273ae643...` | Safe share/QR + compact mobile Class/Case/Team/Notes/Instructor chrome |
-| Compatibility reset | #328 | **Next** | Open | Remove legacy Student two-code + public Instructor recovery code + obsolete save migrations |
+| Compatibility reset | #328 | **Implementation complete / validating** | Draft PR #332 | Current one-code/session model only; obsolete Classroom access/schema and pre-production save migrations removed |
 | Admin / Maintenance | #329 | Planned / blocked by #328 | Open | Inventory, preview, revoke/purge stale Classroom + collaboration data |
 | Startup experience hub | #330 | Planned / blocked by #328/#329 | Open | Explicit Continue / Work independently / Join / Run / Admin choices |
 | Rich staged assets | #316 | Deferred until hardening complete | Open | Secure image/table/document-page delivery |
@@ -71,29 +71,37 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-**#328 — Pre-production compatibility reset** is active on `feature/preproduction-compat-reset` / draft PR #332.
+**#328 — Pre-production compatibility reset** is active on `feature/preproduction-compat-reset` / draft PR #332 and is at final validation.
 
-Checkpoint **328A** head: `aaf5fe877d63ce66673dee1aac930e6d365d3935`.
+Implementation checkpoint before this ledger update: `05100870c362ebaca301d614dfb9d4d36a3d7a2f`.
 
 Completed:
-- Student entry and resume now target only the current one-code live Classroom flow;
-- Instructor entry no longer offers the old access-code form; Start Class and same-device resume remain;
-- the obsolete Classroom join endpoint has been removed;
-- current Student authorization uses the live participant/session model only;
-- the shared Classroom test repository has been moved to the current model;
-- Student and Instructor feature tests are being updated for current resume behavior.
+- Student entry is display name + one human class code only; the legacy assignment-code disclosure and two-code client flow are removed.
+- Student resume accepts only the current v2 class-session envelope. Assignment-specific workspace capability remains memory-only and is reacquired from the server.
+- Instructor entry exposes Start Class + same-device resume only. The public **Open an existing class / Instructor access code** bearer-entry form is removed; future recovery belongs to #329 Administration / Maintenance.
+- `POST /api/classes/join`, Student join-token issuance/rotation, workspace assignment-claim secrets, legacy membership authorization, and their Vercel route are removed.
+- Existing pre-production databases explicitly drop `student_join_token_hash`, workspace `claim_token_hash`, and `classroom_memberships` during idempotent schema initialization.
+- Current authorization remains human join code -> Student class-session -> current assignment-specific `classroom-student` workspace capability. Instructor observation/coaching remains class-scoped/read-only with respect to Student Intake.
+- Intake serialization is current-version-only at `APP_STATE_VERSION = 3`; the historical migration registry is empty and old snapshot versions fail closed.
+- Experience-role preference accepts only the current versioned envelope; saved Intake no longer silently infers Standalone.
+- Load-from-File rejects unsupported snapshot versions with an explicit file-version/current-version message before normalization/application.
+- All five authored Template/Case Study sources and both generated manifests use the canonical v3 Intake schema.
+- Unit/API/browser fixtures have been converted to the current access/session model; retired browser journeys were consolidated into live-class coverage.
+- Canonical API, architecture, security, onboarding, README, live-management, and storage-schema docs have been reconciled to the current model.
 
-Still pending:
-- finish API and browser test fixture conversion;
-- simplify obsolete Intake save/local preference compatibility;
-- reconcile the durable docs after implementation stabilizes;
-- run focused and canonical validation.
+Validation evidence:
+- Template Manifest Guard is green on exact head `05100870c362ebaca301d614dfb9d4d36a3d7a2f`.
+- Branch-wide changed-fixture audit found no accidental v1/v2 Intake snapshots; the only old-version fixture remaining is the intentional rejection test.
+- Runtime audit finds retired DB identifiers only inside the deliberate `DROP ... IF EXISTS` cleanup statements.
+- PR #332 has **0 unresolved review threads**.
+- Exact-head CI / CodeQL / Dependency Review are still pending as of this checkpoint; do not claim them green until refreshed after this documentation commit.
 
 Exact next action:
-1. finish API/browser fixture conversion;
-2. run focused Classroom tests;
-3. inventory and simplify obsolete save/local migrations;
-4. update docs and run canonical quality/browser gates.
+1. refresh PR #332 exact head and required checks;
+2. if CI fails, fix only the concrete failing current-contract test/gate and repeat;
+3. once all required checks are green, update PR #332 with final evidence, mark it ready for review, verify 0 unresolved threads, and squash-merge the exact head;
+4. verify merged `main` publication/runtime before closing #328;
+5. #329 Administration / Maintenance is the next product slice after #328 is closed.
 
 ### Historical checkpoint ledger
 
