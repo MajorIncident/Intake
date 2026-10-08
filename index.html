@@ -134,6 +134,10 @@ Anchors present:
             <span class="menu-item__label">Experience</span>
             <span class="menu-shortcut" data-experience-role-label>Choose experience</span>
           </button>
+          <button type="button" class="menu-item" id="adminMaintenanceMenuBtn" role="menuitem" data-open-admin-maintenance data-persistence="session-only" data-summary="exclude">
+            <span class="menu-item__label">Administration / Maintenance</span>
+            <span class="menu-shortcut">Privileged</span>
+          </button>
           <!-- [feature:experience-role-switch] end -->
           <button type="button" class="menu-item" id="notesWorkspaceMenuBtn" data-experience-surface="intake-control" data-persistence="local-only" data-summary="exclude" role="menuitem" aria-controls="notesWorkspace" aria-expanded="true">
             <span class="menu-item__label">Notes workspace</span><span class="menu-shortcut">Alt+N</span>
@@ -271,6 +275,10 @@ Anchors present:
           <span class="experience-role-option__description">Open the instructor workspace for class supervision and coaching.</span>
         </button>
       </div>
+      <div class="experience-role-admin-entry">
+        <button type="button" class="btn-secondary" id="experienceAdminMaintenanceBtn" data-open-admin-maintenance data-persistence="session-only" data-summary="exclude">Administration / Maintenance</button>
+        <span>Inspect and clean server-side class or collaboration data with a separate Admin access key.</span>
+      </div>
       <div class="experience-role-dialog__footer">
         <p>Your experience choice is stored separately from Intake case data and exports.</p>
         <button type="button" class="btn-secondary" id="experienceRoleCancelBtn" data-persistence="local-only" data-summary="exclude">Keep current experience</button>
@@ -278,6 +286,150 @@ Anchors present:
     </section>
   </div>
   <!-- [feature:experience-role] end -->
+
+  <!-- [feature:admin-maintenance] start -->
+  <div class="admin-maintenance-gate" id="adminMaintenanceGate" aria-hidden="true" data-persistence="session-only" data-summary="exclude" hidden>
+    <section
+      class="admin-maintenance"
+      id="adminMaintenanceDialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="adminMaintenanceTitle"
+      aria-describedby="adminMaintenanceDescription"
+      aria-busy="false"
+      tabindex="-1"
+    >
+      <header class="admin-maintenance__header">
+        <div>
+          <span class="experience-shell__eyebrow">Privileged utility</span>
+          <h2 id="adminMaintenanceTitle">Administration / Maintenance</h2>
+          <p id="adminMaintenanceDescription">Inspect server-side Classroom and collaboration lifecycle data, recover Instructor authority, and preview cleanup before anything is permanently deleted.</p>
+        </div>
+        <button data-persistence="session-only" data-summary="exclude" type="button" class="btn-secondary" id="adminMaintenanceCloseBtn">Close</button>
+      </header>
+
+      <p class="admin-maintenance__status" id="adminMaintenanceStatus" role="status" aria-live="polite" hidden></p>
+
+      <form class="admin-maintenance__auth" id="adminMaintenanceAuthForm" autocomplete="off">
+        <div class="admin-maintenance__auth-copy">
+          <strong>Admin access required</strong>
+          <p>The Admin key is separate from Student and Instructor access. After successful verification it is retained only for this browser tab and is cleared when you sign out or close the tab.</p>
+        </div>
+        <div data-persistence="session-only" data-summary="exclude" class="field">
+          <label data-persistence="session-only" data-summary="exclude" for="adminMaintenanceToken">Admin access key</label>
+          <input data-persistence="session-only" data-summary="exclude" id="adminMaintenanceToken" type="password" maxlength="43" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        </div>
+        <button data-persistence="session-only" data-summary="exclude" type="submit" class="btn">Open maintenance console</button>
+      </form>
+
+      <div class="admin-maintenance__console" id="adminMaintenanceConsole" hidden>
+        <div class="admin-maintenance__toolbar">
+          <div class="admin-maintenance__toolbar-copy">
+            <strong>Server inventory</strong>
+            <span id="adminInventoryGeneratedAt"></span>
+          </div>
+          <div class="admin-maintenance__toolbar-actions">
+            <label data-persistence="session-only" data-summary="exclude" class="admin-maintenance__threshold" for="adminMaintenanceIdleDays">
+              Idle threshold
+              <select data-persistence="session-only" data-summary="exclude" id="adminMaintenanceIdleDays">
+                <option data-persistence="session-only" data-summary="exclude" value="7">7 days</option>
+                <option data-persistence="session-only" data-summary="exclude" value="30" selected>30 days</option>
+                <option data-persistence="session-only" data-summary="exclude" value="60">60 days</option>
+                <option data-persistence="session-only" data-summary="exclude" value="90">90 days</option>
+                <option data-persistence="session-only" data-summary="exclude" value="180">180 days</option>
+                <option data-persistence="session-only" data-summary="exclude" value="365">365 days</option>
+              </select>
+            </label>
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn-secondary" id="adminMaintenanceRefreshBtn">Refresh</button>
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn-secondary" id="adminMaintenanceSignOutBtn">Sign out</button>
+          </div>
+        </div>
+
+        <section class="admin-maintenance__section" aria-labelledby="adminClassHeading">
+          <div class="admin-maintenance__section-heading">
+            <div>
+              <span class="experience-shell__eyebrow">Classroom lifecycle</span>
+              <h3 id="adminClassHeading">Classes</h3>
+              <p>Closing a class revokes access immediately. Physical purge is separate and preview-first.</p>
+            </div>
+            <span class="admin-maintenance__count" id="adminClassSummary">0 of 0</span>
+          </div>
+          <div class="admin-maintenance__filters">
+            <div data-persistence="session-only" data-summary="exclude" class="field">
+              <label data-persistence="session-only" data-summary="exclude" for="adminClassSearch">Search classes</label>
+              <input data-persistence="session-only" data-summary="exclude" type="search" id="adminClassSearch" placeholder="Title, class ID, exercise…" />
+            </div>
+            <div data-persistence="session-only" data-summary="exclude" class="field">
+              <label data-persistence="session-only" data-summary="exclude" for="adminClassStatusFilter">Status</label>
+              <select data-persistence="session-only" data-summary="exclude" id="adminClassStatusFilter">
+                <option data-persistence="session-only" data-summary="exclude" value="all">All</option>
+                <option data-persistence="session-only" data-summary="exclude" value="active">Active</option>
+                <option data-persistence="session-only" data-summary="exclude" value="expired">Expired</option>
+                <option data-persistence="session-only" data-summary="exclude" value="revoked">Revoked</option>
+              </select>
+            </div>
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn-secondary admin-maintenance__bulk" id="adminBulkClassPurgeBtn">Preview stale / expired classes</button>
+          </div>
+          <div class="admin-maintenance__list" id="adminClassList" aria-live="polite"></div>
+        </section>
+
+        <section class="admin-maintenance__section" aria-labelledby="adminWorkspaceHeading">
+          <div class="admin-maintenance__section-heading">
+            <div>
+              <span class="experience-shell__eyebrow">Collaboration lifecycle</span>
+              <h3 id="adminWorkspaceHeading">Collaboration workspaces</h3>
+              <p>Recent participant presence counts as activity. Class-owned workspaces are cleaned only with their class.</p>
+            </div>
+            <span class="admin-maintenance__count" id="adminWorkspaceSummary">0 of 0</span>
+          </div>
+          <div class="admin-maintenance__filters">
+            <div data-persistence="session-only" data-summary="exclude" class="field">
+              <label data-persistence="session-only" data-summary="exclude" for="adminWorkspaceSearch">Search workspaces</label>
+              <input data-persistence="session-only" data-summary="exclude" type="search" id="adminWorkspaceSearch" placeholder="Team, workspace ID, class…" />
+            </div>
+            <div data-persistence="session-only" data-summary="exclude" class="field">
+              <label data-persistence="session-only" data-summary="exclude" for="adminWorkspaceOwnershipFilter">Ownership</label>
+              <select data-persistence="session-only" data-summary="exclude" id="adminWorkspaceOwnershipFilter">
+                <option data-persistence="session-only" data-summary="exclude" value="all">All</option>
+                <option data-persistence="session-only" data-summary="exclude" value="independent">Standalone / independent</option>
+                <option data-persistence="session-only" data-summary="exclude" value="class">Class-owned</option>
+                <option data-persistence="session-only" data-summary="exclude" value="expired">Expired</option>
+              </select>
+            </div>
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn-secondary admin-maintenance__bulk" id="adminBulkWorkspacePurgeBtn">Preview stale independent workspaces</button>
+          </div>
+          <div class="admin-maintenance__list" id="adminWorkspaceList" aria-live="polite"></div>
+        </section>
+
+        <section class="admin-maintenance__confirm" id="adminPurgePreview" role="alertdialog" aria-modal="false" aria-labelledby="adminPurgePreviewTitle" hidden>
+          <div>
+            <span class="experience-shell__eyebrow">Deletion preview</span>
+            <h3 id="adminPurgePreviewTitle">Confirm purge</h3>
+            <p id="adminPurgePreviewMeta"></p>
+          </div>
+          <ul id="adminPurgePreviewList"></ul>
+          <p class="admin-maintenance__warning">The server will re-check this exact preview before deletion. If activity or state changed, the purge is rejected and must be previewed again.</p>
+          <div class="admin-maintenance__actions">
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn-secondary" id="adminPurgeCancelBtn">Cancel</button>
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn admin-maintenance__danger-primary" id="adminPurgeConfirmBtn">Purge</button>
+          </div>
+        </section>
+
+        <section class="admin-maintenance__recovery" id="adminRecoveryPanel" aria-labelledby="adminRecoveryTitle" hidden>
+          <span class="experience-shell__eyebrow">One-time recovery value</span>
+          <h3 id="adminRecoveryTitle">New Instructor access</h3>
+          <p>Copy this value now and provide it securely to the Instructor. The previous Instructor credential stopped working when this one was created. Intake does not store this raw value.</p>
+          <label data-persistence="session-only" data-summary="exclude" for="adminRecoveryToken">Instructor access</label>
+          <textarea id="adminRecoveryToken" rows="2" readonly spellcheck="false" data-persistence="session-only" data-summary="exclude"></textarea>
+          <div class="admin-maintenance__actions">
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn" id="adminRecoveryCopyBtn">Copy Instructor access</button>
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn-secondary" id="adminRecoveryDismissBtn">Dismiss</button>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+  <!-- [feature:admin-maintenance] end -->
 
   <!-- [feature:student-class-entry] start -->
   <main class="student-class-entry" id="studentClassEntryShell" data-experience-surface="student-entry" aria-labelledby="studentClassEntryTitle" data-persistence="local-only" data-summary="exclude" hidden>

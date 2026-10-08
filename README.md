@@ -5,7 +5,7 @@ KT Intake is a browser-first Kepner–Tregoe (KT) incident workbook designed for
 ## Quickstart
 - Clone or download this repository.
 - Open `index.html` in any modern browser. Standalone use remains local-first and does not depend on the classroom backend.
-- A genuinely new browser asks whether to **Work independently**, **Join a class**, or **Teach a class**. Existing saved Intakes and existing `?workspace=` collaboration links migrate silently to **Standalone** so the new chooser does not interrupt established workflows.
+- A browser with no current experience preference asks whether to **Work independently**, **Join a class**, or **Teach a class**. Existing explicit `?workspace=` collaboration links still route to **Standalone**; saved Intake data by itself no longer silently chooses an experience.
 - The selected experience resumes from the separate `kt-experience-role-v1` preference. Intake work itself still loads from `kt-intake-full-v2`, with action plans under `kt-actions-by-analysis-v1`.
 - Use the header controls to **Save to File** (exports a JSON snapshot) or **Load from File** (imports a previously saved snapshot) when you need to move an intake between browsers or machines.
 - Open the shared resource drawer to work with curated material. **Standalone** receives public Standard Templates only. Connected **Students** receive Standard Templates plus Classroom-authorized Case Studies; connected **Instructors** receive authorized teaching Case Studies. The rotating Case Study mode password remains a learning/progression control, not authentication.
@@ -28,6 +28,10 @@ AI contributors should run the following commands (or manual preview) whenever t
 | `npm run verify:vercel-functions` | After adding or moving anything under `api/`, or changing Vercel routing. | Conservatively counts deployable `api/*.js` entrypoints and fails above the Hobby-plan budget of 12. Classroom public URLs are intentionally multiplexed through one function. |
 | `npm run quality` | Before marking any pull request ready. | Canonical repository gate: lockfile, repo doctor, domain guards, lint, generated-file freshness, protected-case boundary, storage docs, and the full test suite. See [`docs/REPOSITORY-OPERATIONS.md`](docs/REPOSITORY-OPERATIONS.md). |
 | `npm run update:storage-docs` / `npm run check:storage-docs` | Run `update` whenever you alter persisted schema, then `check` before pushing. | Keeps [`docs/storage-schema.md`](docs/storage-schema.md) and [`docs/storage-schema.appendix.md`](docs/storage-schema.appendix.md) synced with new keys or shapes. |
+
+## Administration environment
+
+Production Administration / Maintenance is fail-closed until a 43-character URL-safe 256-bit `INTAKE_ADMIN_TOKEN` is configured in the Vercel project environment. The value is server-only and must not be committed to this repository. See [`docs/admin-maintenance.md`](docs/admin-maintenance.md).
 
 ## Entry Point & Boot Logic
 - `index.html` declares the full UI layout and loads the JavaScript bundle via `<script type="module" src="main.js"></script>`.
@@ -62,6 +66,7 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 | `src/coachableFields.js` | Backward-compatible coaching facade over `src/intakeTargets.js`; preserves existing coaching export names and stored target IDs without owning a second registry. |
 | `src/classroomCoaching.js` | Instructor coaching controls and Student read-only feedback UI backed by the separate Classroom coaching API. |
 | `src/classroomCaseStudies.js` | In-memory authorized Classroom Case Study catalog/payload client. It receives active Student/Instructor capabilities from their lifecycle controllers and never persists them. |
+| `src/adminMaintenance.js` | Privileged Administration / Maintenance UI. Keeps the verified Admin key only in tab-scoped `sessionStorage`, renders lifecycle inventory, performs Instructor recovery, and enforces preview-before-purge through `/api/admin`. |
 | `main.js` | Entry point that imports every module, wires shared events, and runs `boot()`. |
 
 ### Storage keys
@@ -71,12 +76,15 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 - `kt-classroom-student-session-v1`: Student same-device resume key. Its current v2 envelope contains the stable Student class-session capability plus public class/participant/current-assignment context; the assignment-specific workspace capability remains memory-only and is reacquired after reload or reassignment. Older envelope formats are intentionally unsupported before production. The envelope never enters Intake exports/summaries/templates.
 - `kt-classroom-student-local-recovery-v1`: Local recovery snapshot captured immediately before joining a class so **Leave class** can restore the prior local Intake. It is separate from the active Intake snapshot and classroom credentials.
 - `kt-classroom-instructor-session-v1`: Local-only Instructor same-device resume envelope containing the Instructor class capability, public class metadata, and the last selected public workspace ID. It is never collected into Intake state, files, summaries, templates, or Student workspace credentials.
+- `kt-admin-session-v1`: Tab-scoped Administration / Maintenance credential envelope stored in `sessionStorage` only after successful server verification. It is never written to localStorage or Intake state and disappears when the tab session ends or Admin signs out.
 
 Coaching feedback is server-side Classroom data, not a local Intake storage key. It lives in `classroom_coaching_feedback` and is deliberately excluded from `kt-intake-full-v2`, Save/Load, templates, summaries, and collaboration snapshot revisions.
 
 ## Experience roles
 
 Experience role is a product-level choice, not an Intake workflow mode. General / IT / Pharma / Major Incident remain controlled by `meta.intakeMode`; Standalone / Student / Instructor are controlled separately by `src/experienceRoles.js` and `src/experienceRoleController.js`.
+
+**Administration / Maintenance is not an experience role.** It is a separate privileged utility entered from the chooser or View menu and authorized only by the server-configured `INTAKE_ADMIN_TOKEN`. See [`docs/admin-maintenance.md`](docs/admin-maintenance.md).
 
 - **Standalone** exposes the normal Intake and current collaboration behavior. Its resource drawer contains **Templates only**.
 - **Student** joins with a display name and one human class code. An Instructor share/QR link may prefill that same code through a client-only `#join=` fragment; the fragment is consumed locally and never replaces normal server admission. Admission creates a stable high-entropy Student class-session capability; the learner may remain **Waiting / unassigned** with no workspace edit authority until the Instructor assigns a team or individual workspace. Once assigned, the browser exchanges the class session for a fresh assignment-specific editable workspace capability, keeps that workspace capability memory-only, and attaches it to the existing collaboration engine without entering the URL. Reassignment disconnects old authority before the Student enters the destination team's existing Intake; unassign returns the Student to Waiting. Connected Students see class/workspace/identity context, public **Templates**, protected Classroom Case Studies, and read-only Instructor coaching including optional notes and **Changed since review**. On narrow screens the Class, Case, Team, and Notes secondary surfaces default compact but remain one-action accessible; those collapse states are presentation-only. Switching away pauses live classroom sync while preserving class resume; **Leave class** clears resume and restores the local Intake captured before joining.

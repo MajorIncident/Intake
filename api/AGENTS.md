@@ -15,6 +15,24 @@ These rules apply to all server-only modules below `api/`.
 - Responses containing capabilities or private Intake data use `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
 - Display names are presentation metadata, never identity or authorization.
 
+## Administration / Maintenance boundary
+
+Read `docs/admin-maintenance.md` before editing `api/admin.js`, `api/_admin.js`, `INTAKE_ADMIN_TOKEN`, maintenance inventory, lifecycle recovery, or purge behavior.
+
+Rules:
+
+- Administration is not Standalone, Student, or Instructor authority and must never be accepted on normal Classroom/collaboration endpoints.
+- `INTAKE_ADMIN_TOKEN` is environment-only and must never be stored in the database, browser localStorage, Intake state, URLs, logs, analytics, or test snapshots.
+- `/api/admin` is the single deployable Admin entrypoint; do not create a directory of Admin function wrappers.
+- Admin responses are always `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
+- Inventory may return non-secret public maintenance IDs and lifecycle metadata, but never raw capability values/hashes or Intake snapshots.
+- Instructor recovery rotates to a new capability and returns that raw value once; historical bearer credentials are not recoverable.
+- Physical purge is preview-first. The signed preview must be short-lived, commit must re-read/revalidate the exact candidate plan, and a changed plan returns conflict rather than silently widening deletion.
+- Recent collaboration presence is activity. Never purge an apparently idle workspace based only on old snapshot/update time when recent presence exists.
+- Class-owned collaboration workspaces are physically deleted only with their owning class.
+- Bulk purge SQL must guard the complete requested candidate set before mutation and preserve FK cascade integrity.
+- Do not introduce autonomous scheduled deletion until a separate roadmap item explicitly approves it.
+
 ## Classroom capability boundaries
 
 Read `docs/classroom-api.md` and `docs/classroom-architecture.md` before modifying classroom endpoints.

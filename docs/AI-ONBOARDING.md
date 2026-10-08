@@ -22,6 +22,7 @@ For any work in the Standalone / Student / Instructor program (#288), also read 
 | `src/experienceRoles.js` | Canonical Standalone / Student / Instructor IDs, labels, and declarative product-surface policy. |
 | `src/experienceRoleController.js` | First-run chooser, current-format role resume/switching, join-link routing, and local-only `kt-experience-role-v1` preference. Pre-production raw-role and implicit saved-Intake migration compatibility is intentionally removed. |
 | `src/classroomStudent.js` | One-code Student admission, Waiting/own-status polling, current class-session resume, assignment-specific memory-only workspace access/reassignment/unassign, and coaching/resource lifecycle hooks. |
+| `src/adminMaintenance.js` | Administration / Maintenance dialog, tab-scoped Admin credential envelope, lifecycle inventory/filtering, recovery display, and signed preview/commit UX. It never sets an Intake experience role. |
 | `src/classroomInstructor.js` | Start Class, human join-code display, same-device Instructor resume, live roster/team assignment management, read-only observation, and coaching lifecycle hooks. |
 | `src/coachableFields.js` | Stable coaching target IDs and versioned field fingerprints; DOM placement is deliberately separate from persistence identity. |
 | `src/classroomCoaching.js` | Instructor coaching controls and Student read-only feedback rendering through the separate coaching API. |
@@ -37,6 +38,7 @@ For any work in the Standalone / Student / Instructor program (#288), also read 
 | `src/summary.js` | `generateSummary()`, `setSummaryStateProvider()`, helpers that compose both clipboard output and AI prompts. |
 | `src/toast.js` | `showToast()` for lightweight notifications reused by comms and bootstrapping.
 | `api/_workspace.js` | Existing collaboration persistence/handlers plus explicitly edit-capable workspace aliases. Only `classroom-student` aliases may resolve through legacy read/write collaboration endpoints. |
+| `api/_admin.js`, `api/admin.js` | Server-only Admin authorization, lifecycle inventory, signed purge previews, class revoke, Instructor authority rotation, and guarded purge. Requires `INTAKE_ADMIN_TOKEN`; read `docs/admin-maintenance.md`. |
 | `api/_classroom.js` | Class/live-participant schema and capabilities, one-code admission, own-status/current-access exchange, Instructor assign/reassign/unassign, class-scoped observation, legacy admission compatibility, and separate coaching APIs. |
 | `api/_protectedCaseStudies.js` | Server-only protected Case Study catalog/payload delivery. Instructor access is class-scoped; Student access resolves only the currently active Classroom workspace authority. #313 staged release must extend this boundary rather than shipping unreleased case content to the browser. |
 

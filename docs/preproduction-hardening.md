@@ -31,7 +31,7 @@ PRODUCTION SIMULATION ENABLEMENT
   #317  first production staged KT Case Study
 ```
 
-#328 comes first because #329 and #330 should be built against the final credential and persistence model rather than compatibility contracts we already intend to delete.
+#328 is complete and published. #329 is now active on draft PR #333, with its canonical runtime contract in `docs/admin-maintenance.md`. #330 remains next after #329 so the startup hub can integrate the proven Admin entry instead of designing against a placeholder.
 
 ## End-state access model
 
@@ -81,6 +81,8 @@ The intended rule is:
 Do not remove transformations that remain part of the **current** data model merely because their helper name says "normalize" or "legacy"; #328 must inventory each compatibility helper and prove it is obsolete before deletion.
 
 ## Administration / Maintenance architecture
+
+**Implementation status:** active in #329 / draft PR #333. The detailed implemented contract is `docs/admin-maintenance.md`; this section remains the roadmap-level summary.
 
 Administration is a privileged maintenance surface, **not** a fourth Intake experience role.
 

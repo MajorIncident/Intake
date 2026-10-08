@@ -71,6 +71,7 @@ test('repository stays below the conservative Vercel Hobby function budget', asy
   const candidates = await listVercelFunctionCandidates('api');
   assert.equal(candidates.length <= VERCEL_HOBBY_FUNCTION_LIMIT, true);
   assert.deepEqual(candidates, [
+    'api/admin.js',
     'api/classroom.js',
     'api/protected-case-studies.manifest.js',
     'api/workspaces/index.js',

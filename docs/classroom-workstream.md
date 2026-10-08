@@ -6,9 +6,11 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-The secure Classroom foundation (#288), live-class management (#312), staged-simulation engine (#313), universal target layer (#318), debrief comparison (#319), and join/mobile polish (#320) are **merged**. PR #326 merged #319 to `main` as `400a6c5ee0b879b4a36705be6d8af075bc89d391`; that exact SHA reached Vercel production **READY** and the post-deploy runtime-error scan was clean. PR #327 then merged the small-slice/slow-gate operating rules as `dce82b1ddb94ff926464af4a9b9d81704ba05a5a`.
+The secure Classroom foundation (#288), live-class management (#312), staged-simulation engine (#313), universal target layer (#318), debrief comparison (#319), join/mobile polish (#320), and pre-production compatibility reset (#328) are **merged and published**.
 
-Pre-production hardening is active. **#328** is implemented on `feature/preproduction-compat-reset` / draft PR #332 and is in final validation. The governing contract remains `docs/preproduction-hardening.md`.
+#328 completed in PR #332, squash-merged to `main` as `8ad3eb2b80d080d244556b9280a0fd2f83565193`. The exact merged SHA reached Vercel production **READY**, GitHub Vercel status was success, and the post-deploy runtime-error scan was clean.
+
+**#329 Administration / Maintenance is the active implementation slice** on `feature/admin-maintenance` / draft PR #333. Canonical contracts: `docs/preproduction-hardening.md` and `docs/admin-maintenance.md`.
 
 ## Program issues
 
@@ -30,9 +32,9 @@ Pre-production hardening is active. **#328** is implemented on `feature/preprodu
 | Universal Intake target identity | #318 | Complete | PR #325 merged as `ef694910...` | Shared semantic target projection and compatibility guards |
 | Class debrief comparison | #319 | Complete / published | PR #326 merged as `400a6c5e...` | 319A–F complete; exact merged-main production READY + runtime clean |
 | Join/mobile polish | #320 | Complete | PR #324 merged as `273ae643...` | Safe share/QR + compact mobile Class/Case/Team/Notes/Instructor chrome |
-| Compatibility reset | #328 | **Implementation complete / validating** | Draft PR #332 | Current one-code/session model only; obsolete Classroom access/schema and pre-production save migrations removed |
-| Admin / Maintenance | #329 | Planned / blocked by #328 | Open | Inventory, preview, revoke/purge stale Classroom + collaboration data |
-| Startup experience hub | #330 | Planned / blocked by #328/#329 | Open | Explicit Continue / Work independently / Join / Run / Admin choices |
+| Compatibility reset | #328 | Complete / published | PR #332 merged as `8ad3eb2b...` | Current one-code/session model only; obsolete Classroom access/schema and pre-production save migrations removed |
+| Admin / Maintenance | #329 | **Active implementation** | Draft PR #333 / `feature/admin-maintenance` | Server-authorized inventory, recovery, signed preview, guarded purge, responsive maintenance UI |
+| Startup experience hub | #330 | Planned / blocked by #329 | Open | Explicit Continue / Work independently / Join / Run / Admin choices |
 | Rich staged assets | #316 | Deferred until hardening complete | Open | Secure image/table/document-page delivery |
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
 
@@ -46,6 +48,7 @@ Pre-production hardening is active. **#328** is implemented on `feature/preprodu
 - Classroom credentials never belong in exported Intake state.
 - Case Study password is instructional gating, not authentication.
 - Protected Case Study metadata/payloads are server-gated, absent from public browser assets, and authored `templates/*.json` is excluded from Vercel deployment.
+- Administration / Maintenance is a separate privileged utility, not a fourth experience role. It uses the environment-only `INTAKE_ADMIN_TOKEN`, tab-scoped `sessionStorage`, non-secret maintenance IDs, and signed preview-before-purge semantics documented in `docs/admin-maintenance.md`.
 
 See `docs/classroom-architecture.md` for the full contract.
 
@@ -57,6 +60,7 @@ See `docs/classroom-architecture.md` for the full contract.
    - `docs/classroom-architecture.md`;
    - `docs/classroom-roadmap.md`;
    - `docs/preproduction-hardening.md` for #328–#330;
+   - `docs/admin-maintenance.md` for #329 Admin/recovery/retention/purge work;
    - `docs/classroom-api.md` for server/class work;
    - `api/AGENTS.md` for server/class work;
    - this file;
@@ -71,39 +75,52 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-**#328 — Pre-production compatibility reset** is active on `feature/preproduction-compat-reset` / draft PR #332 and is at final validation.
+**#329 — Administration / Maintenance lifecycle cleanup** is active on `feature/admin-maintenance` / draft PR #333.
 
-Frozen implementation checkpoint before this final ledger update: `2383bc2cb4c4fe2d3561a4e13a01b9d96ad1ff6e`.
+Base: `main` at completed #328 merge `8ad3eb2b80d080d244556b9280a0fd2f83565193`.
 
-Completed:
-- Student entry is display name + one human class code only; the legacy assignment-code disclosure and two-code client flow are removed.
-- Student resume accepts only the current v2 class-session envelope. Assignment-specific workspace capability remains memory-only and is reacquired from the server.
-- Instructor entry exposes Start Class + same-device resume only. The public **Open an existing class / Instructor access code** bearer-entry form is removed; future recovery belongs to #329 Administration / Maintenance.
-- `POST /api/classes/join`, Student join-token issuance/rotation, workspace assignment-claim secrets, legacy membership authorization, and their Vercel route are removed.
-- Existing pre-production databases explicitly drop `student_join_token_hash`, workspace `claim_token_hash`, and `classroom_memberships` during idempotent schema initialization.
-- Current authorization remains human join code -> Student class-session -> current assignment-specific `classroom-student` workspace capability. Instructor observation/coaching remains class-scoped/read-only with respect to Student Intake.
-- Intake serialization is current-version-only at `APP_STATE_VERSION = 3`; the historical migration registry is empty and old snapshot versions fail closed.
-- Experience-role preference accepts only the current versioned envelope; saved Intake no longer silently infers Standalone.
-- Load-from-File rejects unsupported snapshot versions with an explicit file-version/current-version message before normalization/application.
-- All five authored Template/Case Study sources and both generated manifests use the canonical v3 Intake schema.
-- Unit/API/browser fixtures have been converted to the current access/session model; retired browser journeys were consolidated into live-class coverage.
-- Canonical API, architecture, security, onboarding, README, live-management, and storage-schema docs have been reconciled to the current model.
+### 329A — server lifecycle boundary: complete
 
-Validation evidence:
-- An earlier Template Manifest Guard run was green after canonical resource conversion; the final docs-only head still requires its own fresh required checks.
-- The first full quality attempt reached **360 tests / 358 pass / 1 fail / 1 intentional skip**; the single failure was an obsolete revocation test boundary and was corrected to exercise current Student class-session 401/404 revocation.
-- Branch-wide changed-fixture audit found no accidental v1/v2 Intake snapshots; the only old-version fixture remaining is the intentional rejection test.
-- Runtime audit finds retired DB identifiers only inside the deliberate `DROP ... IF EXISTS` cleanup statements.
-- Explicit compatibility shims for legacy containment values, P1/P2/P3 action priorities, raw experience-role preferences, old Student recovery envelopes, and cause hypothesis/summary fields are removed with rejection/current-contract coverage.
-- PR #332 has **0 unresolved review threads**.
-- Final exact-head CI / CodeQL / Dependency Review / Template Manifest Guard are still pending as of this checkpoint; do not claim them green until refreshed after this documentation-only commit.
+- one deployable `api/admin.js` entrypoint backed by `api/_admin.js`;
+- environment-only 43-character `INTAKE_ADMIN_TOKEN`; missing/malformed configuration fails closed;
+- constant-time Admin credential comparison; no-store/no-referrer responses;
+- collaboration workspaces gain a non-secret UUID `public_id` for maintenance identity;
+- server inventory derives Class and collaboration activity from authoritative update + presence timestamps and returns no Intake snapshots or bearer capabilities;
+- inventory includes class lifecycle, participant/workspace/presence/subordinate counts, current staged exercise context, workspace ownership, and derived idle age;
+- Admin can close/revoke a class immediately;
+- Admin can rotate/reissue active Instructor authority, returning the new raw capability once;
+- physical cleanup is preview-first with a signed 10-minute exact candidate plan;
+- commit re-reads inventory, recomputes candidate fingerprints, and fails with conflict if activity/state changed;
+- bulk class/workspace delete SQL rechecks the complete requested set before mutation;
+- independent collaboration cleanup cannot delete a Classroom-owned workspace;
+- class purge deletes class-owned collaboration workspaces first and relies on FK cascades for capabilities/presence/Classroom subordinate data;
+- Admin adds exactly one deployable Vercel function, taking the expected repository count from 5 to 6 while remaining below the conservative limit of 12;
+- deterministic `tests/admin-api.unit.test.mjs` covers configuration/auth rejection, private headers, no secret leakage, recent-presence protection, class-owned isolation, preview/commit matching, stale preview rejection, preview expiry, terminal-only single-class purge, class close, and Instructor rotation.
 
-Exact next action:
-1. refresh PR #332 exact head and required checks;
-2. if CI fails, fix only the concrete failing current-contract test/gate and repeat;
-3. once all required checks are green, update PR #332 with final evidence, mark it ready for review, verify 0 unresolved threads, and squash-merge the exact head;
-4. verify merged `main` publication/runtime before closing #328;
-5. #329 Administration / Maintenance is the next product slice after #328 is closed.
+### 329B — browser maintenance console: implementation complete
+
+- secondary **Administration / Maintenance** entry exists in the experience chooser and View menu without creating a new experience role;
+- verified Admin key is retained only in tab-scoped `sessionStorage` under `kt-admin-session-v1`;
+- UI provides refresh, sign out, search/filtering, lifecycle/ownership filters, selectable idle threshold, class close, Instructor reissue, single/bulk preview, exact confirmation, and responsive mobile layout;
+- recovery panel displays the newly rotated Instructor capability without persisting it;
+- Escape handling and keyboard focus containment are implemented;
+- `tests/e2e/admin-maintenance.spec.mjs` covers Admin/role isolation + no localStorage leakage + axe scan, exact destructive previews protecting active/class-owned data, and non-persistence of reissued Instructor credentials.
+
+### Documentation / external dependency
+
+- canonical contract: `docs/admin-maintenance.md`;
+- root/server agent guidance, SECURITY, README, AI onboarding, architecture map, commenting guide, and pre-production hardening docs are being reconciled in this PR;
+- **production remains intentionally fail-closed until `INTAKE_ADMIN_TOKEN` is configured in Vercel**. Do not put that value in GitHub or repository files.
+
+### Exact next action
+
+1. refresh PR #333 exact head and inspect required checks;
+2. fix only concrete quality/unit/browser/security failures;
+3. finish any remaining documentation drift and update PR #333 with exact validation;
+4. configure a fresh production `INTAKE_ADMIN_TOKEN` through Vercel environment settings without committing/logging it;
+5. rerun/verify final required checks, mark PR #333 ready, and squash-merge only on an unchanged green head;
+6. verify exact merged-main Vercel production **READY**, exercise Admin authorization/inventory on production without destructive cleanup, scan runtime errors, close #329;
+7. proceed to #330 startup experience hub.
 
 ### Historical checkpoint ledger
 

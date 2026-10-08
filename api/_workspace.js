@@ -102,6 +102,7 @@ async function initializeRepository() {
   const sql = neon(connection);
   await sql`CREATE TABLE IF NOT EXISTS collaboration_workspaces (
     id BIGSERIAL PRIMARY KEY,
+    public_id UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
     token_hash CHAR(64) UNIQUE NOT NULL,
     snapshot_json JSONB NOT NULL,
     revision INTEGER NOT NULL DEFAULT 1 CHECK (revision > 0),
@@ -111,6 +112,10 @@ async function initializeRepository() {
     team_name VARCHAR(80),
     next_participant_number INTEGER NOT NULL DEFAULT 1
   )`;
+  await sql`ALTER TABLE collaboration_workspaces ADD COLUMN IF NOT EXISTS public_id UUID DEFAULT gen_random_uuid()`;
+  await sql`UPDATE collaboration_workspaces SET public_id = gen_random_uuid() WHERE public_id IS NULL`;
+  await sql`ALTER TABLE collaboration_workspaces ALTER COLUMN public_id SET NOT NULL`;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS collaboration_workspaces_public_id_idx ON collaboration_workspaces (public_id)`;
   await sql`ALTER TABLE collaboration_workspaces ADD COLUMN IF NOT EXISTS team_name VARCHAR(80)`;
   await sql`ALTER TABLE collaboration_workspaces ADD COLUMN IF NOT EXISTS next_participant_number INTEGER NOT NULL DEFAULT 1`;
   await sql`CREATE INDEX IF NOT EXISTS collaboration_workspaces_expires_at_idx ON collaboration_workspaces (expires_at)`;
