@@ -59,6 +59,11 @@ test('Standalone input generates a summary and survives a real browser reload', 
 
   await page.reload();
 
+  await expect(page.locator('#experienceRoleGate')).toBeVisible();
+  await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'unselected');
+  await expect(page.locator('[data-startup-resume="intake"]')).toContainText('Continue your saved Intake');
+  await page.locator('[data-startup-resume="intake"]').click();
+
   await expect(page.locator('#experienceRoleGate')).toBeHidden();
   await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'standalone');
   await expect(page.locator('#oneLine')).toHaveValue(problem);
