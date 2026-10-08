@@ -21,8 +21,6 @@ import {
 import { EXPERIENCE_ROLE_IDS } from '../src/experienceRoles.js';
 
 const INDEX_HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const JOIN_TOKEN = 'c'.repeat(43);
-const ASSIGNMENT_TOKEN = 'x'.repeat(43);
 const WORKSPACE_TOKEN = 's'.repeat(43);
 const WORKSPACE_TOKEN_B = 't'.repeat(43);
 const LIVE_SESSION_TOKEN = 'l'.repeat(43);
@@ -39,10 +37,12 @@ function response(status, body) {
 function session() {
   return {
     version: STUDENT_SESSION_VERSION,
+    mode: 'live',
     class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
-    workspace: { id: 'workspace-1', kind: 'group', label: 'Team Alpha', expiresAt: '2099-01-01T00:00:00Z' },
     participant: { id: PARTICIPANT_ID, displayName: 'Alex' },
-    workspaceToken: WORKSPACE_TOKEN,
+    studentSessionToken: LIVE_SESSION_TOKEN,
+    assignmentRevision: 1,
+    assignment: { id: 'workspace-1', kind: 'group', label: 'Team Alpha' },
     joinedAt: '2026-10-01T00:00:00Z'
   };
 }
@@ -111,6 +111,27 @@ function mount({
   const fetcher = async (...args) => {
     calls.fetch.push(args);
     if (fetchImpl) return fetchImpl(...args);
+    if (storedSession?.mode === 'live' && args[0] === '/api/classes/student') {
+      return response(200, {
+        class: storedSession.class,
+        participant: {
+          ...storedSession.participant,
+          assignmentRevision: storedSession.assignmentRevision
+        },
+        assignment: storedSession.assignment
+      });
+    }
+    if (storedSession?.mode === 'live' && args[0] === '/api/classes/student/access') {
+      return response(200, {
+        class: storedSession.class,
+        participant: {
+          ...storedSession.participant,
+          assignmentRevision: storedSession.assignmentRevision
+        },
+        assignment: storedSession.assignment,
+        workspaceToken: WORKSPACE_TOKEN
+      });
+    }
     return response(500, {});
   };
   const controller = createStudentClassroomController({
@@ -419,52 +440,6 @@ test('live Student session lifecycle is stable across assignment changes and dis
   assert.ok(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY), 'role exit keeps the Student resume envelope');
 });
 
-test('Student join uses one-time class and assignment codes then attaches the issued workspace capability', async () => {
-  const env = mount({
-    fetchImpl: async (_url, options) => {
-      const sent = JSON.parse(options.body);
-      assert.equal(options.headers.Authorization, `Bearer ${JOIN_TOKEN}`);
-      assert.equal(sent.assignmentToken, ASSIGNMENT_TOKEN);
-      assert.equal(sent.participantId, PARTICIPANT_ID);
-      assert.equal(sent.displayName, 'Alex');
-      return response(200, {
-        class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
-        workspace: { id: 'workspace-1', kind: 'group', label: 'Team Alpha', expiresAt: '2099-01-01T00:00:00Z' },
-        workspaceToken: WORKSPACE_TOKEN,
-        self: { id: PARTICIPANT_ID, displayName: 'Alex' },
-        participants: [{ id: PARTICIPANT_ID, displayName: 'Alex' }]
-      });
-    }
-  });
-  await settle();
-  assert.equal(dom.window.document.body.dataset.studentClassStatus, 'disconnected');
-
-  dom.window.document.getElementById('studentDisplayName').value = 'Alex';
-  dom.window.document.getElementById('studentClassCode').value = JOIN_TOKEN;
-  dom.window.document.getElementById('studentAssignmentCode').value = ASSIGNMENT_TOKEN;
-  dom.window.document.getElementById('studentClassJoinForm').dispatchEvent(
-    new dom.window.Event('submit', { bubbles: true, cancelable: true })
-  );
-  await settle();
-
-  assert.equal(env.calls.fetch.length, 1, 'Student admission never enumerates workspaces');
-  assert.deepEqual(env.calls.connect, [[WORKSPACE_TOKEN, { displayName: 'Alex', classroom: true }]]);
-  const stored = JSON.parse(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY));
-  assert.equal(stored.workspaceToken, WORKSPACE_TOKEN);
-  assert.equal('studentJoinToken' in stored, false);
-  assert.equal('assignmentToken' in stored, false);
-  assert.equal(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY).includes(JOIN_TOKEN), false);
-  assert.equal(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY).includes(ASSIGNMENT_TOKEN), false);
-  assert.deepEqual(JSON.parse(dom.window.localStorage.getItem(STUDENT_RECOVERY_STORAGE_KEY)).snapshot, { pre: { oneLine: 'My local Intake' } });
-  assert.equal(dom.window.document.getElementById('studentClassCode').value, '');
-  assert.equal(dom.window.document.getElementById('studentAssignmentCode').value, '');
-  assert.equal(dom.window.document.body.dataset.studentClassStatus, 'connected');
-  assert.equal(dom.window.document.querySelector('.wrap').hidden, false);
-  assert.equal(dom.window.document.getElementById('studentClassContextTitle').textContent, 'Problem Solving 101');
-  assert.equal(dom.window.document.getElementById('studentClassWorkspace').textContent, 'Team Alpha');
-  assert.equal(dom.window.document.getElementById('studentClassIdentity').textContent, 'Alex');
-});
-
 test('Student class context defaults compact on mobile and expands without changing class persistence', async () => {
   const env = mount({ storedSession: session(), mobile: true });
   await settle();
@@ -490,12 +465,16 @@ test('Student class context defaults compact on mobile and expands without chang
   env.controller.destroy();
 });
 
-test('Student resume reconnects from workspace capability without replaying join or assignment codes', async () => {
+test('Student resume revalidates the class session and reacquires workspace authority', async () => {
   const env = mount({ storedSession: session() });
   await settle();
 
-  assert.equal(env.calls.fetch.length, 0);
+  assert.equal(env.calls.fetch.some(([url]) => url === '/api/classes/student'), true);
+  assert.equal(env.calls.fetch.some(([url]) => url === '/api/classes/student/access'), true);
   assert.deepEqual(env.calls.connect, [[WORKSPACE_TOKEN, { displayName: 'Alex', classroom: true }]]);
+  const stored = JSON.parse(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY));
+  assert.equal(stored.studentSessionToken, LIVE_SESSION_TOKEN);
+  assert.equal('workspaceToken' in stored, false);
   assert.equal(dom.window.document.body.dataset.studentClassStatus, 'connected');
 });
 
