@@ -95,7 +95,6 @@ async function setupClass({ withSecondWorkspace = false } = {}) {
     publicId: CLASS_A_ID,
     title: 'Class A',
     instructorHash: testTokenHash('A'),
-    studentJoinHash: testTokenHash('C'),
     studentJoinCode: 'K7FMP4Q2'
   });
 
@@ -110,7 +109,6 @@ async function setupClass({ withSecondWorkspace = false } = {}) {
     workspaceId: workspaceA.id,
     kind: 'group',
     label: 'Team A',
-    claimHash: testTokenHash('X')
   });
 
   let workspaceB = null;
@@ -126,7 +124,6 @@ async function setupClass({ withSecondWorkspace = false } = {}) {
       workspaceId: workspaceB.id,
       kind: 'group',
       label: 'Team B',
-      claimHash: testTokenHash('Y')
     });
   }
 
