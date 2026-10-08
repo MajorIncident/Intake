@@ -305,7 +305,7 @@ Anchors present:
           <h2 id="adminMaintenanceTitle">Administration / Maintenance</h2>
           <p id="adminMaintenanceDescription">Inspect server-side Classroom and collaboration lifecycle data, recover Instructor authority, and preview cleanup before anything is permanently deleted.</p>
         </div>
-        <button type="button" class="btn-secondary" id="adminMaintenanceCloseBtn">Close</button>
+        <button data-persistence="session-only" data-summary="exclude" type="button" class="btn-secondary" id="adminMaintenanceCloseBtn">Close</button>
       </header>
 
       <p class="admin-maintenance__status" id="adminMaintenanceStatus" role="status" aria-live="polite" hidden></p>
@@ -315,11 +315,11 @@ Anchors present:
           <strong>Admin access required</strong>
           <p>The Admin key is separate from Student and Instructor access. After successful verification it is retained only for this browser tab and is cleared when you sign out or close the tab.</p>
         </div>
-        <div class="field">
-          <label for="adminMaintenanceToken">Admin access key</label>
-          <input id="adminMaintenanceToken" type="password" maxlength="43" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        <div data-persistence="session-only" data-summary="exclude" class="field">
+          <label data-persistence="session-only" data-summary="exclude" for="adminMaintenanceToken">Admin access key</label>
+          <input data-persistence="session-only" data-summary="exclude" id="adminMaintenanceToken" type="password" maxlength="43" autocomplete="off" autocapitalize="off" spellcheck="false" />
         </div>
-        <button type="submit" class="btn">Open maintenance console</button>
+        <button data-persistence="session-only" data-summary="exclude" type="submit" class="btn">Open maintenance console</button>
       </form>
 
       <div class="admin-maintenance__console" id="adminMaintenanceConsole" hidden>
@@ -329,19 +329,19 @@ Anchors present:
             <span id="adminInventoryGeneratedAt"></span>
           </div>
           <div class="admin-maintenance__toolbar-actions">
-            <label class="admin-maintenance__threshold" for="adminMaintenanceIdleDays">
+            <label data-persistence="session-only" data-summary="exclude" class="admin-maintenance__threshold" for="adminMaintenanceIdleDays">
               Idle threshold
-              <select id="adminMaintenanceIdleDays">
-                <option value="7">7 days</option>
-                <option value="30" selected>30 days</option>
-                <option value="60">60 days</option>
-                <option value="90">90 days</option>
-                <option value="180">180 days</option>
-                <option value="365">365 days</option>
+              <select data-persistence="session-only" data-summary="exclude" id="adminMaintenanceIdleDays">
+                <option data-persistence="session-only" data-summary="exclude" value="7">7 days</option>
+                <option data-persistence="session-only" data-summary="exclude" value="30" selected>30 days</option>
+                <option data-persistence="session-only" data-summary="exclude" value="60">60 days</option>
+                <option data-persistence="session-only" data-summary="exclude" value="90">90 days</option>
+                <option data-persistence="session-only" data-summary="exclude" value="180">180 days</option>
+                <option data-persistence="session-only" data-summary="exclude" value="365">365 days</option>
               </select>
             </label>
-            <button type="button" class="btn-secondary" id="adminMaintenanceRefreshBtn">Refresh</button>
-            <button type="button" class="btn-secondary" id="adminMaintenanceSignOutBtn">Sign out</button>
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn-secondary" id="adminMaintenanceRefreshBtn">Refresh</button>
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn-secondary" id="adminMaintenanceSignOutBtn">Sign out</button>
           </div>
         </div>
 
@@ -355,20 +355,20 @@ Anchors present:
             <span class="admin-maintenance__count" id="adminClassSummary">0 of 0</span>
           </div>
           <div class="admin-maintenance__filters">
-            <div class="field">
-              <label for="adminClassSearch">Search classes</label>
-              <input type="search" id="adminClassSearch" placeholder="Title, class ID, exercise…" />
+            <div data-persistence="session-only" data-summary="exclude" class="field">
+              <label data-persistence="session-only" data-summary="exclude" for="adminClassSearch">Search classes</label>
+              <input data-persistence="session-only" data-summary="exclude" type="search" id="adminClassSearch" placeholder="Title, class ID, exercise…" />
             </div>
-            <div class="field">
-              <label for="adminClassStatusFilter">Status</label>
-              <select id="adminClassStatusFilter">
-                <option value="all">All</option>
-                <option value="active">Active</option>
-                <option value="expired">Expired</option>
-                <option value="revoked">Revoked</option>
+            <div data-persistence="session-only" data-summary="exclude" class="field">
+              <label data-persistence="session-only" data-summary="exclude" for="adminClassStatusFilter">Status</label>
+              <select data-persistence="session-only" data-summary="exclude" id="adminClassStatusFilter">
+                <option data-persistence="session-only" data-summary="exclude" value="all">All</option>
+                <option data-persistence="session-only" data-summary="exclude" value="active">Active</option>
+                <option data-persistence="session-only" data-summary="exclude" value="expired">Expired</option>
+                <option data-persistence="session-only" data-summary="exclude" value="revoked">Revoked</option>
               </select>
             </div>
-            <button type="button" class="btn-secondary admin-maintenance__bulk" id="adminBulkClassPurgeBtn">Preview stale / expired classes</button>
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn-secondary admin-maintenance__bulk" id="adminBulkClassPurgeBtn">Preview stale / expired classes</button>
           </div>
           <div class="admin-maintenance__list" id="adminClassList" aria-live="polite"></div>
         </section>
@@ -383,20 +383,20 @@ Anchors present:
             <span class="admin-maintenance__count" id="adminWorkspaceSummary">0 of 0</span>
           </div>
           <div class="admin-maintenance__filters">
-            <div class="field">
-              <label for="adminWorkspaceSearch">Search workspaces</label>
-              <input type="search" id="adminWorkspaceSearch" placeholder="Team, workspace ID, class…" />
+            <div data-persistence="session-only" data-summary="exclude" class="field">
+              <label data-persistence="session-only" data-summary="exclude" for="adminWorkspaceSearch">Search workspaces</label>
+              <input data-persistence="session-only" data-summary="exclude" type="search" id="adminWorkspaceSearch" placeholder="Team, workspace ID, class…" />
             </div>
-            <div class="field">
-              <label for="adminWorkspaceOwnershipFilter">Ownership</label>
-              <select id="adminWorkspaceOwnershipFilter">
-                <option value="all">All</option>
-                <option value="independent">Standalone / independent</option>
-                <option value="class">Class-owned</option>
-                <option value="expired">Expired</option>
+            <div data-persistence="session-only" data-summary="exclude" class="field">
+              <label data-persistence="session-only" data-summary="exclude" for="adminWorkspaceOwnershipFilter">Ownership</label>
+              <select data-persistence="session-only" data-summary="exclude" id="adminWorkspaceOwnershipFilter">
+                <option data-persistence="session-only" data-summary="exclude" value="all">All</option>
+                <option data-persistence="session-only" data-summary="exclude" value="independent">Standalone / independent</option>
+                <option data-persistence="session-only" data-summary="exclude" value="class">Class-owned</option>
+                <option data-persistence="session-only" data-summary="exclude" value="expired">Expired</option>
               </select>
             </div>
-            <button type="button" class="btn-secondary admin-maintenance__bulk" id="adminBulkWorkspacePurgeBtn">Preview stale independent workspaces</button>
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn-secondary admin-maintenance__bulk" id="adminBulkWorkspacePurgeBtn">Preview stale independent workspaces</button>
           </div>
           <div class="admin-maintenance__list" id="adminWorkspaceList" aria-live="polite"></div>
         </section>
@@ -410,8 +410,8 @@ Anchors present:
           <ul id="adminPurgePreviewList"></ul>
           <p class="admin-maintenance__warning">The server will re-check this exact preview before deletion. If activity or state changed, the purge is rejected and must be previewed again.</p>
           <div class="admin-maintenance__actions">
-            <button type="button" class="btn-secondary" id="adminPurgeCancelBtn">Cancel</button>
-            <button type="button" class="btn admin-maintenance__danger-primary" id="adminPurgeConfirmBtn">Purge</button>
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn-secondary" id="adminPurgeCancelBtn">Cancel</button>
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn admin-maintenance__danger-primary" id="adminPurgeConfirmBtn">Purge</button>
           </div>
         </section>
 
@@ -419,11 +419,11 @@ Anchors present:
           <span class="experience-shell__eyebrow">One-time recovery value</span>
           <h3 id="adminRecoveryTitle">New Instructor access</h3>
           <p>Copy this value now and provide it securely to the Instructor. The previous Instructor credential stopped working when this one was created. Intake does not store this raw value.</p>
-          <label for="adminRecoveryToken">Instructor access</label>
+          <label data-persistence="session-only" data-summary="exclude" for="adminRecoveryToken">Instructor access</label>
           <textarea id="adminRecoveryToken" rows="2" readonly spellcheck="false"></textarea>
           <div class="admin-maintenance__actions">
-            <button type="button" class="btn" id="adminRecoveryCopyBtn">Copy Instructor access</button>
-            <button type="button" class="btn-secondary" id="adminRecoveryDismissBtn">Dismiss</button>
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn" id="adminRecoveryCopyBtn">Copy Instructor access</button>
+            <button data-persistence="session-only" data-summary="exclude" type="button" class="btn-secondary" id="adminRecoveryDismissBtn">Dismiss</button>
           </div>
         </section>
       </div>
