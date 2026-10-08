@@ -263,22 +263,10 @@ function activeInstructorCapability(value) {
   return activeCapability(value, 'i');
 }
 
-function activeClassJoinCapability(value) {
-  return activeCapability(value, 'c');
-}
-
-function activeAssignmentCapability(value) {
-  return activeCapability(value, 'a');
-}
-
 function bearerToken(request) {
   const header = String(request.headers.authorization || '');
   const match = /^Bearer\s+([A-Za-z0-9_-]{43})$/u.exec(header);
   return match ? match[1] : '';
-}
-
-function workspaceTokenForAssignment(assignmentToken) {
-  return `w${assignmentToken.slice(1)}`;
 }
 
 function fixtureCapability(prefix, counter) {
@@ -969,7 +957,6 @@ async function handleClassroomApi(request, response, url) {
       sendJson(response, 201, {
         class: integratedInstructorClass(),
         instructorToken: INTEGRATED_INSTRUCTOR_TOKEN,
-        studentJoinToken: `${'c'.repeat(42)}t`,
         joinCode: INTEGRATED_JOIN_CODE
       });
       return true;
@@ -997,7 +984,6 @@ async function handleClassroomApi(request, response, url) {
     sendJson(response, 201, {
       class: liveInstructorClass(),
       instructorToken: LIVE_INSTRUCTOR_TOKEN,
-      studentJoinToken: `${'c'.repeat(42)}s`,
       joinCode: LIVE_JOIN_CODE
     });
     return true;
@@ -1583,50 +1569,6 @@ async function handleClassroomApi(request, response, url) {
     sendJson(response, 200, {
       ...context,
       feedback: [...workspaceFeedback.values()]
-    });
-    return true;
-  }
-
-  if (url.pathname === '/api/classes/join') {
-    if (request.method !== 'POST') {
-      sendJson(response, 405, { error: 'Method not allowed.' });
-      return true;
-    }
-    const classToken = bearerToken(request);
-    if (!validCapability(classToken)) {
-      sendJson(response, 401, { error: 'Missing or invalid authorization.' });
-      return true;
-    }
-    if (!activeClassJoinCapability(classToken)) {
-      sendJson(response, 404, { error: 'Class assignment not found.' });
-      return true;
-    }
-    let body;
-    try {
-      body = await readJson(request);
-    } catch {
-      sendJson(response, 400, { error: 'Invalid request body.' });
-      return true;
-    }
-    const assignmentToken = body?.assignmentToken;
-    const participantId = typeof body?.participantId === 'string' ? body.participantId : '';
-    const displayName = typeof body?.displayName === 'string' ? body.displayName.trim() : '';
-    if (!validCapability(assignmentToken) || !participantId || !displayName) {
-      sendJson(response, 400, { error: 'Invalid classroom admission.' });
-      return true;
-    }
-    if (!activeAssignmentCapability(assignmentToken)) {
-      sendJson(response, 404, { error: 'Class assignment not found.' });
-      return true;
-    }
-
-    const workspaceToken = workspaceTokenForAssignment(assignmentToken);
-    ensureWorkspace(workspaceToken);
-    const context = classroomContext(workspaceToken);
-    sendJson(response, 200, {
-      ...context,
-      self: { id: participantId, displayName },
-      workspaceToken
     });
     return true;
   }
