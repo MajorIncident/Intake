@@ -6,11 +6,11 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-The secure Classroom foundation (#288), live-class management (#312), staged-simulation engine (#313), universal target layer (#318), debrief comparison (#319), join/mobile polish (#320), and pre-production compatibility reset (#328) are **merged and published**.
+The secure Classroom foundation (#288), live-class management (#312), staged-simulation engine (#313), universal target layer (#318), debrief comparison (#319), join/mobile polish (#320), compatibility reset (#328), and Administration / Maintenance lifecycle (#329) are **merged and published**.
 
-#328 completed in PR #332, squash-merged to `main` as `8ad3eb2b80d080d244556b9280a0fd2f83565193`. The exact merged SHA reached Vercel production **READY**, GitHub Vercel status was success, and the post-deploy runtime-error scan was clean.
+#329 completed in PR #333, squash-merged to `main` as `b04684f2432aa474cb84874aa26aa08a5f4c5ab7`. The exact merged SHA reached Vercel production **READY** and the post-deploy runtime error/warning scan was clean. Existing Vercel Authentication prevents an unauthenticated automated probe from reaching `/api/admin`; Deployment Protection was intentionally not weakened.
 
-**#329 Administration / Maintenance is the active implementation slice** on `feature/admin-maintenance` / draft PR #333. Canonical contracts: `docs/preproduction-hardening.md` and `docs/admin-maintenance.md`.
+**#330 Startup experience hub is the active implementation slice** on `feature/startup-experience-hub` / draft PR #334. Governing contract: `docs/preproduction-hardening.md`.
 
 ## Program issues
 
@@ -33,8 +33,8 @@ The secure Classroom foundation (#288), live-class management (#312), staged-sim
 | Class debrief comparison | #319 | Complete / published | PR #326 merged as `400a6c5e...` | 319A–F complete; exact merged-main production READY + runtime clean |
 | Join/mobile polish | #320 | Complete | PR #324 merged as `273ae643...` | Safe share/QR + compact mobile Class/Case/Team/Notes/Instructor chrome |
 | Compatibility reset | #328 | Complete / published | PR #332 merged as `8ad3eb2b...` | Current one-code/session model only; obsolete Classroom access/schema and pre-production save migrations removed |
-| Admin / Maintenance | #329 | **Active implementation** | Draft PR #333 / `feature/admin-maintenance` | Server-authorized inventory, recovery, signed preview, guarded purge, responsive maintenance UI |
-| Startup experience hub | #330 | Planned / blocked by #329 | Open | Explicit Continue / Work independently / Join / Run / Admin choices |
+| Admin / Maintenance | #329 | Complete / published | PR #333 merged as `b04684f2...` | Server-authorized inventory, recovery, signed preview, guarded purge, responsive maintenance UI |
+| Startup experience hub | #330 | **Active implementation** | Draft PR #334 / `feature/startup-experience-hub` | Explicit Continue / Work independently / Join / Run / Admin choices |
 | Rich staged assets | #316 | Deferred until hardening complete | Open | Secure image/table/document-page delivery |
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
 
@@ -49,6 +49,7 @@ The secure Classroom foundation (#288), live-class management (#312), staged-sim
 - Case Study password is instructional gating, not authentication.
 - Protected Case Study metadata/payloads are server-gated, absent from public browser assets, and authored `templates/*.json` is excluded from Vercel deployment.
 - Administration / Maintenance is a separate privileged utility, not a fourth experience role. It uses the environment-only `INTAKE_ADMIN_TOKEN`, tab-scoped `sessionStorage`, non-secret maintenance IDs, and signed preview-before-purge semantics documented in `docs/admin-maintenance.md`.
+- Startup never silently resumes from `kt-experience-role-v1`. Substantive saved Intake, Student resume, and Instructor resume are detected independently and offered as explicit Continue choices; only explicit `?workspace=` Standalone authority bypasses the hub.
 
 See `docs/classroom-architecture.md` for the full contract.
 
@@ -75,52 +76,51 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-**#329 — Administration / Maintenance lifecycle cleanup** is active on `feature/admin-maintenance` / draft PR #333.
+**#330 — Startup experience hub + explicit resume** is active on `feature/startup-experience-hub` / draft PR #334.
 
-Base: `main` at completed #328 merge `8ad3eb2b80d080d244556b9280a0fd2f83565193`.
+Base: `main` at completed #329 merge `b04684f2432aa474cb84874aa26aa08a5f4c5ab7`.
 
-### 329A — server lifecycle boundary: complete
+### Startup detection and routing: implemented
 
-- one deployable `api/admin.js` entrypoint backed by `api/_admin.js`;
-- environment-only 43-character `INTAKE_ADMIN_TOKEN`; missing/malformed configuration fails closed;
-- constant-time Admin credential comparison; no-store/no-referrer responses;
-- collaboration workspaces gain a non-secret UUID `public_id` for maintenance identity;
-- server inventory derives Class and collaboration activity from authoritative update + presence timestamps and returns no Intake snapshots or bearer capabilities;
-- inventory includes class lifecycle, participant/workspace/presence/subordinate counts, current staged exercise context, workspace ownership, and derived idle age;
-- Admin can close/revoke a class immediately;
-- Admin can rotate/reissue active Instructor authority, returning the new raw capability once;
-- physical cleanup is preview-first with a signed 10-minute exact candidate plan;
-- commit re-reads inventory, recomputes candidate fingerprints, and fails with conflict if activity/state changed;
-- bulk class/workspace delete SQL rechecks the complete requested set before mutation;
-- independent collaboration cleanup cannot delete a Classroom-owned workspace;
-- class purge deletes class-owned collaboration workspaces first and relies on FK cascades for capabilities/presence/Classroom subordinate data;
-- Admin adds exactly one deployable Vercel function, taking the expected repository count from 5 to 6 while remaining below the conservative limit of 12;
-- deterministic `tests/admin-api.unit.test.mjs` covers configuration/auth rejection, private headers, no secret leakage, recent-presence protection, class-owned isolation, preview/commit matching, stale preview rejection, preview expiry, terminal-only single-class purge, class close, and Instructor rotation.
+- ordinary startup no longer auto-routes from `kt-experience-role-v1`;
+- explicit Standalone `?workspace=` authority still bypasses the hub;
+- safe `#join=<human-code>` is detected and highlights **Join a class** but is not consumed until normal Student routing;
+- `src/startupExperienceHub.js` derives three independent resumable contexts: substantive local Intake, current Student session, current Instructor session;
+- a deterministic substantive-Intake predicate ignores timestamp/presentation noise such as `savedAt`, bridge time, theme, Notes open state, table labels, action analysis IDs, and unchecked steps;
+- meaningful Intake mode, problem/impact/ops content, table evidence, causes/findings, checked steps, actions, handover notes, Notes items, and Major Incident analysis count as substantive;
+- expired Classroom envelopes are not shown as Continue cards.
 
-### 329B — browser maintenance console: implementation complete
+### Startup UI and intent: implemented
 
-- secondary **Administration / Maintenance** entry exists in the experience chooser and View menu without creating a new experience role;
-- verified Admin key is retained only in tab-scoped `sessionStorage` under `kt-admin-session-v1`;
-- UI provides refresh, sign out, search/filtering, lifecycle/ownership filters, selectable idle threshold, class close, Instructor reissue, single/bulk preview, exact confirmation, and responsive mobile layout;
-- recovery panel displays the newly rotated Instructor capability without persisting it;
-- Escape handling and keyboard focus containment are implemented;
-- `tests/e2e/admin-maintenance.spec.mjs` covers Admin/role isolation + no localStorage leakage + axe scan, exact destructive previews protecting active/class-owned data, and non-persistence of reissued Instructor credentials.
+- Continue cards appear independently for saved Intake, Student class, and Instructor class, including human-facing context;
+- Start / Join section provides **Work independently**, **Join a class**, and **Run a class**;
+- Administration / Maintenance remains a separate secondary privileged entry;
+- opening/reopening the hub does not delete cached Intake or Classroom resume state;
+- starting a fresh independent Intake requires confirmation when substantive local Intake exists;
+- choosing a different Student/Instructor experience confirms replacement of the same-type current resume; expired same-type envelopes are cleared only when the user explicitly chooses that new intent;
+- Student/Instructor lifecycle controllers remain authoritative for server revalidation;
+- terminal saved-session failure can reset the current presentation and return to the required hub with an explanation;
+- startup Continue buttons are keyboard controls, the existing chooser focus trap remains authoritative, mobile uses single-column Continue cards, and startup hover motion honors `prefers-reduced-motion`.
 
-### Documentation / external dependency
+### Coverage checkpoint
 
-- canonical contract: `docs/admin-maintenance.md`;
-- root/server agent guidance, SECURITY, README, AI onboarding, architecture map, commenting guide, and pre-production hardening docs are being reconciled in this PR;
-- **production remains intentionally fail-closed until `INTAKE_ADMIN_TOKEN` is configured in Vercel**. Do not put that value in GitHub or repository files.
+- new `tests/startupExperienceHub.unit.test.mjs` covers substantive/default-state classification and independent/expired resume detection;
+- new `tests/startupExperienceHub.feature.test.mjs` covers three simultaneous Continue cards, safe join-link bias, explicit replacement confirmation, fresh-independent confirmation, and explicit workspace precedence;
+- experience-role tests now prove saved preferences and join fragments do not silently route;
+- Standalone, Student, and Instructor browser reload journeys click their explicit Continue card;
+- integrated share-link browser flow clicks highlighted **Join a class** before normal admission;
+- expired Student browser coverage proves stale workspace context cannot silently resume;
+- fresh startup smoke runs desktop + Pixel 7 axe coverage.
+- First PR CI found only a persistence-guard classification issue for a dynamic local-only Continue button; fixed by making the local-only marker explicit on the creation line. Fresh exact-head validation is pending.
 
 ### Exact next action
 
-1. refresh PR #333 exact head and inspect required checks;
+1. refresh PR #334 exact head and required checks;
 2. fix only concrete quality/unit/browser/security failures;
-3. finish any remaining documentation drift and update PR #333 with exact validation;
-4. configure a fresh production `INTAKE_ADMIN_TOKEN` through Vercel environment settings without committing/logging it;
-5. rerun/verify final required checks, mark PR #333 ready, and squash-merge only on an unchanged green head;
-6. verify exact merged-main Vercel production **READY**, exercise Admin authorization/inventory on production without destructive cleanup, scan runtime errors, close #329;
-7. proceed to #330 startup experience hub.
+3. finish README/architecture/onboarding/commenting/agent documentation reconciliation;
+4. once all required checks are green, update PR #334 with exact evidence, mark ready, and squash-merge the unchanged head;
+5. verify exact merged-main Vercel production **READY**, scan runtime errors, close #330;
+6. reassess #316/#317 as the next product work now that #328–#330 hardening is complete.
 
 ### Historical checkpoint ledger
 
