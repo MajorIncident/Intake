@@ -12,7 +12,6 @@ import {
   classCoachingHandler,
   classDebriefHandler,
   classHandler,
-  classJoinHandler,
   classObserveHandler,
   classParticipantsHandler,
   classStudentAccessHandler,
@@ -36,7 +35,6 @@ export const CLASSROOM_ROUTE_PARAM = '__classroomRoute';
 export const CLASSROOM_ROUTE_IDS = Object.freeze([
   'root',
   'admit',
-  'join',
   'participants',
   'student',
   'student-access',
@@ -57,7 +55,6 @@ function defaultHandlers() {
   return {
     root: classHandler(),
     admit: classAdmitHandler(),
-    join: classJoinHandler(),
     participants: classParticipantsHandler(),
     student: classStudentHandler(),
     'student-access': classStudentAccessHandler(),
