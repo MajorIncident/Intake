@@ -510,6 +510,20 @@ test('Leave class clears resume capability and restores the prior local Intake',
   assert.equal(dom.window.document.body.dataset.studentClassStatus, 'disconnected');
 });
 
+test('obsolete Student local recovery snapshots are discarded instead of restored', async () => {
+  const obsoleteRecovery = {
+    meta: { version: APP_STATE_VERSION - 1, savedAt: null },
+    pre: { oneLine: 'Obsolete local state' }
+  };
+  const env = mount({ storedSession: session(), recovery: obsoleteRecovery });
+  await settle();
+
+  assert.equal(env.controller.leaveClass(), false, 'obsolete recovery is not applied');
+  assert.equal(dom.window.localStorage.getItem(STUDENT_RECOVERY_STORAGE_KEY), null);
+  assert.deepEqual(env.calls.apply, []);
+  assert.deepEqual(env.calls.save, []);
+});
+
 test('switching away from Student pauses classroom sync but keeps the resume envelope', async () => {
   const env = mount({ storedSession: session() });
   await settle();
