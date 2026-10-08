@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { APP_STATE_VERSION } from '../src/appStateVersion.js';
 import {
   instructorCaseStudiesHandler,
   studentCaseStudiesHandler
@@ -56,7 +57,7 @@ async function setupClassroom() {
   });
   const workspace = await workspaces.createUntil(
     hashWorkspaceToken(PRIMARY_WORKSPACE),
-    { meta: { version: 1 } },
+    { meta: { version: APP_STATE_VERSION } },
     'future',
     'Student workspace'
   );
