@@ -126,7 +126,7 @@ Primary deliverables:
 **Issue:** #293
 **Implementation:** PR #305 — server read-only observer + Instructor roster/client implemented; validation head: 208 tests (207 pass, 0 fail, 1 intentional skip)
 
-**Active branch:** `feature/classroom-instructor-observer`
+**Historical implementation branch:** `feature/classroom-instructor-observer` (merged via PR #305; not active)
 
 Checkpoint 1 established the server-enforced read-only observer endpoint. The current implementation also includes Instructor same-device class resume, roster/search/filter, rapid workspace switching, presence/activity context, and read-only projection of the existing Intake renderer.
 
@@ -227,66 +227,58 @@ The eight-slice #288 program establishes the secure Classroom foundation; it doe
 
 ## Next production-Classroom roadmap
 
-The secure classroom/orchestration engine is complete, but a **real production KT simulation is not yet runnable from source-faithful case material**. The remaining roadmap is now product/content enablement rather than another exercise-engine tranche.
+The secure Classroom/orchestration engine, universal target layer, debrief comparison, and join/mobile polish are now merged. The next cycle is a deliberate **pre-production simplification and lifecycle hardening pass** before production Case Study authoring resumes.
 
-### Publish recovery — #321 / PR #322 — complete
+Canonical contract: `docs/preproduction-hardening.md`.
 
-#312 and #313 initially exceeded the Vercel Hobby limit of 12 Serverless Functions after merge. #321 / PR #322 consolidated every public `/api/classes/**` route behind one deployment entrypoint without changing URLs or authorization behavior.
+### Completed facilitation / UX track
 
-Production recovery is verified:
-- conservative deployment function count: **5/12**;
-- exact merged-main SHA `21bff1d1c5a70caff0aa94aadd58abcb0644f397`;
-- production deployment `dpl_VZoSoWJsDs6Eb727EN5hmrFSgAcA`: **READY**;
-- post-deploy runtime-error scan: **clean**.
+- **#318 — Universal Intake target identity:** merged via PR #325 as `ef6949100ddac28c646338ee55cb6e7a74beb067`.
+- **#319 — Template-independent Instructor class debrief comparison:** merged via PR #326 as `400a6c5ee0b879b4a36705be6d8af075bc89d391`; exact merged-main production deployment reached **READY** and the post-deploy runtime-error scan was clean.
+- **#320 — Join sharing and compact mobile workspace chrome:** merged via PR #324 as `273ae6437c0898b9e35778587c7053580db14e22`.
+- **Repository delivery-resilience guidance:** PR #327 merged as `dce82b1ddb94ff926464af4a9b9d81704ba05a5a`, codifying small durable slices and slow-gate human handoff.
 
-#316 is now unblocked and is the immediate next implementation issue.
+### P0 — pre-production hardening
 
-### P0 — production case material delivery
+**#328 — Pre-production compatibility reset**
+
+Remove the legacy Student two-code access path, the public Instructor access-code recovery form, and obsolete save/local compatibility migrations that exist only because of pre-production development history. Keep the current one-code Student admission + stable class-session model, current same-device Instructor resume, and intentional Standalone collaboration. This is explicitly allowed to be breaking because there are no production users to migrate.
+
+**#329 — Administration / Maintenance lifecycle cleanup**
+
+Add a separately authorized maintenance surface that inventories Classroom and Standalone collaboration data, derives idle/expired state from server timestamps + recent presence, previews destructive cleanup, and safely purges selected or bulk stale records. Administration is not a fourth Intake experience role. It also becomes the intentional recovery path for rotating/reissuing Instructor authority after #328 removes the public Instructor access-code form.
+
+**#330 — Startup experience hub + explicit resume**
+
+Replace implicit role restoration with a startup hub that offers **Continue where you left off** when valid saved/resumable context exists, plus **Work independently**, **Join a class**, **Run a class**, and secondary **Administration / Maintenance** entry. Cached Intake, Student resume, and Instructor resume are presented as separate explicit choices rather than silently selecting a role.
+
+### P1 — production simulation enablement
 
 **#316 — Protected staged case assets and rich Student case rendering**
 
-This remains the first blocker **when production simulation authoring resumes**, but it is intentionally deferred while Template/field coverage and facilitator UX are expanded. The staged schema already allows `image`, `table`, and `document-page` Student blocks, but the current Student case-reference projects released content to `id/kind/title/body` and therefore cannot faithfully render protected case pages/images/tables. Implement server-gated asset delivery and accessible rich rendering without weakening progressive disclosure or the public-static boundary.
+Still technically unblocked, but intentionally ordered **after #328–#330**. Add server-gated protected assets plus accessible table/image/document-page rendering without weakening progressive disclosure or the minimal public-static boundary.
 
 **#317 — Author and validate the first production staged KT Case Study**
 
-Depends on #316. Use only authoritative participant/instructor source material. Author reviewed stage boundaries/releases/facilitation/assets, then run a complete real-case Instructor + multi-team Student rehearsal. Do not infer stage structure from completed Intake state or similarly named cases.
-
-### P1 — facilitation completeness
-
-**#318 — Universal Intake target identity + staged guidance/coaching — COMPLETE / MERGED**
-
-PR #325 squash-merged to `main` as `ef6949100ddac28c646338ee55cb6e7a74beb067`. Canonical contract: `docs/intake-target-identity.md`. **318A–E are complete and now provide the stable target/projection layer consumed by #319.**
-
-Evolve the existing coaching target registry into one domain-neutral, stable Intake-target contract used by coaching, future staged guidance, and #319 cross-team debrief comparison. Templates remain serialized Intake data: adding a new Template that uses existing fields must require no #319-specific wiring. Static targets compare by semantic ID; dynamic Possible Causes use their already-persisted lifecycle ID as per-workspace instances within a `possible-cause` family rather than matching teams by list position. Snapshot projection must work without mounting the DOM. Staged `simulation.stages[].intakeTargetIds` becomes an optional consumer of this registry; simulation is **not** required for the registry or #319.
-
-**#319 — Template-independent Instructor class debrief comparison and progress view — IMPLEMENTATION COMPLETE / PENDING MERGE**
-
-Implementation is complete on `feature/classroom-debrief-comparison` / PR #326, based on merged-main `ef6949100ddac28c646338ee55cb6e7a74beb067`. Canonical contract: `docs/classroom-debrief-comparison.md`. 319A–F are green: Instructor-only derived aggregate API, template-independent semantic comparison, staged focus recommendations, Ready/Working, explicit Current/Checkpoint evidence, neutral coaching status/change metadata, Student non-exposure, responsive/Axe coverage, and persistence/summary/export boundary guards. No new persistence model, grading/ranking, raw snapshot response, or Student comparison surface was introduced. Remaining work is final PR merge approval plus merged-main publication verification.
-
-### P2 — delivery polish
-
-**#320 — Join sharing and compact mobile workspace chrome**
-
-#320 is complete. PR #324 was squash-merged to `main` as `273ae6437c0898b9e35778587c7053580db14e22` after final repository/browser/security gates passed. It delivers fragment-only human-code share links, native Web Share/copy fallback, fully local QR rendering, and compact presentation-only mobile Class/Case/Team/Notes/Instructor surfaces.
+Depends on #316 and the pre-production hardening sequence. Use only authoritative participant/instructor source material, then run the real Instructor + multi-team Student rehearsal.
 
 ### Recommended dependency/order
 
 ```text
-COMPLETED UX TRACK
-#320  join sharing + compact mobile workspace chrome   [merged]
-
-DEBRIEF / TEMPLATE-COMPATIBILITY TRACK
-#318  universal stable Intake target identity          [merged as ef694910...]
+PRE-PRODUCTION HARDENING
+#328  remove legacy access + obsolete save compatibility
    |
-  #319  template-independent class debrief comparison  [implementation complete / PR #326 pending merge]
-
-PRODUCTION SIMULATION TRACK — intentionally deferred for now
+  #329  Admin / Maintenance inventory + cleanup
+   |
+  #330  startup experience hub + explicit resume
+   |
+PRODUCTION SIMULATION ENABLEMENT
 #316  protected rich staged content
    |
   #317  first production staged KT Case Study
 ```
 
-Current product decision: **#319 implementation is complete and awaiting merge approval.** #318 is merged and provides the universal target contract; #319 now consumes it without template-specific wiring. Do not add new #319 scope before merge. #316/#317 remain valid future work but are intentionally deferred until deliberately selected.
+**Current product decision:** begin with **#328** after this roadmap/hygiene checkpoint is merged. Do not start #316/#317 first; their architecture should be built on the simplified credential, persistence, maintenance, and startup contracts.
 
 ## Stacked PR rules
 
