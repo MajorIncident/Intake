@@ -121,6 +121,45 @@ function comparisonText(projection) {
   return value || 'No evidence captured.';
 }
 
+function coachingRecord(workspace, targetId) {
+  if (typeof targetId !== 'string' || !targetId) return null;
+  return (Array.isArray(workspace?.coaching?.targets) ? workspace.coaching.targets : [])
+    .find(record => record?.targetId === targetId) || null;
+}
+
+function renderCoachingBadges(documentRef, workspace, projection, mode) {
+  const record = coachingRecord(workspace, projection?.id);
+  if (!record) return null;
+
+  const container = documentRef.createElement('div');
+  container.className = 'instructor-debrief-coaching';
+  container.setAttribute('aria-label', 'Instructor coaching status');
+
+  if (mode === DEBRIEF_EVIDENCE_MODES.CHECKPOINT) {
+    const context = documentRef.createElement('span');
+    context.className = 'instructor-debrief-coaching__context';
+    context.textContent = 'Current coaching';
+    container.append(context);
+  }
+
+  const status = documentRef.createElement('span');
+  const meets = record.status === 'meets-standard';
+  status.className = meets
+    ? 'instructor-debrief-coaching__badge instructor-debrief-coaching__badge--meets'
+    : 'instructor-debrief-coaching__badge instructor-debrief-coaching__badge--needs';
+  status.textContent = meets ? 'Meets standard' : 'Needs improvement';
+  container.append(status);
+
+  if (record.changedSinceReview) {
+    const changed = documentRef.createElement('span');
+    changed.className = 'instructor-debrief-coaching__badge instructor-debrief-coaching__badge--changed';
+    changed.textContent = 'Changed since review';
+    container.append(changed);
+  }
+
+  return container;
+}
+
 function button(documentRef, label, onClick, className = 'btn-secondary') {
   const control = createLocalElement(documentRef, 'button');
   control.type = 'button';
@@ -412,6 +451,8 @@ export function createClassroomDebriefComparisonController({
           const copy = documentRef.createElement('p');
           copy.textContent = comparisonText(projection);
           evidence.append(copy);
+          const coaching = renderCoachingBadges(documentRef, workspace, projection, evidenceMode);
+          if (coaching) evidence.append(coaching);
           body.append(evidence);
         });
       }
