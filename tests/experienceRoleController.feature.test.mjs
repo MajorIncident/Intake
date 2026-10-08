@@ -97,6 +97,16 @@ test('saved Intake data does not implicitly select an experience role', () => {
   assert.equal(dom.window.localStorage.getItem(EXPERIENCE_ROLE_STORAGE_KEY), null);
 });
 
+test('raw pre-reset experience preferences are rejected instead of silently migrated', () => {
+  dom.window.localStorage.setItem(EXPERIENCE_ROLE_STORAGE_KEY, EXPERIENCE_ROLE_IDS.INSTRUCTOR);
+
+  const role = initialize();
+
+  assert.equal(role, null);
+  assert.equal(dom.window.document.body.dataset.experienceRole, 'unselected');
+  assert.equal(dom.window.document.getElementById('experienceRoleGate').hidden, false);
+});
+
 test('existing collaboration links silently enter Standalone for backward compatibility', () => {
   dom.window.close();
   mount('https://intake.test/?workspace=existing-secret');
