@@ -43,7 +43,6 @@ Class
   title
   instructor capability hash
   human Student join code
-  legacy Student join capability hash
   status / expiry / retention metadata
 
   -> Classroom Participant [0..n]
@@ -58,7 +57,6 @@ Class
        kind: individual | group
        display label
        existing collaboration workspace reference
-       legacy assignment capability hash
 
        -> existing collaboration snapshot / revision / presence
 
@@ -253,14 +251,15 @@ Implemented state (#295):
 
 Continue the existing Neon/Vercel approach unless evidence justifies a platform migration.
 
-The Classroom persistence model is additive:
+The Classroom persistence model uses:
 
 - `collaboration_workspace_capabilities` — explicitly editable aliases into existing collaboration workspaces;
-- `classroom_classes` — class metadata/retention, Instructor capability hash, legacy Student-join hash, and #312 human join code;
-- `classroom_workspaces` — individual/group workspace metadata plus legacy assignment capability hashes;
-- `classroom_memberships` — legacy two-code participant-to-workspace compatibility;
-- `classroom_participants` — #312 live participant identity, optional current assignment, `assignment_revision`, Student class-session capability hash, and current workspace-access capability hash;
+- `classroom_classes` — class metadata/retention, Instructor capability hash, human Student join code, join-enable state, and expiry/revocation;
+- `classroom_workspaces` — individual/group workspace metadata linked to existing collaboration workspaces;
+- `classroom_participants` — live participant identity, optional current assignment, `assignment_revision`, Student class-session capability hash, and current workspace-access capability hash;
 - `classroom_coaching_feedback` — separate class/workspace/target coaching channel.
+
+#328 removes the pre-production Student join-token hash, workspace assignment-claim hash, and `classroom_memberships` table. Existing pre-production databases drop those obsolete structures during idempotent schema initialization.
 
 Protected Case Study delivery (#295) adds no public/browser data table and remains server-gated. #313 Tranche 3 now adds exercise orchestration persistence separately from Intake snapshots and participant authorization:
 
@@ -300,12 +299,12 @@ The repository is still pre-production and has no external production users to m
 
 The approved target architecture is defined in `docs/preproduction-hardening.md` and issues #328–#330:
 
-- #328 removes the legacy Student two-code Classroom path, the normal-product Instructor access-code recovery form, and compatibility-only old save/local formats after an explicit inventory;
+- #328 is the compatibility reset: one-code Student admission/class-session authority is the only Classroom Student model; public Instructor bearer-code recovery is removed; only the current Intake save schema is accepted;
 - #329 adds separately authorized Administration / Maintenance inventory, recovery, and preview-first stale-data cleanup;
 - #330 replaces implicit role restoration with explicit Continue / Work independently / Join a class / Run a class startup choices;
 - #316/#317 resume only after that hardening sequence.
 
-Until #328 merges, sections above that describe legacy two-code fields/routes remain accurate descriptions of the **current runtime**, not endorsements of the future contract. Do not prematurely remove authorization checks or schema fields outside the #328 implementation.
+On the #328 implementation branch, obsolete access/schema/save compatibility is removed rather than hidden. Future work must not recreate it as a recovery mechanism; recovery belongs to #329.
 
 ## Migration philosophy
 
