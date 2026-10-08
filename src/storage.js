@@ -12,7 +12,7 @@
  * excluded; `src/collaboration.js` stores only conflict recovery in its separate local key.
  */
 
-import { CAUSE_FINDING_MODES, CAUSE_FINDING_MODE_VALUES, ROWS } from './constants.js';
+import { CAUSE_FINDING_MODE_VALUES } from './constants.js';
 import { APP_STATE_VERSION } from './appStateVersion.js';
 import { DEFAULT_INTAKE_MODE, INTAKE_MODE_IDS } from './intakeModes.js';
 import { normalizeActionSnapshot, ACTIONS_STORAGE_KEY } from './actionsStore.js';
@@ -155,36 +155,18 @@ function isValidFindingMode(mode) {
 }
 
 /**
- * Coerces persisted finding entries into the `{mode, note}` format.
- * @param {unknown} entry - Raw finding entry possibly stored in legacy shapes.
+ * Sanitizes one canonical finding entry.
+ * @param {unknown} entry - Candidate current-format finding entry.
  * @returns {CauseFinding} Normalized finding record.
  */
 function normalizeFindingEntry(entry) {
   const normalized = { mode: '', note: '' };
-  if (entry && typeof entry === 'object') {
-    if (typeof entry.mode === 'string') {
-      const mode = entry.mode.trim().toLowerCase();
-      if (isValidFindingMode(mode)) {
-        normalized.mode = mode;
-      }
-    }
-    if (typeof entry.note === 'string') {
-      normalized.note = entry.note;
-    } else if (typeof entry.note === 'number') {
-      normalized.note = String(entry.note);
-    }
-    const explainIs = typeof entry.explainIs === 'string' ? entry.explainIs.trim() : '';
-    const explainNot = typeof entry.explainNot === 'string' ? entry.explainNot.trim() : '';
-    if (!normalized.mode && (explainIs || explainNot)) {
-      normalized.mode = CAUSE_FINDING_MODES.YES;
-      normalized.note = [explainIs, explainNot].filter(Boolean).join('\n');
-    } else if (normalized.mode && !normalized.note && (explainIs || explainNot)) {
-      normalized.note = [explainIs, explainNot].filter(Boolean).join('\n');
-    }
-  } else if (typeof entry === 'string') {
-    normalized.mode = CAUSE_FINDING_MODES.YES;
-    normalized.note = entry;
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return normalized;
+  if (typeof entry.mode === 'string') {
+    const mode = entry.mode.trim().toLowerCase();
+    if (isValidFindingMode(mode)) normalized.mode = mode;
   }
+  if (typeof entry.note === 'string') normalized.note = entry.note;
   return normalized;
 }
 
@@ -210,46 +192,20 @@ function findingNote(entry) {
 }
 
 /**
- * Maps legacy KT prompt keys to their stable row identifiers.
- * @type {ReadonlyMap<string, string>}
- */
-const FINDING_KEY_BY_LEGACY_QUESTION = new Map(
-  ROWS.filter(row => typeof row?.id === 'string' && typeof row?.q === 'string')
-    .map(row => [row.q, row.id])
-);
-
-/**
- * Maps a finding key to its stable identifier when it is a current legacy prompt.
- * @param {string} key - Persisted finding key.
- * @returns {string} Stable key for known legacy prompts, otherwise the original key.
- */
-function normalizeFindingKey(key) {
-  return FINDING_KEY_BY_LEGACY_QUESTION.get(key) || key;
-}
-
-/**
- * Normalizes a cause findings map while preserving unknown keys. Explicit stable
- * entries are processed before their legacy prompt aliases so valid stable
- * entries remain authoritative when both forms are present.
- * @param {unknown} source - Raw findings map from storage or an import.
- * @returns {Record<string, CauseFinding>} Finding records keyed by stable IDs where known.
+ * Sanitizes the canonical cause-findings map while preserving stable/dynamic keys.
+ * @param {unknown} source - Current-format findings map.
+ * @returns {Record<string, CauseFinding>} Sanitized finding records.
  */
 function normalizeCauseFindings(source) {
   if (!source || typeof source !== 'object' || Array.isArray(source)) return {};
-
   const findings = {};
-  const entries = Object.entries(source);
-  const stableEntries = entries.filter(([key]) => !FINDING_KEY_BY_LEGACY_QUESTION.has(key));
-  const legacyEntries = entries.filter(([key]) => FINDING_KEY_BY_LEGACY_QUESTION.has(key));
-  [...stableEntries, ...legacyEntries].forEach(([key, entry]) => {
+  Object.entries(source).forEach(([key, entry]) => {
+    if (typeof key !== 'string' || !key.trim()) return;
     const normalized = normalizeFindingEntry(entry);
     const mode = findingMode(normalized);
     const note = findingNote(normalized);
     if (!mode && !note.trim()) return;
-
-    const normalizedKey = normalizeFindingKey(key);
-    if (Object.prototype.hasOwnProperty.call(findings, normalizedKey)) return;
-    findings[normalizedKey] = { mode, note };
+    findings[key] = { mode, note };
   });
   return findings;
 }
