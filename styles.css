@@ -346,6 +346,10 @@ body.experience-role-gate-open{overflow:hidden;}
 .startup-hub__join-intent{margin:0 0 12px;padding:9px 11px;border:1px solid var(--mi-role-blue-border);border-radius:11px;background:var(--mi-role-blue-bg);color:var(--mi-role-blue);font-size:11px;font-weight:700;line-height:1.4;}
 .experience-role-option.is-recommended{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 18%,transparent);}
 .experience-role-option.is-recommended::after{content:"Class link detected";margin-top:8px;color:var(--accent-text);font-size:10px;font-weight:850;}
+@media (prefers-reduced-motion:reduce){
+  .startup-resume-card,.experience-role-option{transition:none!important;}
+  .startup-resume-card:hover,.experience-role-option:hover{transform:none;}
+}
 .experience-role-dialog__footer{
   display:flex;
   align-items:center;
