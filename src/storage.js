@@ -220,13 +220,6 @@ function normalizeHandoverItems(value) {
     return value.filter(item => typeof item === 'string').map(item => item.trim()).filter(Boolean);
   }
 
-  if (typeof value === 'string') {
-    return value
-      .split(/\r?\n/)
-      .map(item => item.trim())
-      .filter(Boolean);
-  }
-
   return [];
 }
 
@@ -239,9 +232,7 @@ function normalizeHandoverState(source) {
   const sections = source
     && typeof source === 'object'
     && !Array.isArray(source)
-    ? (source.sections && typeof source.sections === 'object' && !Array.isArray(source.sections)
-      ? source.sections
-      : source)
+    ? source
     : null;
   const handoverBase = HANDOVER_SECTION_IDS.reduce((acc, sectionId) => {
     acc[sectionId] = [];
@@ -429,110 +420,13 @@ function normalizeStepsState(rawSteps) {
 }
 
 /**
- * Extracts the persisted schema version from a raw state object.
- * @param {unknown} raw - Candidate state object with optional metadata.
- * @returns {number} Discovered version number, defaulting to `0`.
+ * Historical pre-production migrations are intentionally retired.
+ * The empty registry is exported for storage-schema documentation.
  */
-function resolveVersion(raw) {
-  const version = raw?.meta?.version;
-  if (typeof version === 'number' && Number.isFinite(version)) {
-    return version;
-  }
-  if (typeof version === 'string') {
-    const parsed = parseInt(version, 10);
-    if (!Number.isNaN(parsed)) {
-      return parsed;
-    }
-  }
-  return 0;
-}
+export const MIGRATION_REGISTRY = new Map();
 
 /**
- * Migration routine for the pre-v1 schema where communication fields lived at
- * the root level and containment values used legacy naming. Upgrades the shape
- * to match version 1 expectations so later migrations can build on it.
- * @param {unknown} raw - Legacy state object.
- * @returns {object} Cloned state upgraded to version 1.
- */
-function migrateLegacyState(raw) {
-  const state = cloneState(raw) || {};
-  const ops = state && typeof state.ops === 'object' ? { ...state.ops } : {};
-
-  if (state && typeof state === 'object') {
-    ['commCadence', 'commNextDueIso', 'commNextUpdateTime', 'tableFocusMode'].forEach(key => {
-      if (state[key] !== undefined && ops[key] === undefined) {
-        ops[key] = state[key];
-      }
-      if (state[key] !== undefined) {
-        delete state[key];
-      }
-    });
-    if (Array.isArray(state.commLog) && !Array.isArray(ops.commLog)) {
-      ops.commLog = state.commLog;
-    }
-    delete state.commLog;
-
-    if (Array.isArray(state.possibleCauses) && !Array.isArray(state.causes)) {
-      state.causes = state.possibleCauses;
-    }
-
-    if (typeof ops.containmentStatus === 'string' && !ops.containStatus) {
-      ops.containStatus = ops.containmentStatus;
-    }
-    if (typeof ops.containment === 'string' && !ops.containStatus) {
-      ops.containStatus = ops.containment;
-    }
-    delete ops.containmentStatus;
-    delete ops.containment;
-
-    state.ops = ops;
-    state.meta = { ...(state.meta || {}), version: 1 };
-  }
-
-  return state;
-}
-
-/**
- * Replaces legacy question-text cause finding keys with stable KT row IDs.
- * @param {unknown} raw - Version 1 application state.
- * @returns {object} Cloned state upgraded to version 2.
- */
-function migrateCauseFindingKeys(raw) {
-  const state = cloneState(raw) || {};
-  if (state && typeof state === 'object') {
-    ['causes', 'possibleCauses'].forEach(causesKey => {
-      if (!Array.isArray(state[causesKey])) return;
-      state[causesKey] = state[causesKey].map(cause => {
-        if (!cause || typeof cause !== 'object') return cause;
-        return { ...cause, findings: normalizeCauseFindings(cause.findings) };
-      });
-    });
-    state.meta = { ...(state.meta || {}), version: 2 };
-  }
-  return state;
-}
-
-/**
- * Ordered map of migration handlers. Keys represent the version found in
- * persisted payloads, and values are invoked until {@link APP_STATE_VERSION}
- * is reached. Additional migrations should be appended with incrementing keys
- * to preserve replay order.
- */
-const MIGRATIONS = new Map([
-  [0, migrateLegacyState],
-  [1, migrateCauseFindingKeys]
-]);
-
-/**
- * Registry of state migrations keyed by their originating version. The registry
- * intentionally mirrors the stored `meta.version` values so that
- * {@link migrateAppState} can iterate them sequentially until it reaches the
- * latest {@link APP_STATE_VERSION}.
- */
-export const MIGRATION_REGISTRY = new Map(MIGRATIONS);
-
-/**
- * Coerces partially populated or legacy state objects into the canonical
+ * Sanitizes a current-version state object into the canonical
  * {@link SerializedAppState} structure used across the application.
  * @param {unknown} raw - Candidate state object after running migrations.
  * @returns {SerializedAppState} Normalized application state structure.
