@@ -22,7 +22,7 @@ test('experience roles normalize independently from Intake workflow modes', () =
 test('experience role metadata exposes stable human labels', () => {
   assert.equal(getExperienceRoleDefinition(EXPERIENCE_ROLE_IDS.STANDALONE)?.label, 'Standalone');
   assert.equal(getExperienceRoleDefinition(EXPERIENCE_ROLE_IDS.STUDENT)?.actionLabel, 'Join a class');
-  assert.equal(getExperienceRoleDefinition(EXPERIENCE_ROLE_IDS.INSTRUCTOR)?.actionLabel, 'Teach a class');
+  assert.equal(getExperienceRoleDefinition(EXPERIENCE_ROLE_IDS.INSTRUCTOR)?.actionLabel, 'Run a class');
 });
 
 test('role surface policy keeps Standalone and Student in Intake while Instructor uses its shell', () => {
