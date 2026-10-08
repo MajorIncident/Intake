@@ -86,14 +86,15 @@ test('first-run Standalone selection persists independently and exposes the norm
   assert.equal(dom.window.document.querySelector('[data-experience-role-label]').textContent, 'Standalone');
 });
 
-test('existing Intake users silently migrate to Standalone instead of seeing first-run choice', () => {
-  dom.window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ meta: { version: 2 } }));
+test('saved Intake data does not implicitly select an experience role', () => {
+  dom.window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ meta: { version: 3 } }));
 
   const role = initialize();
 
-  assert.equal(role, EXPERIENCE_ROLE_IDS.STANDALONE);
-  assert.equal(dom.window.document.getElementById('experienceRoleGate').hidden, true);
-  assert.equal(JSON.parse(dom.window.localStorage.getItem(EXPERIENCE_ROLE_STORAGE_KEY)).role, EXPERIENCE_ROLE_IDS.STANDALONE);
+  assert.equal(role, null);
+  assert.equal(dom.window.document.body.dataset.experienceRole, 'unselected');
+  assert.equal(dom.window.document.getElementById('experienceRoleGate').hidden, false);
+  assert.equal(dom.window.localStorage.getItem(EXPERIENCE_ROLE_STORAGE_KEY), null);
 });
 
 test('existing collaboration links silently enter Standalone for backward compatibility', () => {
@@ -120,7 +121,7 @@ test('a valid Classroom join fragment enters Student experience before the first
   assert.equal(JSON.parse(dom.window.localStorage.getItem(EXPERIENCE_ROLE_STORAGE_KEY)).role, EXPERIENCE_ROLE_IDS.STUDENT);
 });
 
-test('legacy collaboration query authority wins over a simultaneous Classroom join fragment', () => {
+test('Standalone collaboration query authority wins over a simultaneous Classroom join fragment', () => {
   dom.window.close();
   mount('https://intake.test/?workspace=existing-secret#join=K7FMP4Q2');
   dom.window.localStorage.clear();
@@ -131,7 +132,7 @@ test('legacy collaboration query authority wins over a simultaneous Classroom jo
   assert.equal(dom.window.document.querySelector('.wrap').hidden, false);
 });
 
-test('explicit legacy collaboration link overrides a stored Instructor preference', () => {
+test('explicit Standalone collaboration link overrides a stored Instructor preference', () => {
   dom.window.close();
   mount('https://intake.test/?workspace=existing-secret');
   persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.INSTRUCTOR, dom.window.localStorage);
