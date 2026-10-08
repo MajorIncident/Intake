@@ -12,3 +12,10 @@ Run `npm run verify:summary` to enforce this checklist. The guard fails when new
 ## Presentation-only experience surfaces
 
 Containers marked only with `data-experience-surface` control Standalone / Student / Instructor visibility and do not capture user data. The summary and persistence diff guards intentionally ignore those container-only additions. If the same added line introduces a real `input`, `textarea`, `select`, `option`, `button`, or `label`, normal guard enforcement still applies.
+
+## Privileged session-only controls
+
+Administration / Maintenance controls use `data-persistence="session-only"` because they are outside the Intake data model and must never enter local Intake persistence, templates, file exports, or Copy & Paste Summary output.
+
+The summary and persistence guards treat both `local-only` and `session-only` controls as explicitly non-Intake state. Admin credentials, lifecycle filters, purge thresholds, preview confirmation controls, and recovery values therefore remain excluded from incident summaries by design. They still require normal accessible labels and shared visual styling.
+
