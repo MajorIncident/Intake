@@ -43,7 +43,7 @@ export function validateToken(token) { return typeof token === 'string' && TOKEN
  * Restrict aliases accepted by editable collaboration endpoints.
  *
  * Read-only observer capabilities must use a separate authorization path rather
- * than inheriting snapshot update access from the legacy collaboration API.
+ * than inheriting snapshot update access from the general collaboration API.
  *
  * @param {unknown} value Candidate capability kind.
  * @returns {boolean} Whether the kind grants edit-capable workspace access.
