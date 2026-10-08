@@ -11,7 +11,7 @@ test('fileTransfer: exportAppStateToFile packages state into a downloadable blob
   let collected = 0;
   const collect = () => {
     collected += 1;
-    return { meta: { version: 1 }, pre: { oneLine: 'Example' } };
+    return { meta: { version: APP_STATE_VERSION }, pre: { oneLine: 'Example' } };
   };
 
   class FakeBlob {
