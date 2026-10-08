@@ -36,6 +36,31 @@ async function expectNoBlockingA11yViolations(page) {
   expect(blockingViolations, JSON.stringify(blockingViolations, null, 2)).toEqual([]);
 }
 
+async function resumeFixtureInstructor(page, instructorToken) {
+  await startFresh(page);
+  await page.getByRole('button', { name: /Teach a class/ }).click();
+  await page.evaluate(({ key, token, workspaceId }) => {
+    window.localStorage.setItem(key, JSON.stringify({
+      version: 1,
+      instructorToken: token,
+      joinCode: 'K7FM-P4Q2',
+      class: {
+        id: 'browser-test-class',
+        title: 'Browser Test Classroom',
+        expiresAt: '2099-12-31T23:59:59.000Z'
+      },
+      selectedWorkspaceId: workspaceId,
+      openedAt: '2099-12-31T20:00:00.000Z'
+    }));
+  }, {
+    key: INSTRUCTOR_SESSION_STORAGE_KEY,
+    token: instructorToken,
+    workspaceId: FIRST_WORKSPACE_ID
+  });
+  await page.reload();
+  await expect(page.locator('#instructorClassDashboard')).toBeVisible();
+}
+
 test('Instructor starts a live class, creates a team, assigns a waiting Student, and resumes it', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop live-management journey; responsive Instructor observer remains covered on mobile.');
   const pageErrors = watchPageErrors(page);
@@ -229,11 +254,7 @@ test('mobile Instructor can open and run the staged exercise console accessibly'
   const pageErrors = watchPageErrors(page);
   const instructorCode = `i${'m'.repeat(40)}${testInfo.retry}m`;
 
-  await startFresh(page);
-  await page.getByRole('button', { name: /Teach a class/ }).click();
-  await page.locator('#instructorExistingClass > summary').click();
-  await page.getByLabel('Instructor access code').fill(instructorCode);
-  await page.getByRole('button', { name: 'Open class' }).click();
+  await resumeFixtureInstructor(page, instructorCode);
 
   await expect(page.locator('#instructorClassDashboard')).toBeVisible();
   await expect(page.locator('#instructorClassDashboard')).toHaveClass(/is-collapsed/);
@@ -280,11 +301,7 @@ test('Instructor compares live class targets and drills into the existing observ
   const suffix = testInfo.project.name === 'chromium-mobile' ? 'q' : 'p';
   const instructorCode = capability('i', suffix);
 
-  await startFresh(page);
-  await page.getByRole('button', { name: /Teach a class/ }).click();
-  await page.locator('#instructorExistingClass > summary').click();
-  await page.getByLabel('Instructor access code').fill(instructorCode);
-  await page.getByRole('button', { name: 'Open class' }).click();
+  await resumeFixtureInstructor(page, instructorCode);
 
   const comparison = page.locator('#instructorDebriefComparison');
   await expect(comparison).toBeVisible();
