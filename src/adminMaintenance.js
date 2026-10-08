@@ -91,7 +91,7 @@ function setBusy(busy) {
 }
 
 function showAuth() {
-  const auth = element('adminMaintenanceAuth');
+  const auth = element('adminMaintenanceAuthForm');
   const consolePanel = element('adminMaintenanceConsole');
   if (auth) auth.hidden = false;
   if (consolePanel) consolePanel.hidden = true;
@@ -103,7 +103,7 @@ function showAuth() {
 }
 
 function showConsole() {
-  const auth = element('adminMaintenanceAuth');
+  const auth = element('adminMaintenanceAuthForm');
   const consolePanel = element('adminMaintenanceConsole');
   if (auth) auth.hidden = true;
   if (consolePanel) consolePanel.hidden = false;
@@ -166,7 +166,7 @@ function metaRow(label, value) {
 }
 
 function actionButton(label, onClick, { danger = false } = {}) {
-  const button = documentRef.createElement('button');
+  const button = documentRef.createElement('button'); // data-persistence="session-only" data-summary="exclude"
   button.type = 'button';
   button.className = danger ? 'btn-secondary admin-maintenance__danger' : 'btn-secondary';
   button.textContent = label;
@@ -654,7 +654,9 @@ function bindControls() {
   documentRef.querySelectorAll('[data-open-admin-maintenance]').forEach(button => {
     if (button.dataset.adminMaintenanceBound === 'true') return;
     button.dataset.adminMaintenanceBound = 'true';
-    button.addEventListener('click', () => openAdminMaintenance({ returnFocus: button }));
+    const panel = button.closest?.('.menu-panel');
+    const trigger = panel?.id ? documentRef?.querySelector(`[data-menu-target="${panel.id}"]`) : null;
+    button.addEventListener('click', () => openAdminMaintenance({ returnFocus: trigger || button }));
   });
 
   element('adminMaintenanceCloseBtn')?.addEventListener('click', closeAdminMaintenance);
