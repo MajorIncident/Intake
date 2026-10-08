@@ -14,9 +14,6 @@ export const EXPERIENCE_ROLE_IDS = Object.freeze({
   INSTRUCTOR: 'instructor'
 });
 
-/** Default role used only when migrating an existing Intake or collaboration link. */
-export const LEGACY_DEFAULT_EXPERIENCE_ROLE = EXPERIENCE_ROLE_IDS.STANDALONE;
-
 /**
  * Human-facing metadata for the role chooser.
  * @type {ReadonlyArray<Readonly<{id:string,label:string,actionLabel:string,description:string}>>}
