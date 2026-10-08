@@ -244,13 +244,13 @@ Canonical contract: `docs/preproduction-hardening.md`.
 
 Merged via PR #332 as `8ad3eb2b80d080d244556b9280a0fd2f83565193`. Removed the legacy Student two-code access path, the public Instructor access-code recovery form, and obsolete save/local compatibility migrations that exist only because of pre-production development history. Keep the current one-code Student admission + stable class-session model, current same-device Instructor resume, and intentional Standalone collaboration. This is explicitly allowed to be breaking because there are no production users to migrate.
 
-**#329 — Administration / Maintenance lifecycle cleanup — ACTIVE**
+**#329 — Administration / Maintenance lifecycle cleanup — COMPLETE**
 
-Draft PR #333 implements the canonical contract in `docs/admin-maintenance.md`: a separately authorized maintenance surface that inventories Classroom and Standalone collaboration data, derives idle/expired state from server timestamps + recent presence, previews destructive cleanup, and safely purges selected or bulk stale records. Administration is not a fourth Intake experience role. It also becomes the intentional recovery path for rotating/reissuing Instructor authority after #328 removes the public Instructor access-code form.
+Merged PR #333 as `b04684f2432aa474cb84874aa26aa08a5f4c5ab7` implements the canonical contract in `docs/admin-maintenance.md`: a separately authorized maintenance surface that inventories Classroom and Standalone collaboration data, derives idle/expired state from server timestamps + recent presence, previews destructive cleanup, and safely purges selected or bulk stale records. Administration is not a fourth Intake experience role. It also becomes the intentional recovery path for rotating/reissuing Instructor authority after #328 removes the public Instructor access-code form.
 
-**#330 — Startup experience hub + explicit resume**
+**#330 — Startup experience hub + explicit resume — ACTIVE**
 
-Replace implicit role restoration with a startup hub that offers **Continue where you left off** when valid saved/resumable context exists, plus **Work independently**, **Join a class**, **Run a class**, and secondary **Administration / Maintenance** entry. Cached Intake, Student resume, and Instructor resume are presented as separate explicit choices rather than silently selecting a role.
+Draft PR #334 replaces implicit role restoration with a startup hub that offers **Continue where you left off** when valid saved/resumable context exists, plus **Work independently**, **Join a class**, **Run a class**, and secondary **Administration / Maintenance** entry. Cached Intake, Student resume, and Instructor resume are presented as separate explicit choices rather than silently selecting a role.
 
 ### P1 — production simulation enablement
 
@@ -278,7 +278,7 @@ PRODUCTION SIMULATION ENABLEMENT
   #317  first production staged KT Case Study
 ```
 
-**Current product decision:** #328 is complete. **#329 Administration / Maintenance is active on draft PR #333**; complete and production-verify it next, then proceed to #330. Do not start #316/#317 first; their architecture should be built on the finalized compatibility, maintenance, and startup contracts.
+**Current product decision:** #328 and #329 are complete. **#330 Startup experience hub is active on draft PR #334**. Finish and production-verify #330 before #316/#317 so rich staged assets build on finalized compatibility, maintenance, and startup contracts.
 
 ## Stacked PR rules
 
