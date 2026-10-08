@@ -29,14 +29,12 @@ async function classPair(classrooms) {
     publicId: CLASS_A_ID,
     title: 'Class A',
     instructorHash: testTokenHash('A'),
-    studentJoinHash: testTokenHash('C'),
     studentJoinCode: 'K7FMP4Q2'
   });
   await classrooms.createClass({
     publicId: CLASS_B_ID,
     title: 'Class B',
     instructorHash: testTokenHash('B'),
-    studentJoinHash: testTokenHash('D'),
     studentJoinCode: 'M8RNQ5W3'
   });
 }
