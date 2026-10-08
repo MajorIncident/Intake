@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
 
+import { APP_STATE_VERSION } from '../src/appStateVersion.js';
 import { TEMPLATE_MODE_IDS } from '../src/templateModes.js';
 import { TEMPLATE_KINDS } from '../src/templateKinds.js';
 import {
@@ -13,7 +14,7 @@ import {
 } from '../src/templates.js';
 
 const BASE_STATE = Object.freeze({
-  meta: { version: 1, savedAt: null },
+  meta: { version: APP_STATE_VERSION, savedAt: null },
   pre: {
     oneLine: 'Example',
     proof: 'Proof',
