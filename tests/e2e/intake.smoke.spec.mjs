@@ -29,7 +29,7 @@ test('fresh Intake boots into the required role chooser without browser errors',
   await expect(dialog).toBeVisible();
   await expect(page.getByRole('button', { name: /Work independently/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Join a class/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Teach a class/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Run a class/ })).toBeVisible();
   await expect(page.locator('#experienceRoleCancelBtn')).toBeHidden();
   await expect(page.locator('[data-experience-role-choice="standalone"]')).toBeFocused();
 
