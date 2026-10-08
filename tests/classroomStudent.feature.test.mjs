@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { afterEach, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
+import { APP_STATE_VERSION } from '../src/appStateVersion.js';
 import {
   STUDENT_RECOVERY_STORAGE_KEY,
   STUDENT_SESSION_STORAGE_KEY,
@@ -102,7 +103,7 @@ function mount({
       collaborationState.pollingStopped = true;
     }
   };
-  const localState = { pre: { oneLine: 'My local Intake' } };
+  const localState = { meta: { version: APP_STATE_VERSION, savedAt: null }, pre: { oneLine: 'My local Intake' } };
   const fetcher = async (...args) => {
     calls.fetch.push(args);
     if (fetchImpl) return fetchImpl(...args);
@@ -474,7 +475,7 @@ test('Student resume revalidates the class session and reacquires workspace auth
 });
 
 test('expired or revoked Student class-session resume clears authority and restores the pre-class local Intake', async () => {
-  const recovery = { pre: { oneLine: 'Before class' } };
+  const recovery = { meta: { version: APP_STATE_VERSION, savedAt: null }, pre: { oneLine: 'Before class' } };
   const env = mount({
     storedSession: session(),
     recovery,
@@ -496,7 +497,7 @@ test('expired or revoked Student class-session resume clears authority and resto
 });
 
 test('Leave class clears resume capability and restores the prior local Intake', async () => {
-  const recovery = { pre: { oneLine: 'Before class' } };
+  const recovery = { meta: { version: APP_STATE_VERSION, savedAt: null }, pre: { oneLine: 'Before class' } };
   const env = mount({ storedSession: session(), recovery });
   await settle();
 
@@ -547,7 +548,7 @@ test('entering Student disconnects an existing Standalone collaboration before s
         state.sessionKind = 'local';
       }
     },
-    collect: () => ({ pre: { oneLine: 'Local' } }),
+    collect: () => ({ meta: { version: APP_STATE_VERSION, savedAt: null }, pre: { oneLine: 'Local' } }),
     apply: () => {},
     saveLocal: () => {},
     fetchImpl: async () => response(500, {}),
@@ -568,7 +569,7 @@ test('entering Student disconnects an existing Standalone collaboration before s
 
 
 test('switching away from Student restores the pre-class local Intake without clearing resume', async () => {
-  const recovery = { pre: { oneLine: 'Before class' } };
+  const recovery = { meta: { version: APP_STATE_VERSION, savedAt: null }, pre: { oneLine: 'Before class' } };
   const env = mount({ storedSession: session(), recovery });
   await settle();
 
