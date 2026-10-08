@@ -17,6 +17,7 @@ import {
   fingerprintCoachingEvidence,
   getCoachableTargetDefinition
 } from '../src/coachableFields.js';
+import { APP_STATE_VERSION } from '../src/appStateVersion.js';
 import { migrateAppState } from '../src/storage.js';
 import { TEMPLATE_MANIFEST } from '../src/templates.manifest.js';
 
@@ -155,7 +156,7 @@ test('projecting the registry yields a stable complete static/KT projection set'
 
 test('canonical normalized target-bearing schema has complete registered/excluded coverage', () => {
   const normalized = migrateAppState({
-    meta: { version: 2, savedAt: null }
+    meta: { version: APP_STATE_VERSION, savedAt: null }
   });
   assert.ok(normalized);
   assert.deepEqual(validateIntakeTargetCoverage(normalized), []);
