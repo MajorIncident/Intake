@@ -31,7 +31,7 @@ PRODUCTION SIMULATION ENABLEMENT
   #317  first production staged KT Case Study
 ```
 
-#328 is complete and published. #329 is now active on draft PR #333, with its canonical runtime contract in `docs/admin-maintenance.md`. #330 remains next after #329 so the startup hub can integrate the proven Admin entry instead of designing against a placeholder.
+#328 and #329 are complete and published. #329 merged via PR #333 as `b04684f2432aa474cb84874aa26aa08a5f4c5ab7`; its canonical runtime contract is `docs/admin-maintenance.md`. **#330 is active on draft PR #334** and now integrates the proven Admin entry.
 
 ## End-state access model
 
@@ -82,7 +82,7 @@ Do not remove transformations that remain part of the **current** data model mer
 
 ## Administration / Maintenance architecture
 
-**Implementation status:** active in #329 / draft PR #333. The detailed implemented contract is `docs/admin-maintenance.md`; this section remains the roadmap-level summary.
+**Implementation status:** complete and published in #329 / PR #333. The detailed implemented contract is `docs/admin-maintenance.md`; this section remains the roadmap-level summary.
 
 Administration is a privileged maintenance surface, **not** a fourth Intake experience role.
 
@@ -154,6 +154,8 @@ The server must calculate the preview and committed deletion from the same scope
 Do **not** add autonomous scheduled deletion in the first Admin slice. Prove the manual lifecycle first.
 
 ## Startup experience hub
+
+**Implementation status:** active in #330 / draft PR #334 on `feature/startup-experience-hub`.
 
 Ordinary app launch should no longer silently resume a role solely because `kt-experience-role-v1` exists.
 
