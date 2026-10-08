@@ -51,7 +51,6 @@ function mount({
   storedSession = null,
   recovery = null,
   connectResult = true,
-  terminal = false,
   fetchImpl,
   url = 'https://intake.test/',
   onClassConnected = () => {},
@@ -95,10 +94,6 @@ function mount({
     connect: async (token, options) => {
       calls.connect.push([token, options]);
       if (connectResult) collaborationState.sessionKind = 'classroom';
-      if (terminal) {
-        collaborationState.pollingStopped = true;
-        collaborationState.terminalStatus = 'Missing or expired session';
-      }
       return connectResult;
     },
     leave: options => {
@@ -478,15 +473,24 @@ test('Student resume revalidates the class session and reacquires workspace auth
   assert.equal(dom.window.document.body.dataset.studentClassStatus, 'connected');
 });
 
-test('expired or revoked Student resume clears the capability and restores the pre-class local Intake', async () => {
+test('expired or revoked Student class-session resume clears authority and restores the pre-class local Intake', async () => {
   const recovery = { pre: { oneLine: 'Before class' } };
-  const env = mount({ storedSession: session(), recovery, connectResult: false, terminal: true });
+  const env = mount({
+    storedSession: session(),
+    recovery,
+    fetchImpl: async url => (
+      url === '/api/classes/student'
+        ? response(404, { error: 'Class session not found.' })
+        : response(500, {})
+    )
+  });
   await settle();
 
   assert.equal(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY), null);
   assert.equal(dom.window.localStorage.getItem(STUDENT_RECOVERY_STORAGE_KEY), null);
   assert.deepEqual(env.calls.apply, [recovery]);
   assert.deepEqual(env.calls.save, [recovery]);
+  assert.equal(env.calls.connect.length, 0, 'revoked class-session authority never reaches collaboration');
   assert.equal(dom.window.document.body.dataset.studentClassStatus, 'disconnected');
   assert.match(dom.window.document.getElementById('studentClassJoinError').textContent, /no longer available/i);
 });
