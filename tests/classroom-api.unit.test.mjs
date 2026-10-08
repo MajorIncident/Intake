@@ -12,6 +12,7 @@ import {
   COACHING_NOTE_MAX_LENGTH,
   classAdmitHandler,
   classCoachingHandler,
+  classDebriefHandler,
   classHandler,
   classJoinHandler,
   classParticipantsHandler,
@@ -1407,4 +1408,296 @@ test('coaching API rejects malformed feedback before any write', async () => {
   }, invalid);
   assert.equal(invalid.statusCode, 400);
   assert.equal(writes, 0);
+});
+
+
+function collectObjectKeys(value, keys = new Set()) {
+  if (!value || typeof value !== 'object') return keys;
+  if (Array.isArray(value)) {
+    value.forEach(item => collectObjectKeys(item, keys));
+    return keys;
+  }
+  Object.entries(value).forEach(([key, item]) => {
+    keys.add(key);
+    collectObjectKeys(item, keys);
+  });
+  return keys;
+}
+
+test('Instructor debrief comparison returns projected evidence only and is GET-only', async () => {
+  let repositoryReads = 0;
+  const repository = {
+    async listWorkspaces() {
+      repositoryReads += 1;
+      return {
+        classroom: {
+          id: CLASS_A_ID,
+          title: 'Class A',
+          expiresAt: '2099-01-01T00:00:00Z'
+        },
+        workspaces: [{
+          id: WORKSPACE_A_ID,
+          kind: 'group',
+          label: 'Team Alpha',
+          participantCount: 2,
+          activeParticipantCount: 1,
+          editingParticipantCount: 0,
+          lastSeenAt: '2026-10-07T18:00:00Z'
+        }]
+      };
+    },
+    async listWorkspaceSnapshotsForInstructor() {
+      repositoryReads += 1;
+      return {
+        snapshots: [{
+          workspaceId: WORKSPACE_A_ID,
+          workspaceRevision: 2,
+          updatedAt: '2026-10-07T18:01:00Z',
+          snapshot: { pre: { oneLine: 'Team Alpha current reasoning' } }
+        }]
+      };
+    },
+    async listFeedbackForClassInstructor() {
+      repositoryReads += 1;
+      return {
+        feedback: [{
+          workspaceId: WORKSPACE_A_ID,
+          targetId: 'problem.one-line',
+          status: 'meets-standard',
+          note: 'Private coaching note must not enter aggregate comparison.',
+          reviewedWorkspaceRevision: 1,
+          reviewedFieldFingerprint: 'v1-0000000000000000',
+          feedbackRevision: 2
+        }]
+      };
+    },
+    async getCurrentExerciseForInstructor() {
+      repositoryReads += 1;
+      return null;
+    }
+  };
+
+  const handler = classDebriefHandler({
+    getRepository: async () => repository
+  });
+
+  const result = response();
+  await handler({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) }
+  }, result);
+
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.headers['Cache-Control'], 'no-store');
+  assert.equal(result.headers['Referrer-Policy'], 'no-referrer');
+  assert.equal(result.body.class.id, CLASS_A_ID);
+  assert.equal(result.body.workspaces.length, 1);
+  assert.equal(result.body.workspaces[0].current.workspaceRevision, 2);
+  assert.equal(
+    result.body.workspaces[0].current.targets
+      .find(target => target.id === 'problem.one-line')
+      .comparisonText,
+    'Team Alpha current reasoning'
+  );
+  assert.equal(result.body.workspaces[0].coaching.meetsStandardCount, 1);
+  assert.equal(result.body.workspaces[0].coaching.changedSinceReviewCount, 1);
+
+  const keys = collectObjectKeys(result.body);
+  for (const forbidden of ['snapshot', 'note', 'internalId', 'workspaceToken', 'assignmentToken', 'instructorToken']) {
+    assert.equal(keys.has(forbidden), false, `aggregate response must not expose ${forbidden}`);
+  }
+
+  const readsBeforeWriteAttempt = repositoryReads;
+  const writeAttempt = response();
+  await handler({
+    method: 'POST',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) },
+    body: { targetId: 'problem.one-line' }
+  }, writeAttempt);
+  assert.equal(writeAttempt.statusCode, 405);
+  assert.equal(writeAttempt.headers.Allow, 'GET');
+  assert.equal(repositoryReads, readsBeforeWriteAttempt, 'write rejection occurs before repository access');
+});
+
+test('Instructor debrief comparison composes current staged readiness and immutable checkpoint projections', async () => {
+  const repository = {
+    async listWorkspaces() {
+      return {
+        classroom: {
+          id: CLASS_A_ID,
+          title: 'Class A',
+          expiresAt: '2099-01-01T00:00:00Z'
+        },
+        workspaces: [
+          {
+            id: WORKSPACE_A_ID,
+            kind: 'group',
+            label: 'Team Alpha',
+            participantCount: 2,
+            activeParticipantCount: 1,
+            editingParticipantCount: 0
+          },
+          {
+            id: WORKSPACE_B_ID,
+            kind: 'group',
+            label: 'Team Beta',
+            participantCount: 3,
+            activeParticipantCount: 0,
+            editingParticipantCount: 0
+          }
+        ]
+      };
+    },
+    async listWorkspaceSnapshotsForInstructor() {
+      return {
+        snapshots: [
+          {
+            workspaceId: WORKSPACE_A_ID,
+            workspaceRevision: 7,
+            updatedAt: '2026-10-07T18:01:00Z',
+            snapshot: { pre: { oneLine: 'Team Alpha live reasoning' } }
+          },
+          {
+            workspaceId: WORKSPACE_B_ID,
+            workspaceRevision: 4,
+            updatedAt: '2026-10-07T18:01:00Z',
+            snapshot: { pre: { oneLine: 'Team Beta live reasoning' } }
+          }
+        ]
+      };
+    },
+    async listFeedbackForClassInstructor() {
+      return { feedback: [] };
+    },
+    async getCurrentExerciseForInstructor() {
+      return {
+        exercise: {
+          id: 'exercise-1',
+          status: 'active',
+          currentStageId: 'stage-1',
+          stagePhase: 'debrief'
+        }
+      };
+    },
+    async listExerciseWorkspaceStateForInstructor(_instructorHash, exerciseId) {
+      assert.equal(exerciseId, 'exercise-1');
+      return {
+        workspaceState: [{
+          workspaceId: WORKSPACE_A_ID,
+          stageId: 'stage-1',
+          readyForDebrief: true,
+          readyWorkspaceRevision: 5,
+          readyAt: '2026-10-07T17:55:00Z'
+        }]
+      };
+    },
+    async listExerciseCheckpointSnapshotsForInstructor(_instructorHash, exerciseId, stageId) {
+      assert.equal(exerciseId, 'exercise-1');
+      assert.equal(stageId, 'stage-1');
+      return {
+        checkpoints: [{
+          workspaceId: WORKSPACE_A_ID,
+          stageId: 'stage-1',
+          workspaceRevision: 5,
+          capturedAt: '2026-10-07T17:56:00Z',
+          snapshot: { pre: { oneLine: 'Checkpoint reasoning' } }
+        }]
+      };
+    }
+  };
+
+  const recommendedCalls = [];
+  const handler = classDebriefHandler({
+    getRepository: async () => repository,
+    getRecommendedTargetIds: exercise => {
+      recommendedCalls.push(exercise.id);
+      return [
+        'problem.one-line',
+        'possible-cause',
+        'possible-cause.runtime-instance',
+        'unknown.target',
+        'problem.one-line'
+      ];
+    }
+  });
+  const result = response();
+  await handler({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) }
+  }, result);
+
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.exercise.currentStageId, 'stage-1');
+  assert.deepEqual(recommendedCalls, ['exercise-1']);
+  assert.deepEqual(result.body.recommendedTargetIds, ['problem.one-line', 'possible-cause']);
+  assert.deepEqual(result.body.exercise.recommendedTargetIds, ['problem.one-line', 'possible-cause']);
+  const alpha = result.body.workspaces.find(workspace => workspace.id === WORKSPACE_A_ID);
+  const beta = result.body.workspaces.find(workspace => workspace.id === WORKSPACE_B_ID);
+  assert.equal(alpha.readiness.readyForDebrief, true);
+  assert.equal(alpha.readiness.workspaceRevision, 5);
+  assert.equal(alpha.checkpoint.workspaceRevision, 5);
+  assert.equal(
+    alpha.checkpoint.targets.find(target => target.id === 'problem.one-line').comparisonText,
+    'Checkpoint reasoning'
+  );
+  assert.equal(
+    alpha.current.targets.find(target => target.id === 'problem.one-line').comparisonText,
+    'Team Alpha live reasoning'
+  );
+  assert.equal(beta.readiness, null);
+  assert.equal(beta.checkpoint, null);
+});
+
+test('non-Instructor classroom capabilities cannot read the class debrief comparison', async () => {
+  const workspaceRepo = createWorkspaceRepository();
+  const classrooms = createClassroomRepository({
+    observeWorkspaceById: workspaceId => workspaceRepo.observeById(workspaceId)
+  });
+
+  await classrooms.createClass({
+    publicId: CLASS_A_ID,
+    title: 'Class A',
+    instructorHash: testTokenHash('A'),
+    studentJoinHash: testTokenHash('C')
+  });
+  const workspace = await workspaceRepo.create(
+    testTokenHash('P'),
+    { pre: { oneLine: 'Private Team A reasoning' } },
+    30,
+    'Team A'
+  );
+  await classrooms.addWorkspace(testTokenHash('A'), {
+    publicId: WORKSPACE_A_ID,
+    workspaceId: workspace.id,
+    kind: 'group',
+    label: 'Team A',
+    claimHash: testTokenHash('X')
+  });
+
+  const handler = classDebriefHandler({
+    getRepository: async () => classrooms
+  });
+
+  for (const token of ['C', 'X', 'P']) {
+    const denied = response();
+    await handler({
+      method: 'GET',
+      headers: { authorization: 'Bearer ' + token.repeat(43) }
+    }, denied);
+    assert.equal(denied.statusCode, 404);
+    assert.deepEqual(denied.body, { error: 'Class not found.' });
+  }
+
+  const allowed = response();
+  await handler({
+    method: 'GET',
+    headers: { authorization: 'Bearer ' + 'A'.repeat(43) }
+  }, allowed);
+  assert.equal(allowed.statusCode, 200);
+  assert.equal(
+    allowed.body.workspaces[0].current.targets
+      .find(target => target.id === 'problem.one-line')
+      .comparisonText,
+    'Private Team A reasoning'
+  );
 });

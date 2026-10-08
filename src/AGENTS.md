@@ -14,6 +14,10 @@ Keep feature modules independently initialisable, own only their feature-specifi
 
 `classroomCoaching.js` owns Instructor coaching controls and Student read-only feedback presentation. Coaching is presentation plus a separate Classroom API channel: never add it to `collectAppState()`, `kt-intake-full-v2`, summaries, templates, or collaboration snapshot revisions. Student mode may only read feedback; Instructor controls must remain interactive while the observed Student Intake remains read-only.
 
+## Classroom debrief comparison
+
+`classroomDebriefModel.js` owns the pure, DOM-free #319 comparison model. It may consume only already-authorized class/workspace metadata, current/checkpoint snapshots, readiness, and coaching rows, and must project snapshots through `intakeTargets.js`. It must never persist copied snapshots, create target identity, align dynamic Possible Cause instances across teams, expose coaching notes in aggregate comparison metadata, calculate team scores/rankings, or mutate Intake/coaching/collaboration state. Static/KT comparison uses stable semantic IDs; dynamic comparison selects the family and preserves each workspace's independent instance collection. `classroomDebriefComparison.js` owns the Instructor-only presentation controller: it consumes the derived GET read model, keeps target/evidence-mode state in memory only, and reuses the existing Instructor observer for drill-down rather than applying aggregate comparison snapshots into the live Intake DOM. It must not own Instructor capability persistence, coaching writes, exercise mutation, or a second target registry.
+
 
 ## Classroom join sharing
 

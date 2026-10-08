@@ -253,15 +253,15 @@ Depends on #316. Use only authoritative participant/instructor source material. 
 
 ### P1 — facilitation completeness
 
-**#318 — Universal Intake target identity + staged guidance/coaching — IMPLEMENTATION COMPLETE / PR #325 REVIEW READINESS**
+**#318 — Universal Intake target identity + staged guidance/coaching — COMPLETE / MERGED**
 
-Active branch: `feature/universal-intake-target-identity`, based on merged-main `273ae6437c0898b9e35778587c7053580db14e22`. Canonical contract: `docs/intake-target-identity.md`. **318A–E are complete; final documentation-head validation/review readiness remains before merge.**
+PR #325 squash-merged to `main` as `ef6949100ddac28c646338ee55cb6e7a74beb067`. Canonical contract: `docs/intake-target-identity.md`. **318A–E are complete and now provide the stable target/projection layer consumed by #319.**
 
 Evolve the existing coaching target registry into one domain-neutral, stable Intake-target contract used by coaching, future staged guidance, and #319 cross-team debrief comparison. Templates remain serialized Intake data: adding a new Template that uses existing fields must require no #319-specific wiring. Static targets compare by semantic ID; dynamic Possible Causes use their already-persisted lifecycle ID as per-workspace instances within a `possible-cause` family rather than matching teams by list position. Snapshot projection must work without mounting the DOM. Staged `simulation.stages[].intakeTargetIds` becomes an optional consumer of this registry; simulation is **not** required for the registry or #319.
 
-**#319 — Template-independent Instructor class debrief comparison and progress view**
+**#319 — Template-independent Instructor class debrief comparison and progress view — IMPLEMENTATION COMPLETE / PENDING MERGE**
 
-Build on the universal target contract from #318 plus Ready/Working, coaching, immutable checkpoints, and live observation. The Instructor should be able to compare registered Intake targets across teams whether workspaces started blank, from current/future Standard Templates, or from a staged Case Study. Staged target IDs may pre-filter/recommend comparison targets later, but #319 must not depend on template IDs, DOM selectors, or a running simulation. Keep it read-only and Instructor-only; compare checkpoint/current evidence without duplicating or grading Intake state.
+Implementation is complete on `feature/classroom-debrief-comparison` / PR #326, based on merged-main `ef6949100ddac28c646338ee55cb6e7a74beb067`. Canonical contract: `docs/classroom-debrief-comparison.md`. 319A–F are green: Instructor-only derived aggregate API, template-independent semantic comparison, staged focus recommendations, Ready/Working, explicit Current/Checkpoint evidence, neutral coaching status/change metadata, Student non-exposure, responsive/Axe coverage, and persistence/summary/export boundary guards. No new persistence model, grading/ranking, raw snapshot response, or Student comparison surface was introduced. Remaining work is final PR merge approval plus merged-main publication verification.
 
 ### P2 — delivery polish
 
@@ -275,10 +275,10 @@ Build on the universal target contract from #318 plus Ready/Working, coaching, i
 COMPLETED UX TRACK
 #320  join sharing + compact mobile workspace chrome   [merged]
 
-ACTIVE DEBRIEF / TEMPLATE-COMPATIBILITY TRACK
-#318  universal stable Intake target identity          <-- implementation complete / PR #325 final gates
+DEBRIEF / TEMPLATE-COMPATIBILITY TRACK
+#318  universal stable Intake target identity          [merged as ef694910...]
    |
-  #319  template-independent class debrief comparison
+  #319  template-independent class debrief comparison  [implementation complete / PR #326 pending merge]
 
 PRODUCTION SIMULATION TRACK — intentionally deferred for now
 #316  protected rich staged content
@@ -286,7 +286,7 @@ PRODUCTION SIMULATION TRACK — intentionally deferred for now
   #317  first production staged KT Case Study
 ```
 
-Current product decision: **finish PR #325 review/merge readiness, then start #319 from updated `main`.** #318 now establishes the universal target contract so future Templates remain compatible automatically when they use existing fields, and future new target-bearing fields fail loudly unless they register stable identity. #316/#317 remain valid future work but are intentionally deferred.
+Current product decision: **#319 implementation is complete and awaiting merge approval.** #318 is merged and provides the universal target contract; #319 now consumes it without template-specific wiring. Do not add new #319 scope before merge. #316/#317 remain valid future work but are intentionally deferred until deliberately selected.
 
 ## Stacked PR rules
 

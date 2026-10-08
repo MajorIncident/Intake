@@ -172,6 +172,33 @@ This is the canonical read-only observation path for #293. The browser polls thi
 
 Coaching is independent from the collaboration snapshot/revision stream.
 
+### `GET /api/classes/debrief`
+
+Requires the Instructor class capability in `Authorization: Bearer ...`.
+
+This is the #319 class-scoped **derived comparison read**. It composes existing authorized sources rather than introducing a second snapshot store:
+
+- class workspace metadata/activity from the Instructor workspace list;
+- current live collaboration snapshots/revisions read server-side through the same already-authorized observer repository path;
+- current non-completed staged exercise readiness and current-stage immutable checkpoint evidence when such an exercise exists;
+- existing Instructor coaching rows;
+- universal Intake target projection from `src/intakeTargets.js`.
+
+The response is comparison-safe rather than a bulk raw-snapshot API. Per workspace it may include activity/readiness metadata, current/checkpoint workspace revision metadata, projected target evidence/fingerprints, and compact coaching status/change metadata. It deliberately omits:
+
+- raw live snapshot objects;
+- raw checkpoint snapshot objects;
+- coaching notes;
+- internal database/workspace IDs;
+- Instructor/Student/join/assignment/collaboration capabilities;
+- any writable authority.
+
+The endpoint is GET-only, private/no-store/no-referrer, and does not write Intake, coaching, exercise, collaboration, or comparison state. Student class-session, Student workspace, assignment, human join-code, legacy collaboration, and unrelated Instructor capabilities cannot enumerate or read the class comparison.
+
+A staged exercise is optional. If the represented class has no current non-completed exercise, the endpoint still returns current-live target comparison and simply omits staged readiness/checkpoint context. #319 does not silently select a historical completed exercise; any future historical-exercise selector must be an explicit separately authorized product contract.
+
+Dynamic target families remain workspace-local. For `possible-cause`, the aggregate returns each team's own projected collection and never pairs independent causes across teams by list position, text similarity, or coincidental instance ID.
+
 ### `GET /api/classes/coaching?workspaceId=<public-workspace-id>`
 
 Requires the Instructor class capability. Returns coaching records for exactly one workspace in the represented class.

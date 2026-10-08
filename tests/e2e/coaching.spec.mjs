@@ -96,6 +96,16 @@ test('Instructor feedback reaches only the assigned Student and becomes stale af
     page.locator(`.classroom-coaching--instructor[data-coaching-target-id="${causeTargetId}"]`)
   ).toContainText('Meets standard');
 
+  await page.locator('#instructorDebriefRefreshBtn').click();
+  await expect(page.locator('#instructorDebriefTargetSelect')).toHaveValue('problem.one-line');
+  const alphaComparison = page.locator(`[data-debrief-workspace-id="${suffix === 'm' ? '22222222-2222-4222-8222-222222222222' : '11111111-1111-4111-8111-111111111111'}"]`);
+  await expect(alphaComparison).toContainText('Needs improvement');
+  await expect(alphaComparison).not.toContainText('Make the deviation measurable before continuing.');
+
+  await page.locator('#instructorDebriefTargetSelect').selectOption('possible-cause');
+  await expect(alphaComparison).toContainText('Meets standard');
+  await expect(alphaComparison).not.toContainText('Make the deviation measurable before continuing.');
+
   // Start a separate Student browser session while retaining only server-side coaching state.
   await page.evaluate(() => {
     window.localStorage.clear();

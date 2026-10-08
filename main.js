@@ -63,6 +63,7 @@ import { initExperienceRoleController } from './src/experienceRoleController.js'
 import { initStudentClassroom } from './src/classroomStudent.js';
 import { initInstructorClassroom } from './src/classroomInstructor.js';
 import { initClassroomCoaching } from './src/classroomCoaching.js';
+import { initClassroomDebriefComparison } from './src/classroomDebriefComparison.js';
 import { initClassroomCaseStudies } from './src/classroomCaseStudies.js';
 import { initInstructorExerciseConsole } from './src/classroomExerciseInstructor.js';
 import { initStudentExerciseReference } from './src/classroomExerciseStudent.js';
@@ -72,6 +73,7 @@ let collaborationController = null;
 let studentClassroomController = null;
 let instructorClassroomController = null;
 let classroomCoachingController = null;
+let classroomDebriefComparisonController = null;
 let classroomCaseStudiesController = null;
 let instructorExerciseConsoleController = null;
 let studentExerciseReferenceController = null;
@@ -84,6 +86,8 @@ export function destroyCollaboration() {
   instructorExerciseConsoleController = null;
   classroomCaseStudiesController?.destroy?.();
   classroomCaseStudiesController = null;
+  classroomDebriefComparisonController?.destroy?.();
+  classroomDebriefComparisonController = null;
   classroomCoachingController?.destroy?.();
   classroomCoachingController = null;
   instructorClassroomController?.destroy?.();
@@ -251,6 +255,11 @@ function boot() {
     getCauses: getPossibleCauses,
     toast: showToast
   });
+  classroomDebriefComparisonController = initClassroomDebriefComparison({
+    documentRef: document,
+    toast: showToast,
+    onSelectWorkspace: workspaceId => instructorClassroomController?.selectWorkspace?.(workspaceId)
+  });
   studentClassroomController = initStudentClassroom({
     collaboration: collaborationController,
     collect: collectAppState,
@@ -282,10 +291,12 @@ function boot() {
     onClassConnected: token => {
       void classroomCaseStudiesController?.connectInstructor?.(token);
       void instructorExerciseConsoleController?.connectInstructor?.(token);
+      classroomDebriefComparisonController?.connectInstructor?.(token);
     },
     onClassDisconnected: () => {
       classroomCaseStudiesController?.disconnect?.();
       instructorExerciseConsoleController?.disconnect?.();
+      classroomDebriefComparisonController?.disconnect?.();
     }
   });
   wireThemeToggle();

@@ -554,7 +554,7 @@ export function createInstructorClassroomController({
       'input, textarea, select, button, [contenteditable], [role="button"], [role="checkbox"], [role="switch"], [draggable="true"]'
     );
     controls.forEach(control => {
-      if (control.closest?.('#instructorObservationNotice, [data-instructor-coaching-control]')) return;
+      if (control.closest?.('#instructorObservationNotice, #instructorDebriefComparison, [data-instructor-coaching-control]')) return;
       if (!readonlyRecords.has(control)) {
         readonlyRecords.set(control, {
           disabled: 'disabled' in control ? control.disabled : undefined,

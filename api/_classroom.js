@@ -18,6 +18,9 @@ import {
   validateSnapshot,
   validateToken
 } from './_workspace.js';
+import { buildClassroomDebriefModel } from '../src/classroomDebriefModel.js';
+import { stagedExerciseRecommendedTargetIds } from './_classroomSimulation.js';
+import { PROTECTED_CASE_STUDY_MANIFEST } from './protected-case-studies.manifest.js';
 
 export const CLASS_TITLE_MAX_LENGTH = 120;
 export const CLASS_WORKSPACE_LABEL_MAX_LENGTH = 120;
@@ -1474,6 +1477,35 @@ async function initializeClassroomRepository() {
       return { ...current, checkpoints };
     },
 
+    async listExerciseCheckpointSnapshotsForInstructor(
+      instructorHash,
+      exercisePublicId,
+      stageId
+    ) {
+      const current = await this.getExerciseForInstructor(instructorHash, exercisePublicId);
+      if (!current) return null;
+      const checkpoints = await sql`SELECT
+          cw.public_id AS "workspaceId",
+          cw.workspace_kind AS "workspaceKind",
+          cw.label AS "workspaceLabel",
+          cp.stage_id AS "stageId",
+          cp.workspace_revision AS "workspaceRevision",
+          cp.snapshot,
+          cp.captured_at AS "capturedAt"
+        FROM classroom_exercise_checkpoints cp
+        JOIN classroom_exercises e ON e.id = cp.exercise_id
+        JOIN classroom_workspaces cw
+          ON cw.class_id = cp.class_id
+          AND cw.workspace_id = cp.workspace_id
+        WHERE cp.class_id = ${current.classroom.internal_id}
+          AND e.public_id = ${exercisePublicId}::uuid
+          AND cp.stage_id = ${stageId}
+          AND cw.revoked_at IS NULL
+          AND e.expires_at > NOW()
+        ORDER BY cw.created_at, cw.workspace_id`;
+      return { ...current, checkpoints };
+    },
+
     async getExerciseCheckpointForInstructor(
       instructorHash,
       exercisePublicId,
@@ -1616,6 +1648,43 @@ async function initializeClassroomRepository() {
         GROUP BY cw.workspace_id, cw.public_id, cw.workspace_kind, cw.label, cw.created_at
         ORDER BY cw.created_at, cw.workspace_id`;
       return { classroom, workspaces: rows };
+    },
+
+    async listWorkspaceSnapshotsForInstructor(instructorHash) {
+      const classroom = await classByInstructor(instructorHash);
+      if (!classroom) return null;
+      const snapshots = await sql`SELECT
+          cw.public_id AS "workspaceId",
+          w.snapshot_json AS snapshot,
+          w.revision AS "workspaceRevision",
+          w.updated_at AS "updatedAt"
+        FROM classroom_workspaces cw
+        JOIN collaboration_workspaces w ON w.id = cw.workspace_id
+        WHERE cw.class_id = ${classroom.internal_id}
+          AND cw.revoked_at IS NULL
+          AND w.expires_at > NOW()
+        ORDER BY cw.created_at, cw.workspace_id`;
+      return { classroom, snapshots };
+    },
+
+    async listFeedbackForClassInstructor(instructorHash) {
+      const classroom = await classByInstructor(instructorHash);
+      if (!classroom) return null;
+      const feedback = await sql`SELECT
+          cw.public_id AS "workspaceId",
+          cf.target_id AS "targetId",
+          cf.status,
+          cf.reviewed_workspace_revision AS "reviewedWorkspaceRevision",
+          cf.reviewed_field_fingerprint AS "reviewedFieldFingerprint",
+          cf.feedback_revision AS "feedbackRevision"
+        FROM classroom_coaching_feedback cf
+        JOIN classroom_workspaces cw
+          ON cw.class_id = cf.class_id
+          AND cw.workspace_id = cf.workspace_id
+        WHERE cf.class_id = ${classroom.internal_id}
+          AND cw.revoked_at IS NULL
+        ORDER BY cw.created_at, cw.workspace_id, cf.target_id`;
+      return { classroom, feedback };
     },
 
     async getWorkspaceForObservation(instructorHash, workspacePublicId) {
@@ -2236,6 +2305,97 @@ export function classObserveHandler({
       });
     } catch {
       return send(res, 500, { error: 'Unable to observe class workspace.' });
+    }
+  };
+}
+
+/**
+ * Create the Instructor-only aggregate class debrief comparison handler.
+ *
+ * This GET-only endpoint composes existing authorized Classroom/workspace
+ * sources and returns comparison-safe Intake target projections. Raw live or
+ * checkpoint snapshots, coaching notes, internal workspace IDs, and editable
+ * capabilities never leave this handler.
+ *
+ * @param {object} [dependencies] Injectable dependencies.
+ * @param {Function} [dependencies.getRepository=getClassroomRepository] Classroom repository accessor.
+ * @param {Function} [dependencies.getWorkspaceRepo=getWorkspaceRepository] Collaboration repository accessor.
+ * @param {Function} [dependencies.buildModel=buildClassroomDebriefModel] Pure comparison model builder.
+ * @returns {Function} Vercel handler.
+ */
+export function classDebriefHandler({
+  getRepository = getClassroomRepository,
+  buildModel = buildClassroomDebriefModel,
+  getRecommendedTargetIds = exercise => (
+    stagedExerciseRecommendedTargetIds(exercise, PROTECTED_CASE_STUDY_MANIFEST)
+  )
+} = {}) {
+  return async (req, res) => {
+    if (req.method !== 'GET') return methodNotAllowed(res, 'GET');
+
+    const authorization = requireBearer(req);
+    if (!authorization.ok) {
+      return send(res, authorization.status, { error: authorization.error });
+    }
+
+    const instructorHash = hashWorkspaceToken(authorization.token);
+
+    try {
+      const repository = await getRepository();
+      const [roster, liveSources, coachingSources, currentExercise] = await Promise.all([
+        repository.listWorkspaces(instructorHash),
+        repository.listWorkspaceSnapshotsForInstructor(instructorHash),
+        repository.listFeedbackForClassInstructor(instructorHash),
+        repository.getCurrentExerciseForInstructor(instructorHash)
+      ]);
+
+      if (!roster || !liveSources || !coachingSources) {
+        return send(res, 404, { error: 'Class not found.' });
+      }
+
+      let exercise = null;
+      let readiness = [];
+      let checkpoints = [];
+      let recommendedTargetIds = [];
+
+      if (currentExercise?.exercise) {
+        exercise = currentExercise.exercise;
+        const authoredRecommendations = getRecommendedTargetIds(exercise);
+        recommendedTargetIds = Array.isArray(authoredRecommendations)
+          ? authoredRecommendations
+          : [];
+        const readinessResult = await repository.listExerciseWorkspaceStateForInstructor(
+          instructorHash,
+          exercise.id
+        );
+        readiness = Array.isArray(readinessResult?.workspaceState)
+          ? readinessResult.workspaceState
+          : [];
+
+        if (exercise.stagePhase === 'debrief' && exercise.currentStageId) {
+          const checkpointResult = await repository.listExerciseCheckpointSnapshotsForInstructor(
+            instructorHash,
+            exercise.id,
+            exercise.currentStageId
+          );
+          checkpoints = Array.isArray(checkpointResult?.checkpoints)
+            ? checkpointResult.checkpoints
+            : [];
+        }
+      }
+
+      return send(res, 200, buildModel({
+        classroom: roster.classroom,
+        exercise,
+        recommendedTargetIds,
+        workspaces: roster.workspaces,
+        currentSnapshots: liveSources.snapshots,
+        checkpoints,
+        readiness,
+        feedback: coachingSources.feedback
+      }));
+    } catch {
+      return send(res, 500, { error: 'Unable to load class debrief comparison.' });
     }
   };
 }

@@ -122,6 +122,13 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
 
   await page.locator('#instructorExerciseRefreshBtn').click();
   await expect(page.locator('#instructorExerciseProgressSummary')).toHaveText('1 ready · 0 working');
+
+  await page.locator('#instructorDebriefRefreshBtn').click();
+  await expect(page.locator('#instructorDebriefProgressSummary')).toHaveText('1 workspace · 1 ready · 0 working');
+  await expect(page.locator('#instructorDebriefRecommendations')).toBeVisible();
+  await expect(page.locator('#instructorDebriefRecommendationList')).toContainText('Problem statement');
+  await expect(page.locator('#instructorDebriefEvidenceMode')).toBeHidden();
+
   await expect(page.getByRole('button', { name: 'Observe Team Alpha, Ready' })).toBeVisible();
   await page.getByRole('button', { name: 'Observe Team Alpha, Ready' }).click();
   await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
@@ -133,6 +140,15 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Team Alpha');
   await expect(page.locator('#instructorExerciseCheckpointList')).toContainText('Revision 1');
   await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
+
+  await page.locator('#instructorDebriefRefreshBtn').click();
+  await expect(page.locator('#instructorDebriefEvidenceMode')).toBeVisible();
+  await page.locator('#instructorDebriefCheckpointBtn').click();
+  await expect(page.locator('#instructorDebriefCheckpointBtn')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#instructorDebriefEvidenceSourceLabel')).toHaveText('Immutable debrief checkpoint');
+  await expect(page.locator('#instructorDebriefMatrix')).toContainText('Team Alpha live-class Intake.');
+  await page.locator('#instructorDebriefCurrentBtn').click();
+  await expect(page.locator('#instructorDebriefCurrentBtn')).toHaveAttribute('aria-pressed', 'true');
 
   await page.getByRole('button', { name: 'Allow editing' }).click();
   await expect(page.locator('#instructorExerciseEditingStatus')).toHaveText('Student editing allowed during debrief');
@@ -148,6 +164,13 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.locator('#instructorExerciseFacilitation')).toContainText('Synthetic Instructor-only guidance for the final browser stage.');
   await expect(page.locator('#instructorExerciseDebriefPanel')).toBeHidden();
   await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
+
+  await page.locator('#instructorDebriefRefreshBtn').click();
+  await expect(page.locator('#instructorDebriefEvidenceMode')).toBeHidden();
+  const stageTwoFocus = page.locator('#instructorDebriefRecommendationList .instructor-debrief-recommendation');
+  await expect(stageTwoFocus).toHaveCount(1);
+  await stageTwoFocus.click();
+  await expect(page.locator('#instructorDebriefTargetSelect')).toHaveValue('kt.where-location');
 
   await page.getByRole('button', { name: 'Begin debrief' }).click();
   await expect(page.locator('#instructorExerciseStatus')).toHaveText('Debrief · debrief started');
@@ -246,6 +269,69 @@ test('mobile Instructor can open and run the staged exercise console accessibly'
   await expect(page.locator('#instructorExerciseStageTitle')).toHaveText('Clarify the browser case');
   await expect(page.locator('#instructorExerciseFacilitation')).toContainText('Browser facilitation note');
   await expect(page.getByRole('button', { name: 'Pause exercise' })).toBeVisible();
+
+  await expectNoBlockingA11yViolations(page);
+  expect(pageErrors).toEqual([]);
+});
+
+
+test('Instructor compares live class targets and drills into the existing observer accessibly', async ({ page }, testInfo) => {
+  const pageErrors = watchPageErrors(page);
+  const suffix = testInfo.project.name === 'chromium-mobile' ? 'q' : 'p';
+  const instructorCode = capability('i', suffix);
+
+  await startFresh(page);
+  await page.getByRole('button', { name: /Teach a class/ }).click();
+  await page.locator('#instructorExistingClass > summary').click();
+  await page.getByLabel('Instructor access code').fill(instructorCode);
+  await page.getByRole('button', { name: 'Open class' }).click();
+
+  const comparison = page.locator('#instructorDebriefComparison');
+  await expect(comparison).toBeVisible();
+  await expect(page.locator('#instructorDebriefStatus')).toHaveText('Live comparison · Browser Test Classroom');
+  await expect(page.locator('#instructorDebriefProgressSummary')).toHaveText('2 workspaces · 2 active · 1 editing');
+  await expect(page.locator('#instructorDebriefTargetSelect')).toHaveValue('problem.one-line');
+
+  const cells = page.locator('.instructor-debrief-cell');
+  await expect(cells).toHaveCount(2);
+  await expect(page.locator('#instructorDebriefMatrix')).toContainText('Alex Student observed browser-test Intake.');
+  await expect(page.locator('#instructorDebriefMatrix')).toContainText('Team Beta observed browser-test Intake.');
+
+  await page.locator('#instructorDebriefTargetSelect').selectOption('evidence.proof');
+  await expect(page.locator('#instructorDebriefComparisonTitle')).toHaveText('Proof / evidence summary');
+  await page.locator('#instructorDebriefTargetSelect').selectOption('problem.one-line');
+
+  await page.locator('#instructorDebriefProgressList')
+    .getByRole('button', { name: 'Observe Team Beta' })
+    .click();
+  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Beta');
+  await expect(page.locator('#oneLine')).toHaveValue('Team Beta observed browser-test Intake.');
+  await expect(page.locator('#oneLine')).toHaveJSProperty('readOnly', true);
+
+  await expect(page.locator('#instructorDebriefTargetSelect')).toBeEnabled();
+  await expect(page.locator('#instructorDebriefRefreshBtn')).toBeEnabled();
+
+  const layout = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('.instructor-debrief-cell')]
+      .map(node => {
+        const box = node.getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom, left: box.left, right: box.right };
+      });
+    return {
+      cards,
+      viewportWidth: window.innerWidth,
+      scrollWidth: document.documentElement.scrollWidth
+    };
+  });
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
+  if (testInfo.project.name === 'chromium-mobile') {
+    expect(layout.cards[1].top).toBeGreaterThan(layout.cards[0].top);
+  } else {
+    expect(Math.abs(layout.cards[0].top - layout.cards[1].top)).toBeLessThanOrEqual(2);
+  }
+
+  const persistedKeys = await page.evaluate(() => Object.keys(window.localStorage));
+  expect(persistedKeys.some(key => key.toLowerCase().includes('debrief'))).toBe(false);
 
   await expectNoBlockingA11yViolations(page);
   expect(pageErrors).toEqual([]);

@@ -10,6 +10,7 @@
 import {
   classAdmitHandler,
   classCoachingHandler,
+  classDebriefHandler,
   classHandler,
   classJoinHandler,
   classObserveHandler,
@@ -43,6 +44,7 @@ export const CLASSROOM_ROUTE_IDS = Object.freeze([
   'observe',
   'coaching',
   'coaching-student',
+  'debrief',
   'case-studies',
   'case-studies-student',
   'exercise',
@@ -63,6 +65,7 @@ function defaultHandlers() {
     observe: classObserveHandler(),
     coaching: classCoachingHandler(),
     'coaching-student': classStudentCoachingHandler(),
+    debrief: classDebriefHandler(),
     'case-studies': instructorCaseStudiesHandler(),
     'case-studies-student': studentCaseStudiesHandler(),
     exercise: classExerciseHandler(),

@@ -8,7 +8,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 The secure Classroom foundation (#288), live-class management (#312), and staged-simulation engine (#313) are **merged and production-published**. The Vercel function-budget blocker #321 was resolved by PR #322; exact merged-main SHA `21bff1d1c5a70caff0aa94aadd58abcb0644f397` reached production **READY** with a clean runtime-error scan.
 
-**#320 is complete and merged** via PR #324 at `273ae6437c0898b9e35778587c7053580db14e22`. **#318 implementation is complete on PR #325 and is in final documentation/review readiness.** #318 establishes the shared semantic layer for coaching, future staged guidance, and #319 template-independent debrief comparison. After #325 merges, #319 is the next debrief-track implementation target. Production staged-case work (#316/#317) remains intentionally deferred while the reusable Template/field surface continues to expand.
+**#320 is complete and merged** via PR #324 at `273ae6437c0898b9e35778587c7053580db14e22`. **#318 is complete and merged** via PR #325 at `ef6949100ddac28c646338ee55cb6e7a74beb067`, establishing the shared semantic target layer. **#319 implementation is complete** on `feature/classroom-debrief-comparison` / PR #326 and is awaiting merge approval. Production staged-case work (#316/#317) remains intentionally deferred.
 
 ## Program issues
 
@@ -29,8 +29,8 @@ The secure Classroom foundation (#288), live-class management (#312), and staged
 | Publish recovery | #321 | Complete | PR #322 merged | Vercel function count consolidated to 5/12; exact-main production READY |
 | Rich staged assets | #316 | Deferred | Open | Secure protected image/table/document-page delivery; resume before #317 production simulation |
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
-| Universal Intake target identity | #318 | **Implementation complete — final docs/review readiness** | PR #325 / `feature/universal-intake-target-identity` | 318A–E complete; full diff/persistence/security audit clean; final documentation-head gates pending |
-| Class debrief comparison | #319 | Planned after #318 | Open | Template-independent cross-team checkpoint/live comparison using stable target IDs |
+| Universal Intake target identity | #318 | Complete | PR #325 merged as `ef694910...` | Shared static/KT/dynamic target projection and compatibility guards merged to `main` |
+| Class debrief comparison | #319 | **Implementation complete / pending merge** | PR #326 / `feature/classroom-debrief-comparison` | 319A–F green; final exact-head review/merge remains |
 | Join/mobile polish | #320 | Complete | PR #324 merged as `273ae643...` | Fragment-only share/QR + compact mobile Class/Case/Team/Notes/Instructor chrome published to `main` |
 
 ## Current architecture decisions
@@ -67,45 +67,61 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-**#318 implementation is complete** on `feature/universal-intake-target-identity` / PR #325, based on merged `main` SHA `273ae6437c0898b9e35778587c7053580db14e22`.
+**#319 implementation is complete** on `feature/classroom-debrief-comparison` / PR #326, based on merged `main` SHA `ef6949100ddac28c646338ee55cb6e7a74beb067`.
 
-Current state: **318E complete — final documentation/review readiness**.
+Status: **pending final PR review / merge approval**.
 
-Canonical contract: `docs/intake-target-identity.md`.
+Canonical contract: `docs/classroom-debrief-comparison.md`.
 
-Completed checkpoints:
-- **318A** architecture/inventory — `5638a8211056954fe29eb1f5892a53517f62f0c7`;
-- **318B** universal static/KT registry + snapshot projection — GREEN `e716ee1f4933124caa052b1a21cfae097ca8d23e`;
-- **318C** dynamic Possible Cause family + Classroom coaching — GREEN runtime/test head `052125de3c73c963e91ab1054124983ed87f7403`;
-- **318D** Template/staged compatibility guards — GREEN `b312a23a2cc90a6d792d3f4a11ff47024e920ebd`;
-- **318E** integrated acceptance/final audit — GREEN acceptance/audit head `55da51daaf77b31de7218a5d78ca06a75a51444c`.
+Validated checkpoints:
+- 319A architecture: `22d5d9ee056f6ddd70f7e5d9a97f2322c5d3c41f`
+- 319B pure model GREEN: `c6986b330fab31509c1697b3d77c8a5e907ef279`
+- 319C Instructor-only aggregate API GREEN: `676ccbc963fb60c59851e3beda5962f2fdaa9ca5`
+- 319D current-live comparison UI GREEN: `54845e82e71c69b471019d6f24f01b36d1077894`
+- 319E-A staged target recommendations GREEN: `dd0f3d28f2741c89c714e0c23a8a475acbdc8de3`
+- 319E-B Current / Checkpoint + Ready / Working GREEN: `0121a6f4a657c030c56144af3616ff9167ac310c`
+- 319E-C coaching integration GREEN: `0a83f4c26a462d663e346c2a024a42fb43f9b31a`
+- 319F closeout implementation GREEN: `1af0e13077c1ff75021ce782bcf798b15e8af150`
 
-318E acceptance/audit proved:
-- current vs immutable checkpoint projections work without DOM for static, KT, and dynamic targets and do not mutate source snapshots;
-- dynamic Possible Causes remain per-workspace collections and are not aligned across teams by position or similar text;
-- real-browser Instructor -> Student dynamic coaching works end-to-end, remains Student read-only, survives cause-card rerenders, and reports **Changed since review** correctly;
-- browser accessibility coverage exposed and retained a real contrast assertion; the small-text Possible Cause contrast defect was repaired without domain/persistence changes;
-- the full `main -> PR #325` diff contains no `api/**`, `src/appState.js`, `src/storage.js`, summary/export, collaboration-revision, or Intake-persistence schema changes;
-- coaching still uses the existing separate feedback API/revision channel;
-- Standard Template/public-manifest changes are validation-only and template-independent;
-- staged `intakeTargetIds` use only the shared static/KT + family namespace, and no production protected Case Study content changed;
-- PR base remains the documented merged `main` SHA, PR #325 is mergeable, and there are no unresolved review threads.
+Final implementation validation on `1af0e13077c1ff75021ce782bcf798b15e8af150`:
+- repository quality: **366 tests / 365 pass / 0 fail / 1 intentional skip**;
+- Browser E2E: **31 passed / 11 intentional project-scoped skips / 0 failed**;
+- CI / CodeQL / Dependency Review / Template Manifest Guard: **green**;
+- PR #326 mergeable with **0 unresolved review threads** before the final documentation pass.
 
-Validation on `55da51daaf77b31de7218a5d78ca06a75a51444c`:
-- repository quality: **346 tests / 345 pass / 0 fail / 1 intentional skip**;
-- Browser E2E: **29 passed / 11 intentional project-scoped skips / 0 failed**;
-- CI / CodeQL / Dependency Review / Template Manifest Guard: **green**.
+Final architecture:
+- #319 is an Instructor-only **derived read model** with no second snapshot/checkpoint/coaching persistence model;
+- GET-only `/api/classes/debrief` uses the represented Instructor class capability and batched class-scoped source reads;
+- raw current/checkpoint snapshots are projected server-side through the universal Intake target registry and never returned raw;
+- static/KT comparison uses stable semantic IDs; dynamic Possible Causes remain workspace-local instance collections;
+- staged target IDs are optional advisory focus only and fail closed on staged-definition drift;
+- Current / Checkpoint mode is explicit; missing checkpoint evidence never falls back silently to live evidence;
+- Ready / Working, activity, checkpoint revision, and coaching state are facilitation signals only, never grades/rankings;
+- coaching notes stay out of aggregate comparison; only neutral status/change metadata is shown;
+- comparison target/mode state is memory-only and excluded from Intake persistence, summaries, exports, Templates, and collaboration revisions;
+- Student browser sessions do not mount or request the comparison;
+- existing Instructor observer/coaching surfaces remain the only drill-down/editing path.
+
+## Last completed action
+
+Completed **319F — integrated browser/accessibility/security closeout**.
+
+Added final guards:
+- Student E2E proves `#instructorDebriefComparison` remains hidden and no `/api/classes/debrief` request occurs in Student sessions or resume;
+- static boundary tests prove the comparison controller has no Intake app-state/storage/file-transfer/localStorage/sessionStorage dependency;
+- root comparison controls are explicitly local-only and summary-excluded;
+- lifecycle wiring exposes only Instructor connect/disconnect plus existing observer navigation;
+- multi-team desktop/mobile/Axe, staged recommendation/readiness/checkpoint, coaching-note non-disclosure, and Possible Cause identity coverage remain green.
 
 ## Next recommended action
 
-Validate the **final documentation head** after this closeout update. If all required gates remain green:
-1. synchronize PR #325 and issue #318 to the exact final SHA;
-2. mark PR #325 **ready for review**;
-3. do **not** merge automatically;
-4. keep issue #318 open until merge;
-5. after #325 lands on `main`, begin **#319 — template-independent Instructor class debrief comparison/progress** from updated `main`.
+Do **not** add new #319 product scope.
 
-**Not started:** #319 implementation or #316/#317 production simulation work.
+1. Confirm the final documentation HEAD is mergeable and exact-head gates are green.
+2. On explicit approval, merge PR #326.
+3. Verify the merged-main SHA through the normal production publication/runtime-error workflow.
+4. Close #319 only after merged-main verification.
+5. Keep #316/#317 deferred unless they are deliberately selected as the next product track.
 
 
 ## Completed #300 implementation
