@@ -218,7 +218,7 @@ function element(id) {
 }
 
 function buildResumeButton({ kind, title, description, meta }) {
-  const button = documentRef.createElement('button');
+  const button = documentRef.createElement('button'); // data-persistence="local-only" data-summary="exclude"
   button.type = 'button';
   button.className = 'startup-resume-card';
   button.dataset.startupResume = kind;
