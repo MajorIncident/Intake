@@ -46,9 +46,13 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
   const exerciseTokens = [];
   const readinessTokens = [];
   const readinessBodies = [];
+  const debriefRequests = [];
 
   page.on('request', request => {
     const url = new URL(request.url());
+    if (url.pathname === '/api/classes/debrief') {
+      debriefRequests.push({ method: request.method(), authorization: request.headers().authorization || '' });
+    }
     const header = request.headers().authorization || '';
     const match = /^Bearer\s+(.+)$/u.exec(header);
     if (!match) return;
@@ -91,6 +95,8 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
   await expect(page.locator('body')).toHaveAttribute('data-student-class-status', 'connected', { timeout: 10000 });
   await expect(page.locator('#studentClassWorkspace')).toHaveText('Team Alpha');
   await expect(page.locator('#oneLine')).toHaveValue('Team Alpha destination Intake.');
+  await expect(page.locator('#instructorDebriefComparison')).toBeHidden();
+  expect(debriefRequests).toEqual([]);
   expect(workspaceTokens.length).toBeGreaterThanOrEqual(1);
 
   await expect(page.locator('#studentCaseReference')).toBeVisible();
@@ -196,6 +202,8 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
   await expect(page.locator('body')).toHaveAttribute('data-student-class-status', 'connected', { timeout: 10000 });
   await expect(page.locator('#studentClassWorkspace')).toHaveText('Team Alpha');
   await expect(page.locator('#oneLine')).toHaveValue(alphaMarker);
+  await expect(page.locator('#instructorDebriefComparison')).toBeHidden();
+  expect(debriefRequests).toEqual([]);
   await expect(page.locator('#studentCaseReference')).toBeVisible();
   await expect(page.locator('#studentCaseReferenceTitle')).toHaveText('Browser Staged Simulation');
   expect(workspaceTokens.length).toBeGreaterThanOrEqual(2);
