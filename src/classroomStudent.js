@@ -118,7 +118,7 @@ export function readStudentSession(storage = globalThis.localStorage) {
  * Persist a Student resume envelope outside Intake state.
  *
  * @param {Storage|null} storage - Local storage implementation.
- * @param {object} session - Validated legacy or live session.
+ * @param {object} session - Validated current live Student session.
  * @returns {boolean} Whether persistence succeeded.
  */
 export function persistStudentSession(storage, session) {
