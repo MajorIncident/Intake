@@ -9,6 +9,7 @@
  *   server after reload, reassignment, or reconnect.
  */
 
+import { APP_STATE_VERSION } from './appStateVersion.js';
 import { getActiveExperienceRole } from './experienceRoleController.js';
 import { EXPERIENCE_ROLE_IDS } from './experienceRoles.js';
 import {
@@ -316,10 +317,17 @@ export function createStudentClassroomController({
     setError('');
   };
 
+  const isCurrentRecoverySnapshot = snapshot => (
+    snapshot
+    && typeof snapshot === 'object'
+    && !Array.isArray(snapshot)
+    && snapshot.meta?.version === APP_STATE_VERSION
+  );
+
   const readRecovery = () => {
     try {
       const parsed = JSON.parse(storage?.getItem(STUDENT_RECOVERY_STORAGE_KEY) || 'null');
-      return parsed?.snapshot && typeof parsed.snapshot === 'object' ? parsed.snapshot : null;
+      return isCurrentRecoverySnapshot(parsed?.snapshot) ? parsed.snapshot : null;
     } catch {
       return null;
     }
@@ -329,7 +337,7 @@ export function createStudentClassroomController({
     try {
       if (!storage || storage.getItem(STUDENT_RECOVERY_STORAGE_KEY)) return;
       const snapshot = collect?.();
-      if (snapshot && typeof snapshot === 'object') {
+      if (isCurrentRecoverySnapshot(snapshot)) {
         storage.setItem(STUDENT_RECOVERY_STORAGE_KEY, JSON.stringify({
           savedAt: new Date(now()).toISOString(),
           snapshot
