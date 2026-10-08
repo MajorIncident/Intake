@@ -120,6 +120,7 @@ export function createInstructorClassroomController({
   onObservationEnd = () => {},
   onClassConnected = () => {},
   onClassDisconnected = () => {},
+  onResumeUnavailable = () => {},
   setTimeoutImpl = globalThis.setTimeout?.bind(globalThis),
   clearTimeoutImpl = globalThis.clearTimeout?.bind(globalThis),
   AbortControllerImpl = globalThis.AbortController
@@ -731,7 +732,9 @@ export function createInstructorClassroomController({
     selectedWorkspaceId = '';
     restoreLocal();
     renderEntry();
-    setError(message || 'This instructor class is no longer available.');
+    const explanation = message || 'This instructor class is no longer available.';
+    setError(explanation);
+    onResumeUnavailable(explanation);
     return false;
   };
 
