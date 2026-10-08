@@ -6,9 +6,9 @@ This is the live restart document for the Classroom Experience program (#288).
 
 ## Current phase
 
-The secure Classroom foundation (#288), live-class management (#312), and staged-simulation engine (#313) are **merged and production-published**. The Vercel function-budget blocker #321 was resolved by PR #322; exact merged-main SHA `21bff1d1c5a70caff0aa94aadd58abcb0644f397` reached production **READY** with a clean runtime-error scan.
+The secure Classroom foundation (#288), live-class management (#312), staged-simulation engine (#313), universal target layer (#318), debrief comparison (#319), and join/mobile polish (#320) are **merged**. PR #326 merged #319 to `main` as `400a6c5ee0b879b4a36705be6d8af075bc89d391`; that exact SHA reached Vercel production **READY** and the post-deploy runtime-error scan was clean. PR #327 then merged the small-slice/slow-gate operating rules as `dce82b1ddb94ff926464af4a9b9d81704ba05a5a`.
 
-**#320 is complete and merged** via PR #324 at `273ae6437c0898b9e35778587c7053580db14e22`. **#318 is complete and merged** via PR #325 at `ef6949100ddac28c646338ee55cb6e7a74beb067`, establishing the shared semantic target layer. **#319 implementation is complete** on `feature/classroom-debrief-comparison` / PR #326 and is awaiting merge approval. Production staged-case work (#316/#317) remains intentionally deferred.
+There is currently **no active product implementation PR**. The approved next cycle is pre-production hardening, documented in `docs/preproduction-hardening.md`.
 
 ## Program issues
 
@@ -18,25 +18,28 @@ The secure Classroom foundation (#288), live-class management (#312), and staged
 | Experience role | #289 | Complete | PR #298 merged | Runtime/tests/docs complete |
 | Templates / Case Studies | #290 | Complete | PR #299 merged | Resource semantics complete |
 | Class domain/API | #291 | Complete | PR #300 merged | Class/workspace authorization complete |
-| Student join/resume | #292 | Complete | PR #302 merged | Student admission/resume complete |
+| Student join/resume | #292 | Complete | PR #302 merged | Student admission/resume foundation complete |
 | Instructor observer | #293 | Complete | PR #305 merged | Server-enforced read-only observation complete |
 | Coaching | #294 | Complete | PR #306 merged | Separate coaching persistence/UI complete |
 | Protected cases | #295 | Complete | PR #307 merged | Protected catalog/payload + minimal public `dist/` boundary complete |
 | Browser E2E/CI | #296 | Complete | PR #308 merged | Required Playwright/axe regression is inside CI |
 | Browser test foundation | #279 | Complete | PR #308 merged | Deterministic browser fixture and accessibility foundation complete |
-| Live class management | #312 | Complete / published | PR #314 merged | Start Class, one-code admission, Waiting/late join, teams, reassignment, observer/coaching |
+| Live class management | #312 | Complete / published | PR #314 merged | One-code admission, Waiting/late join, teams, reassignment, observer/coaching |
 | Staged simulation | #313 | Complete / published | PR #315 merged | Staged release, Ready/debrief/freeze/checkpoints/advance/complete |
 | Publish recovery | #321 | Complete | PR #322 merged | Vercel function count consolidated to 5/12; exact-main production READY |
-| Rich staged assets | #316 | Deferred | Open | Secure protected image/table/document-page delivery; resume before #317 production simulation |
+| Universal Intake target identity | #318 | Complete | PR #325 merged as `ef694910...` | Shared semantic target projection and compatibility guards |
+| Class debrief comparison | #319 | Complete / published | PR #326 merged as `400a6c5e...` | 319A–F complete; exact merged-main production READY + runtime clean |
+| Join/mobile polish | #320 | Complete | PR #324 merged as `273ae643...` | Safe share/QR + compact mobile Class/Case/Team/Notes/Instructor chrome |
+| Compatibility reset | #328 | **Next** | Open | Remove legacy Student two-code + public Instructor recovery code + obsolete save migrations |
+| Admin / Maintenance | #329 | Planned / blocked by #328 | Open | Inventory, preview, revoke/purge stale Classroom + collaboration data |
+| Startup experience hub | #330 | Planned / blocked by #328/#329 | Open | Explicit Continue / Work independently / Join / Run / Admin choices |
+| Rich staged assets | #316 | Deferred until hardening complete | Open | Secure image/table/document-page delivery |
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
-| Universal Intake target identity | #318 | Complete | PR #325 merged as `ef694910...` | Shared static/KT/dynamic target projection and compatibility guards merged to `main` |
-| Class debrief comparison | #319 | **Implementation complete / pending merge** | PR #326 / `feature/classroom-debrief-comparison` | 319A–F green; final exact-head review/merge remains |
-| Join/mobile polish | #320 | Complete | PR #324 merged as `273ae643...` | Fragment-only share/QR + compact mobile Class/Case/Team/Notes/Instructor chrome published to `main` |
 
 ## Current architecture decisions
 
 - Experience role, intake mode, and resource kind are separate axes.
-- Standalone remains the backwards-compatible local-first product.
+- Standalone remains the local-first, backend-optional product. Pre-production historical save/access compatibility is not a requirement; #328 owns the deliberate cleanup.
 - Student/team workspaces reuse existing collaboration snapshot/revision/presence behavior.
 - Instructor observes student Intake read-only.
 - Coaching is a separate persistence/revision channel.
@@ -48,11 +51,12 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Cold restart checklist
 
-1. Inspect current `main` HEAD and open Classroom follow-on issues #316–#320. Also inspect any newer Classroom/deployment blocker before creating work.
+1. Inspect current `main` HEAD and open follow-on issues #328–#330 plus deferred #316/#317. Also inspect any newer Classroom/deployment blocker before creating work.
 2. Read:
    - root `AGENTS.md`;
    - `docs/classroom-architecture.md`;
    - `docs/classroom-roadmap.md`;
+   - `docs/preproduction-hardening.md` for #328–#330;
    - `docs/classroom-api.md` for server/class work;
    - `api/AGENTS.md` for server/class work;
    - this file;
@@ -67,62 +71,31 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-**#319 implementation is complete** on `feature/classroom-debrief-comparison` / PR #326, based on merged `main` SHA `ef6949100ddac28c646338ee55cb6e7a74beb067`.
+**Repository/roadmap hygiene and pre-production planning.**
 
-Status: **pending final PR review / merge approval**.
+#319 is finished: PR #326 merged as `400a6c5ee0b879b4a36705be6d8af075bc89d391`, the exact merged-main deployment reached production **READY**, and the post-deploy runtime-error scan was clean. Do not reopen #319 or continue its old feature branch.
 
-Canonical contract: `docs/classroom-debrief-comparison.md`.
+New approved sequence:
+1. **#328** — remove legacy Student two-code access, public Instructor access-code recovery, and obsolete save/local compatibility.
+2. **#329** — add Administration / Maintenance inventory, recovery, and preview-first stale-data cleanup.
+3. **#330** — add explicit startup/resume hub built on the final credential/persistence contracts.
+4. **#316** — resume protected rich staged-content delivery.
+5. **#317** — author/rehearse the first production staged KT Case Study.
 
-Validated checkpoints:
-- 319A architecture: `22d5d9ee056f6ddd70f7e5d9a97f2322c5d3c41f`
-- 319B pure model GREEN: `c6986b330fab31509c1697b3d77c8a5e907ef279`
-- 319C Instructor-only aggregate API GREEN: `676ccbc963fb60c59851e3beda5962f2fdaa9ca5`
-- 319D current-live comparison UI GREEN: `54845e82e71c69b471019d6f24f01b36d1077894`
-- 319E-A staged target recommendations GREEN: `dd0f3d28f2741c89c714e0c23a8a475acbdc8de3`
-- 319E-B Current / Checkpoint + Ready / Working GREEN: `0121a6f4a657c030c56144af3616ff9167ac310c`
-- 319E-C coaching integration GREEN: `0a83f4c26a462d663e346c2a024a42fb43f9b31a`
-- 319F closeout implementation GREEN: `1af0e13077c1ff75021ce782bcf798b15e8af150`
+Canonical target architecture: `docs/preproduction-hardening.md`.
 
-Final implementation validation on `1af0e13077c1ff75021ce782bcf798b15e8af150`:
-- repository quality: **366 tests / 365 pass / 0 fail / 1 intentional skip**;
-- Browser E2E: **31 passed / 11 intentional project-scoped skips / 0 failed**;
-- CI / CodeQL / Dependency Review / Template Manifest Guard: **green**;
-- PR #326 mergeable with **0 unresolved review threads** before the final documentation pass.
+### Exact next implementation action
 
-Final architecture:
-- #319 is an Instructor-only **derived read model** with no second snapshot/checkpoint/coaching persistence model;
-- GET-only `/api/classes/debrief` uses the represented Instructor class capability and batched class-scoped source reads;
-- raw current/checkpoint snapshots are projected server-side through the universal Intake target registry and never returned raw;
-- static/KT comparison uses stable semantic IDs; dynamic Possible Causes remain workspace-local instance collections;
-- staged target IDs are optional advisory focus only and fail closed on staged-definition drift;
-- Current / Checkpoint mode is explicit; missing checkpoint evidence never falls back silently to live evidence;
-- Ready / Working, activity, checkpoint revision, and coaching state are facilitation signals only, never grades/rankings;
-- coaching notes stay out of aggregate comparison; only neutral status/change metadata is shown;
-- comparison target/mode state is memory-only and excluded from Intake persistence, summaries, exports, Templates, and collaboration revisions;
-- Student browser sessions do not mount or request the comparison;
-- existing Instructor observer/coaching surfaces remain the only drill-down/editing path.
+After the roadmap/hygiene documentation PR is merged, create a fresh short-lived branch from current `main` for **#328**. Start with a compatibility inventory covering:
+- Student legacy two-code UI/API/schema/tests;
+- public Instructor access-code recovery UI/API behavior;
+- save/localStorage migration helpers and old fixture formats.
 
-## Last completed action
+Do not begin #329/#330 implementation until #328 has established the final credential/save contracts. Keep #316/#317 deferred.
 
-Completed **319F — integrated browser/accessibility/security closeout**.
+### Historical checkpoint ledger
 
-Added final guards:
-- Student E2E proves `#instructorDebriefComparison` remains hidden and no `/api/classes/debrief` request occurs in Student sessions or resume;
-- static boundary tests prove the comparison controller has no Intake app-state/storage/file-transfer/localStorage/sessionStorage dependency;
-- root comparison controls are explicitly local-only and summary-excluded;
-- lifecycle wiring exposes only Instructor connect/disconnect plus existing observer navigation;
-- multi-team desktop/mobile/Axe, staged recommendation/readiness/checkpoint, coaching-note non-disclosure, and Possible Cause identity coverage remain green.
-
-## Next recommended action
-
-Do **not** add new #319 product scope.
-
-1. Confirm the final documentation HEAD is mergeable and exact-head gates are green.
-2. On explicit approval, merge PR #326.
-3. Verify the merged-main SHA through the normal production publication/runtime-error workflow.
-4. Close #319 only after merged-main verification.
-5. Keep #316/#317 deferred unless they are deliberately selected as the next product track.
-
+The detailed sections below record how earlier Classroom slices were built and validated. Statements describing legacy compatibility in those historical checkpoints are **historical evidence**, not the forward product requirement. Current target direction is governed by `docs/preproduction-hardening.md` and #328–#330.
 
 ## Completed #300 implementation
 
