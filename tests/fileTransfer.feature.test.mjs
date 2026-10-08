@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, mock, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
+import { APP_STATE_VERSION } from '../src/appStateVersion.js';
 import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
 
 let dom = null;
@@ -314,7 +315,7 @@ test('main: Save to File exports the current snapshot and toasts success', async
     <button id="loadFromFileBtn"></button>
   `;
 
-  const collectSpy = mock.fn(() => ({ meta: { version: 1 } }));
+  const collectSpy = mock.fn(() => ({ meta: { version: APP_STATE_VERSION } }));
   const applySpy = mock.fn();
   const resetSpy = mock.fn();
   const showToastSpy = mock.fn();
@@ -368,7 +369,7 @@ test('main: Load from File migrates and applies the imported snapshot', async ()
     <button id="loadFromFileBtn"></button>
   `;
 
-  const collectSpy = mock.fn(() => ({ meta: { version: 1 } }));
+  const collectSpy = mock.fn(() => ({ meta: { version: APP_STATE_VERSION } }));
   const resetSpy = mock.fn();
   const showToastSpy = mock.fn();
 
@@ -433,7 +434,7 @@ test('main: Load from File migrates and applies the imported snapshot', async ()
   const importMock = mock.fn(async () => {
     globalThis.__appStateMocks.resetAnalysisId();
     applySpy({
-      meta: { version: 1, savedAt: '2024-01-01T00:00:00.000Z' },
+      meta: { version: APP_STATE_VERSION, savedAt: '2024-01-01T00:00:00.000Z' },
       pre: { oneLine: 'Example' },
       actions: {
         analysisId: importedAnalysisId,
