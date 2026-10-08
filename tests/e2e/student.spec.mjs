@@ -188,6 +188,11 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
 
   await page.reload();
 
+  await expect(page.locator('#experienceRoleGate')).toBeVisible();
+  await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'unselected');
+  await expect(page.locator('[data-startup-resume="student"]')).toContainText('Browser Student Live Classroom');
+  await page.locator('[data-startup-resume="student"]').click();
+
   await expect(page.locator('#experienceRoleGate')).toBeHidden();
   await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'student');
   await expect(page.locator('body')).toHaveAttribute('data-student-class-status', 'connected', { timeout: 10000 });
