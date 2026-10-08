@@ -73,7 +73,7 @@ See `docs/classroom-architecture.md` for the full contract.
 
 **#328 — Pre-production compatibility reset** is active on `feature/preproduction-compat-reset` / draft PR #332 and is at final validation.
 
-Implementation checkpoint before this ledger update: `05100870c362ebaca301d614dfb9d4d36a3d7a2f`.
+Frozen implementation checkpoint before this final ledger update: `2383bc2cb4c4fe2d3561a4e13a01b9d96ad1ff6e`.
 
 Completed:
 - Student entry is display name + one human class code only; the legacy assignment-code disclosure and two-code client flow are removed.
@@ -90,11 +90,13 @@ Completed:
 - Canonical API, architecture, security, onboarding, README, live-management, and storage-schema docs have been reconciled to the current model.
 
 Validation evidence:
-- Template Manifest Guard is green on exact head `05100870c362ebaca301d614dfb9d4d36a3d7a2f`.
+- An earlier Template Manifest Guard run was green after canonical resource conversion; the final docs-only head still requires its own fresh required checks.
+- The first full quality attempt reached **360 tests / 358 pass / 1 fail / 1 intentional skip**; the single failure was an obsolete revocation test boundary and was corrected to exercise current Student class-session 401/404 revocation.
 - Branch-wide changed-fixture audit found no accidental v1/v2 Intake snapshots; the only old-version fixture remaining is the intentional rejection test.
 - Runtime audit finds retired DB identifiers only inside the deliberate `DROP ... IF EXISTS` cleanup statements.
+- Explicit compatibility shims for legacy containment values, P1/P2/P3 action priorities, raw experience-role preferences, old Student recovery envelopes, and cause hypothesis/summary fields are removed with rejection/current-contract coverage.
 - PR #332 has **0 unresolved review threads**.
-- Exact-head CI / CodeQL / Dependency Review are still pending as of this checkpoint; do not claim them green until refreshed after this documentation commit.
+- Final exact-head CI / CodeQL / Dependency Review / Template Manifest Guard are still pending as of this checkpoint; do not claim them green until refreshed after this documentation-only commit.
 
 Exact next action:
 1. refresh PR #332 exact head and required checks;
