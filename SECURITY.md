@@ -13,11 +13,15 @@ Never commit, log, paste into issues, or include in test fixtures:
 - database connection strings or credentials;
 - raw collaboration workspace tokens or secret links;
 - Instructor class capabilities, Student class-session capabilities, or assignment-specific classroom workspace capabilities;
+- the `INTAKE_ADMIN_TOKEN` Administration / Maintenance credential;
 - authorization headers;
 - production incident snapshots containing confidential data;
 - private participant identity data.
 
 The collaboration capability model treats possession of the correct secret as authorization. Classroom separates privileges across Instructor class authority, human admission code, Student class session, and assignment-specific Student workspace authority. Server code stores only hashes for high-entropy bearer capabilities and must not log raw capabilities or snapshots.
+
+Administration / Maintenance is a separate privileged boundary documented in `docs/admin-maintenance.md`. `INTAKE_ADMIN_TOKEN` is environment-only, is never an Intake or Classroom credential, and is accepted only in the `Authorization` header for `/api/admin`. The browser may retain a successfully verified Admin token only in tab-scoped `sessionStorage` under `kt-admin-session-v1`; it must never enter `localStorage`, Intake persistence, files, summaries, templates, URLs, logs, analytics, or telemetry. Admin inventory never returns raw capabilities or Intake snapshots. Physical purge requires a short-lived signed server preview; changed activity/state invalidates the preview before deletion. Classroom-owned workspaces cannot be purged independently of their owning class.
+
 
 Same-device Student resume stores the high-entropy **Student class-session capability** under `kt-classroom-student-session-v1` together with public class/participant/current-assignment context. The human join code is discarded after admission. The current assignment-specific workspace capability is **memory-only** and must be reacquired after reload or reassignment; it must not be written into the live resume envelope or URL. #328 intentionally rejects older pre-production Student session-envelope formats. No Student resume envelope may enter Intake state, exports, summaries, templates, analytics, logs, or error telemetry.
 
