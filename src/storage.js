@@ -361,20 +361,9 @@ function normalizeActionsState(raw, hasField) {
  * @returns {boolean} Coerced boolean value.
  */
 function toBoolean(value) {
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase();
-    if (!normalized) return false;
-    if (['true', '1', 'yes', 'y'].includes(normalized)) return true;
-    if (['false', '0', 'no', 'n'].includes(normalized)) return false;
-  }
-  return !!value;
+  return value === true;
 }
 
-const LEGACY_CONTAINMENT_STATUS_MAP = {
-  none: 'assessing',
-  mitigation: 'stabilized',
-  restore: 'restoring'
-};
 
 const CONTAINMENT_STATUS_VALUES = new Set([
   'assessing',
@@ -392,12 +381,7 @@ const CONTAINMENT_STATUS_VALUES = new Set([
  * @returns {string} Recognized containment status or an empty string.
  */
 function normalizeContainmentStatus(value) {
-  if (typeof value !== 'string') return '';
-  if (CONTAINMENT_STATUS_VALUES.has(value)) {
-    return value;
-  }
-  const legacy = LEGACY_CONTAINMENT_STATUS_MAP[value];
-  return typeof legacy === 'string' ? legacy : '';
+  return typeof value === 'string' && CONTAINMENT_STATUS_VALUES.has(value) ? value : '';
 }
 
 /**
@@ -421,50 +405,27 @@ function normalizeCommLog(entries) {
 }
 
 /**
- * Normalizes raw step drawer persistence into the expected shape consumed by the
- * steps module. Handles legacy array formats and coerces booleans.
- * @param {unknown} rawSteps - Serialized steps payload coming from storage or legacy formats.
- * @returns {{items: Array<{id: string, label: string, checked: boolean}>, drawerOpen: boolean}}
- * Normalized steps state compatible with current UI expectations.
+ * Sanitizes the canonical steps payload.
+ * @param {unknown} rawSteps - Current-format steps payload.
+ * @returns {{items:Array<{id:string,label:string,checked:boolean}>,drawerOpen:boolean}} Sanitized steps state.
  */
 function normalizeStepsState(rawSteps) {
-  if (!rawSteps) {
+  if (!rawSteps || typeof rawSteps !== 'object' || Array.isArray(rawSteps)) {
     return { items: [], drawerOpen: false };
   }
-  let source = rawSteps;
-  if (Array.isArray(source)) {
-    source = { items: source };
-  }
-  if (source && typeof source === 'object' && !Array.isArray(source)) {
-    const itemsCandidate = Array.isArray(source.items)
-      ? source.items
-      : (Array.isArray(source.steps) ? source.steps : []);
-    const items = itemsCandidate
-      .map(item => {
-        if (!item || typeof item !== 'object') {
-          return null;
-        }
-        const rawId = item.id !== undefined ? item.id : (item.stepId !== undefined ? item.stepId : null);
-        const id = rawId !== null && rawId !== undefined ? String(rawId) : '';
-        if (!id) {
-          return null;
-        }
-        const label = typeof item.label === 'string'
-          ? item.label
-          : (typeof item.title === 'string' ? item.title : '');
-        const checked = toBoolean(item.checked);
-        return { id, label, checked };
-      })
-      .filter(Boolean);
-    const drawerOpen = typeof source.drawerOpen === 'boolean'
-      ? source.drawerOpen
-      : (typeof source.open === 'boolean' ? source.open : toBoolean(source.drawer));
-    return {
-      items,
-      drawerOpen: !!drawerOpen
-    };
-  }
-  return { items: [], drawerOpen: false };
+  const items = Array.isArray(rawSteps.items)
+    ? rawSteps.items.map(item => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+        const id = typeof item.id === 'string' || typeof item.id === 'number' ? String(item.id) : '';
+        if (!id) return null;
+        return {
+          id,
+          label: typeof item.label === 'string' ? item.label : '',
+          checked: item.checked === true
+        };
+      }).filter(Boolean)
+    : [];
+  return { items, drawerOpen: rawSteps.drawerOpen === true };
 }
 
 /**
