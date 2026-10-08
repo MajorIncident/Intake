@@ -52,6 +52,46 @@ test('well-formed non-Instructor authority cannot read an Instructor class', asy
   expect(body.workspaces).toBeUndefined();
 });
 
+test('server-rejected saved Student resume returns to startup with a clear recovery message', async ({ page }) => {
+  await startFresh(page);
+
+  await page.evaluate(key => {
+    window.localStorage.setItem(key, JSON.stringify({
+      version: 2,
+      mode: 'live',
+      class: {
+        id: 'missing-browser-class',
+        title: 'Unavailable Browser Classroom',
+        expiresAt: '2099-12-31T23:59:59.000Z'
+      },
+      participant: {
+        id: '77777777-7777-4777-8777-777777777777',
+        displayName: 'Resume Student'
+      },
+      studentSessionToken: 'q'.repeat(43),
+      assignmentRevision: 1,
+      assignment: null,
+      joinedAt: '2026-10-08T20:00:00.000Z'
+    }));
+  }, STUDENT_SESSION_STORAGE_KEY);
+
+  await page.reload();
+
+  await expect(page.locator('#experienceRoleGate')).toBeVisible();
+  await expect(page.locator('[data-startup-resume="student"]')).toContainText('Unavailable Browser Classroom');
+
+  await page.locator('[data-startup-resume="student"]').click();
+
+  await expect(page.locator('#experienceRoleGate')).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'unselected');
+  await expect(page.locator('#startupHubStatus')).toBeVisible();
+  await expect(page.locator('#startupHubStatus')).toContainText(/no longer available|current class code/i);
+  await expect(page.locator('[data-startup-resume="student"]')).toHaveCount(0);
+
+  const storedAfterFailure = await page.evaluate(key => window.localStorage.getItem(key), STUDENT_SESSION_STORAGE_KEY);
+  expect(storedAfterFailure).toBeNull();
+});
+
 test('expired saved Student access is discarded before stale workspace content can resume', async ({ page }, testInfo) => {
   await startFresh(page);
   await page.getByRole('button', { name: /Join a class/ }).click();
