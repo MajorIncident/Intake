@@ -6,8 +6,7 @@
  *   human join code is admission-only and discarded after use. A stable Student
  *   class-session capability is persisted locally, while assignment-specific
  *   workspace edit capabilities remain memory-only and are reacquired from the
- *   server after reload, reassignment, or reconnect. Legacy two-code Student
- *   sessions remain readable during the additive migration.
+ *   server after reload, reassignment, or reconnect.
  */
 
 import { getActiveExperienceRole } from './experienceRoleController.js';
@@ -19,11 +18,10 @@ import {
 
 export const STUDENT_SESSION_STORAGE_KEY = 'kt-classroom-student-session-v1';
 export const STUDENT_RECOVERY_STORAGE_KEY = 'kt-classroom-student-local-recovery-v1';
-export const STUDENT_SESSION_VERSION = 1;
+export const STUDENT_SESSION_VERSION = 2;
 export const STUDENT_ADMIT_ENDPOINT = '/api/classes/admit';
 export const STUDENT_STATUS_ENDPOINT = '/api/classes/student';
 export const STUDENT_ACCESS_ENDPOINT = '/api/classes/student/access';
-export const STUDENT_JOIN_ENDPOINT = '/api/classes/join';
 
 const CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const JOIN_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{8}$/;
@@ -82,13 +80,6 @@ function validWorkspaceContext(value) {
     && typeof value.label === 'string';
 }
 
-function validLegacySession(parsed) {
-  return validateStudentCapability(parsed?.workspaceToken)
-    && validClassContext(parsed?.class)
-    && validWorkspaceContext(parsed?.workspace)
-    && validParticipantContext(parsed?.participant);
-}
-
 function validLiveSession(parsed) {
   return parsed?.mode === 'live'
     && validateStudentCapability(parsed.studentSessionToken)
@@ -103,7 +94,7 @@ function validLiveSession(parsed) {
 function validateStudentSessionEnvelope(parsed) {
   return parsed
     && parsed.version === STUDENT_SESSION_VERSION
-    && (validLegacySession(parsed) || validLiveSession(parsed));
+    && validLiveSession(parsed);
 }
 
 /**
@@ -158,9 +149,7 @@ export function clearStudentSession(storage = globalThis.localStorage) {
  */
 export function isStudentSessionExpired(session, nowMs = Date.now()) {
   if (!session) return false;
-  const expiries = session.mode === 'live'
-    ? [session.class?.expiresAt]
-    : [session.class?.expiresAt, session.workspace?.expiresAt];
+  const expiries = [session.class?.expiresAt];
   const timestamps = expiries
     .map(value => Date.parse(value || ''))
     .filter(Number.isFinite);
@@ -239,9 +228,7 @@ export function createStudentClassroomController({
     if (documentRef?.body) documentRef.body.dataset.studentClassStatus = status;
   };
 
-  const sessionAssignment = session => (
-    session?.mode === 'live' ? session.assignment : session?.workspace
-  );
+  const sessionAssignment = session => session?.assignment || null;
 
   const renderContextExpansion = () => {
     const panel = element('studentExperienceNotice');
@@ -367,27 +354,6 @@ export function createStudentClassroomController({
     }
   };
 
-  const buildLegacySession = body => ({
-    version: STUDENT_SESSION_VERSION,
-    class: {
-      id: body.class.id,
-      title: body.class.title,
-      expiresAt: body.class.expiresAt || null
-    },
-    workspace: {
-      id: body.workspace.id,
-      kind: body.workspace.kind,
-      label: body.workspace.label,
-      expiresAt: body.workspace.expiresAt || null
-    },
-    participant: {
-      id: body.self.id,
-      displayName: body.self.displayName
-    },
-    workspaceToken: body.workspaceToken,
-    joinedAt: new Date(now()).toISOString()
-  });
-
   const normalizeAssignment = assignment => (
     validWorkspaceContext(assignment)
       ? { id: assignment.id, kind: assignment.kind, label: assignment.label }
@@ -459,40 +425,6 @@ export function createStudentClassroomController({
     restoreLocalRecovery();
     renderEntry();
     setError(message || 'This class session is no longer available. Ask your instructor for the current class code.');
-    return false;
-  };
-
-  const attachLegacySession = async session => {
-    activeSession = session;
-    setBusy(true);
-    setStatus('connecting');
-    renderContext(session);
-    const connected = await collaboration?.connect?.(session.workspaceToken, {
-      displayName: session.participant.displayName,
-      classroom: true
-    });
-    setBusy(false);
-    if (connected) {
-      activeWorkspaceToken = session.workspaceToken;
-      renderConnected(session);
-      onClassConnected(session.workspaceToken);
-      return true;
-    }
-    if (isTerminalCollaborationFailure()) {
-      collaboration?.leave?.({ silent: true });
-      onClassDisconnected();
-      activeWorkspaceToken = '';
-      clearStudentSession(storage);
-      activeSession = null;
-      restoreLocalRecovery();
-      renderEntry();
-      setError('This class workspace is no longer available. Ask your instructor for current class and assignment codes.');
-      return false;
-    }
-    renderEntry({
-      retry: true,
-      message: 'We could not reconnect to your saved class workspace. Check your connection and try again.'
-    });
     return false;
   };
 
@@ -742,28 +674,14 @@ export function createStudentClassroomController({
       return false;
     }
     if (isStudentSessionExpired(stored, now())) {
-      if (stored.mode === 'live') {
-        activeSession = stored;
-        return terminalLiveSession('Your saved class access has expired. Ask your instructor for the current class code.');
-      }
-      clearStudentSession(storage);
-      activeSession = null;
-      activeWorkspaceToken = '';
-      restoreLocalRecovery();
-      renderEntry();
-      setError('Your saved class access has expired. Ask your instructor for new class and assignment codes.');
-      return false;
+      activeSession = stored;
+      return terminalLiveSession('Your saved class access has expired. Ask your instructor for the current class code.');
     }
-    if (stored.mode === 'live') {
-      return activateLiveSession(stored);
-    }
-    return attachLegacySession(stored);
+    return activateLiveSession(stored);
   };
 
   const clearAdmissionInputs = () => {
     if (element('studentClassCode')) element('studentClassCode').value = '';
-    if (element('studentAssignmentCode')) element('studentAssignmentCode').value = '';
-    if (element('studentLegacyJoin')) element('studentLegacyJoin').open = false;
   };
 
   const applyJoinIntent = () => {
@@ -784,55 +702,6 @@ export function createStudentClassroomController({
       element('studentDisplayName').focus();
     }
     return true;
-  };
-
-  const joinLegacy = async ({ classCode, assignmentCode, displayName, participantId }) => {
-    const joinToken = typeof classCode === 'string' ? classCode.trim() : '';
-    const assignmentToken = typeof assignmentCode === 'string' ? assignmentCode.trim() : '';
-    if (!validateStudentCapability(joinToken) || !validateStudentCapability(assignmentToken)) {
-      setError('Enter the current long class and assignment codes from your instructor.');
-      return false;
-    }
-
-    const response = await fetchImpl(STUDENT_JOIN_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${joinToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        assignmentToken,
-        participantId,
-        displayName
-      })
-    });
-    const body = await responseJson(response);
-    if (!response.ok) {
-      if (response.status === 404) {
-        setError('The class or assignment code was not accepted. Ask your instructor for the current codes.');
-      } else if (response.status === 400) {
-        setError('Check your name and class codes, then try again.');
-      } else {
-        setError('The class service is unavailable right now. Your local Intake is unchanged.');
-      }
-      return false;
-    }
-    if (
-      !validateStudentCapability(body.workspaceToken)
-      || !validClassContext(body.class)
-      || !validWorkspaceContext(body.workspace)
-      || !validParticipantContext(body.self)
-    ) {
-      setError('The class service returned an incomplete workspace response.');
-      return false;
-    }
-
-    preserveLocalRecovery();
-    const session = buildLegacySession(body);
-    persistStudentSession(storage, session);
-    activeSession = session;
-    clearAdmissionInputs();
-    return attachLegacySession(session);
   };
 
   const joinLive = async ({ classCode, displayName, participantId }) => {
@@ -881,7 +750,7 @@ export function createStudentClassroomController({
     return activateLiveSession(session);
   };
 
-  const join = async ({ classCode, assignmentCode = '', displayName }) => {
+  const join = async ({ classCode, displayName }) => {
     if (connecting) return false;
     const normalizedName = normalizeStudentDisplayName(displayName);
     if (!normalizedName) {
@@ -897,18 +766,11 @@ export function createStudentClassroomController({
     setBusy(true);
     setError('');
     try {
-      return assignmentCode?.trim()
-        ? await joinLegacy({
-            classCode,
-            assignmentCode,
-            displayName: normalizedName,
-            participantId
-          })
-        : await joinLive({
-            classCode,
-            displayName: normalizedName,
-            participantId
-          });
+      return await joinLive({
+        classCode,
+        displayName: normalizedName,
+        participantId
+      });
     } catch {
       setError('Could not reach the class service. Your local Intake is unchanged.');
       return false;
@@ -937,7 +799,6 @@ export function createStudentClassroomController({
     event.preventDefault();
     void join({
       classCode: element('studentClassCode')?.value || '',
-      assignmentCode: element('studentAssignmentCode')?.value || '',
       displayName: element('studentDisplayName')?.value || ''
     });
   };
@@ -959,7 +820,7 @@ export function createStudentClassroomController({
     liveEpoch += 1;
     stopLivePolling();
     disconnectWorkspace();
-    if (activeSession?.mode === 'live') onSessionDisconnected();
+    if (activeSession) onSessionDisconnected();
     restoreLocalRecovery({ clear: false });
   };
 
@@ -998,7 +859,7 @@ export function createStudentClassroomController({
     destroy,
     join,
     resume,
-    refreshStatus: () => activeSession?.mode === 'live' ? syncLiveStatus(liveEpoch) : false,
+    refreshStatus: () => activeSession ? syncLiveStatus(liveEpoch) : false,
     leaveClass,
     setContextExpanded: expanded => setContextExpanded(expanded, { user: true }),
     getState: () => ({
