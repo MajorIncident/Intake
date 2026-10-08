@@ -300,11 +300,11 @@ The repository is still pre-production and has no external production users to m
 The approved target architecture is defined in `docs/preproduction-hardening.md` and issues #328–#330:
 
 - #328 is the compatibility reset: one-code Student admission/class-session authority is the only Classroom Student model; public Instructor bearer-code recovery is removed; only the current Intake save schema is accepted;
-- #329 adds separately authorized Administration / Maintenance inventory, recovery, and preview-first stale-data cleanup;
+- #329 implements separately authorized Administration / Maintenance inventory, Instructor recovery, and signed preview-first stale-data cleanup; the detailed runtime contract is `docs/admin-maintenance.md`, and Admin is not an experience role;
 - #330 replaces implicit role restoration with explicit Continue / Work independently / Join a class / Run a class startup choices;
 - #316/#317 resume only after that hardening sequence.
 
-On the #328 implementation branch, obsolete access/schema/save compatibility is removed rather than hidden. Future work must not recreate it as a recovery mechanism; recovery belongs to #329.
+#328 is merged and published: obsolete access/schema/save compatibility is removed rather than hidden. Future work must not recreate it as a recovery mechanism; Instructor recovery belongs to the separate #329 Admin boundary.
 
 ## Migration philosophy
 
