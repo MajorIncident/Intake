@@ -327,8 +327,11 @@ export function createStudentClassroomController({
   const readRecovery = () => {
     try {
       const parsed = JSON.parse(storage?.getItem(STUDENT_RECOVERY_STORAGE_KEY) || 'null');
-      return isCurrentRecoverySnapshot(parsed?.snapshot) ? parsed.snapshot : null;
+      if (isCurrentRecoverySnapshot(parsed?.snapshot)) return parsed.snapshot;
+      if (parsed !== null) storage?.removeItem(STUDENT_RECOVERY_STORAGE_KEY);
+      return null;
     } catch {
+      try { storage?.removeItem(STUDENT_RECOVERY_STORAGE_KEY); } catch {}
       return null;
     }
   };
