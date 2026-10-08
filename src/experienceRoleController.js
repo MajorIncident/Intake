@@ -281,7 +281,7 @@ function getRoleSwitcherFocusOrigin(button) {
  * @returns {void}
  */
 function focusFirstChoice() {
-  const target = documentRef?.querySelector('[data-experience-role-choice]');
+  const target = documentRef?.querySelector('[data-startup-resume], [data-experience-role-choice]');
   if (!target || typeof target.focus !== 'function') {
     return;
   }
