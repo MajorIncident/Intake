@@ -294,15 +294,28 @@ Use #279 Playwright infrastructure for browser-level journeys. Classroom coverag
 
 High-value browser/security journeys are listed in #296.
 
+## Pre-production hardening direction
+
+The repository is still pre-production and has no external production users to migrate. Compatibility that exists only because earlier development slices used a different Classroom credential or save-file model is therefore **not** a product requirement.
+
+The approved target architecture is defined in `docs/preproduction-hardening.md` and issues #328–#330:
+
+- #328 removes the legacy Student two-code Classroom path, the normal-product Instructor access-code recovery form, and compatibility-only old save/local formats after an explicit inventory;
+- #329 adds separately authorized Administration / Maintenance inventory, recovery, and preview-first stale-data cleanup;
+- #330 replaces implicit role restoration with explicit Continue / Work independently / Join a class / Run a class startup choices;
+- #316/#317 resume only after that hardening sequence.
+
+Until #328 merges, sections above that describe legacy two-code fields/routes remain accurate descriptions of the **current runtime**, not endorsements of the future contract. Do not prematurely remove authorization checks or schema fields outside the #328 implementation.
+
 ## Migration philosophy
 
-Prefer additive migrations.
+For pre-production hardening, prefer **simplification over indefinite compatibility**:
 
-- Existing `kt-intake-full-v2` snapshots must continue loading.
-- Existing Standalone users should not lose work.
-- Existing shared workspace links should remain valid.
-- New classroom persistence should be separate until an explicit migration is needed.
-- Any destructive schema or credential migration requires rollback instructions.
+- preserve current user work only where it represents the intended production model;
+- current Standalone collaboration remains a supported product capability;
+- obsolete pre-production save formats may fail clearly instead of being migrated forever;
+- destructive database/credential changes still require explicit scope, validation, and rollback/recovery planning even when backwards compatibility is intentionally dropped;
+- after public production launch, compatibility expectations must be revisited before another breaking migration.
 
 ## Related issues
 
@@ -316,3 +329,8 @@ Prefer additive migrations.
 - Protected cases: #295
 - Classroom E2E / CI: #296
 - Browser infrastructure: #279
+- Pre-production compatibility reset: #328
+- Admin / Maintenance lifecycle: #329
+- Startup experience hub: #330
+- Deferred rich staged assets: #316
+- Deferred first production staged case: #317
