@@ -439,76 +439,60 @@ function normalizeAppStateStructure(raw) {
   const hasActionsField = Object.prototype.hasOwnProperty.call(incoming, 'actions');
 
   const pre = {
-    oneLine: toString(preSource.oneLine ?? incoming.oneLine),
-    proof: toString(preSource.proof ?? incoming.proof),
-    objectPrefill: toString(preSource.objectPrefill ?? incoming.objectPrefill),
-    healthy: toString(preSource.healthy ?? incoming.healthy),
-    now: toString(preSource.now ?? incoming.now)
+    oneLine: toString(preSource.oneLine),
+    proof: toString(preSource.proof),
+    objectPrefill: toString(preSource.objectPrefill),
+    healthy: toString(preSource.healthy),
+    now: toString(preSource.now)
   };
 
   const impact = {
-    now: toString(impactSource.now ?? incoming.impactNow),
-    future: toString(impactSource.future ?? incoming.impactFuture),
-    time: toString(impactSource.time ?? incoming.impactTime)
+    now: toString(impactSource.now),
+    future: toString(impactSource.future),
+    time: toString(impactSource.time)
   };
-
-  const containStatusCandidate = opsSource.containStatus
-    ?? opsSource.containmentStatus
-    ?? incoming.containStatus
-    ?? incoming.containmentStatus;
-
-  const containDescCandidate = opsSource.containDesc
-    ?? incoming.containDesc;
 
   const ops = {
-    bridgeOpenedUtc: toString(opsSource.bridgeOpenedUtc ?? incoming.bridgeOpenedUtc),
-    icName: toString(opsSource.icName ?? incoming.icName),
-    bcName: toString(opsSource.bcName ?? incoming.bcName),
-    semOpsName: toString(opsSource.semOpsName ?? incoming.semOpsName),
-    severity: toString(opsSource.severity ?? incoming.severity),
-    detectMonitoring: toBoolean(opsSource.detectMonitoring ?? incoming.detectMonitoring),
-    detectUserReport: toBoolean(opsSource.detectUserReport ?? incoming.detectUserReport),
-    detectAutomation: toBoolean(opsSource.detectAutomation ?? incoming.detectAutomation),
-    detectOther: toBoolean(opsSource.detectOther ?? incoming.detectOther),
-    evScreenshot: toBoolean(opsSource.evScreenshot ?? incoming.evScreenshot),
-    evLogs: toBoolean(opsSource.evLogs ?? incoming.evLogs),
-    evMetrics: toBoolean(opsSource.evMetrics ?? incoming.evMetrics),
-    evRepro: toBoolean(opsSource.evRepro ?? incoming.evRepro),
-    evOther: toBoolean(opsSource.evOther ?? incoming.evOther),
-    containStatus: normalizeContainmentStatus(containStatusCandidate),
-    containDesc: toString(containDescCandidate),
-    commCadence: toString(opsSource.commCadence ?? incoming.commCadence),
-    commLog: normalizeCommLog(opsSource.commLog ?? incoming.commLog),
-    commNextDueIso: toString(opsSource.commNextDueIso ?? incoming.commNextDueIso),
-    commNextUpdateTime: toString(opsSource.commNextUpdateTime ?? incoming.commNextUpdateTime),
-    tableFocusMode: toString(opsSource.tableFocusMode ?? incoming.tableFocusMode)
+    bridgeOpenedUtc: toString(opsSource.bridgeOpenedUtc),
+    icName: toString(opsSource.icName),
+    bcName: toString(opsSource.bcName),
+    semOpsName: toString(opsSource.semOpsName),
+    severity: toString(opsSource.severity),
+    detectMonitoring: toBoolean(opsSource.detectMonitoring),
+    detectUserReport: toBoolean(opsSource.detectUserReport),
+    detectAutomation: toBoolean(opsSource.detectAutomation),
+    detectOther: toBoolean(opsSource.detectOther),
+    evScreenshot: toBoolean(opsSource.evScreenshot),
+    evLogs: toBoolean(opsSource.evLogs),
+    evMetrics: toBoolean(opsSource.evMetrics),
+    evRepro: toBoolean(opsSource.evRepro),
+    evOther: toBoolean(opsSource.evOther),
+    containStatus: normalizeContainmentStatus(opsSource.containStatus),
+    containDesc: toString(opsSource.containDesc),
+    commCadence: toString(opsSource.commCadence),
+    commLog: normalizeCommLog(opsSource.commLog),
+    commNextDueIso: toString(opsSource.commNextDueIso),
+    commNextUpdateTime: toString(opsSource.commNextUpdateTime),
+    tableFocusMode: toString(opsSource.tableFocusMode)
   };
 
-  const table = Array.isArray(incoming.table)
-    ? incoming.table
-    : (Array.isArray(incoming.ktTable) ? incoming.ktTable : []);
-
-  const causesSource = Array.isArray(incoming.causes)
-    ? incoming.causes
-    : (Array.isArray(incoming.possibleCauses) ? incoming.possibleCauses : []);
+  const table = Array.isArray(incoming.table) ? incoming.table : [];
+  const causesSource = Array.isArray(incoming.causes) ? incoming.causes : [];
   const causes = serializeCauses(deserializeCauses(causesSource));
 
-  const likelyCauseIdRaw = incoming.likelyCauseId ?? incoming.likelyCause ?? null;
+  const likelyCauseIdRaw = incoming.likelyCauseId ?? null;
   const likelyCauseId = typeof likelyCauseIdRaw === 'string'
     ? likelyCauseIdRaw
     : (likelyCauseIdRaw && typeof likelyCauseIdRaw === 'number' ? String(likelyCauseIdRaw) : null);
 
-  const steps = normalizeStepsState(incoming.steps ?? incoming.stepsState);
+  const steps = normalizeStepsState(incoming.steps);
 
   const appearanceTheme = typeof incoming?.appearance?.theme === 'string'
     ? normalizeTheme(incoming.appearance.theme)
     : 'light';
 
-  const savedAt = typeof incoming?.meta?.savedAt === 'string'
-    ? incoming.meta.savedAt
-    : (typeof incoming.savedAt === 'string' ? incoming.savedAt : null);
-
-  const intakeMode = normalizeIntakeMode(incoming?.meta?.intakeMode ?? incoming?.intakeMode);
+  const savedAt = typeof incoming?.meta?.savedAt === 'string' ? incoming.meta.savedAt : null;
+  const intakeMode = normalizeIntakeMode(incoming?.meta?.intakeMode);
 
   const normalized = {
     meta: {
@@ -540,35 +524,16 @@ function normalizeAppStateStructure(raw) {
 }
 
 /**
- * Migrates a persisted app state object to the latest schema and enforces the
- * normalized shape expected by the UI.
- * @param {unknown} raw - Raw state object read from storage.
- * @returns {SerializedAppState|null} Normalized state when migration succeeds,
- * otherwise `null` for unprocessable data.
+ * Accepts and sanitizes only the current canonical Intake snapshot version.
+ * @param {unknown} raw - Candidate persisted or imported state object.
+ * @returns {SerializedAppState|null} Sanitized current state, or null when the
+ * snapshot is absent, malformed, or from another schema version.
  */
 export function migrateAppState(raw) {
-  if (!raw || typeof raw !== 'object') {
-    return null;
-  }
-  let state = cloneState(raw);
-  if (!state || typeof state !== 'object') {
-    return null;
-  }
-  let version = resolveVersion(state);
-  const visited = new Set();
-  while (version < APP_STATE_VERSION) {
-    if (visited.has(version)) {
-      break;
-    }
-    visited.add(version);
-    const migrate = MIGRATIONS.get(version);
-    if (typeof migrate !== 'function') {
-      break;
-    }
-    state = migrate(state);
-    version = resolveVersion(state);
-  }
-  return normalizeAppStateStructure(state);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  if (raw.meta?.version !== APP_STATE_VERSION) return null;
+  const state = cloneState(raw);
+  return state && typeof state === 'object' ? normalizeAppStateStructure(state) : null;
 }
 
 /**
