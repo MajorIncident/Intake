@@ -1113,11 +1113,14 @@ test('Instructor coaching cannot cross class boundaries and clearing is coaching
   assert.equal(workspace.revision, 1);
 });
 
-test('Student coaching GET resolves only the membership behind its workspace capability and is read-only', async () => {
+test('Student coaching GET resolves only the live participant behind its workspace capability and is read-only', async () => {
   const classrooms = createClassroomRepository();
   const workspaceRepo = createWorkspaceRepository();
   await classrooms.createClass({
-    publicId: CLASS_A_ID, title: 'Class A', instructorHash: testTokenHash('A')
+    publicId: CLASS_A_ID,
+    title: 'Class A',
+    instructorHash: testTokenHash('A'),
+    studentJoinCode: 'K7FMP4Q2'
   });
   const a = await workspaceRepo.create(testTokenHash('P'), {}, 30, 'Team A');
   const b = await workspaceRepo.create(testTokenHash('Q'), {}, 30, 'Team B');
@@ -1127,14 +1130,40 @@ test('Student coaching GET resolves only the membership behind its workspace cap
   await classrooms.addWorkspace(testTokenHash('A'), {
     publicId: WORKSPACE_B_ID, workspaceId: b.id, kind: 'group', label: 'Team B'
   });
-  await classrooms.joinWorkspace({
-    studentJoinHash: testTokenHash('C'), participantId: PARTICIPANT_A,
-    accessHash: testTokenHash('S'), workspaceRepository: workspaceRepo
+
+  await classrooms.admitParticipant({
+    joinCode: 'K7FMP4Q2',
+    participantId: PARTICIPANT_A,
+    displayName: 'Alex',
+    sessionHash: testTokenHash('U')
   });
-  await classrooms.joinWorkspace({
-    studentJoinHash: testTokenHash('C'), participantId: PARTICIPANT_B,
-    accessHash: testTokenHash('T'), workspaceRepository: workspaceRepo
+  await classrooms.admitParticipant({
+    joinCode: 'K7FMP4Q2',
+    participantId: PARTICIPANT_B,
+    displayName: 'Blair',
+    sessionHash: testTokenHash('V')
   });
+  await classrooms.assignParticipant(testTokenHash('A'), {
+    participantId: PARTICIPANT_A,
+    workspacePublicId: WORKSPACE_A_ID,
+    workspaceRepository: workspaceRepo
+  });
+  await classrooms.assignParticipant(testTokenHash('A'), {
+    participantId: PARTICIPANT_B,
+    workspacePublicId: WORKSPACE_B_ID,
+    workspaceRepository: workspaceRepo
+  });
+  await classrooms.issueParticipantWorkspaceAccess({
+    sessionHash: testTokenHash('U'),
+    accessHash: testTokenHash('S'),
+    workspaceRepository: workspaceRepo
+  });
+  await classrooms.issueParticipantWorkspaceAccess({
+    sessionHash: testTokenHash('V'),
+    accessHash: testTokenHash('T'),
+    workspaceRepository: workspaceRepo
+  });
+
   await classrooms.upsertFeedback(testTokenHash('A'), WORKSPACE_A_ID, {
     targetId: 'problem.one-line', status: 'meets-standard', note: 'Clear',
     reviewedWorkspaceRevision: 3, reviewedFieldFingerprint: 'v1-0123456789abcdef'
@@ -1155,9 +1184,9 @@ test('Student coaching GET resolves only the membership behind its workspace cap
   await handler({ method: 'PUT', headers: { authorization: 'Bearer ' + 'S'.repeat(43) } }, write);
   assert.equal(write.statusCode, 405);
 
-  const legacy = response();
-  await handler({ method: 'GET', headers: { authorization: 'Bearer ' + 'P'.repeat(43) } }, legacy);
-  assert.equal(legacy.statusCode, 404);
+  const primaryWorkspace = response();
+  await handler({ method: 'GET', headers: { authorization: 'Bearer ' + 'P'.repeat(43) } }, primaryWorkspace);
+  assert.equal(primaryWorkspace.statusCode, 404);
 });
 
 test('coaching API rejects malformed feedback before any write', async () => {
