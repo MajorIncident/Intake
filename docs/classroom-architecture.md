@@ -81,18 +81,20 @@ The **Classroom Workspace** references the existing collaboration workspace rath
 
 ## Experience role lifecycle
 
-Slice #289 implements the role foundation with:
+Slice #289 established the role foundation and #330 now owns startup intent:
 
-- canonical `standalone`, `student`, and `instructor` roles in `src/experienceRoles.js`;
-- a versioned local-only `kt-experience-role-v1` preference owned by `src/experienceRoleController.js`;
-- a required first-run chooser for a genuinely new browser;
-- silent Standalone migration when an existing `kt-intake-full-v2` snapshot or existing `?workspace=` collaboration URL is present;
-- **View → Experience** as the durable route back to role selection;
-- declarative `data-experience-surface` projection rather than Intake-mode conditionals.
+- canonical `standalone`, `student`, and `instructor` roles live in `src/experienceRoles.js`;
+- a versioned local-only `kt-experience-role-v1` last-choice preference is owned by `src/experienceRoleController.js`;
+- `src/startupExperienceHub.js` independently detects substantive saved Intake, current Student resume, and current Instructor resume and renders explicit Continue cards;
+- ordinary launch remains unselected until the user chooses Continue / Work independently / Join a class / Run a class;
+- a safe `#join=<human-code>` fragment highlights Join but does not bypass admission;
+- only an explicit `?workspace=` collaboration capability routes directly to Standalone;
+- **View → Experience** reopens the same hub without destroying current Intake/Classroom state;
+- declarative `data-experience-surface` projection remains independent from Intake mode.
 
-Returning users resume the stored role. **Start Fresh** deliberately clears Intake state without clearing the role preference.
+**Start Fresh** clears Intake state without clearing the last-choice role preference, but that preference no longer auto-routes a later launch.
 
-The local experience preference is **not authentication or authorization**. Student class admission and Instructor privileges remain future server-enforced capabilities (#291 onward). Role/session preferences must never alter Intake serialization.
+The local experience preference and startup hub are **not authentication or authorization**. Student class admission and Instructor privileges remain server-enforced capabilities. Resume cards may display only non-secret local context and role/session navigation must never alter Intake serialization.
 
 ### Standalone
 
