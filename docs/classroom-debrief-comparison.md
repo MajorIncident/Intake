@@ -9,7 +9,9 @@ Base: `main` at `ef6949100ddac28c646338ee55cb6e7a74beb067` (#318 / PR #325 merge
 319B GREEN implementation head: `c6986b330fab31509c1697b3d77c8a5e907ef279`  
 319C GREEN implementation head: `676ccbc963fb60c59851e3beda5962f2fdaa9ca5`  
 319D GREEN implementation head: `54845e82e71c69b471019d6f24f01b36d1077894`  
-Current tranche: **319E-B — Current / Checkpoint + Ready / Working presentation**
+319E-A GREEN implementation head: `dd0f3d28f2741c89c714e0c23a8a475acbdc8de3`  
+319E-B GREEN implementation head: `0121a6f4a657c030c56144af3616ff9167ac310c`  
+Current tranche: **319E-C — coaching integration**
 
 This document is the canonical architecture contract for #319.
 
@@ -487,15 +489,25 @@ Validation:
 - Browser E2E: **31 passed / 11 intentional project-scoped skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
 
-#### 319E-B — explicit evidence mode + staged readiness — next
+#### 319E-B — explicit evidence mode + staged readiness — complete
 
-- add presentation-only **Current / Checkpoint** mode when current-stage immutable checkpoints exist;
-- report checkpoint-unavailable honestly per workspace rather than silently falling back to live evidence;
-- surface staged Ready / Working as facilitation metadata when present;
-- preserve ordinary non-staged activity presentation;
-- keep target/mode selection in memory only.
+Validated implementation head: `0121a6f4a657c030c56144af3616ff9167ac310c`.
 
-#### 319E-C — coaching integration — after B
+- added presentation-only **Current / Checkpoint** mode only when at least one current-stage immutable checkpoint exists;
+- checkpoint mode uses the 319B selector and reports **Checkpoint unavailable for this workspace** rather than falling back to live evidence;
+- staged Ready / Working replaces ordinary activity wording only when staged readiness metadata exists; mixed/unknown stage state remains explicit;
+- ordinary non-staged classes retain Active / Editing / revision presentation;
+- stage-focus recommendations remain advisory target shortcuts and do not constrain the target picker;
+- observer drill-down always opens the current live Intake, including from checkpoint comparison;
+- target/mode state remains memory-only and resets safely if a later refresh has no checkpoint evidence;
+- desktop/mobile browser acceptance covers staged recommendations, readiness, mode switching, and current-live drill-down.
+
+Validation:
+- repository quality: **363 tests / 362 pass / 0 fail / 1 intentional skip**;
+- Browser E2E: **31 passed / 11 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
+
+#### 319E-C — coaching integration — active
 
 - add neutral per-target coaching status / changed-since-review badges;
 - do not expose notes, grades, rankings, or cross-team scores;
