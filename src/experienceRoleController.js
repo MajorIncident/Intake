@@ -8,10 +8,8 @@
  *   snapshots, file exports, summaries, or template payloads.
  */
 
-import { STORAGE_KEY as INTAKE_STORAGE_KEY } from './storage.js';
 import {
   EXPERIENCE_ROLE_IDS,
-  LEGACY_DEFAULT_EXPERIENCE_ROLE,
   getExperienceRoleDefinition,
   isExperienceSurfaceVisible,
   normalizeExperienceRole
@@ -49,8 +47,7 @@ function defaultStorage() {
 /**
  * Read and normalize the dedicated experience-role preference.
  *
- * Both the versioned JSON envelope and a legacy raw role string are accepted so
- * the preference can evolve without ever touching Intake-state migrations.
+ * Only the current versioned JSON preference envelope is accepted.
  *
  * @param {Storage|null} [storage=defaultStorage()] - Storage implementation to read.
  * @returns {string|null} Stored canonical role or null.
@@ -64,12 +61,8 @@ export function readExperienceRolePreference(storage = defaultStorage()) {
     if (!raw) {
       return null;
     }
-    const direct = normalizeExperienceRole(raw);
-    if (direct) {
-      return direct;
-    }
     const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') {
+    if (!parsed || typeof parsed !== 'object' || parsed.version !== EXPERIENCE_ROLE_PREFERENCE_VERSION) {
       return null;
     }
     return normalizeExperienceRole(parsed.role);
@@ -108,19 +101,6 @@ export function persistExperienceRolePreference(role, storage = defaultStorage()
  */
 export function getActiveExperienceRole() {
   return activeExperienceRole;
-}
-
-/**
- * Detect an Intake snapshot created before experience-role preferences existed.
- *
- * @returns {boolean} Whether backward-compatible Standalone migration is required.
- */
-function hasLegacySavedIntake() {
-  try {
-    return Boolean(storageRef?.getItem(INTAKE_STORAGE_KEY));
-  } catch (_error) {
-    return false;
-  }
 }
 
 /**
@@ -433,8 +413,9 @@ function bindRoleControls() {
 /**
  * Initialize experience-role resume and first-run selection.
  *
- * Existing Intake snapshots or existing secret collaboration links are migrated
- * silently to Standalone. A genuinely new context receives the required chooser.
+ * Explicit Standalone collaboration links retain Standalone routing. Otherwise
+ * only a current stored preference resumes automatically; unselected contexts
+ * receive the required chooser.
  *
  * @param {object} [options] - Dependency overrides for tests or embedded contexts.
  * @param {Document} [options.documentRef=document] - Mounted document.
@@ -463,7 +444,7 @@ export function initExperienceRoleController({
   bindRoleControls();
 
   if (hasStandaloneWorkspaceLink()) {
-    const collaborationRole = applyExperienceRole(LEGACY_DEFAULT_EXPERIENCE_ROLE, {
+    const collaborationRole = applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE, {
       persist: true,
       announce: false
     });
@@ -485,15 +466,6 @@ export function initExperienceRoleController({
     applyExperienceRole(storedRole, { persist: false, announce: false });
     closeExperienceRoleChooser({ force: true });
     return storedRole;
-  }
-
-  if (hasLegacySavedIntake()) {
-    const migratedRole = applyExperienceRole(LEGACY_DEFAULT_EXPERIENCE_ROLE, {
-      persist: true,
-      announce: false
-    });
-    closeExperienceRoleChooser({ force: true });
-    return migratedRole;
   }
 
   activeExperienceRole = null;
