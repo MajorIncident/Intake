@@ -236,8 +236,6 @@ export function createInstructorClassroomController({
     if (element('instructorClassEntryCard')) element('instructorClassEntryCard').hidden = false;
     if (element('instructorClassDashboard')) element('instructorClassDashboard').hidden = true;
     if (element('instructorClassStartForm')) element('instructorClassStartForm').hidden = retry;
-    if (element('instructorExistingClass')) element('instructorExistingClass').hidden = retry;
-    if (element('instructorClassForm')) element('instructorClassForm').hidden = false;
     if (element('instructorClassResumePanel')) element('instructorClassResumePanel').hidden = !retry;
     if (element('instructorClassResumeTitle')) {
       element('instructorClassResumeTitle').textContent = activeSession?.class?.title || 'Saved instructor class';
@@ -955,7 +953,6 @@ export function createInstructorClassroomController({
       renderDashboard();
       renderParticipants();
       renderRoster();
-      if (element('instructorClassCode')) element('instructorClassCode').value = '';
       if (element('instructorClassTitleInput')) element('instructorClassTitleInput').value = '';
       if (selectedWorkspaceId) await selectWorkspace(selectedWorkspaceId);
       else restoreLocal();
@@ -968,15 +965,6 @@ export function createInstructorClassroomController({
     } finally {
       setBusy(false);
     }
-  };
-
-  const openClass = async instructorCode => {
-    const token = typeof instructorCode === 'string' ? instructorCode.trim() : '';
-    if (!validateInstructorCapability(token)) {
-      setError('Enter the current Instructor access code for this class.');
-      return false;
-    }
-    return activateClass(token);
   };
 
   const startClass = async titleValue => {
@@ -1190,10 +1178,9 @@ export function createInstructorClassroomController({
     activeSession = stored;
     selectedWorkspaceId = stored.selectedWorkspaceId || '';
     if (isInstructorSessionExpired(stored, now())) {
-      return terminalClass('Your saved Instructor class access has expired. Use the current Instructor access code.');
+      return terminalClass('Your saved Instructor class access has expired. Start a new class; recovery will be handled through Administration / Maintenance.');
     }
     if (element('instructorClassStartForm')) element('instructorClassStartForm').hidden = true;
-    if (element('instructorExistingClass')) element('instructorExistingClass').hidden = true;
     if (element('instructorClassResumePanel')) element('instructorClassResumePanel').hidden = false;
     if (element('instructorClassResumeTitle')) element('instructorClassResumeTitle').textContent = stored.class.title;
     if (element('instructorClassResumeMessage')) element('instructorClassResumeMessage').textContent = 'Reconnecting to your class roster…';
@@ -1225,10 +1212,6 @@ export function createInstructorClassroomController({
   const handleStartSubmit = event => {
     event.preventDefault();
     void startClass(element('instructorClassTitleInput')?.value || '');
-  };
-  const handleSubmit = event => {
-    event.preventDefault();
-    void openClass(element('instructorClassCode')?.value || '');
   };
   const handleWorkspaceCreate = event => {
     event.preventDefault();
@@ -1273,7 +1256,6 @@ export function createInstructorClassroomController({
 
   const init = () => {
     element('instructorClassStartForm')?.addEventListener('submit', handleStartSubmit);
-    element('instructorClassForm')?.addEventListener('submit', handleSubmit);
     element('instructorWorkspaceCreateForm')?.addEventListener('submit', handleWorkspaceCreate);
     element('instructorCopyJoinCodeBtn')?.addEventListener('click', handleCopyJoinCode);
     element('instructorShareClassBtn')?.addEventListener('click', handleShareClass);
@@ -1299,7 +1281,6 @@ export function createInstructorClassroomController({
     onObservationEnd();
     restoreReadonlyProjection();
     element('instructorClassStartForm')?.removeEventListener('submit', handleStartSubmit);
-    element('instructorClassForm')?.removeEventListener('submit', handleSubmit);
     element('instructorWorkspaceCreateForm')?.removeEventListener('submit', handleWorkspaceCreate);
     element('instructorCopyJoinCodeBtn')?.removeEventListener('click', handleCopyJoinCode);
     element('instructorShareClassBtn')?.removeEventListener('click', handleShareClass);
@@ -1318,7 +1299,6 @@ export function createInstructorClassroomController({
   return {
     init,
     destroy,
-    openClass,
     startClass,
     createWorkspace,
     assignParticipant,
