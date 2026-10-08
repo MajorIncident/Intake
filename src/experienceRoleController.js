@@ -432,18 +432,19 @@ function bindRoleControls() {
 }
 
 /**
- * Initialize experience-role resume and first-run selection.
+ * Initialize explicit startup experience selection.
  *
- * Explicit Standalone collaboration links retain Standalone routing. Otherwise
- * only a current stored preference resumes automatically; unselected contexts
- * receive the required chooser.
+ * Explicit Standalone collaboration links retain direct Standalone routing.
+ * Ordinary launches remain unselected so the startup hub can present saved
+ * Intake/Classroom contexts as separate Continue choices. The stored role
+ * preference is retained as last-choice metadata only and never auto-routes.
  *
  * @param {object} [options] - Dependency overrides for tests or embedded contexts.
  * @param {Document} [options.documentRef=document] - Mounted document.
  * @param {Window} [options.windowRef=window] - Mounted window.
  * @param {Storage|null} [options.storage=localStorage] - Local preference storage.
  * @param {Location|{search:string}} [options.location=window.location] - Current location.
- * @returns {string|null} Resumed/applied role, or null while first-run choice is pending.
+ * @returns {string|null} Applied explicit-workspace role, or null while startup choice is pending.
  */
 export function initExperienceRoleController({
   documentRef: nextDocument = typeof document !== 'undefined' ? document : null,
