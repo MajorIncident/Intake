@@ -27,7 +27,7 @@ const manifest = [
     "templateKind": "standard",
     "state": {
       "meta": {
-        "version": 1,
+        "version": 3,
         "savedAt": null
       },
       "pre": {
