@@ -160,6 +160,20 @@ A single batch may touch several files when they form one coherent concern. Avoi
 - When a response could become large, split it into named parts and finish each part with a durable repository checkpoint.
 - Prefer "Part 1 committed at <SHA>; next is Part 2" over a long narrative describing uncommitted work.
 
+### Slow-gate handoff
+
+Do not spend an entire conversation passively polling a gate that is known to take a long time when the implementation itself is already durable.
+
+A human/manual verification handoff is acceptable when all of the following are true:
+
+- the exact implementation branch and HEAD SHA are already committed and recorded;
+- the pending command, CI check, deployment state, or runtime observation is named precisely;
+- the expected success/failure condition is written down;
+- no additional repository mutation depends on pretending the unchecked result passed;
+- the next AI session will refresh repository/PR/deployment state before continuing rather than trusting the human report blindly.
+
+Use this for slow CI queues, long browser suites, rate-limited deployment waits, or other mostly-passive checks. Do not use it to skip a fast deterministic validation that the current session can reasonably complete, and never mark work complete merely because a handoff was made.
+
 ### Timeout/recovery protocol
 
 If delivery or execution times out:

@@ -27,6 +27,8 @@ Long AI sessions must assume that a tool call, response delivery, or conversatio
 - Open or update the implementation PR early. The PR body should explain architecture, invariants, checkpoints, validation, rollback, and cold-restart instructions while work is still in progress.
 - Keep user-facing progress messages concise. Large logs, diffs, test output, and detailed implementation state belong in the repository/PR rather than one giant chat response.
 - Before a potentially long validation/review phase, ensure the latest implementation is already committed and restart documentation is current.
+- Keep each AI work slice small enough to finish, checkpoint, and report independently. When a known slow or externally observable gate would mostly consume chat/context waiting, stop after the durable checkpoint and hand the exact pending check to the human for manual confirmation rather than burning the session on passive polling.
+- A manual gate handoff is valid only when the exact branch/HEAD is committed, the command/check and expected success condition are recorded, no further mutation depends on an unverified result, and the next AI session re-verifies repository state before continuing.
 - If message delivery or a tool call times out, **do not reconstruct from memory or blindly repeat mutations**. First inspect the branch HEAD, PR, issue, and restart ledger; determine what actually persisted; continue from that verified state.
 - If a batch fails before writing, explicitly verify that the branch HEAD is unchanged before retrying in a smaller batch.
 - A cold AI should be able to resume from GitHub without needing prior chat history. If it cannot, documentation/checkpointing is incomplete.
