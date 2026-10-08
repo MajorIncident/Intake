@@ -2,9 +2,11 @@
 
 ## Purpose
 
-This is the implementation contract for #312, the first post-foundation Classroom slice.
+This is the implementation contract and historical delivery record for #312, the first post-foundation Classroom slice.
 
-The #288 foundation proved secure Student/Instructor roles, collaboration, observation, coaching, protected Case Studies, and required real-browser CI. #312 changes the **operating model** from capability-oriented setup to an Instructor-run live class:
+> **Current status after #328:** the additive migration is complete. The only supported Classroom Student path is human join code -> Student class-session capability -> current assignment-specific workspace capability. The former two-code Student path, public Instructor bearer-code recovery UI, and their compatibility schema are removed. Historical checkpoint sections below remain as delivery history only and must not be treated as current product requirements.
+
+The #288 foundation proved secure Student/Instructor roles, collaboration, observation, coaching, protected Case Studies, and required real-browser CI. #312 changed the **operating model** from capability-oriented setup to an Instructor-run live class:
 
 ```text
 Instructor starts class
@@ -21,7 +23,7 @@ Instructor starts class
 ## Product invariants
 
 1. **Start Class is the normal Instructor path.** A normal Instructor should not have to invent or type an Instructor bearer capability.
-2. **Students type one human join code plus a display name.** The current class-capability + assignment-capability UI is transitional.
+2. **Students type one human join code plus a display name.** This is the sole supported Classroom Student admission UI.
 3. **The human join code is not workspace authorization.** It may admit a participant into one class, but cannot enumerate the class or edit an Intake.
 4. **An admitted Student may be unassigned.** Late arrivals must be able to wait safely while a class/exercise is already running.
 5. **Instructor assignment is server-authoritative.** Moving a Student changes the workspace they are authorized to edit.
@@ -31,7 +33,7 @@ Instructor starts class
 9. **Coaching stays workspace-scoped.** Existing feedback remains attached to the workspace/reasoning it reviewed; reassignment does not silently copy it.
 10. **Student credentials cannot enumerate classmates, teams, or other workspaces.**
 11. **Standalone remains backend-optional and unchanged.**
-12. **Legacy Classroom sessions remain compatible during migration.** Do not break existing saved Student/Instructor sessions in the first #312 server tranche.
+12. **Pre-production compatibility is intentionally finite.** #328 rejects obsolete Student/save envelopes and removes public bearer-code recovery; intentional Standalone collaboration remains supported.
 
 ## Why one stable workspace edit token is unsafe
 
@@ -121,9 +123,9 @@ Authority:
 
 On reassignment/unassignment, this capability is revoked before the Student can receive destination edit access.
 
-## Additive persistence model
+## Current persistence model after #328
 
-Do not mutate the legacy two-code membership contract destructively in the first tranche. Add the live-class model beside it, then move the UI after server behavior is proven.
+The #312 rollout was additive while the live-class model was being proven. #328 completes that migration and removes the obsolete compatibility structures rather than carrying them into production.
 
 ### `classroom_classes`
 
@@ -133,7 +135,7 @@ Add a human-facing join code field, conceptually:
 student_join_code VARCHAR(...) UNIQUE
 ```
 
-The existing high-entropy `student_join_token_hash` remains temporarily for the legacy `/api/classes/join` path.
+#328 drops the former high-entropy Student join-token hash; the human join code is the only Student admission locator.
 
 ### `classroom_participants`
 
@@ -165,20 +167,20 @@ Interpretation:
 - `workspace_access_token_hash` records the currently issued assignment-specific collaboration capability, if any;
 - raw capabilities are never stored.
 
-Existing `classroom_memberships` remains valid for legacy sessions until a later explicit migration/removal.
+#328 drops the former `classroom_memberships` compatibility table. Live participant assignment is represented only by `classroom_participants`.
 
-## Implementation checkpoint — additive persistence
+## Historical implementation checkpoint — additive persistence
 
-Completed on #314 before any Student UI cutover:
+Completed on #314 before any Student UI cutover. The bullets below describe that migration-time checkpoint; #328 later removed the compatibility structures it temporarily preserved:
 
 - human join-code helpers enforce the eight-character unambiguous alphabet and normalize display separators/case;
 - `classroom_classes.student_join_code` is additive and uniquely indexed when present;
-- new `classroom_participants` persists admitted live-class participants separately from legacy `classroom_memberships`;
+- new `classroom_participants` initially persisted admitted live-class participants beside the then-existing compatibility membership table;
 - a participant may exist with `workspace_id = NULL` as a first-class waiting/unassigned state;
 - Student class-session capability hashes are independent from assignment-specific workspace-access hashes;
 - re-admitting the same participant may rotate the class-session capability and update display name without inventing a workspace assignment;
 - Instructor-scoped participant listing and Student-session lookup repository primitives are in place;
-- legacy two-code admission and `classroom_memberships` remain unchanged.
+- at this historical checkpoint the two-code path remained unchanged; #328 subsequently removed it.
 
 Durable implementation commits:
 - `99c31f2e9c59180ed297db96512b62b310692b4c` — additive schema/repository primitives;
@@ -218,13 +220,13 @@ New response adds a human join code:
 }
 ```
 
-During compatibility migration, the server may also return the existing legacy `studentJoinToken`; the new Instructor UI must not depend on or present it.
+Historical #312 migration note: class creation temporarily returned a second high-entropy Student join token. #328 removes that response field entirely; current clients receive only the Instructor capability and human Student join code.
 
 Instructor client:
 - persists `instructorToken` in the existing Instructor session envelope;
 - immediately enters the dashboard;
 - displays/copies the Student join code;
-- supports join-code rotation and joins on/off.
+- manages the active class using the human Student join code and server-authoritative join-enable state.
 
 ### `POST /api/classes/admit` — Student admission
 
@@ -362,12 +364,12 @@ The Student client requests access:
 - after assignment revision changes;
 - on resume when its locally cached workspace access is missing/stale.
 
-## Implementation checkpoint — live HTTP admission/status/access
+## Historical implementation checkpoint — live HTTP admission/status/access
 
-Completed on #314 after the additive persistence tranche and before any Student UI cutover.
+Completed on #314 after the additive persistence tranche and before any Student UI cutover. #328 later removed the temporary compatibility outputs described in the original rollout.
 
 Implemented:
-- Start Class now generates and returns a formatted human Student join code while preserving the legacy high-entropy `studentJoinToken` for compatibility;
+- Start Class generates and returns a formatted human Student join code;
 - `POST /api/classes/admit` accepts only join code + participant ID + display name and returns a high-entropy Student class-session token;
 - admitted Students may remain waiting/unassigned with no collaboration edit authority;
 - `GET /api/classes/participants` is Instructor-only and lists only the represented class;
@@ -375,11 +377,11 @@ Implemented:
 - `POST /api/classes/student/access` exchanges a Student class-session token for a fresh assignment-specific `classroom-student` workspace capability only when assigned;
 - rotating current workspace access revokes the prior edit token;
 - the class-session token itself is not accepted by collaboration workspace APIs;
-- live workspace-access tokens now resolve through the existing Student coaching/protected-resource membership boundary, while legacy membership tokens continue to work;
+- live workspace-access tokens resolve through the Student coaching/protected-resource live-participant authorization boundary;
 - workspace-access issuance checks class/workspace/assignment revision before persisting the token so a concurrent assignment change cannot silently bind stale access to the wrong team.
 
 Durable implementation commits:
-- `746559e67620aab3457b6cda90e42168d5350dde` — Start Class join code + live workspace-access repository path + live/legacy Student context resolution;
+- `746559e67620aab3457b6cda90e42168d5350dde` — Start Class join code + live workspace-access repository path + migration-time Student context resolution;
 - `1b81d4a4c80a7fe16cee5523d6c13811f51f20b3` — deterministic repository parity for live access;
 - `2d6f92d05c693c35818e4457685c311c66a65807` — live admission/roster/status/access handlers;
 - `11a83da6d96588022b8879b3c5ca1e6961e75ed8` through `dc698c1103285efe95932c253f6cdbd1172b3227` — Vercel route entrypoints;
@@ -435,31 +437,31 @@ Validation on `7bfd662...`:
 
 Do not implement Student one-code waiting/automatic reassignment UI until the Instructor management surface is browser-green.
 
-## Implementation checkpoint — Instructor live-management client
+## Historical implementation checkpoint — Instructor live-management client
 
-Completed on #314 after the server assignment-authority tranche and before Student UI cutover.
+Completed on #314 after the server assignment-authority tranche and before Student UI cutover. #328 later removes the public existing-class bearer recovery path.
 
-Implemented:
-- Instructor entry now makes **Start a class** the primary path while retaining **Open an existing class** as a collapsed recovery/advanced path;
+Implemented at the #312 checkpoint:
+- Instructor entry made **Start a class** the primary path while temporarily retaining **Open an existing class** as a collapsed recovery/advanced path;
 - Start Class creates the class from a title, persists only the Instructor capability plus public class/join-code context for same-device resume, and enters the dashboard immediately;
 - the dashboard displays the human Student join code with a copy affordance;
 - live polling combines class workspaces with the Instructor-only participant roster;
 - Waiting/Unassigned Students are visible before they have any workspace authority;
 - Instructor can create Team or Individual workspaces from the management panel;
 - accessible per-Student assignment selectors support assign, reassign, and unassign without requiring drag-and-drop;
-- workspace cards count live `classroom_participants` as well as legacy memberships;
+- workspace cards count live `classroom_participants`;
 - selecting a workspace continues to use the existing server-enforced read-only observer and coaching integration;
-- the Instructor client ignores the legacy workspace `assignmentToken` returned for compatibility and never stores or reuses it;
+- workspace creation returns no assignment secret;
 - same-device reload resumes the live class, current join code, participant roster, assignment state, and selected observer workspace;
-- the old existing-class recovery path remains covered and explicitly opens its disclosure before accepting the Instructor capability;
+- #328 removes the old existing-class recovery disclosure; same-device resume remains, with future recovery owned by #329 Administration / Maintenance;
 - dynamic management controls are explicitly marked local-only so they never enter Intake persistence/export state.
 
 Browser fixture / regression coverage:
 - deterministic fixture now supports Start Class, live workspaces, live participant roster, assignment PATCH, and live observation;
 - real-browser journey proves: Start Class -> join-code display -> Waiting Student -> create Team Alpha -> assign Student -> read-only observe Team Alpha -> reload/resume;
-- the journey asserts no legacy `/api/classes/join` use and no Instructor request body contains an assignment token;
+- the journey asserts the retired two-code route is absent and Instructor request bodies contain no retired assignment secret;
 - serious/critical axe violations and uncaught browser errors remain fatal;
-- existing Instructor observer/coaching/negative-authorization journeys continue through the intentional collapsed existing-class recovery path.
+- current Instructor observer/coaching/negative-authorization journeys resume from a seeded same-device Instructor session where a pre-existing class context is required.
 
 Durable implementation commits:
 - `0d004552db82660dc723fd37a79ef4e46d197083` — live Instructor shell / primary Start Class UX;
@@ -477,13 +479,12 @@ Validation on `d3e2a397...`:
 - required Browser E2E: **23 passed / 7 intentional project-scoped skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: green.
 
-## Implementation checkpoint — Student live-class client
+## Historical implementation checkpoint — Student live-class client
 
-Completed on #314 after the Instructor live-management surface.
+Completed on #314 after the Instructor live-management surface. #328 later removes the temporary recovery path.
 
-Implemented:
-- normal Student entry is now **display name + one human class code**;
-- legacy class + assignment capability entry remains available under **Use legacy two-code access** for additive compatibility;
+Current behavior:
+- Student entry is **display name + one human class code**;
 - `POST /api/classes/admit` creates the live Student session and the human code is discarded after admission;
 - the same-device live resume envelope persists only the high-entropy Student class-session capability plus public class/participant/assignment context;
 - assignment-specific workspace edit capabilities are **memory-only** and intentionally rejected if present in a live resume envelope;
@@ -495,10 +496,10 @@ Implemented:
 - terminal class-session failure clears invalid Classroom authority and restores pre-class local recovery where available;
 - coaching and protected-resource Student integrations continue to receive only the currently active assignment-specific workspace token.
 
-Compatibility:
-- legacy two-code Student join/resume remains supported;
-- current legacy browser authorization, coaching, protected Case Study, and team-collaboration journeys explicitly open the recovery disclosure and remain green;
-- no legacy routes/tables were removed.
+#328 compatibility reset:
+- obsolete two-code Student join/resume is unsupported;
+- browser authorization, coaching, protected Case Study, and collaboration journeys use only current live Student admission/session authority;
+- the retired route, schema, and UI are removed.
 
 Deterministic/browser coverage:
 - focused tests prove one-code Waiting and Waiting -> Team Alpha -> Team Beta -> Waiting lifecycle;
@@ -508,15 +509,15 @@ Deterministic/browser coverage:
 - the browser test proves destination Team Beta does not inherit Team Alpha Intake;
 - stale Alpha access returns 404 after reassignment and stale Beta access returns 404 after unassign;
 - serious/critical axe scanning caught the Waiting eyebrow contrast at 3.72:1; the Waiting surface now uses the existing accessible `var(--accent-text)` foreground;
-- all legacy two-code browser journeys remain available through the explicit recovery disclosure.
+- no browser journey depends on the retired two-code recovery disclosure.
 
 Durable implementation commits:
-- `47485439c34fc7237c28f93619924e2da87b084a` / `73792b71db9ec7965c36c2b905ebc09bb699ea78` — primary one-code Student UX, Waiting surface, and legacy recovery disclosure;
+- `47485439c34fc7237c28f93619924e2da87b084a` / `73792b71db9ec7965c36c2b905ebc09bb699ea78` — primary one-code Student UX and Waiting surface from the migration phase;
 - `d32c7ec331daa5010f9617c6b332756e9395d35b` — live Student admission/status/access/resume/reassignment lifecycle;
 - `db54b1aa84dc4d43802aa568b811b6974a84c02c` / `a3d520655c928abbeb4cb63e592593a38a969cd8` — live session-isolation and lifecycle tests;
 - `8485b2ca1a5ba59fb98d4aae0398a9052fab91b6` / `2fd0d53c0fd8e4e4cac0298aca9f5ed7ad930a94` — isolated live Student browser fixture and side-effect-free Waiting behavior;
 - `50f6260a251793c0794945d941ad4ac1c97d4e8d` — live Student Playwright journey;
-- `30dbb0d807793fc503b4933c24ffa7e2ff50d8ba` through `1b90c0f40238769d6ab17ce9bfe7d44fc391a212` — legacy Student browser journeys explicitly enter two-code recovery;
+- `30dbb0d807793fc503b4933c24ffa7e2ff50d8ba` through `1b90c0f40238769d6ab17ce9bfe7d44fc391a212` — historical migration-phase two-code browser coverage, retired by #328;
 - `0c8692c7486ecb50c730d0757c41426b81830250` — Waiting-state WCAG contrast repair and green implementation gate.
 
 Validation on `0c8692c...`:
@@ -649,20 +650,18 @@ When moving Student A from Team A to Team B:
 
 This is intentionally predictable for a facilitated exercise.
 
-## Compatibility plan
+## Compatibility reset completed by #328
 
-The first #312 server tranche is additive.
+The #312 rollout intentionally kept the prior model temporarily while live admission/assignment behavior was proven. #328 is the separately approved breaking pre-production migration that completes that work:
 
-Keep working:
-- legacy `POST /api/classes/join`;
-- legacy `classroom_memberships`;
-- existing Student saved workspace sessions;
-- existing Instructor bearer resume;
-- current observation/coaching/protected-resource paths.
+- `POST /api/classes/join` is removed;
+- `classroom_memberships`, the high-entropy Student join-token hash, and workspace claim-token hash are dropped;
+- old Student saved workspace-session envelopes are rejected;
+- the public Instructor bearer-code recovery form is removed;
+- current observation/coaching/protected-resource paths remain;
+- intentional Standalone secret-link collaboration remains supported.
 
-The normal Student UI now uses admit/status/access because the repository/API safety matrix, coaching/protected-resource authorization, and browser waiting/reassignment coverage are green. The legacy two-code path remains available under an explicit recovery disclosure during the additive migration.
-
-Do not delete legacy tables/routes in #312 unless a separate migration explicitly proves no supported client depends on them.
+Do not reintroduce the retired Classroom path for recovery. Cross-device Instructor recovery and stale-data maintenance belong to #329 Administration / Maintenance.
 
 ## Security tests required before UI cutover
 
@@ -679,8 +678,8 @@ Server/API:
 - unassign -> old workspace token fails and no new access is issued;
 - stale old-team request can never resolve as destination-team write;
 - another Student's session token cannot fetch this Student's status;
-- legacy two-code admission still passes;
-- new workspace-access token still works with coaching and protected Case Study Student reads.
+- the retired two-code route is absent/rejected;
+- current workspace-access token works with coaching and protected Case Study Student reads.
 
 Browser:
 - Instructor starts class and sees one Student-facing code;
