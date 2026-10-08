@@ -12,7 +12,8 @@ Base: `main` at `ef6949100ddac28c646338ee55cb6e7a74beb067` (#318 / PR #325 merge
 319E-A GREEN implementation head: `dd0f3d28f2741c89c714e0c23a8a475acbdc8de3`  
 319E-B GREEN implementation head: `0121a6f4a657c030c56144af3616ff9167ac310c`  
 319E-C GREEN implementation head: `0a83f4c26a462d663e346c2a024a42fb43f9b31a`  
-Current tranche: **319F — integrated browser/accessibility/security closeout**
+319F GREEN implementation head: `1af0e13077c1ff75021ce782bcf798b15e8af150`  
+Status: **implementation complete — pending PR #326 merge review**
 
 This document is the canonical architecture contract for #319.
 
@@ -526,14 +527,29 @@ Validation:
 - Browser E2E: **31 passed / 11 intentional project-scoped skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
 
-### 319F — integrated browser/accessibility/security closeout — active
+### 319F — integrated browser/accessibility/security closeout — complete
 
-- multi-team real-browser acceptance;
-- Student non-exposure;
-- keyboard/mobile/Axe coverage;
-- full persistence/summary/export/security audit;
-- exact-head repository/browser/security/template gates;
-- final docs/review readiness.
+Validated implementation head: `1af0e13077c1ff75021ce782bcf798b15e8af150`.
+
+Closeout evidence:
+- multi-team real-browser comparison is covered on desktop and responsive mobile, including target switching and observer drill-down;
+- staged recommendations, Ready / Working state, explicit Current / Checkpoint mode, checkpoint-unavailable behavior, and coaching badges are exercised in browser/feature coverage;
+- Student browser sessions explicitly prove the Instructor comparison remains hidden and **never request** `/api/classes/debrief`;
+- server/API coverage independently proves Student/join/assignment/workspace capabilities cannot read the aggregate route;
+- keyboard/focus behavior uses native select/buttons plus focus-visible styling, and browser acceptance runs Axe with no serious/critical violations;
+- comparison controls remain interactive while the selected Student Intake remains observer-read-only;
+- a static architecture guard proves `classroomDebriefComparison.js` has no Intake app-state, storage, file-transfer, localStorage/sessionStorage, collect/apply, summary, or export dependency;
+- comparison root and interactive controls remain explicitly `data-persistence="local-only"` and `data-summary="exclude"`;
+- `main.js` gives the comparison controller only Instructor lifecycle authority plus existing observer navigation, never Student lifecycle or Intake save/apply callbacks;
+- no new persistence table, editable capability, score/rank calculation, raw snapshot response, coaching-note exposure, or template-specific map was introduced;
+- PR #326 remained mergeable with no unresolved review threads before the final documentation pass.
+
+Validation:
+- repository quality: **366 tests / 365 pass / 0 fail / 1 intentional skip**;
+- Browser E2E: **31 passed / 11 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
+
+#319 implementation is complete. Do not begin #316/#317 or unrelated Classroom work on this branch. The only remaining action is final PR review/merge, followed by the normal merged-main publication/verification workflow if approved.
 
 ## Rollback
 
@@ -559,4 +575,4 @@ Read:
 - existing Classroom coaching modules;
 - the consolidated Classroom router/server modules.
 
-Continue the existing #319 branch/PR. 319A/B/C/D and 319E-A are complete; begin 319E-B with Current / Checkpoint evidence mode plus staged Ready / Working presentation. Keep ordinary non-staged classes unchanged, never silently fall back from missing checkpoint evidence to live evidence, and keep comparison state presentation-only. Leave a mini milestone after every meaningful sub-slice and before long validation waits.
+All #319 implementation tranches (319A–F) are complete on PR #326. Do not add new product scope to this branch. Confirm the PR remains mergeable with exact-head gates green, then merge only with explicit approval. After merge, use the normal merged-main production publication/verification workflow and close #319 once the merged commit is verified.
