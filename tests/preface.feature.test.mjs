@@ -2,7 +2,7 @@
  * Preface feature integration tests.
  *
  * Validates that the preface module wires DOM inputs to KT mirrors,
- * normalises legacy containment statuses, and refreshes dynamic titles
+ * rejects unsupported containment statuses and refreshes dynamic titles
  * when users provide context.
  */
 import assert from 'node:assert/strict';
@@ -206,7 +206,7 @@ test('preface: mirrors KT fields, normalises containment, and updates titles', a
     ops: { containStatus: 'mitigation' }
   });
 
-  assert.equal(document.getElementById('containStabilized').checked, true);
+  assert.equal(document.getElementById('containStabilized').checked, false, 'obsolete containment aliases are not migrated');
   assert.equal(document.getElementById('containAssessing').checked, false);
 
   assert.ok(saveSpy.mock.callCount() >= 3, 'save handler should run after inputs');
