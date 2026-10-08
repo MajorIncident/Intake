@@ -16,9 +16,9 @@ import {
 } from './helpers/classroom-test-repositories.mjs';
 
 const INSTRUCTOR = 'i'.repeat(43);
-const JOIN = 'j'.repeat(43);
-const CLAIM = 'c'.repeat(43);
 const STUDENT = 's'.repeat(43);
+const STUDENT_SESSION = 'u'.repeat(43);
+const JOIN_CODE = 'K7FMP4Q2';
 const PRIMARY_WORKSPACE = 'p'.repeat(43);
 const CLASS_ID = '11111111-1111-4111-8111-111111111111';
 const WORKSPACE_ID = '22222222-2222-4222-8222-222222222222';
@@ -47,14 +47,12 @@ async function setupClassroom() {
   const classrooms = createClassroomRepository();
   const workspaces = createWorkspaceRepository();
   const instructorHash = hashWorkspaceToken(INSTRUCTOR);
-  const joinHash = hashWorkspaceToken(JOIN);
-  const claimHash = hashWorkspaceToken(CLAIM);
 
   await classrooms.createClass({
     publicId: CLASS_ID,
     title: 'Protected Cases Class',
     instructorHash,
-    studentJoinHash: joinHash
+    studentJoinCode: JOIN_CODE
   });
   const workspace = await workspaces.createUntil(
     hashWorkspaceToken(PRIMARY_WORKSPACE),
@@ -66,13 +64,21 @@ async function setupClassroom() {
     publicId: WORKSPACE_ID,
     workspaceId: workspace.id,
     kind: 'individual',
-    label: 'Student workspace',
-    claimHash
+    label: 'Student workspace'
   });
-  await classrooms.joinWorkspace({
-    studentJoinHash: joinHash,
-    claimHash,
+  await classrooms.admitParticipant({
+    joinCode: JOIN_CODE,
     participantId: PARTICIPANT_ID,
+    displayName: 'Student',
+    sessionHash: hashWorkspaceToken(STUDENT_SESSION)
+  });
+  await classrooms.assignParticipant(instructorHash, {
+    participantId: PARTICIPANT_ID,
+    workspacePublicId: WORKSPACE_ID,
+    workspaceRepository: workspaces
+  });
+  await classrooms.issueParticipantWorkspaceAccess({
+    sessionHash: hashWorkspaceToken(STUDENT_SESSION),
     accessHash: hashWorkspaceToken(STUDENT),
     workspaceRepository: workspaces
   });
@@ -88,7 +94,7 @@ test('Instructor catalog requires the represented class and omits protected payl
   });
 
   const unauthorized = response();
-  await handler(request('GET', JOIN), unauthorized);
+  await handler(request('GET', STUDENT_SESSION), unauthorized);
   assert.equal(unauthorized.statusCode, 404);
   assert.deepEqual(unauthorized.body, { error: 'Class not found.' });
 
@@ -127,17 +133,17 @@ test('Instructor payload uses POST body and returns protected content only after
   assert.equal(missing.body.error, 'Case Study not found.');
 });
 
-test('Student access is membership-bound and rejects legacy collaboration capabilities', async () => {
+test('Student access is live-participant-bound and rejects Standalone collaboration capabilities', async () => {
   const { classrooms } = await setupClassroom();
   const handler = studentCaseStudiesHandler({
     getRepository: async () => classrooms,
     manifest: CASES
   });
 
-  const legacy = response();
-  await handler(request('GET', PRIMARY_WORKSPACE), legacy);
-  assert.equal(legacy.statusCode, 404);
-  assert.deepEqual(legacy.body, { error: 'Class resources not found.' });
+  const standalone = response();
+  await handler(request('GET', PRIMARY_WORKSPACE), standalone);
+  assert.equal(standalone.statusCode, 404);
+  assert.deepEqual(standalone.body, { error: 'Class resources not found.' });
 
   const catalog = response();
   await handler(request('GET', STUDENT), catalog);
