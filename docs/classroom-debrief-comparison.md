@@ -11,7 +11,8 @@ Base: `main` at `ef6949100ddac28c646338ee55cb6e7a74beb067` (#318 / PR #325 merge
 319D GREEN implementation head: `54845e82e71c69b471019d6f24f01b36d1077894`  
 319E-A GREEN implementation head: `dd0f3d28f2741c89c714e0c23a8a475acbdc8de3`  
 319E-B GREEN implementation head: `0121a6f4a657c030c56144af3616ff9167ac310c`  
-Current tranche: **319E-C — coaching integration**
+319E-C GREEN implementation head: `0a83f4c26a462d663e346c2a024a42fb43f9b31a`  
+Current tranche: **319F — integrated browser/accessibility/security closeout**
 
 This document is the canonical architecture contract for #319.
 
@@ -507,13 +508,25 @@ Validation:
 - Browser E2E: **31 passed / 11 intentional project-scoped skips / 0 failed**;
 - CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
 
-#### 319E-C — coaching integration — active
+#### 319E-C — coaching integration — complete
 
-- add neutral per-target coaching status / changed-since-review badges;
-- do not expose notes, grades, rankings, or cross-team scores;
-- preserve dynamic Possible Cause independence.
+Validated implementation head: `0a83f4c26a462d663e346c2a024a42fb43f9b31a`.
 
-### 319F — integrated browser/accessibility/security closeout
+- renders coaching status beside the exact reviewed evidence projection;
+- static/KT evidence matches coaching by stable semantic target ID;
+- dynamic Possible Causes match only their workspace-local runtime instance target ID, preserving cross-team independence;
+- neutral badges show **Meets standard**, **Needs improvement**, and optional **Changed since review** only;
+- coaching notes remain excluded from the aggregate response/presentation and are never surfaced in comparison;
+- checkpoint mode labels coaching as **Current coaching** because changed-since-review is intentionally derived against current live evidence, not the historical checkpoint;
+- no grades, rankings, combined team score, or comparative judgment is calculated;
+- existing Instructor coaching remains the write/edit surface; the comparison remains read-only.
+
+Validation:
+- repository quality: **363 tests / 362 pass / 0 fail / 1 intentional skip**;
+- Browser E2E: **31 passed / 11 intentional project-scoped skips / 0 failed**;
+- CI, CodeQL, Dependency Review, and Template Manifest Guard: **green**.
+
+### 319F — integrated browser/accessibility/security closeout — active
 
 - multi-team real-browser acceptance;
 - Student non-exposure;
