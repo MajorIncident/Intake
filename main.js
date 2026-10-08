@@ -68,6 +68,7 @@ import { initClassroomCaseStudies } from './src/classroomCaseStudies.js';
 import { initInstructorExerciseConsole } from './src/classroomExerciseInstructor.js';
 import { initStudentExerciseReference } from './src/classroomExerciseStudent.js';
 import { initAdminMaintenance } from './src/adminMaintenance.js';
+import { initStartupExperienceHub } from './src/startupExperienceHub.js';
 
 /** Active shared-session controller, initialized during boot. @type {object|null} */
 let collaborationController = null;
@@ -78,6 +79,7 @@ let classroomDebriefComparisonController = null;
 let classroomCaseStudiesController = null;
 let instructorExerciseConsoleController = null;
 let studentExerciseReferenceController = null;
+let startupExperienceHubController = null;
 
 /** Destroys collaboration resources during application or test teardown. @returns {void} */
 export function destroyCollaboration() {
@@ -195,7 +197,17 @@ function boot() {
   window.showToast = showToast;
 
   initThemeFromStorage();
-  initExperienceRoleController();
+  startupExperienceHubController = initStartupExperienceHub({
+    documentRef: document,
+    windowRef: window,
+    storage: window.localStorage,
+    location: window.location,
+    startFresh
+  });
+  initExperienceRoleController({
+    onRoleIntent: role => startupExperienceHubController?.handleRoleIntent?.(role) === true,
+    onChooserOpen: () => startupExperienceHubController?.refresh?.()
+  });
   initAdminMaintenance({ documentRef: document, windowRef: window, toast: showToast });
 
   configureKT({
@@ -281,6 +293,9 @@ function boot() {
     },
     onSessionDisconnected: () => {
       studentExerciseReferenceController?.disconnect?.();
+    },
+    onResumeUnavailable: message => {
+      startupExperienceHubController?.showResumeFailure?.(message);
     }
   });
   instructorClassroomController = initInstructorClassroom({
@@ -299,6 +314,9 @@ function boot() {
       classroomCaseStudiesController?.disconnect?.();
       instructorExerciseConsoleController?.disconnect?.();
       classroomDebriefComparisonController?.disconnect?.();
+    },
+    onResumeUnavailable: message => {
+      startupExperienceHubController?.showResumeFailure?.(message);
     }
   });
   wireThemeToggle();
