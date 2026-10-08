@@ -67,6 +67,7 @@ import { initClassroomDebriefComparison } from './src/classroomDebriefComparison
 import { initClassroomCaseStudies } from './src/classroomCaseStudies.js';
 import { initInstructorExerciseConsole } from './src/classroomExerciseInstructor.js';
 import { initStudentExerciseReference } from './src/classroomExerciseStudent.js';
+import { initAdminMaintenance } from './src/adminMaintenance.js';
 
 /** Active shared-session controller, initialized during boot. @type {object|null} */
 let collaborationController = null;
@@ -195,6 +196,7 @@ function boot() {
 
   initThemeFromStorage();
   initExperienceRoleController();
+  initAdminMaintenance({ documentRef: document, windowRef: window, toast: showToast });
 
   configureKT({
     autoResize,
