@@ -153,6 +153,51 @@ function stagedDebriefBody() {
     workspaceRevision: null,
     readyAt: null
   };
+  body.workspaces[0].coaching = {
+    reviewedTargetCount: 2,
+    meetsStandardCount: 1,
+    needsImprovementCount: 1,
+    changedSinceReviewCount: 1,
+    targets: [
+      {
+        targetId: 'problem.one-line',
+        status: 'meets-standard',
+        reviewedWorkspaceRevision: 5,
+        feedbackRevision: 3,
+        changedSinceReview: true,
+        note: 'Private note must never render.'
+      },
+      {
+        targetId: 'possible-cause.cause-alpha',
+        status: 'needs-improvement',
+        reviewedWorkspaceRevision: 7,
+        feedbackRevision: 2,
+        changedSinceReview: false
+      }
+    ]
+  };
+  body.workspaces[1].coaching = {
+    reviewedTargetCount: 2,
+    meetsStandardCount: 1,
+    needsImprovementCount: 1,
+    changedSinceReviewCount: 1,
+    targets: [
+      {
+        targetId: 'problem.one-line',
+        status: 'needs-improvement',
+        reviewedWorkspaceRevision: 4,
+        feedbackRevision: 1,
+        changedSinceReview: false
+      },
+      {
+        targetId: 'possible-cause.cause-beta',
+        status: 'meets-standard',
+        reviewedWorkspaceRevision: 3,
+        feedbackRevision: 4,
+        changedSinceReview: true
+      }
+    ]
+  };
   body.workspaces[0].checkpoint = {
     workspaceRevision: 6,
     updatedAt: '2026-10-07T17:56:00Z',
@@ -314,6 +359,22 @@ test('staged comparison exposes advisory focus, Ready/Working, and honest checkp
   assert.equal(documentRef.getElementById('instructorDebriefCurrentBtn').getAttribute('aria-pressed'), 'true');
   assert.match(documentRef.getElementById('instructorDebriefMatrix').textContent, /Alpha problem/);
   assert.match(documentRef.getElementById('instructorDebriefMatrix').textContent, /Beta problem/);
+  assert.match(
+    documentRef.querySelector(`[data-debrief-workspace-id="${W1}"]`).textContent,
+    /Meets standard/
+  );
+  assert.match(
+    documentRef.querySelector(`[data-debrief-workspace-id="${W1}"]`).textContent,
+    /Changed since review/
+  );
+  assert.match(
+    documentRef.querySelector(`[data-debrief-workspace-id="${W2}"]`).textContent,
+    /Needs improvement/
+  );
+  assert.equal(
+    documentRef.getElementById('instructorDebriefMatrix').textContent.includes('Private note must never render.'),
+    false
+  );
 
   documentRef.getElementById('instructorDebriefCheckpointBtn').click();
   assert.equal(controller.getState().evidenceMode, 'checkpoint');
@@ -323,6 +384,18 @@ test('staged comparison exposes advisory focus, Ready/Working, and honest checkp
     'Immutable debrief checkpoint'
   );
   assert.match(documentRef.getElementById('instructorDebriefMatrix').textContent, /Alpha checkpoint problem/);
+  assert.match(
+    documentRef.querySelector(`[data-debrief-workspace-id="${W1}"]`).textContent,
+    /Current coaching/
+  );
+  assert.match(
+    documentRef.querySelector(`[data-debrief-workspace-id="${W1}"]`).textContent,
+    /Meets standard/
+  );
+  assert.match(
+    documentRef.querySelector(`[data-debrief-workspace-id="${W1}"]`).textContent,
+    /Changed since review/
+  );
   assert.match(
     documentRef.querySelector(`[data-debrief-workspace-id="${W2}"]`).textContent,
     /Checkpoint unavailable for this workspace/
@@ -341,6 +414,10 @@ test('staged comparison exposes advisory focus, Ready/Working, and honest checkp
   causeFocus.click();
   assert.equal(documentRef.getElementById('instructorDebriefTargetSelect').value, 'possible-cause');
   assert.match(documentRef.getElementById('instructorDebriefMatrix').textContent, /Earlier cache rule/);
+  assert.match(
+    documentRef.querySelector(`[data-debrief-workspace-id="${W1}"]`).textContent,
+    /Needs improvement/
+  );
   assert.equal(
     documentRef.querySelector(`[data-debrief-workspace-id="${W2}"]`).textContent.includes('DNS rule'),
     false
@@ -350,6 +427,18 @@ test('staged comparison exposes advisory focus, Ready/Working, and honest checkp
   assert.equal(controller.getState().evidenceMode, 'current');
   assert.match(documentRef.getElementById('instructorDebriefMatrix').textContent, /Cache rule/);
   assert.match(documentRef.getElementById('instructorDebriefMatrix').textContent, /DNS rule/);
+  assert.match(
+    documentRef.querySelector(`[data-debrief-workspace-id="${W1}"]`).textContent,
+    /Needs improvement/
+  );
+  assert.match(
+    documentRef.querySelector(`[data-debrief-workspace-id="${W2}"]`).textContent,
+    /Meets standard/
+  );
+  assert.match(
+    documentRef.querySelector(`[data-debrief-workspace-id="${W2}"]`).textContent,
+    /Changed since review/
+  );
   assert.equal(dom.window.localStorage.getItem('sentinel'), 'unchanged');
 
   controller.destroy();
