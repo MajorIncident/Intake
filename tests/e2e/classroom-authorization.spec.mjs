@@ -82,12 +82,21 @@ test('expired saved Student access is discarded before stale workspace content c
 
   await page.reload();
 
+  await expect(page.locator('#experienceRoleGate')).toBeVisible();
+  await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'unselected');
+  await expect(page.locator('[data-startup-resume="student"]')).toHaveCount(0);
+  await expect(page.locator('#studentClassEntryShell')).toBeHidden();
+
+  const storedBeforeNewIntent = await page.evaluate(key => window.localStorage.getItem(key), STUDENT_SESSION_STORAGE_KEY);
+  expect(storedBeforeNewIntent).not.toBeNull();
+
+  await page.getByRole('button', { name: /Join a class/ }).click();
+
   await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'student');
   await expect(page.locator('#studentClassEntryShell')).toBeVisible();
-  await expect(page.locator('#studentClassJoinError')).toContainText(/expired/i);
   await expect(page.locator('body')).not.toHaveAttribute('data-student-class-status', 'connected');
 
-  const storedAfterRecovery = await page.evaluate(key => window.localStorage.getItem(key), STUDENT_SESSION_STORAGE_KEY);
-  expect(storedAfterRecovery).toBeNull();
+  const storedAfterNewIntent = await page.evaluate(key => window.localStorage.getItem(key), STUDENT_SESSION_STORAGE_KEY);
+  expect(storedAfterNewIntent).toBeNull();
   await expect(page.locator('#studentClassWorkspace')).not.toContainText('Expired Team');
 });
