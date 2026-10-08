@@ -9,6 +9,7 @@ import {
   EXPERIENCE_ROLE_STORAGE_KEY,
   persistExperienceRolePreference
 } from '../src/experienceRoleController.js';
+import { APP_STATE_VERSION } from '../src/appStateVersion.js';
 import { EXPERIENCE_ROLE_IDS } from '../src/experienceRoles.js';
 import {
   STORAGE_KEY,
@@ -40,7 +41,7 @@ afterEach(() => {
 test('normalizing imported Intake state strips accidental experience-role fields', () => {
   const normalized = migrateAppState({
     meta: {
-      version: 2,
+      version: APP_STATE_VERSION,
       savedAt: null,
       intakeMode: 'general',
       experienceRole: EXPERIENCE_ROLE_IDS.INSTRUCTOR
@@ -57,7 +58,7 @@ test('experience role uses its own storage key and survives Start Fresh Intake c
   persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.STUDENT, dom.window.localStorage);
 
   const normalized = migrateAppState({
-    meta: { version: 2, savedAt: null, intakeMode: 'general' }
+    meta: { version: APP_STATE_VERSION, savedAt: null, intakeMode: 'general' }
   });
   saveToStorage(normalized);
 

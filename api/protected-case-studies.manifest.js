@@ -27,7 +27,7 @@ const manifest = [
     "templateKind": "case-study",
     "state": {
       "meta": {
-        "version": 1,
+        "version": 3,
         "savedAt": "2025-11-18T18:57:08.496Z"
       },
       "pre": {
@@ -464,7 +464,7 @@ const manifest = [
     "templateKind": "case-study",
     "state": {
       "meta": {
-        "version": 1,
+        "version": 3,
         "savedAt": "2025-12-04T21:37:48.348Z"
       },
       "appearance": {
@@ -1272,7 +1272,7 @@ const manifest = [
     "templateKind": "case-study",
     "state": {
       "meta": {
-        "version": 1,
+        "version": 3,
         "savedAt": "2025-11-18T07:33:01.521Z"
       },
       "pre": {
@@ -1877,7 +1877,7 @@ const manifest = [
     "templateKind": "case-study",
     "state": {
       "meta": {
-        "version": 1,
+        "version": 3,
         "savedAt": "2025-11-19T00:43:10.430Z"
       },
       "pre": {

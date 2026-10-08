@@ -8,10 +8,11 @@ Classroom organizes the existing collaboration engine rather than duplicating In
 
 ```text
 Class
-  -> Classroom Workspace (individual | group)
-       -> existing collaboration_workspaces row
-       -> Classroom Memberships
-            -> per-participant editable workspace capability
+  -> Classroom Participant [0..n]
+       -> stable Student class-session capability
+       -> optional current Classroom Workspace assignment
+            -> existing collaboration_workspaces row
+            -> assignment-specific editable workspace capability
 ```
 
 The classroom tables contain organization, assignment, retention, and authorization metadata. Intake snapshot, optimistic revision, team metadata, and presence remain owned by the existing collaboration tables.
@@ -24,9 +25,7 @@ The classroom tables contain organization, assignment, retention, and authorizat
 | Human Student join code | Admission locator for the normal #312 live path; never edit authority | **No** | normalized code on class row |
 | Student class-session capability | Resume one admitted participant and read only that participant's current assignment | **No** | SHA-256 hash |
 | Student workspace capability | Edit/sync only the participant's currently assigned collaboration workspace | N/A | SHA-256 alias hash |
-| Legacy Student join capability | Compatibility admission into one class for the older two-code path | **No** | SHA-256 hash |
-| Legacy assignment capability | Compatibility selector for one individual/group workspace | **No** | SHA-256 hash |
-| Legacy Standalone workspace capability | Existing secret-link collaboration | N/A | SHA-256 hash |
+| Standalone workspace capability | Existing secret-link collaboration | N/A | SHA-256 hash |
 
 Possession of a capability is authority. Display name is not identity.
 
@@ -47,7 +46,7 @@ Creates a class from a title and returns:
 
 - public class metadata;
 - one raw Instructor capability;
-- one raw Student join capability.
+- one human Student join code.
 
 Class expiry uses `CLASS_EXPIRY_DAYS` when set to a positive integer, otherwise 30 days.
 
@@ -63,11 +62,10 @@ Requires the Instructor capability.
 
 Supported actions:
 
-- `rotate-student-join`
 - `rotate-instructor`
 - `set-joins` with a boolean `enabled`
 
-Rotation replaces the stored hash and returns only the newly generated raw capability.
+Instructor rotation replaces the stored hash and returns only the newly generated raw Instructor capability.
 
 ### `DELETE /api/classes`
 
@@ -93,47 +91,11 @@ Request fields:
 
 The underlying collaboration workspace receives the class's exact absolute expiry, so classroom data cannot outlive the class.
 
-The response returns public workspace metadata and one raw assignment capability. The randomly generated primary collaboration capability used to create the underlying row is intentionally not returned.
+The response returns public workspace metadata only. The randomly generated primary collaboration capability used to create the underlying row is intentionally not returned.
 
-### `PATCH /api/classes/workspaces`
+### Student client consumption
 
-Requires the Instructor capability plus a public classroom workspace ID.
-
-Supported actions:
-
-- `rotate-assignment` — old assignment token stops new admission; already joined workspace capabilities continue.
-- `revoke-assignment` — assignment is revoked and the underlying collaboration workspace is expired, invalidating existing classroom workspace access.
-
-### `POST /api/classes/join`
-
-Requires the Student join capability in `Authorization: Bearer ...`.
-
-Body:
-
-- `assignmentToken`
-- opaque browser/device `participantId`
-- optional `displayName`
-
-The server verifies that the Student join capability and assignment capability belong to the same active class.
-
-There is intentionally no GET/list operation on this endpoint.
-
-On success the server:
-
-1. resolves one authorized individual/group workspace;
-2. enforces individual claim-once semantics where applicable;
-3. mints a fresh per-participant editable workspace capability;
-4. persists only its hash in `collaboration_workspace_capabilities`;
-5. registers the participant through existing collaboration presence;
-6. returns class/workspace context plus the raw workspace capability.
-
-That returned capability is accepted by the existing `/api/workspaces/session` and `/api/workspaces/presence` handlers.
-
-### Student client consumption (#292 legacy + #312 live)
-
-The legacy two-code compatibility path still sends the Student join capability in the Authorization header and the assignment capability in the POST body. On legacy success, both admission codes are discarded and the returned `workspaceToken` remains in the dedicated `kt-classroom-student-session-v1` resume envelope exactly as before.
-
-The normal #312 live-class path is different:
+The current Student flow is:
 
 1. the browser sends display name + human join code to `POST /api/classes/admit`;
 2. the human join code is discarded after admission;
@@ -147,7 +109,7 @@ The normal #312 live-class path is different:
 
 This means same-device live resume survives team movement without persisting stale team authority. The server remains authoritative for assignment revision and revokes the old workspace alias before the Student receives destination access.
 
-Classroom mode continues to disable collaboration-link copying and legacy shared-session leaving so the Student controller owns resume, automatic reassignment, Waiting, and Leave-class lifecycle.
+Classroom mode disables Standalone collaboration-link copying/leaving semantics so the Student controller owns resume, automatic reassignment, Waiting, and Leave-class lifecycle.
 
 ### `GET /api/classes/observe?workspaceId=<public-workspace-id>`
 
@@ -164,7 +126,7 @@ The response contains:
 - recent participant presence/activity;
 - workspace expiry/update timestamps.
 
-It returns **no Student workspace capability and no editable alias**. The endpoint is GET-only. Student workspace capabilities, Student join capabilities, and Instructor credentials for another class cannot use it.
+It returns **no Student workspace capability and no editable alias**. The endpoint is GET-only. Student workspace capabilities, human Student join codes, Student class-session capabilities, and Instructor credentials for another class cannot use it.
 
 This is the canonical read-only observation path for #293. The browser polls this endpoint with the Instructor class capability; it must not call editable `/api/workspaces/session` or `/api/workspaces/presence` as an observer.
 
@@ -331,7 +293,7 @@ When editing is frozen:
 
 The production mutation repeats the freeze predicate atomically inside the SQL UPDATE, rather than relying only on a preflight policy lookup. This closes the race where an Instructor freezes between a Student's permission check and snapshot write.
 
-Primary/Standalone collaboration tokens bypass Classroom policy entirely. Classroom classes with no current staged exercise remain writable. Both current live-participant and legacy Classroom membership `classroom-student` aliases are covered.
+Primary/Standalone collaboration tokens bypass Classroom policy entirely. Classroom classes with no current staged exercise remain writable. Current live-participant `classroom-student` aliases are covered.
 
 Exercise responses now expose `editFreezeEnforced: true` and the authoritative `studentEditingEnabled` value.
 
@@ -367,19 +329,19 @@ All exercise responses are private/no-store/no-referrer. Exercise state, release
 
 ### Individual
 
-The first participant UUID to successfully claim an individual assignment becomes its binding. A later join attempt with a different participant UUID fails generically.
+Instructor assignment binds an individual workspace to one participant UUID. A second participant cannot be assigned to that occupied individual workspace until the first assignment is changed or removed.
 
-This is still a capability model rather than an account identity system: deliberately sharing an already-issued workspace capability delegates that capability.
+The Student receives a fresh assignment-specific editable workspace capability only after the server confirms the participant's current assignment.
 
 ### Group
 
-Multiple participant UUIDs may use the same assignment capability. Each successful participant receives a distinct workspace capability while all synchronize the same underlying collaboration workspace.
+Multiple participant UUIDs may be assigned to the same group workspace. Each participant receives a distinct assignment-specific workspace capability while all synchronize the same underlying collaboration workspace.
 
 ## Editable workspace aliases
 
 `collaboration_workspace_capabilities` maps alternate token hashes to existing collaboration workspaces.
 
-The legacy collaboration read/write handlers resolve only explicitly edit-capable kinds. Slice #291 permits:
+The collaboration read/write handlers resolve only explicitly edit-capable alias kinds. The Classroom model permits:
 
 ```text
 classroom-student
@@ -387,21 +349,21 @@ classroom-student
 
 This prevents a future `classroom-observer` token from accidentally inheriting PUT/PATCH access. Instructor observation in #293 must use a separate read-only server path.
 
-## Additive Neon schema
+## Neon schema
 
-Slices #291–#294 establish:
+The current Classroom persistence model uses:
 
 - `collaboration_workspace_capabilities`
 - `classroom_classes`
 - `classroom_workspaces`
-- `classroom_memberships`
+- `classroom_participants`
 - `classroom_coaching_feedback`
 
-#312 adds the live-class participant/session layer through additive columns plus `classroom_participants`. The participant record is class-scoped and carries the current optional workspace assignment, monotonic `assignment_revision`, Student class-session capability hash, and current assignment-specific workspace-access hash. A participant may therefore exist safely in Waiting with no workspace authority.
+The participant record is class-scoped and carries the current optional workspace assignment, monotonic `assignment_revision`, Student class-session capability hash, and current assignment-specific workspace-access hash. A participant may therefore exist safely in Waiting with no workspace authority.
 
-The legacy membership table remains supported for two-code compatibility. Live assignment does not copy or merge collaboration snapshots; `classroom_workspaces` still points at the existing collaboration workspace that owns snapshot/revision/presence state.
+Live assignment does not copy or merge collaboration snapshots; `classroom_workspaces` points at the existing collaboration workspace that owns snapshot/revision/presence state. #328 explicitly removes the pre-production `student_join_token_hash`, workspace claim-token hash, and `classroom_memberships` compatibility schema during repository initialization.
 
-Database foreign keys and handler authorization jointly enforce class/workspace isolation. Existing collaboration tables, Standalone secret links, and the legacy Classroom path remain valid.
+Database foreign keys and handler authorization jointly enforce class/workspace isolation. Existing collaboration tables and Standalone secret links remain valid.
 
 #313 adds the following persistence primitives beneath the exercise HTTP/UI layers:
 
@@ -418,25 +380,23 @@ No classroom credential is stored in browser Intake state.
 
 | Action | Future joins | Existing Student workspace capability |
 | --- | --- | --- |
-| Rotate Student join | Old join token stops | Remains valid |
-| Disable joins | Stops | Remains valid |
-| Rotate assignment | Old assignment stops | Remains valid |
-| Rotate Instructor | Old Instructor token stops | Remains valid |
-| Revoke assignment | Stops | Invalidated by workspace expiry |
-| Revoke class | Stops | Invalidated by workspace expiry |
+| Disable joins | Stops | Remains valid until assignment/class authority changes |
+| Reassign / unassign Student | Admission unaffected | Previous assignment capability is revoked before assignment changes |
+| Rotate Instructor | Unchanged | Remains valid |
+| Revoke class | Stops | Invalidated by class/workspace revocation |
 
 ## Security invariants
 
-- Student join alone cannot enumerate workspaces.
-- Assignment token is useless without the matching active class join capability.
-- Cross-class join/assignment pairs fail with a generic not-found response.
+- Human Student join code is admission-only and cannot enumerate workspaces.
+- Student class-session authority can read only the represented participant's own assignment/session state.
+- Cross-class participant/workspace assignment requests fail without changing the represented participant.
 - Instructor listing is class-scoped.
 - Raw capabilities are never persisted or logged.
 - Capability-bearing/private responses are `no-store` and `no-referrer`.
 - Classroom workspaces cannot outlive class retention.
 - Read-only Instructor observation must not use editable workspace aliases.
 - Coaching writes must not call the collaboration snapshot update path or increment Student Intake revisions.
-- Student workspace capabilities may read coaching only for their resolved membership and never write coaching.
+- Student workspace capabilities may read coaching only for their resolved live-participant assignment and never write coaching.
 - Existing Standalone collaboration remains unchanged.
 - Case Study unlock passwords are unrelated to classroom authorization.
 - Protected Case Study catalogs/payloads require Instructor-class or Student-membership authorization and are never returned to Standalone.
@@ -445,7 +405,7 @@ No classroom credential is stored in browser Intake state.
 
 ## Tests and cold restart
 
-`tests/classroom-api.unit.test.mjs` exercises the core classroom authorization matrix using deterministic in-memory repositories from `tests/helpers/classroom-test-repositories.mjs`. `tests/protectedCaseStudies.api.test.mjs` covers protected Case Study Instructor/Student authorization, metadata-only catalogs, legacy-token rejection, POST payload delivery, and private response headers.
+`tests/classroom-api.unit.test.mjs` exercises the core classroom authorization matrix using deterministic in-memory repositories from `tests/helpers/classroom-test-repositories.mjs`. `tests/protectedCaseStudies.api.test.mjs` covers protected Case Study Instructor/Student authorization, metadata-only catalogs, unrelated-capability rejection, POST payload delivery, and private response headers.
 
 The repository test-change guard treats `api/` as runtime code, so future server changes require test changes.
 
@@ -463,14 +423,12 @@ Key direction:
 - Instructor assignment/reassignment is server-authoritative;
 - editable workspace capabilities are assignment-specific and revoked on move/unassign;
 - the Student class-session capability is never accepted by collaboration edit endpoints;
-- destination workspace state wins on reassignment; no automatic Intake merge occurs;
-- legacy two-code admission remains supported during the additive migration.
+- destination workspace state wins on reassignment; no automatic Intake merge occurs.
 
-Implemented live-class endpoints are `POST /api/classes/admit`, `GET/PATCH /api/classes/participants`, `GET /api/classes/student`, and `POST /api/classes/student/access`. Existing `POST /api/classes/join` remains a compatibility path until a later explicit migration.
+Implemented Student live-class endpoints are `POST /api/classes/admit`, `GET/PATCH /api/classes/participants`, `GET /api/classes/student`, and `POST /api/classes/student/access`. #328 removes the former two-code `POST /api/classes/join` route entirely.
 
-Student live-client semantics now implemented:
-- normal Student entry is one human class code + display name;
-- legacy two-code access remains available under an explicit recovery disclosure;
+Student client semantics:
+- Student entry is one human class code + display name;
 - Waiting retains the class-session capability but holds no collaboration edit authority;
 - assignment-specific workspace tokens are memory-only and reacquired on reload/move;
 - assignment revision changes trigger old-workspace disconnect before destination access;

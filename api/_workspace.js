@@ -43,7 +43,7 @@ export function validateToken(token) { return typeof token === 'string' && TOKEN
  * Restrict aliases accepted by editable collaboration endpoints.
  *
  * Read-only observer capabilities must use a separate authorization path rather
- * than inheriting snapshot update access from the legacy collaboration API.
+ * than inheriting snapshot update access from the general collaboration API.
  *
  * @param {unknown} value Candidate capability kind.
  * @returns {boolean} Whether the kind grants edit-capable workspace access.
@@ -202,16 +202,6 @@ async function initializeRepository() {
             AND cap.capability_kind = 'classroom-student'
             AND cap.revoked_at IS NULL
             AND (cap.expires_at IS NULL OR cap.expires_at > NOW())
-          UNION ALL
-          SELECT cm.class_id, cap.workspace_id
-          FROM collaboration_workspace_capabilities cap
-          JOIN classroom_memberships cm
-            ON cm.access_token_hash = cap.token_hash
-            AND cm.workspace_id = cap.workspace_id
-          WHERE cap.token_hash = ${tokenHash}
-            AND cap.capability_kind = 'classroom-student'
-            AND cap.revoked_at IS NULL
-            AND (cap.expires_at IS NULL OR cap.expires_at > NOW())
           LIMIT 1
         )
         UPDATE collaboration_workspaces w
@@ -239,16 +229,6 @@ async function initializeRepository() {
             ON cp.workspace_access_token_hash = cap.token_hash
             AND cp.workspace_id = cap.workspace_id
             AND cp.revoked_at IS NULL
-          WHERE cap.token_hash = ${tokenHash}
-            AND cap.capability_kind = 'classroom-student'
-            AND cap.revoked_at IS NULL
-            AND (cap.expires_at IS NULL OR cap.expires_at > NOW())
-          UNION ALL
-          SELECT cm.class_id, cap.workspace_id
-          FROM collaboration_workspace_capabilities cap
-          JOIN classroom_memberships cm
-            ON cm.access_token_hash = cap.token_hash
-            AND cm.workspace_id = cap.workspace_id
           WHERE cap.token_hash = ${tokenHash}
             AND cap.capability_kind = 'classroom-student'
             AND cap.revoked_at IS NULL

@@ -33,22 +33,13 @@ const CONTAINMENT_STATUS_PAIRS = [
 
 const CONTAINMENT_STATUS_VALUES = new Set(CONTAINMENT_STATUS_PAIRS.map(([value]) => value));
 
-const LEGACY_CONTAINMENT_STATUS_MAP = {
-  none: 'assessing',
-  mitigation: 'stabilized',
-  restore: 'restoring'
-};
-
 /**
- * Normalizes legacy containment identifiers to the current vocabulary.
- * @param {string} value - Stored containment status value.
+ * Validates a current containment status identifier.
+ * @param {string} value - Candidate containment status value.
  * @returns {string} Validated containment status or an empty string.
  */
 function normalizeContainmentStatus(value) {
-  if (typeof value !== 'string') return '';
-  if (CONTAINMENT_STATUS_VALUES.has(value)) return value;
-  const legacy = LEGACY_CONTAINMENT_STATUS_MAP[value];
-  return typeof legacy === 'string' ? legacy : '';
+  return typeof value === 'string' && CONTAINMENT_STATUS_VALUES.has(value) ? value : '';
 }
 
 /**
@@ -398,8 +389,7 @@ export function setBridgeOpenedNow() {
 }
 
 /**
- * Resolves the selected containment status radio value.
- * Reads from DOM radio buttons to maintain compatibility with legacy values.
+ * Resolves the selected current containment status radio value.
  * @returns {string} Normalized containment status or an empty string.
  */
 export function getContainmentStatus() {

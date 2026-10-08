@@ -90,16 +90,13 @@ function createSource(kind) {
       }
       export const ACTIONS_STORAGE_KEY = 'kt-actions-by-analysis-v1';
       export const PRIORITY_SEQUENCE = Object.freeze(['High', 'Med', 'Low']);
-      const LEGACY_PRIORITY_ALIASES = { P1: 'High', P2: 'Med', P3: 'Low' };
       const SUPPORTED_PRIORITY_LABELS = new Set([...PRIORITY_SEQUENCE, 'Blocked', 'Deferred', 'Cancelled']);
       const baseNormalizePriorityLabel = (priority) => {
         if (typeof priority !== 'string') return 'Med';
         const trimmed = priority.trim();
         if (!trimmed) return 'Med';
-        const alias = LEGACY_PRIORITY_ALIASES[trimmed];
-        const normalized = alias || trimmed;
-        if (SUPPORTED_PRIORITY_LABELS.has(normalized)) {
-          return normalized;
+        if (SUPPORTED_PRIORITY_LABELS.has(trimmed)) {
+          return trimmed;
         }
         return 'Med';
       };

@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, mock, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
+import { APP_STATE_VERSION } from '../src/appStateVersion.js';
 import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
 
 let dom = null;
@@ -113,7 +114,7 @@ test('main: announces saved intake restore', async () => {
   `;
 
   const savedSnapshot = {
-    meta: { version: 2, savedAt: '2024-05-21T00:00:00.000Z' },
+    meta: { version: APP_STATE_VERSION, savedAt: '2024-05-21T00:00:00.000Z' },
     pre: {},
     impact: {},
     ops: {},

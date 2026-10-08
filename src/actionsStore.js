@@ -28,12 +28,6 @@ const STATUS_ORDER = {
  */
 export const PRIORITY_SEQUENCE = Object.freeze(['High', 'Med', 'Low']);
 
-const LEGACY_PRIORITY_ALIASES = Object.freeze({
-  P1: 'High',
-  P2: 'Med',
-  P3: 'Low'
-});
-
 const SUPPORTED_PRIORITY_LABELS = new Set([...PRIORITY_SEQUENCE, 'Blocked', 'Deferred', 'Cancelled']);
 
 const PRIORITY_ORDER = {
@@ -42,10 +36,7 @@ const PRIORITY_ORDER = {
   Med: 2,
   Low: 3,
   Deferred: 4,
-  Cancelled: 5,
-  P1: 1,
-  P2: 2,
-  P3: 3
+  Cancelled: 5
 };
 
 const OWNER_SOURCES = new Set(['Manual', 'DirectoryLookup', 'API']);
@@ -202,8 +193,7 @@ function normalizeOwner(raw) {
 }
 
 /**
- * Normalizes an arbitrary priority label into the canonical vocabulary.
- * Legacy P1/P2/P3 values are mapped to High/Med/Low respectively.
+ * Normalizes an arbitrary priority label into the current canonical vocabulary.
  *
  * @param {unknown} priority - Raw priority input captured from the UI or persisted data.
  * @returns {string} - Sanitized priority label.
@@ -214,10 +204,8 @@ export function normalizePriorityLabel(priority) {
   }
   const trimmed = priority.trim();
   if (!trimmed) return 'Med';
-  const alias = LEGACY_PRIORITY_ALIASES[trimmed];
-  const normalized = alias || trimmed;
-  if (SUPPORTED_PRIORITY_LABELS.has(normalized)) {
-    return normalized;
+  if (SUPPORTED_PRIORITY_LABELS.has(trimmed)) {
+    return trimmed;
   }
   return 'Med';
 }
@@ -333,11 +321,11 @@ export function normalizeActionSnapshot(action) {
 }
 
 /**
- * Normalizes a persisted actions map into runtime-ready records.
+ * Normalizes the current persisted actions map into runtime-ready records.
  * @param {unknown} map - Potentially stale persisted map.
  * @returns {ActionsMap} - Map keyed by analysis identifier with normalized records.
  */
-function migrateAll(map) {
+function normalizeAll(map) {
   if (!map || typeof map !== 'object') return {};
   const migrated = {};
   Object.keys(map).forEach(key => {
@@ -385,7 +373,7 @@ function getDueTime(dueAt) {
 function loadAll() {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY)) || {};
-    return migrateAll(raw);
+    return normalizeAll(raw);
   }
   catch {
     return {};

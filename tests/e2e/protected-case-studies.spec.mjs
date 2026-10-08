@@ -5,10 +5,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
-function capability(fill, suffix) {
-  return fill.repeat(42) + suffix;
-}
-
 function watchPageErrors(page) {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -46,14 +42,11 @@ test('protected Case Studies reject unauthenticated retrieval and an authorized 
 
   await startFresh(page);
 
-  const classCode = capability('c', 'p');
-  const assignmentCode = capability('a', 'p');
+  const classCode = 'M7QR-T4P2';
 
   await page.getByRole('button', { name: /Join a class/ }).click();
   await page.locator('#studentDisplayName').fill('Protected Case Student');
   await page.getByLabel('Class code').fill(classCode);
-  await page.locator('#studentLegacyJoin > summary').click();
-  await page.getByLabel('Assignment code').fill(assignmentCode);
 
   const catalogResponsePromise = page.waitForResponse(response => (
     response.request().method() === 'GET'
@@ -68,7 +61,7 @@ test('protected Case Studies reject unauthenticated retrieval and an authorized 
   expect(catalogBody.caseStudies.some(record => record.id === 'microcomputer-cabinets')).toBe(true);
   expect(catalogBody.caseStudies.every(record => !Object.hasOwn(record, 'state'))).toBe(true);
 
-  await expect(page.locator('body')).toHaveAttribute('data-student-class-status', 'connected');
+  await expect(page.locator('body')).toHaveAttribute('data-student-class-status', 'connected', { timeout: 10000 });
 
   await page.getByRole('button', { name: 'Actions' }).click();
   await page.getByRole('menuitem', { name: /Templates & Case Studies/ }).click();

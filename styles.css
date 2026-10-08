@@ -397,11 +397,7 @@ body.experience-role-gate-open{overflow:hidden;}
   gap:16px;
 }
 .student-class-form__grid--live{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);}
-#studentClassCode,.student-class-form input[type="password"]{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.02em;}
-.student-legacy-join{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);}
-.student-legacy-join>summary{cursor:pointer;color:var(--muted);font-size:12px;font-weight:750;}
-.student-legacy-join[open]>summary{color:var(--ink-strong);}
-.student-legacy-join .field{max-width:680px;margin-top:12px;}
+#studentClassCode{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.02em;}
 .student-class-waiting{
   padding:22px;
   border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));
@@ -3264,9 +3260,6 @@ body.dialog-open{overflow:hidden;}
 /* Instructor classroom observer */
 .instructor-class-form{margin-top:24px;}
 .instructor-class-start-form{margin-top:22px;padding-bottom:18px;border-bottom:1px solid var(--line);}
-.instructor-existing-class{margin-top:14px;}
-.instructor-existing-class>summary{cursor:pointer;color:var(--muted);font-size:12px;font-weight:750;}
-.instructor-existing-class[open]>summary{color:var(--ink-strong);}
 .instructor-join-code{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;}
 .instructor-join-code>span{color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;}
 .instructor-join-code>strong{padding:6px 9px;border:1px solid var(--line);border-radius:10px;background:var(--panel-muted);color:var(--ink-strong);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;letter-spacing:.08em;}

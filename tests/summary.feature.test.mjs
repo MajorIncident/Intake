@@ -86,7 +86,7 @@ test('summary: renders populated sections and normalises communication timestamp
     {
       summary: 'Build rollback plan',
       status: 'In-Progress',
-      priority: 'P1',
+      priority: 'High',
       dueAt: '2024-01-01T18:30:00Z',
       notes: 'Investigating rollback paths',
       owner: { name: 'Jordan Lee', notes: 'Coordinating with DB team' }
@@ -94,7 +94,7 @@ test('summary: renders populated sections and normalises communication timestamp
     {
       summary: 'Notify regulators',
       status: 'Planned',
-      priority: 'P2',
+      priority: 'Med',
       dueAt: '',
       notes: '',
       owner: { name: 'Taylor Kim', notes: '' }
@@ -127,8 +127,8 @@ test('summary: renders populated sections and normalises communication timestamp
     assert.ok(ktIndex > actionsIndex, 'KT section should follow actions');
   }
 
-  assert.ok(text.includes('Build rollback plan — Status: In-Progress | Priority: P1 | Owner: Jordan Lee | ETA: 2024-01-01T18:30:00.000Z. Notes: Investigating rollback paths | Owner Notes: Coordinating with DB team'));
-  assert.ok(text.includes('Notify regulators — Status: Planned | Priority: P2 | Owner: Taylor Kim. Notes: No notes provided.'));
+  assert.ok(text.includes('Build rollback plan — Status: In-Progress | Priority: High | Owner: Jordan Lee | ETA: 2024-01-01T18:30:00.000Z. Notes: Investigating rollback paths | Owner Notes: Coordinating with DB team'));
+  assert.ok(text.includes('Notify regulators — Status: Planned | Priority: Med | Owner: Taylor Kim. Notes: No notes provided.'));
 });
 
 
@@ -374,7 +374,7 @@ test('summary: non-major modes use mode labels and exclude major-incident-only s
     causeHasFailure: () => false,
     causeStatusLabel: () => '',
     tbody,
-    actions: [{ summary: 'Fail over payment dependency', status: 'Open', priority: 'P1', owner: { name: 'SRE' } }]
+    actions: [{ summary: 'Fail over payment dependency', status: 'Open', priority: 'High', owner: { name: 'SRE' } }]
   };
 
   const text = buildSummaryText(state);

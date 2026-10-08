@@ -13,7 +13,6 @@ import {
 const EXPECTED_CLASSROOM_REWRITES = Object.freeze({
   '/api/classes': 'root',
   '/api/classes/admit': 'admit',
-  '/api/classes/join': 'join',
   '/api/classes/participants': 'participants',
   '/api/classes/student': 'student',
   '/api/classes/student/access': 'student-access',

@@ -31,7 +31,7 @@ Preserve the order of these anchors. If you need a new section, duplicate the ex
 ## Data Structures & Persistence
 - Immutable data such as `ROWS`, `CAUSE_FINDING_MODES`, and `STEP_DEFINITIONS` live in `src/constants.js`. Update them cautiously and ensure each change flows through summary generation and persistence.
 - `collectAppState()` and `applyAppState()` coordinate the round-trip of UI state. When you add new fields, hook them into those helpers plus the serialization logic in `src/storage.js`.
-- Local storage uses the key `kt-intake-full-v2`. Keep this identifier consistent so legacy data migrates correctly.
+- Local storage uses the key `kt-intake-full-v2`. Keep this identifier stable, but accept only the current `APP_STATE_VERSION`; pre-production historical snapshot versions are intentionally unsupported after #328.
 - Experience role is an explicit exception to Intake persistence: `kt-experience-role-v1` is owned by `src/experienceRoleController.js`.
 - Student classroom session/recovery are also outside Intake persistence: `kt-classroom-student-session-v1` and `kt-classroom-student-local-recovery-v1` are owned by `src/classroomStudent.js`. Never collect these keys or any classroom capability into `kt-intake-full-v2`, file exports, summaries, or templates.
 - Instructor classroom resume is outside Intake persistence: `kt-classroom-instructor-session-v1` is owned by `src/classroomInstructor.js`. It may contain the raw Instructor class capability for same-device resume, so it must never enter `kt-intake-full-v2`, file exports, summaries, templates, URLs, or editable collaboration aliases.

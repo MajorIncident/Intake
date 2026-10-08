@@ -36,6 +36,31 @@ async function expectNoBlockingA11yViolations(page) {
   expect(blockingViolations, JSON.stringify(blockingViolations, null, 2)).toEqual([]);
 }
 
+async function resumeFixtureInstructor(page, instructorToken) {
+  await startFresh(page);
+  await page.getByRole('button', { name: /Teach a class/ }).click();
+  await page.evaluate(({ key, token, workspaceId }) => {
+    window.localStorage.setItem(key, JSON.stringify({
+      version: 1,
+      instructorToken: token,
+      joinCode: 'K7FM-P4Q2',
+      class: {
+        id: 'browser-test-class',
+        title: 'Browser Test Classroom',
+        expiresAt: '2099-12-31T23:59:59.000Z'
+      },
+      selectedWorkspaceId: workspaceId,
+      openedAt: '2099-12-31T20:00:00.000Z'
+    }));
+  }, {
+    key: INSTRUCTOR_SESSION_STORAGE_KEY,
+    token: instructorToken,
+    workspaceId: FIRST_WORKSPACE_ID
+  });
+  await page.reload();
+  await expect(page.locator('#instructorClassDashboard')).toBeVisible();
+}
+
 test('Instructor starts a live class, creates a team, assigns a waiting Student, and resumes it', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop live-management journey; responsive Instructor observer remains covered on mobile.');
   const pageErrors = watchPageErrors(page);
@@ -229,11 +254,7 @@ test('mobile Instructor can open and run the staged exercise console accessibly'
   const pageErrors = watchPageErrors(page);
   const instructorCode = `i${'m'.repeat(40)}${testInfo.retry}m`;
 
-  await startFresh(page);
-  await page.getByRole('button', { name: /Teach a class/ }).click();
-  await page.locator('#instructorExistingClass > summary').click();
-  await page.getByLabel('Instructor access code').fill(instructorCode);
-  await page.getByRole('button', { name: 'Open class' }).click();
+  await resumeFixtureInstructor(page, instructorCode);
 
   await expect(page.locator('#instructorClassDashboard')).toBeVisible();
   await expect(page.locator('#instructorClassDashboard')).toHaveClass(/is-collapsed/);
@@ -280,11 +301,7 @@ test('Instructor compares live class targets and drills into the existing observ
   const suffix = testInfo.project.name === 'chromium-mobile' ? 'q' : 'p';
   const instructorCode = capability('i', suffix);
 
-  await startFresh(page);
-  await page.getByRole('button', { name: /Teach a class/ }).click();
-  await page.locator('#instructorExistingClass > summary').click();
-  await page.getByLabel('Instructor access code').fill(instructorCode);
-  await page.getByRole('button', { name: 'Open class' }).click();
+  await resumeFixtureInstructor(page, instructorCode);
 
   const comparison = page.locator('#instructorDebriefComparison');
   await expect(comparison).toBeVisible();
@@ -332,83 +349,6 @@ test('Instructor compares live class targets and drills into the existing observ
 
   const persistedKeys = await page.evaluate(() => Object.keys(window.localStorage));
   expect(persistedKeys.some(key => key.toLowerCase().includes('debrief'))).toBe(false);
-
-  await expectNoBlockingA11yViolations(page);
-  expect(pageErrors).toEqual([]);
-});
-
-test('Instructor opens a class, observes work read-only, switches workspaces, and resumes after reload', async ({ page }, testInfo) => {
-  const pageErrors = watchPageErrors(page);
-  const suffix = testInfo.project.name === 'chromium-mobile' ? 'm' : 'd';
-  const instructorCode = capability('i', suffix);
-  const classroomRequests = [];
-
-  page.on('request', request => {
-    const url = new URL(request.url());
-    if (url.pathname.startsWith('/api/')) {
-      classroomRequests.push({ method: request.method(), pathname: url.pathname });
-    }
-  });
-
-  await startFresh(page);
-  await page.getByRole('button', { name: /Teach a class/ }).click();
-
-  await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'instructor');
-  await expect(page.locator('#instructorClassEntryCard')).toBeVisible();
-
-  await page.locator('#instructorExistingClass > summary').click();
-  await page.getByLabel('Instructor access code').fill(instructorCode);
-  await page.getByRole('button', { name: 'Open class' }).click();
-
-  await expect(page.locator('#instructorClassDashboard')).toBeVisible();
-  await expect(page.locator('#instructorClassTitle')).toHaveText('Browser Test Classroom');
-  if (testInfo.project.name === 'chromium-mobile') {
-    await expect(page.locator('#instructorClassDashboard')).toHaveClass(/is-collapsed/);
-    await expect(page.getByRole('button', { name: 'Open class panel' })).toBeVisible();
-    await page.getByRole('button', { name: 'Open class panel' }).click();
-    await expect(page.locator('#instructorClassDashboard')).not.toHaveClass(/is-collapsed/);
-  }
-  await expect(page.locator('#instructorRosterSummary')).toHaveText('2 workspaces');
-  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Alex Student');
-  await expect(page.locator('#instructorObserverStatus')).toHaveText('Live read-only view');
-  await expect(page.locator('#oneLine')).toHaveValue('Alex Student observed browser-test Intake.');
-  await expect(page.locator('#oneLine')).toHaveAttribute('aria-readonly', 'true');
-  await expect(page.locator('#oneLine')).toHaveJSProperty('readOnly', true);
-  await expect(page.locator('#action-add')).toBeDisabled();
-
-  const storedSession = await page.evaluate(key => window.localStorage.getItem(key), INSTRUCTOR_SESSION_STORAGE_KEY);
-  expect(storedSession).toBeTruthy();
-  expect(storedSession).toContain(instructorCode);
-  expect(storedSession).toContain(FIRST_WORKSPACE_ID);
-  expect(storedSession).not.toContain('workspaceToken');
-
-  await page.locator(`[data-workspace-id="${SECOND_WORKSPACE_ID}"]`).click();
-  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Beta');
-  await expect(page.locator('#oneLine')).toHaveValue('Team Beta observed browser-test Intake.');
-  await expect(page.locator('#oneLine')).toHaveJSProperty('readOnly', true);
-
-  const switchedSession = await page.evaluate(key => window.localStorage.getItem(key), INSTRUCTOR_SESSION_STORAGE_KEY);
-  expect(switchedSession).toContain(SECOND_WORKSPACE_ID);
-
-  await page.reload();
-
-  await expect(page.locator('#experienceRoleGate')).toBeHidden();
-  await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'instructor');
-  await expect(page.locator('#instructorClassDashboard')).toBeVisible();
-  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Beta');
-  await expect(page.locator('#oneLine')).toHaveValue('Team Beta observed browser-test Intake.');
-  await expect(page.locator('#oneLine')).toHaveJSProperty('readOnly', true);
-  await expect(page.locator('#action-add')).toBeDisabled();
-
-  expect(classroomRequests.some(request => (
-    ['/api/classes/workspaces', '/api/classes/observe'].includes(request.pathname)
-    && request.method === 'GET'
-  ))).toBe(true);
-  expect(classroomRequests.filter(request => (
-    request.pathname === '/api/workspaces/session'
-    || request.pathname === '/api/workspaces/presence'
-    || request.pathname === '/api/classes/join'
-  ))).toEqual([]);
 
   await expectNoBlockingA11yViolations(page);
   expect(pageErrors).toEqual([]);

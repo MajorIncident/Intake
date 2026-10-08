@@ -8,7 +8,7 @@ This is the live restart document for the Classroom Experience program (#288).
 
 The secure Classroom foundation (#288), live-class management (#312), staged-simulation engine (#313), universal target layer (#318), debrief comparison (#319), and join/mobile polish (#320) are **merged**. PR #326 merged #319 to `main` as `400a6c5ee0b879b4a36705be6d8af075bc89d391`; that exact SHA reached Vercel production **READY** and the post-deploy runtime-error scan was clean. PR #327 then merged the small-slice/slow-gate operating rules as `dce82b1ddb94ff926464af4a9b9d81704ba05a5a`.
 
-There is currently **no active product implementation PR**. The approved next cycle is pre-production hardening, documented in `docs/preproduction-hardening.md`.
+Pre-production hardening is active. **#328** is implemented on `feature/preproduction-compat-reset` / draft PR #332 and is in final validation. The governing contract remains `docs/preproduction-hardening.md`.
 
 ## Program issues
 
@@ -30,7 +30,7 @@ There is currently **no active product implementation PR**. The approved next cy
 | Universal Intake target identity | #318 | Complete | PR #325 merged as `ef694910...` | Shared semantic target projection and compatibility guards |
 | Class debrief comparison | #319 | Complete / published | PR #326 merged as `400a6c5e...` | 319A–F complete; exact merged-main production READY + runtime clean |
 | Join/mobile polish | #320 | Complete | PR #324 merged as `273ae643...` | Safe share/QR + compact mobile Class/Case/Team/Notes/Instructor chrome |
-| Compatibility reset | #328 | **Next** | Open | Remove legacy Student two-code + public Instructor recovery code + obsolete save migrations |
+| Compatibility reset | #328 | **Implementation complete / validating** | Draft PR #332 | Current one-code/session model only; obsolete Classroom access/schema and pre-production save migrations removed |
 | Admin / Maintenance | #329 | Planned / blocked by #328 | Open | Inventory, preview, revoke/purge stale Classroom + collaboration data |
 | Startup experience hub | #330 | Planned / blocked by #328/#329 | Open | Explicit Continue / Work independently / Join / Run / Admin choices |
 | Rich staged assets | #316 | Deferred until hardening complete | Open | Secure image/table/document-page delivery |
@@ -71,27 +71,39 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-**Repository/roadmap hygiene and pre-production planning.**
+**#328 — Pre-production compatibility reset** is active on `feature/preproduction-compat-reset` / draft PR #332 and is at final validation.
 
-#319 is finished: PR #326 merged as `400a6c5ee0b879b4a36705be6d8af075bc89d391`, the exact merged-main deployment reached production **READY**, and the post-deploy runtime-error scan was clean. Do not reopen #319 or continue its old feature branch.
+Frozen implementation checkpoint before this final ledger update: `2383bc2cb4c4fe2d3561a4e13a01b9d96ad1ff6e`.
 
-New approved sequence:
-1. **#328** — remove legacy Student two-code access, public Instructor access-code recovery, and obsolete save/local compatibility.
-2. **#329** — add Administration / Maintenance inventory, recovery, and preview-first stale-data cleanup.
-3. **#330** — add explicit startup/resume hub built on the final credential/persistence contracts.
-4. **#316** — resume protected rich staged-content delivery.
-5. **#317** — author/rehearse the first production staged KT Case Study.
+Completed:
+- Student entry is display name + one human class code only; the legacy assignment-code disclosure and two-code client flow are removed.
+- Student resume accepts only the current v2 class-session envelope. Assignment-specific workspace capability remains memory-only and is reacquired from the server.
+- Instructor entry exposes Start Class + same-device resume only. The public **Open an existing class / Instructor access code** bearer-entry form is removed; future recovery belongs to #329 Administration / Maintenance.
+- `POST /api/classes/join`, Student join-token issuance/rotation, workspace assignment-claim secrets, legacy membership authorization, and their Vercel route are removed.
+- Existing pre-production databases explicitly drop `student_join_token_hash`, workspace `claim_token_hash`, and `classroom_memberships` during idempotent schema initialization.
+- Current authorization remains human join code -> Student class-session -> current assignment-specific `classroom-student` workspace capability. Instructor observation/coaching remains class-scoped/read-only with respect to Student Intake.
+- Intake serialization is current-version-only at `APP_STATE_VERSION = 3`; the historical migration registry is empty and old snapshot versions fail closed.
+- Experience-role preference accepts only the current versioned envelope; saved Intake no longer silently infers Standalone.
+- Load-from-File rejects unsupported snapshot versions with an explicit file-version/current-version message before normalization/application.
+- All five authored Template/Case Study sources and both generated manifests use the canonical v3 Intake schema.
+- Unit/API/browser fixtures have been converted to the current access/session model; retired browser journeys were consolidated into live-class coverage.
+- Canonical API, architecture, security, onboarding, README, live-management, and storage-schema docs have been reconciled to the current model.
 
-Canonical target architecture: `docs/preproduction-hardening.md`.
+Validation evidence:
+- An earlier Template Manifest Guard run was green after canonical resource conversion; the final docs-only head still requires its own fresh required checks.
+- The first full quality attempt reached **360 tests / 358 pass / 1 fail / 1 intentional skip**; the single failure was an obsolete revocation test boundary and was corrected to exercise current Student class-session 401/404 revocation.
+- Branch-wide changed-fixture audit found no accidental v1/v2 Intake snapshots; the only old-version fixture remaining is the intentional rejection test.
+- Runtime audit finds retired DB identifiers only inside the deliberate `DROP ... IF EXISTS` cleanup statements.
+- Explicit compatibility shims for legacy containment values, P1/P2/P3 action priorities, raw experience-role preferences, old Student recovery envelopes, and cause hypothesis/summary fields are removed with rejection/current-contract coverage.
+- PR #332 has **0 unresolved review threads**.
+- Final exact-head CI / CodeQL / Dependency Review / Template Manifest Guard are still pending as of this checkpoint; do not claim them green until refreshed after this documentation-only commit.
 
-### Exact next implementation action
-
-After the roadmap/hygiene documentation PR is merged, create a fresh short-lived branch from current `main` for **#328**. Start with a compatibility inventory covering:
-- Student legacy two-code UI/API/schema/tests;
-- public Instructor access-code recovery UI/API behavior;
-- save/localStorage migration helpers and old fixture formats.
-
-Do not begin #329/#330 implementation until #328 has established the final credential/save contracts. Keep #316/#317 deferred.
+Exact next action:
+1. refresh PR #332 exact head and required checks;
+2. if CI fails, fix only the concrete failing current-contract test/gate and repeat;
+3. once all required checks are green, update PR #332 with final evidence, mark it ready for review, verify 0 unresolved threads, and squash-merge the exact head;
+4. verify merged `main` publication/runtime before closing #328;
+5. #329 Administration / Maintenance is the next product slice after #328 is closed.
 
 ### Historical checkpoint ledger
 

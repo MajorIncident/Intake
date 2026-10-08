@@ -5,14 +5,15 @@
 
 /**
  * Persistence helpers for the intake app state. This module owns the
- * serialization contract for `localStorage`, including versioned migrations via
- * {@link migrateAppState}. Key exports cover cause list serialization,
- * app-state migrations, and storage lifecycle helpers (`saveToStorage`,
+ * current-only serialization contract for `localStorage`. {@link migrateAppState}
+ * now validates/sanitizes only the current schema; historical pre-production
+ * migrations are intentionally retired. Key exports cover cause list serialization,
+ * current-state normalization, and storage lifecycle helpers (`saveToStorage`,
  * `restoreFromStorage`, `clearStorage`). Collaboration status, manual sync actions, and capability tokens are deliberately
  * excluded; `src/collaboration.js` stores only conflict recovery in its separate local key.
  */
 
-import { CAUSE_FINDING_MODES, CAUSE_FINDING_MODE_VALUES, ROWS } from './constants.js';
+import { CAUSE_FINDING_MODE_VALUES } from './constants.js';
 import { APP_STATE_VERSION } from './appStateVersion.js';
 import { DEFAULT_INTAKE_MODE, INTAKE_MODE_IDS } from './intakeModes.js';
 import { normalizeActionSnapshot, ACTIONS_STORAGE_KEY } from './actionsStore.js';
@@ -155,36 +156,18 @@ function isValidFindingMode(mode) {
 }
 
 /**
- * Coerces persisted finding entries into the `{mode, note}` format.
- * @param {unknown} entry - Raw finding entry possibly stored in legacy shapes.
+ * Sanitizes one canonical finding entry.
+ * @param {unknown} entry - Candidate current-format finding entry.
  * @returns {CauseFinding} Normalized finding record.
  */
 function normalizeFindingEntry(entry) {
   const normalized = { mode: '', note: '' };
-  if (entry && typeof entry === 'object') {
-    if (typeof entry.mode === 'string') {
-      const mode = entry.mode.trim().toLowerCase();
-      if (isValidFindingMode(mode)) {
-        normalized.mode = mode;
-      }
-    }
-    if (typeof entry.note === 'string') {
-      normalized.note = entry.note;
-    } else if (typeof entry.note === 'number') {
-      normalized.note = String(entry.note);
-    }
-    const explainIs = typeof entry.explainIs === 'string' ? entry.explainIs.trim() : '';
-    const explainNot = typeof entry.explainNot === 'string' ? entry.explainNot.trim() : '';
-    if (!normalized.mode && (explainIs || explainNot)) {
-      normalized.mode = CAUSE_FINDING_MODES.YES;
-      normalized.note = [explainIs, explainNot].filter(Boolean).join('\n');
-    } else if (normalized.mode && !normalized.note && (explainIs || explainNot)) {
-      normalized.note = [explainIs, explainNot].filter(Boolean).join('\n');
-    }
-  } else if (typeof entry === 'string') {
-    normalized.mode = CAUSE_FINDING_MODES.YES;
-    normalized.note = entry;
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return normalized;
+  if (typeof entry.mode === 'string') {
+    const mode = entry.mode.trim().toLowerCase();
+    if (isValidFindingMode(mode)) normalized.mode = mode;
   }
+  if (typeof entry.note === 'string') normalized.note = entry.note;
   return normalized;
 }
 
@@ -210,46 +193,20 @@ function findingNote(entry) {
 }
 
 /**
- * Maps legacy KT prompt keys to their stable row identifiers.
- * @type {ReadonlyMap<string, string>}
- */
-const FINDING_KEY_BY_LEGACY_QUESTION = new Map(
-  ROWS.filter(row => typeof row?.id === 'string' && typeof row?.q === 'string')
-    .map(row => [row.q, row.id])
-);
-
-/**
- * Maps a finding key to its stable identifier when it is a current legacy prompt.
- * @param {string} key - Persisted finding key.
- * @returns {string} Stable key for known legacy prompts, otherwise the original key.
- */
-function normalizeFindingKey(key) {
-  return FINDING_KEY_BY_LEGACY_QUESTION.get(key) || key;
-}
-
-/**
- * Normalizes a cause findings map while preserving unknown keys. Explicit stable
- * entries are processed before their legacy prompt aliases so valid stable
- * entries remain authoritative when both forms are present.
- * @param {unknown} source - Raw findings map from storage or an import.
- * @returns {Record<string, CauseFinding>} Finding records keyed by stable IDs where known.
+ * Sanitizes the canonical cause-findings map while preserving stable/dynamic keys.
+ * @param {unknown} source - Current-format findings map.
+ * @returns {Record<string, CauseFinding>} Sanitized finding records.
  */
 function normalizeCauseFindings(source) {
   if (!source || typeof source !== 'object' || Array.isArray(source)) return {};
-
   const findings = {};
-  const entries = Object.entries(source);
-  const stableEntries = entries.filter(([key]) => !FINDING_KEY_BY_LEGACY_QUESTION.has(key));
-  const legacyEntries = entries.filter(([key]) => FINDING_KEY_BY_LEGACY_QUESTION.has(key));
-  [...stableEntries, ...legacyEntries].forEach(([key, entry]) => {
+  Object.entries(source).forEach(([key, entry]) => {
+    if (typeof key !== 'string' || !key.trim()) return;
     const normalized = normalizeFindingEntry(entry);
     const mode = findingMode(normalized);
     const note = findingNote(normalized);
     if (!mode && !note.trim()) return;
-
-    const normalizedKey = normalizeFindingKey(key);
-    if (Object.prototype.hasOwnProperty.call(findings, normalizedKey)) return;
-    findings[normalizedKey] = { mode, note };
+    findings[key] = { mode, note };
   });
   return findings;
 }
@@ -264,13 +221,6 @@ function normalizeHandoverItems(value) {
     return value.filter(item => typeof item === 'string').map(item => item.trim()).filter(Boolean);
   }
 
-  if (typeof value === 'string') {
-    return value
-      .split(/\r?\n/)
-      .map(item => item.trim())
-      .filter(Boolean);
-  }
-
   return [];
 }
 
@@ -283,9 +233,7 @@ function normalizeHandoverState(source) {
   const sections = source
     && typeof source === 'object'
     && !Array.isArray(source)
-    ? (source.sections && typeof source.sections === 'object' && !Array.isArray(source.sections)
-      ? source.sections
-      : source)
+    ? source
     : null;
   const handoverBase = HANDOVER_SECTION_IDS.reduce((acc, sectionId) => {
     acc[sectionId] = [];
@@ -405,20 +353,9 @@ function normalizeActionsState(raw, hasField) {
  * @returns {boolean} Coerced boolean value.
  */
 function toBoolean(value) {
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase();
-    if (!normalized) return false;
-    if (['true', '1', 'yes', 'y'].includes(normalized)) return true;
-    if (['false', '0', 'no', 'n'].includes(normalized)) return false;
-  }
-  return !!value;
+  return value === true;
 }
 
-const LEGACY_CONTAINMENT_STATUS_MAP = {
-  none: 'assessing',
-  mitigation: 'stabilized',
-  restore: 'restoring'
-};
 
 const CONTAINMENT_STATUS_VALUES = new Set([
   'assessing',
@@ -436,12 +373,7 @@ const CONTAINMENT_STATUS_VALUES = new Set([
  * @returns {string} Recognized containment status or an empty string.
  */
 function normalizeContainmentStatus(value) {
-  if (typeof value !== 'string') return '';
-  if (CONTAINMENT_STATUS_VALUES.has(value)) {
-    return value;
-  }
-  const legacy = LEGACY_CONTAINMENT_STATUS_MAP[value];
-  return typeof legacy === 'string' ? legacy : '';
+  return typeof value === 'string' && CONTAINMENT_STATUS_VALUES.has(value) ? value : '';
 }
 
 /**
@@ -465,157 +397,37 @@ function normalizeCommLog(entries) {
 }
 
 /**
- * Normalizes raw step drawer persistence into the expected shape consumed by the
- * steps module. Handles legacy array formats and coerces booleans.
- * @param {unknown} rawSteps - Serialized steps payload coming from storage or legacy formats.
- * @returns {{items: Array<{id: string, label: string, checked: boolean}>, drawerOpen: boolean}}
- * Normalized steps state compatible with current UI expectations.
+ * Sanitizes the canonical steps payload.
+ * @param {unknown} rawSteps - Current-format steps payload.
+ * @returns {{items:Array<{id:string,label:string,checked:boolean}>,drawerOpen:boolean}} Sanitized steps state.
  */
 function normalizeStepsState(rawSteps) {
-  if (!rawSteps) {
+  if (!rawSteps || typeof rawSteps !== 'object' || Array.isArray(rawSteps)) {
     return { items: [], drawerOpen: false };
   }
-  let source = rawSteps;
-  if (Array.isArray(source)) {
-    source = { items: source };
-  }
-  if (source && typeof source === 'object' && !Array.isArray(source)) {
-    const itemsCandidate = Array.isArray(source.items)
-      ? source.items
-      : (Array.isArray(source.steps) ? source.steps : []);
-    const items = itemsCandidate
-      .map(item => {
-        if (!item || typeof item !== 'object') {
-          return null;
-        }
-        const rawId = item.id !== undefined ? item.id : (item.stepId !== undefined ? item.stepId : null);
-        const id = rawId !== null && rawId !== undefined ? String(rawId) : '';
-        if (!id) {
-          return null;
-        }
-        const label = typeof item.label === 'string'
-          ? item.label
-          : (typeof item.title === 'string' ? item.title : '');
-        const checked = toBoolean(item.checked);
-        return { id, label, checked };
-      })
-      .filter(Boolean);
-    const drawerOpen = typeof source.drawerOpen === 'boolean'
-      ? source.drawerOpen
-      : (typeof source.open === 'boolean' ? source.open : toBoolean(source.drawer));
-    return {
-      items,
-      drawerOpen: !!drawerOpen
-    };
-  }
-  return { items: [], drawerOpen: false };
+  const items = Array.isArray(rawSteps.items)
+    ? rawSteps.items.map(item => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+        const id = typeof item.id === 'string' || typeof item.id === 'number' ? String(item.id) : '';
+        if (!id) return null;
+        return {
+          id,
+          label: typeof item.label === 'string' ? item.label : '',
+          checked: item.checked === true
+        };
+      }).filter(Boolean)
+    : [];
+  return { items, drawerOpen: rawSteps.drawerOpen === true };
 }
 
 /**
- * Extracts the persisted schema version from a raw state object.
- * @param {unknown} raw - Candidate state object with optional metadata.
- * @returns {number} Discovered version number, defaulting to `0`.
+ * Historical pre-production migrations are intentionally retired.
+ * The empty registry is exported for storage-schema documentation.
  */
-function resolveVersion(raw) {
-  const version = raw?.meta?.version;
-  if (typeof version === 'number' && Number.isFinite(version)) {
-    return version;
-  }
-  if (typeof version === 'string') {
-    const parsed = parseInt(version, 10);
-    if (!Number.isNaN(parsed)) {
-      return parsed;
-    }
-  }
-  return 0;
-}
+export const MIGRATION_REGISTRY = new Map();
 
 /**
- * Migration routine for the pre-v1 schema where communication fields lived at
- * the root level and containment values used legacy naming. Upgrades the shape
- * to match version 1 expectations so later migrations can build on it.
- * @param {unknown} raw - Legacy state object.
- * @returns {object} Cloned state upgraded to version 1.
- */
-function migrateLegacyState(raw) {
-  const state = cloneState(raw) || {};
-  const ops = state && typeof state.ops === 'object' ? { ...state.ops } : {};
-
-  if (state && typeof state === 'object') {
-    ['commCadence', 'commNextDueIso', 'commNextUpdateTime', 'tableFocusMode'].forEach(key => {
-      if (state[key] !== undefined && ops[key] === undefined) {
-        ops[key] = state[key];
-      }
-      if (state[key] !== undefined) {
-        delete state[key];
-      }
-    });
-    if (Array.isArray(state.commLog) && !Array.isArray(ops.commLog)) {
-      ops.commLog = state.commLog;
-    }
-    delete state.commLog;
-
-    if (Array.isArray(state.possibleCauses) && !Array.isArray(state.causes)) {
-      state.causes = state.possibleCauses;
-    }
-
-    if (typeof ops.containmentStatus === 'string' && !ops.containStatus) {
-      ops.containStatus = ops.containmentStatus;
-    }
-    if (typeof ops.containment === 'string' && !ops.containStatus) {
-      ops.containStatus = ops.containment;
-    }
-    delete ops.containmentStatus;
-    delete ops.containment;
-
-    state.ops = ops;
-    state.meta = { ...(state.meta || {}), version: 1 };
-  }
-
-  return state;
-}
-
-/**
- * Replaces legacy question-text cause finding keys with stable KT row IDs.
- * @param {unknown} raw - Version 1 application state.
- * @returns {object} Cloned state upgraded to version 2.
- */
-function migrateCauseFindingKeys(raw) {
-  const state = cloneState(raw) || {};
-  if (state && typeof state === 'object') {
-    ['causes', 'possibleCauses'].forEach(causesKey => {
-      if (!Array.isArray(state[causesKey])) return;
-      state[causesKey] = state[causesKey].map(cause => {
-        if (!cause || typeof cause !== 'object') return cause;
-        return { ...cause, findings: normalizeCauseFindings(cause.findings) };
-      });
-    });
-    state.meta = { ...(state.meta || {}), version: 2 };
-  }
-  return state;
-}
-
-/**
- * Ordered map of migration handlers. Keys represent the version found in
- * persisted payloads, and values are invoked until {@link APP_STATE_VERSION}
- * is reached. Additional migrations should be appended with incrementing keys
- * to preserve replay order.
- */
-const MIGRATIONS = new Map([
-  [0, migrateLegacyState],
-  [1, migrateCauseFindingKeys]
-]);
-
-/**
- * Registry of state migrations keyed by their originating version. The registry
- * intentionally mirrors the stored `meta.version` values so that
- * {@link migrateAppState} can iterate them sequentially until it reaches the
- * latest {@link APP_STATE_VERSION}.
- */
-export const MIGRATION_REGISTRY = new Map(MIGRATIONS);
-
-/**
- * Coerces partially populated or legacy state objects into the canonical
+ * Sanitizes a current-version state object into the canonical
  * {@link SerializedAppState} structure used across the application.
  * @param {unknown} raw - Candidate state object after running migrations.
  * @returns {SerializedAppState} Normalized application state structure.
@@ -628,76 +440,60 @@ function normalizeAppStateStructure(raw) {
   const hasActionsField = Object.prototype.hasOwnProperty.call(incoming, 'actions');
 
   const pre = {
-    oneLine: toString(preSource.oneLine ?? incoming.oneLine),
-    proof: toString(preSource.proof ?? incoming.proof),
-    objectPrefill: toString(preSource.objectPrefill ?? incoming.objectPrefill),
-    healthy: toString(preSource.healthy ?? incoming.healthy),
-    now: toString(preSource.now ?? incoming.now)
+    oneLine: toString(preSource.oneLine),
+    proof: toString(preSource.proof),
+    objectPrefill: toString(preSource.objectPrefill),
+    healthy: toString(preSource.healthy),
+    now: toString(preSource.now)
   };
 
   const impact = {
-    now: toString(impactSource.now ?? incoming.impactNow),
-    future: toString(impactSource.future ?? incoming.impactFuture),
-    time: toString(impactSource.time ?? incoming.impactTime)
+    now: toString(impactSource.now),
+    future: toString(impactSource.future),
+    time: toString(impactSource.time)
   };
-
-  const containStatusCandidate = opsSource.containStatus
-    ?? opsSource.containmentStatus
-    ?? incoming.containStatus
-    ?? incoming.containmentStatus;
-
-  const containDescCandidate = opsSource.containDesc
-    ?? incoming.containDesc;
 
   const ops = {
-    bridgeOpenedUtc: toString(opsSource.bridgeOpenedUtc ?? incoming.bridgeOpenedUtc),
-    icName: toString(opsSource.icName ?? incoming.icName),
-    bcName: toString(opsSource.bcName ?? incoming.bcName),
-    semOpsName: toString(opsSource.semOpsName ?? incoming.semOpsName),
-    severity: toString(opsSource.severity ?? incoming.severity),
-    detectMonitoring: toBoolean(opsSource.detectMonitoring ?? incoming.detectMonitoring),
-    detectUserReport: toBoolean(opsSource.detectUserReport ?? incoming.detectUserReport),
-    detectAutomation: toBoolean(opsSource.detectAutomation ?? incoming.detectAutomation),
-    detectOther: toBoolean(opsSource.detectOther ?? incoming.detectOther),
-    evScreenshot: toBoolean(opsSource.evScreenshot ?? incoming.evScreenshot),
-    evLogs: toBoolean(opsSource.evLogs ?? incoming.evLogs),
-    evMetrics: toBoolean(opsSource.evMetrics ?? incoming.evMetrics),
-    evRepro: toBoolean(opsSource.evRepro ?? incoming.evRepro),
-    evOther: toBoolean(opsSource.evOther ?? incoming.evOther),
-    containStatus: normalizeContainmentStatus(containStatusCandidate),
-    containDesc: toString(containDescCandidate),
-    commCadence: toString(opsSource.commCadence ?? incoming.commCadence),
-    commLog: normalizeCommLog(opsSource.commLog ?? incoming.commLog),
-    commNextDueIso: toString(opsSource.commNextDueIso ?? incoming.commNextDueIso),
-    commNextUpdateTime: toString(opsSource.commNextUpdateTime ?? incoming.commNextUpdateTime),
-    tableFocusMode: toString(opsSource.tableFocusMode ?? incoming.tableFocusMode)
+    bridgeOpenedUtc: toString(opsSource.bridgeOpenedUtc),
+    icName: toString(opsSource.icName),
+    bcName: toString(opsSource.bcName),
+    semOpsName: toString(opsSource.semOpsName),
+    severity: toString(opsSource.severity),
+    detectMonitoring: toBoolean(opsSource.detectMonitoring),
+    detectUserReport: toBoolean(opsSource.detectUserReport),
+    detectAutomation: toBoolean(opsSource.detectAutomation),
+    detectOther: toBoolean(opsSource.detectOther),
+    evScreenshot: toBoolean(opsSource.evScreenshot),
+    evLogs: toBoolean(opsSource.evLogs),
+    evMetrics: toBoolean(opsSource.evMetrics),
+    evRepro: toBoolean(opsSource.evRepro),
+    evOther: toBoolean(opsSource.evOther),
+    containStatus: normalizeContainmentStatus(opsSource.containStatus),
+    containDesc: toString(opsSource.containDesc),
+    commCadence: toString(opsSource.commCadence),
+    commLog: normalizeCommLog(opsSource.commLog),
+    commNextDueIso: toString(opsSource.commNextDueIso),
+    commNextUpdateTime: toString(opsSource.commNextUpdateTime),
+    tableFocusMode: toString(opsSource.tableFocusMode)
   };
 
-  const table = Array.isArray(incoming.table)
-    ? incoming.table
-    : (Array.isArray(incoming.ktTable) ? incoming.ktTable : []);
-
-  const causesSource = Array.isArray(incoming.causes)
-    ? incoming.causes
-    : (Array.isArray(incoming.possibleCauses) ? incoming.possibleCauses : []);
+  const table = Array.isArray(incoming.table) ? incoming.table : [];
+  const causesSource = Array.isArray(incoming.causes) ? incoming.causes : [];
   const causes = serializeCauses(deserializeCauses(causesSource));
 
-  const likelyCauseIdRaw = incoming.likelyCauseId ?? incoming.likelyCause ?? null;
+  const likelyCauseIdRaw = incoming.likelyCauseId ?? null;
   const likelyCauseId = typeof likelyCauseIdRaw === 'string'
     ? likelyCauseIdRaw
     : (likelyCauseIdRaw && typeof likelyCauseIdRaw === 'number' ? String(likelyCauseIdRaw) : null);
 
-  const steps = normalizeStepsState(incoming.steps ?? incoming.stepsState);
+  const steps = normalizeStepsState(incoming.steps);
 
   const appearanceTheme = typeof incoming?.appearance?.theme === 'string'
     ? normalizeTheme(incoming.appearance.theme)
     : 'light';
 
-  const savedAt = typeof incoming?.meta?.savedAt === 'string'
-    ? incoming.meta.savedAt
-    : (typeof incoming.savedAt === 'string' ? incoming.savedAt : null);
-
-  const intakeMode = normalizeIntakeMode(incoming?.meta?.intakeMode ?? incoming?.intakeMode);
+  const savedAt = typeof incoming?.meta?.savedAt === 'string' ? incoming.meta.savedAt : null;
+  const intakeMode = normalizeIntakeMode(incoming?.meta?.intakeMode);
 
   const normalized = {
     meta: {
@@ -729,35 +525,16 @@ function normalizeAppStateStructure(raw) {
 }
 
 /**
- * Migrates a persisted app state object to the latest schema and enforces the
- * normalized shape expected by the UI.
- * @param {unknown} raw - Raw state object read from storage.
- * @returns {SerializedAppState|null} Normalized state when migration succeeds,
- * otherwise `null` for unprocessable data.
+ * Accepts and sanitizes only the current canonical Intake snapshot version.
+ * @param {unknown} raw - Candidate persisted or imported state object.
+ * @returns {SerializedAppState|null} Sanitized current state, or null when the
+ * snapshot is absent, malformed, or from another schema version.
  */
 export function migrateAppState(raw) {
-  if (!raw || typeof raw !== 'object') {
-    return null;
-  }
-  let state = cloneState(raw);
-  if (!state || typeof state !== 'object') {
-    return null;
-  }
-  let version = resolveVersion(state);
-  const visited = new Set();
-  while (version < APP_STATE_VERSION) {
-    if (visited.has(version)) {
-      break;
-    }
-    visited.add(version);
-    const migrate = MIGRATIONS.get(version);
-    if (typeof migrate !== 'function') {
-      break;
-    }
-    state = migrate(state);
-    version = resolveVersion(state);
-  }
-  return normalizeAppStateStructure(state);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  if (raw.meta?.version !== APP_STATE_VERSION) return null;
+  const state = cloneState(raw);
+  return state && typeof state === 'object' ? normalizeAppStateStructure(state) : null;
 }
 
 /**
