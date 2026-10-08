@@ -18,19 +18,20 @@ async function startFresh(page) {
   });
 }
 
-test('fresh Intake boots into the required role chooser without browser errors', async ({ page }) => {
+test('fresh Intake boots into the required startup hub without browser errors', async ({ page }) => {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   await startFresh(page);
 
   await page.goto('/');
 
-  const dialog = page.getByRole('dialog', { name: 'How are you using Intake?' });
+  const dialog = page.getByRole('dialog', { name: 'What would you like to do?' });
   await expect(dialog).toBeVisible();
   await expect(page.getByRole('button', { name: /Work independently/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Join a class/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Run a class/ })).toBeVisible();
   await expect(page.locator('#experienceRoleCancelBtn')).toBeHidden();
+  await expect(page.locator('#startupContinueSection')).toBeHidden();
   await expect(page.locator('[data-experience-role-choice="standalone"]')).toBeFocused();
 
   const accessibility = await new AxeBuilder({ page }).analyze();
