@@ -71,27 +71,29 @@ See `docs/classroom-architecture.md` for the full contract.
 
 ## Active work
 
-**Repository/roadmap hygiene and pre-production planning.**
+**#328 — Pre-production compatibility reset** is active on `feature/preproduction-compat-reset` / draft PR #332.
 
-#319 is finished: PR #326 merged as `400a6c5ee0b879b4a36705be6d8af075bc89d391`, the exact merged-main deployment reached production **READY**, and the post-deploy runtime-error scan was clean. Do not reopen #319 or continue its old feature branch.
+Checkpoint **328A** head: `aaf5fe877d63ce66673dee1aac930e6d365d3935`.
 
-New approved sequence:
-1. **#328** — remove legacy Student two-code access, public Instructor access-code recovery, and obsolete save/local compatibility.
-2. **#329** — add Administration / Maintenance inventory, recovery, and preview-first stale-data cleanup.
-3. **#330** — add explicit startup/resume hub built on the final credential/persistence contracts.
-4. **#316** — resume protected rich staged-content delivery.
-5. **#317** — author/rehearse the first production staged KT Case Study.
+Completed:
+- Student entry and resume now target only the current one-code live Classroom flow;
+- Instructor entry no longer offers the old access-code form; Start Class and same-device resume remain;
+- the obsolete Classroom join endpoint has been removed;
+- current Student authorization uses the live participant/session model only;
+- the shared Classroom test repository has been moved to the current model;
+- Student and Instructor feature tests are being updated for current resume behavior.
 
-Canonical target architecture: `docs/preproduction-hardening.md`.
+Still pending:
+- finish API and browser test fixture conversion;
+- simplify obsolete Intake save/local preference compatibility;
+- reconcile the durable docs after implementation stabilizes;
+- run focused and canonical validation.
 
-### Exact next implementation action
-
-After the roadmap/hygiene documentation PR is merged, create a fresh short-lived branch from current `main` for **#328**. Start with a compatibility inventory covering:
-- Student legacy two-code UI/API/schema/tests;
-- public Instructor access-code recovery UI/API behavior;
-- save/localStorage migration helpers and old fixture formats.
-
-Do not begin #329/#330 implementation until #328 has established the final credential/save contracts. Keep #316/#317 deferred.
+Exact next action:
+1. finish API/browser fixture conversion;
+2. run focused Classroom tests;
+3. inventory and simplify obsolete save/local migrations;
+4. update docs and run canonical quality/browser gates.
 
 ### Historical checkpoint ledger
 
