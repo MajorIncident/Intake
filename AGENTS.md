@@ -42,6 +42,7 @@ The Standalone / Student / Instructor program is tracked by #288. Any work touch
 Classroom invariants:
 
 - experience role (`standalone | student | instructor`) is independent from intake mode and template kind;
+- startup intent is explicit: `kt-experience-role-v1` is last-choice metadata only; substantive saved Intake, Student resume, and Instructor resume remain separate Continue contexts, and only explicit `?workspace=` Standalone authority bypasses the startup hub;
 - experience/class/session state never enters `kt-intake-full-v2`, exported Intake files, summaries, or curated Intake payloads;
 - Standalone remains backend-optional;
 - Student/team editing reuses the existing collaboration snapshot/revision/presence engine;
