@@ -3488,6 +3488,12 @@ body[data-experience-role="instructor"].instructor-class-connected.instructor-ra
 .instructor-debrief-evidence{padding:8px 9px;border-radius:9px;background:var(--panel);}
 .instructor-debrief-evidence strong{display:block;margin-bottom:3px;color:var(--ink-strong);font-size:10px;}
 .instructor-debrief-evidence p,.instructor-debrief-cell__empty,.instructor-debrief-comparison__empty{margin:0;color:var(--ink);font-size:10px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;}
+.instructor-debrief-coaching{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:7px;}
+.instructor-debrief-coaching__context{color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;}
+.instructor-debrief-coaching__badge{display:inline-flex;align-items:center;min-height:20px;padding:2px 6px;border:1px solid var(--line);border-radius:999px;background:var(--panel-muted);font-size:8px;font-weight:800;line-height:1.2;}
+.instructor-debrief-coaching__badge--meets{border-color:var(--mi-role-green-border);background:var(--mi-role-green-bg);color:var(--mi-role-green);}
+.instructor-debrief-coaching__badge--needs{border-color:var(--mi-role-orange-border);background:var(--mi-role-orange-bg);color:var(--mi-role-orange);}
+.instructor-debrief-coaching__badge--changed{border-color:var(--mi-role-blue-border);background:var(--mi-role-blue-bg);color:var(--mi-role-blue);}
 .instructor-debrief-cell__empty,.instructor-debrief-comparison__empty{color:var(--muted);}
 .instructor-debrief-comparison__empty{margin-top:8px;}
 
