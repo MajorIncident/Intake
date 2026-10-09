@@ -105,7 +105,7 @@ test('mobile Notes collapse is presentation-only and preserves the persisted des
   assert.deepEqual(getNotesWorkspaceState(), before);
   assert.equal(saves, 0);
 
-  toggleNotesWorkspace();
+  document.querySelector('#notesWorkspaceToggle').click();
 
   assert.equal(document.querySelector('#notesWorkspace').classList.contains('is-collapsed'), false);
   assert.equal(document.querySelector('#notesWorkspaceToggle').getAttribute('aria-expanded'), 'true');
