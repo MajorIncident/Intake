@@ -25,7 +25,7 @@
     "verify:vercel-functions": "node scripts/verify-vercel-function-budget.mjs"
   },
   "dependencies": {
-    "@neondatabase/serverless": "1.1.0"
+    "@neondatabase/serverless": "1.2.0"
   },
   "devDependencies": {
     "eslint": "^8.57.1",
