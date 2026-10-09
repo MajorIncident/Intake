@@ -128,6 +128,7 @@ function setup(fetchImpl, {
     storage: dom.window.localStorage,
     location: dom.window.location
   });
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.INSTRUCTOR, { persist: false, announce: false });
 
   dom.window.document.getElementById('oneLine').value = 'Local before observation';
   dom.window.localStorage.setItem('sentinel', 'keep-me');

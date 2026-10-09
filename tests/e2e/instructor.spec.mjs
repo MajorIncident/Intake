@@ -38,7 +38,7 @@ async function expectNoBlockingA11yViolations(page) {
 
 async function resumeFixtureInstructor(page, instructorToken) {
   await startFresh(page);
-  await page.getByRole('button', { name: /Teach a class/ }).click();
+  await page.getByRole('button', { name: /Run a class/ }).click();
   await page.evaluate(({ key, token, workspaceId }) => {
     window.localStorage.setItem(key, JSON.stringify({
       version: 1,
@@ -58,6 +58,9 @@ async function resumeFixtureInstructor(page, instructorToken) {
     workspaceId: FIRST_WORKSPACE_ID
   });
   await page.reload();
+  await expect(page.locator('#experienceRoleGate')).toBeVisible();
+  await expect(page.locator('[data-startup-resume="instructor"]')).toContainText('Browser Test Classroom');
+  await page.locator('[data-startup-resume="instructor"]').click();
   await expect(page.locator('#instructorClassDashboard')).toBeVisible();
 }
 
@@ -78,7 +81,7 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   });
 
   await startFresh(page);
-  await page.getByRole('button', { name: /Teach a class/ }).click();
+  await page.getByRole('button', { name: /Run a class/ }).click();
 
   await expect(page.locator('#instructorClassEntryCard')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Run a class' })).toBeVisible();
@@ -223,6 +226,11 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   expect(classroomRequests.some(request => request.body.includes('assignmentToken'))).toBe(false);
 
   await page.reload();
+
+  await expect(page.locator('#experienceRoleGate')).toBeVisible();
+  await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'unselected');
+  await expect(page.locator('[data-startup-resume="instructor"]')).toContainText('Browser Live PSDM');
+  await page.locator('[data-startup-resume="instructor"]').click();
 
   await expect(page.locator('#experienceRoleGate')).toBeHidden();
   await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'instructor');

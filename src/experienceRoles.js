@@ -34,8 +34,8 @@ export const EXPERIENCE_ROLES = Object.freeze([
   Object.freeze({
     id: EXPERIENCE_ROLE_IDS.INSTRUCTOR,
     label: 'Instructor',
-    actionLabel: 'Teach a class',
-    description: 'Open the instructor workspace for class supervision and coaching.'
+    actionLabel: 'Run a class',
+    description: 'Start a new Instructor-led class and manage participants, teams, exercises, and coaching.'
   })
 ]);
 

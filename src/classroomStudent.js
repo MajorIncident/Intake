@@ -178,6 +178,7 @@ export function createStudentClassroomController({
   onClassDisconnected = () => {},
   onSessionConnected = () => {},
   onSessionDisconnected = () => {},
+  onResumeUnavailable = () => {},
   setTimeoutImpl = globalThis.setTimeout?.bind(globalThis),
   clearTimeoutImpl = globalThis.clearTimeout?.bind(globalThis),
   AbortControllerImpl = globalThis.AbortController
@@ -435,7 +436,9 @@ export function createStudentClassroomController({
     activeSession = null;
     restoreLocalRecovery();
     renderEntry();
-    setError(message || 'This class session is no longer available. Ask your instructor for the current class code.');
+    const explanation = message || 'This class session is no longer available. Ask your instructor for the current class code.';
+    setError(explanation);
+    onResumeUnavailable(explanation);
     return false;
   };
 

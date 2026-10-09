@@ -40,6 +40,7 @@ initExperienceRoleController({
   storage: dom.window.localStorage,
   location: dom.window.location
 });
+applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE, { persist: false, announce: false });
 const protectedProvider = {
   getCatalog: () => [{
     id: 'authorized-case',

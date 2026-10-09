@@ -82,6 +82,7 @@ function mount({
     storage: dom.window.localStorage,
     location: dom.window.location
   });
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STUDENT, { persist: false, announce: false });
 
   const calls = { connect: [], leave: [], apply: [], save: [], fetch: [], timers: [] };
   const collaborationState = {

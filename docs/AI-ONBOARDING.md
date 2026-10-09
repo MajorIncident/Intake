@@ -7,7 +7,7 @@ For any work in the Standalone / Student / Instructor program (#288), also read 
 ## Entry Point & Boot Sequence
 1. `index.html` renders the full layout and loads the ES module entry via `<script type="module" src="main.js"></script>`.
 2. `main.js` registers a `DOMContentLoaded` listener that calls `boot()`.
-3. `boot()` restores the independent product experience through `initExperienceRoleController()` before configuring the Intake feature modules. Existing saved Intakes / collaboration links become Standalone; genuinely new browsers receive the required chooser.
+3. `boot()` initializes `src/startupExperienceHub.js` and `initExperienceRoleController()`. Ordinary launch stays unselected and shows explicit Continue/new-session choices; only an explicit `?workspace=` collaboration capability routes directly to Standalone.
 4. `boot()` then performs the Intake initialization:
    - Wires the KT helpers by calling `configureKT({ autoResize, updatePrefaceTitles, showToast, getObjectFull, getDeviationFull })`.
    - Initialises each feature module: `initPreface`, `initializeCommunications`, `initStepsFeature`, `initTable`, `ensurePossibleCausesUI`, and `renderCauses`.
@@ -20,8 +20,9 @@ For any work in the Standalone / Student / Instructor program (#288), also read 
 | ------ | ----------- |
 | `src/appState.js` | `collectAppState()`, `applyAppState()`, `getSummaryState()` for round-trip UI testing and summary hydration. |
 | `src/experienceRoles.js` | Canonical Standalone / Student / Instructor IDs, labels, and declarative product-surface policy. |
-| `src/experienceRoleController.js` | First-run chooser, current-format role resume/switching, join-link routing, and local-only `kt-experience-role-v1` preference. Pre-production raw-role and implicit saved-Intake migration compatibility is intentionally removed. |
+| `src/experienceRoleController.js` | Applies Standalone/Student/Instructor surface projection, owns the startup/View dialog focus lifecycle, and persists the local-only `kt-experience-role-v1` last-choice preference. The preference is not startup authority. |
 | `src/classroomStudent.js` | One-code Student admission, Waiting/own-status polling, current class-session resume, assignment-specific memory-only workspace access/reassignment/unassign, and coaching/resource lifecycle hooks. |
+| `src/startupExperienceHub.js` | Detects substantive saved Intake and current Student/Instructor resumes independently, renders Continue cards, highlights safe `#join` intent, and owns explicit replacement confirmations. Delegates real class resume/revalidation to the Classroom controllers. |
 | `src/adminMaintenance.js` | Administration / Maintenance dialog, tab-scoped Admin credential envelope, lifecycle inventory/filtering, recovery display, and signed preview/commit UX. It never sets an Intake experience role. |
 | `src/classroomInstructor.js` | Start Class, human join-code display, same-device Instructor resume, live roster/team assignment management, read-only observation, and coaching lifecycle hooks. |
 | `src/coachableFields.js` | Stable coaching target IDs and versioned field fingerprints; DOM placement is deliberately separate from persistence identity. |

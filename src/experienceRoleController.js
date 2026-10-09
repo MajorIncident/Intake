@@ -14,7 +14,6 @@ import {
   isExperienceSurfaceVisible,
   normalizeExperienceRole
 } from './experienceRoles.js';
-import { readClassroomJoinIntent } from './classroomJoinLink.js';
 
 /** Dedicated local-only role preference, never part of serialized Intake state. */
 export const EXPERIENCE_ROLE_STORAGE_KEY = 'kt-experience-role-v1';
@@ -30,6 +29,8 @@ let storageRef = null;
 let locationRef = null;
 let chooserRequired = false;
 let chooserReturnFocus = null;
+let roleIntentHandler = null;
+let chooserOpenHandler = null;
 
 /**
  * Safely resolve the default browser localStorage object.
@@ -216,6 +217,22 @@ export function applyExperienceRole(role, { persist = true, announce = true } = 
 }
 
 /**
+ * Clear the currently projected experience without deleting any saved resume data.
+ *
+ * This is used by the startup hub when navigation intent must become explicit
+ * again after launch or after a server-backed resume becomes invalid.
+ *
+ * @returns {void}
+ */
+export function resetExperienceRoleSelection() {
+  activeExperienceRole = null;
+  if (!documentRef?.body) return;
+  documentRef.body.dataset.experienceRole = 'unselected';
+  renderRoleLabels(null);
+  renderRoleSurfaces(null);
+}
+
+/**
  * Return all focusable controls inside the role chooser.
  *
  * @returns {HTMLElement[]} Visible chooser controls.
@@ -264,7 +281,7 @@ function getRoleSwitcherFocusOrigin(button) {
  * @returns {void}
  */
 function focusFirstChoice() {
-  const target = documentRef?.querySelector('[data-experience-role-choice]');
+  const target = documentRef?.querySelector('[data-startup-resume], [data-experience-role-choice]');
   if (!target || typeof target.focus !== 'function') {
     return;
   }
@@ -291,6 +308,7 @@ export function openExperienceRoleChooser({ required = false, returnFocus = null
 
   chooserRequired = required;
   chooserReturnFocus = returnFocus || documentRef?.activeElement || null;
+  chooserOpenHandler?.({ required });
   gate.hidden = false;
   gate.setAttribute('aria-hidden', 'false');
   documentRef.body.classList.add('experience-role-gate-open');
@@ -379,6 +397,9 @@ function bindRoleControls() {
     button.dataset.experienceRoleBound = 'true';
     button.addEventListener('click', () => {
       const role = button.getAttribute('data-experience-role-choice');
+      if (typeof roleIntentHandler === 'function' && roleIntentHandler(role) === true) {
+        return;
+      }
       if (applyExperienceRole(role)) {
         closeExperienceRoleChooser({ force: true });
       }
@@ -411,24 +432,27 @@ function bindRoleControls() {
 }
 
 /**
- * Initialize experience-role resume and first-run selection.
+ * Initialize explicit startup experience selection.
  *
- * Explicit Standalone collaboration links retain Standalone routing. Otherwise
- * only a current stored preference resumes automatically; unselected contexts
- * receive the required chooser.
+ * Explicit Standalone collaboration links retain direct Standalone routing.
+ * Ordinary launches remain unselected so the startup hub can present saved
+ * Intake/Classroom contexts as separate Continue choices. The stored role
+ * preference is retained as last-choice metadata only and never auto-routes.
  *
  * @param {object} [options] - Dependency overrides for tests or embedded contexts.
  * @param {Document} [options.documentRef=document] - Mounted document.
  * @param {Window} [options.windowRef=window] - Mounted window.
  * @param {Storage|null} [options.storage=localStorage] - Local preference storage.
  * @param {Location|{search:string}} [options.location=window.location] - Current location.
- * @returns {string|null} Resumed/applied role, or null while first-run choice is pending.
+ * @returns {string|null} Applied explicit-workspace role, or null while startup choice is pending.
  */
 export function initExperienceRoleController({
   documentRef: nextDocument = typeof document !== 'undefined' ? document : null,
   windowRef: nextWindow = typeof window !== 'undefined' ? window : null,
   storage = defaultStorage(),
-  location = nextWindow?.location || null
+  location = nextWindow?.location || null,
+  onRoleIntent = null,
+  onChooserOpen = null
 } = {}) {
   documentRef = nextDocument;
   windowRef = nextWindow;
@@ -436,6 +460,8 @@ export function initExperienceRoleController({
   locationRef = location;
   chooserRequired = false;
   chooserReturnFocus = null;
+  roleIntentHandler = typeof onRoleIntent === 'function' ? onRoleIntent : null;
+  chooserOpenHandler = typeof onChooserOpen === 'function' ? onChooserOpen : null;
 
   if (!documentRef?.body) {
     return null;
@@ -452,25 +478,7 @@ export function initExperienceRoleController({
     return collaborationRole;
   }
 
-  if (readClassroomJoinIntent(locationRef)) {
-    const studentRole = applyExperienceRole(EXPERIENCE_ROLE_IDS.STUDENT, {
-      persist: true,
-      announce: false
-    });
-    closeExperienceRoleChooser({ force: true });
-    return studentRole;
-  }
-
-  const storedRole = readExperienceRolePreference(storageRef);
-  if (storedRole) {
-    applyExperienceRole(storedRole, { persist: false, announce: false });
-    closeExperienceRoleChooser({ force: true });
-    return storedRole;
-  }
-
-  activeExperienceRole = null;
-  documentRef.body.dataset.experienceRole = 'unselected';
-  renderRoleLabels(null);
+  resetExperienceRoleSelection();
   openExperienceRoleChooser({ required: true });
   return null;
 }

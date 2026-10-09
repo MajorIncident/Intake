@@ -255,32 +255,47 @@ Anchors present:
     >
       <div class="experience-role-dialog__intro">
         <span class="experience-role-dialog__eyebrow">KT Intake</span>
-        <h2 id="experienceRoleTitle">How are you using Intake?</h2>
-        <p id="experienceRoleDescription">Choose the experience that fits this work. You can change it later from the View menu without changing your Intake data.</p>
+        <h2 id="experienceRoleTitle">What would you like to do?</h2>
+        <p id="experienceRoleDescription">Continue existing work on this device, or choose a different way to use Intake. Nothing is cleared just by opening this screen.</p>
       </div>
-      <div class="experience-role-options" role="group" aria-label="Intake experiences">
+      <p class="startup-hub__status" id="startupHubStatus" role="status" aria-live="polite" data-persistence="local-only" data-summary="exclude" hidden></p>
+      <section class="startup-hub__continue" id="startupContinueSection" aria-labelledby="startupContinueTitle" data-persistence="local-only" data-summary="exclude" hidden>
+        <div class="startup-hub__section-heading">
+          <span class="experience-role-dialog__eyebrow">Continue</span>
+          <h3 id="startupContinueTitle">Continue where you left off</h3>
+        </div>
+        <div class="startup-hub__resume-list" id="startupContinueList"></div>
+      </section>
+      <section class="startup-hub__new" aria-labelledby="startupNewTitle">
+        <div class="startup-hub__section-heading">
+          <span class="experience-role-dialog__eyebrow">Start / Join</span>
+          <h3 id="startupNewTitle">Start or join something else</h3>
+        </div>
+        <p class="startup-hub__join-intent" id="startupJoinIntentNotice" data-persistence="local-only" data-summary="exclude" hidden></p>
+      <div class="experience-role-options" role="group" aria-label="Start or join an Intake experience">
         <button type="button" class="experience-role-option" data-experience-role-choice="standalone" data-persistence="local-only" data-summary="exclude">
           <span class="experience-role-option__title">Work independently</span>
           <span class="experience-role-option__role">Standalone</span>
-          <span class="experience-role-option__description">Use Intake on your own, with local saves and optional shared collaboration.</span>
+          <span class="experience-role-option__description">Start a new independent Intake, with local saves and optional shared collaboration.</span>
         </button>
         <button type="button" class="experience-role-option" data-experience-role-choice="student" data-persistence="local-only" data-summary="exclude">
           <span class="experience-role-option__title">Join a class</span>
           <span class="experience-role-option__role">Student</span>
-          <span class="experience-role-option__description">Use Intake for guided class work, individually or with a team.</span>
+          <span class="experience-role-option__description">Join a class with your name and the short class code from your instructor.</span>
         </button>
         <button type="button" class="experience-role-option" data-experience-role-choice="instructor" data-persistence="local-only" data-summary="exclude">
-          <span class="experience-role-option__title">Teach a class</span>
+          <span class="experience-role-option__title">Run a class</span>
           <span class="experience-role-option__role">Instructor</span>
-          <span class="experience-role-option__description">Open the instructor workspace for class supervision and coaching.</span>
+          <span class="experience-role-option__description">Start a new Instructor-led class and manage participants, teams, exercises, and coaching.</span>
         </button>
       </div>
+      </section>
       <div class="experience-role-admin-entry">
         <button type="button" class="btn-secondary" id="experienceAdminMaintenanceBtn" data-open-admin-maintenance data-persistence="session-only" data-summary="exclude">Administration / Maintenance</button>
         <span>Inspect and clean server-side class or collaboration data with a separate Admin access key.</span>
       </div>
       <div class="experience-role-dialog__footer">
-        <p>Your experience choice is stored separately from Intake case data and exports.</p>
+        <p>Saved Intake, Student, and Instructor contexts remain separate. Starting fresh is always an explicit choice.</p>
         <button type="button" class="btn-secondary" id="experienceRoleCancelBtn" data-persistence="local-only" data-summary="exclude">Keep current experience</button>
       </div>
     </section>

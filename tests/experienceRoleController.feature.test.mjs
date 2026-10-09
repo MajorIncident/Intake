@@ -118,17 +118,18 @@ test('existing collaboration links silently enter Standalone for backward compat
   assert.equal(dom.window.document.getElementById('experienceRoleGate').hidden, true);
 });
 
-test('a valid Classroom join fragment enters Student experience before the first-run chooser', () => {
+test('a valid Classroom join fragment leaves startup intent explicit', () => {
   dom.window.close();
   mount('https://intake.test/#join=K7FMP4Q2');
   dom.window.localStorage.clear();
 
   const role = initialize();
 
-  assert.equal(role, EXPERIENCE_ROLE_IDS.STUDENT);
-  assert.equal(dom.window.document.getElementById('experienceRoleGate').hidden, true);
-  assert.equal(dom.window.document.getElementById('studentClassEntryShell').hidden, false);
-  assert.equal(JSON.parse(dom.window.localStorage.getItem(EXPERIENCE_ROLE_STORAGE_KEY)).role, EXPERIENCE_ROLE_IDS.STUDENT);
+  assert.equal(role, null);
+  assert.equal(dom.window.document.body.dataset.experienceRole, 'unselected');
+  assert.equal(dom.window.document.getElementById('experienceRoleGate').hidden, false);
+  assert.equal(dom.window.document.getElementById('studentClassEntryShell').hidden, true);
+  assert.equal(dom.window.localStorage.getItem(EXPERIENCE_ROLE_STORAGE_KEY), null);
 });
 
 test('Standalone collaboration query authority wins over a simultaneous Classroom join fragment', () => {
@@ -155,34 +156,35 @@ test('explicit Standalone collaboration link overrides a stored Instructor prefe
   assert.equal(JSON.parse(dom.window.localStorage.getItem(EXPERIENCE_ROLE_STORAGE_KEY)).role, EXPERIENCE_ROLE_IDS.STANDALONE);
 });
 
-test('stored Student role resumes the Intake and shows student context without a class dependency', () => {
+test('stored Student preference does not silently resume the Student experience', () => {
   persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.STUDENT, dom.window.localStorage);
 
   const role = initialize();
 
-  assert.equal(role, EXPERIENCE_ROLE_IDS.STUDENT);
-  assert.equal(dom.window.document.querySelector('.wrap').hidden, false);
-  assert.equal(dom.window.document.getElementById('studentExperienceNotice').hidden, false);
-  assert.equal(dom.window.document.getElementById('instructorExperienceShell').hidden, true);
+  assert.equal(role, null);
+  assert.equal(dom.window.document.body.dataset.experienceRole, 'unselected');
+  assert.equal(dom.window.document.getElementById('experienceRoleGate').hidden, false);
+  assert.equal(dom.window.document.querySelector('.wrap').hidden, true);
+  assert.equal(dom.window.document.getElementById('studentExperienceNotice').hidden, true);
+  assert.equal(JSON.parse(dom.window.localStorage.getItem(EXPERIENCE_ROLE_STORAGE_KEY)).role, EXPERIENCE_ROLE_IDS.STUDENT);
 });
 
-test('stored Instructor role resumes the instructor shell and hides editable Intake surfaces', () => {
+test('stored Instructor preference does not silently resume the Instructor shell', () => {
   persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.INSTRUCTOR, dom.window.localStorage);
 
   const role = initialize();
 
-  assert.equal(role, EXPERIENCE_ROLE_IDS.INSTRUCTOR);
+  assert.equal(role, null);
+  assert.equal(dom.window.document.body.dataset.experienceRole, 'unselected');
   assert.equal(dom.window.document.querySelector('.wrap').hidden, true);
   assert.equal(dom.window.document.querySelector('.workspace-dock').hidden, true);
-  assert.equal(dom.window.document.getElementById('instructorExperienceShell').hidden, false);
-  dom.window.document.querySelectorAll('[data-experience-surface="intake-control"]').forEach((control) => {
-    assert.equal(control.hidden, true);
-  });
+  assert.equal(dom.window.document.getElementById('instructorExperienceShell').hidden, true);
+  assert.equal(dom.window.document.getElementById('experienceRoleGate').hidden, false);
 });
 
 test('role switching can be dismissed with Escape and restores focus when it is not first-run', () => {
-  persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.STANDALONE, dom.window.localStorage);
   initialize();
+  dom.window.document.querySelector('[data-experience-role-choice="standalone"]').click();
 
   const switcher = dom.window.document.getElementById('experienceRoleMenuBtn');
   const viewTrigger = dom.window.document.querySelector('[data-menu-target="viewMenu"]');
@@ -203,8 +205,8 @@ test('role switching can be dismissed with Escape and restores focus when it is 
 });
 
 test('role changes are announced without writing through the Intake save path', () => {
-  persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.STANDALONE, dom.window.localStorage);
   initialize();
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
 
   const changes = [];
   dom.window.addEventListener('intake:experience-role-changed', (event) => changes.push(event.detail.role));
