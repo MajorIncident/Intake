@@ -248,15 +248,15 @@ Merged via PR #332 as `8ad3eb2b80d080d244556b9280a0fd2f83565193`. Removed the le
 
 Merged PR #333 as `b04684f2432aa474cb84874aa26aa08a5f4c5ab7` implements the canonical contract in `docs/admin-maintenance.md`: a separately authorized maintenance surface that inventories Classroom and Standalone collaboration data, derives idle/expired state from server timestamps + recent presence, previews destructive cleanup, and safely purges selected or bulk stale records. Administration is not a fourth Intake experience role. It also becomes the intentional recovery path for rotating/reissuing Instructor authority after #328 removes the public Instructor access-code form.
 
-**#330 — Startup experience hub + explicit resume — ACTIVE**
+**#330 — Startup experience hub + explicit resume — COMPLETE**
 
-Draft PR #334 replaces implicit role restoration with a startup hub that offers **Continue where you left off** when valid saved/resumable context exists, plus **Work independently**, **Join a class**, **Run a class**, and secondary **Administration / Maintenance** entry. Cached Intake, Student resume, and Instructor resume are presented as separate explicit choices rather than silently selecting a role.
+Merged PR #334 as `ad7b9835adf3fd5338658f29b634e18b13b2def5` replaces implicit role restoration with a startup hub that offers **Continue where you left off** when valid saved/resumable context exists, plus **Work independently**, **Join a class**, **Run a class**, and secondary **Administration / Maintenance** entry. Cached Intake, Student resume, and Instructor resume are presented as separate explicit choices rather than silently selecting a role. Exact-head GitHub gates passed and the merged `main` deployment reached Vercel production **READY**.
 
 ### P1 — production simulation enablement
 
 **#316 — Protected staged case assets and rich Student case rendering**
 
-Still technically unblocked, but intentionally ordered **after #328–#330**. Add server-gated protected assets plus accessible table/image/document-page rendering without weakening progressive disclosure or the minimal public-static boundary.
+**ACTIVE NEXT SLICE.** Pre-production hardening #328–#330 is complete. Add server-gated protected assets plus accessible table/image/document-page rendering without weakening progressive disclosure or the minimal public-static boundary.
 
 **#317 — Author and validate the first production staged KT Case Study**
 
@@ -278,7 +278,7 @@ PRODUCTION SIMULATION ENABLEMENT
   #317  first production staged KT Case Study
 ```
 
-**Current product decision:** #328 and #329 are complete. **#330 Startup experience hub is active on draft PR #334**. Finish and production-verify #330 before #316/#317 so rich staged assets build on finalized compatibility, maintenance, and startup contracts.
+**Current product decision:** #328–#330 are complete and production-published. **#316 Protected staged case assets and rich Student case rendering is now the active next slice**, followed by #317 first production staged KT Case Study.
 
 ## Stacked PR rules
 
