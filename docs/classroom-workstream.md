@@ -34,8 +34,8 @@ The secure Classroom foundation (#288), live-class management (#312), staged-sim
 | Join/mobile polish | #320 | Complete | PR #324 merged as `273ae643...` | Safe share/QR + compact mobile Class/Case/Team/Notes/Instructor chrome |
 | Compatibility reset | #328 | Complete / published | PR #332 merged as `8ad3eb2b...` | Current one-code/session model only; obsolete Classroom access/schema and pre-production save migrations removed |
 | Admin / Maintenance | #329 | Complete / published | PR #333 merged as `b04684f2...` | Server-authorized inventory, recovery, signed preview, guarded purge, responsive maintenance UI |
-| Startup experience hub | #330 | **Active implementation** | Draft PR #334 / `feature/startup-experience-hub` | Explicit Continue / Work independently / Join / Run / Admin choices |
-| Rich staged assets | #316 | Deferred until hardening complete | Open | Secure image/table/document-page delivery |
+| Startup experience hub | #330 | Complete / published | PR #334 merged as `ad7b9835...` | Explicit Continue / Work independently / Join / Run / Admin choices |
+| Rich staged assets | #316 | **Active next slice** | Open | Secure image/table/document-page delivery |
 | First production staged case | #317 | Deferred / blocked by #316 | Open | Source-faithful official case authoring/rehearsal |
 
 ## Current architecture decisions
