@@ -91,6 +91,40 @@ test('empty/default persistence noise is not a substantive saved Intake', () => 
     actions: {
       analysisId: 'generated-analysis-id',
       items: []
+    },
+    decisionAnalysis: {
+      decision: '',
+      options: '',
+      selectedOption: '',
+      ownerRole: 'Application Owner',
+      delegatedOwner: '',
+      rationale: '',
+      timestamp: ''
+    },
+    potentialProblemAnalysis: {
+      owner: {
+        name: '',
+        category: '',
+        subOwner: '',
+        notes: '',
+        lastAssignedBy: '',
+        lastAssignedAt: '',
+        source: 'Manual'
+      },
+      risk: {
+        level: 'None',
+        impactIfFails: '',
+        prevent: '',
+        ifHappens: ''
+      },
+      changeControl: {
+        required: false,
+        rollbackPlan: ''
+      },
+      verification: {
+        required: false,
+        result: ''
+      }
     }
   };
 
@@ -115,6 +149,23 @@ test('meaningful user-authored Intake fields create a Continue candidate', () =>
 
   assert.equal(isSubstantiveSavedIntake({
     meta: { version: APP_STATE_VERSION, intakeMode: 'it' }
+  }), true);
+
+  assert.equal(isSubstantiveSavedIntake({
+    meta: { version: APP_STATE_VERSION },
+    decisionAnalysis: {
+      ownerRole: 'Application Owner',
+      decision: 'Choose the rollback path'
+    }
+  }), true);
+
+  assert.equal(isSubstantiveSavedIntake({
+    meta: { version: APP_STATE_VERSION },
+    potentialProblemAnalysis: {
+      risk: { level: 'High' },
+      changeControl: { required: false, rollbackPlan: '' },
+      verification: { required: false, result: '' }
+    }
   }), true);
 });
 
