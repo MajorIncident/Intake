@@ -8,7 +8,6 @@
  * controllers by applying the corresponding experience role.
  */
 
-import { APP_STATE_VERSION } from './appStateVersion.js';
 import {
   clearInstructorSession,
   isInstructorSessionExpired,
@@ -30,7 +29,6 @@ import { EXPERIENCE_ROLE_IDS } from './experienceRoles.js';
 import { DEFAULT_INTAKE_MODE } from './intakeModes.js';
 import { STORAGE_KEY, migrateAppState } from './storage.js';
 
-const BASELINE_STATE = migrateAppState({ meta: { version: APP_STATE_VERSION } });
 
 let documentRef = null;
 let windowRef = null;
@@ -87,18 +85,39 @@ function meaningfulHandover(handover) {
   ));
 }
 
-function stable(value) {
-  try {
-    return JSON.stringify(value ?? null);
-  } catch {
-    return '';
-  }
-}
-
 function meaningfulMajorAnalysis(snapshot) {
-  if (!BASELINE_STATE) return false;
-  return stable(snapshot?.decisionAnalysis) !== stable(BASELINE_STATE.decisionAnalysis)
-    || stable(snapshot?.potentialProblemAnalysis) !== stable(BASELINE_STATE.potentialProblemAnalysis);
+  const decision = snapshot?.decisionAnalysis || {};
+  if (anyNonEmpty([
+    decision.decision,
+    decision.options,
+    decision.selectedOption,
+    decision.delegatedOwner,
+    decision.rationale,
+    decision.timestamp
+  ])) return true;
+  if (nonEmpty(decision.ownerRole) && decision.ownerRole.trim() !== 'Application Owner') return true;
+
+  const potential = snapshot?.potentialProblemAnalysis || {};
+  const owner = potential.owner || {};
+  if (anyNonEmpty([
+    owner.name,
+    owner.category,
+    owner.subOwner,
+    owner.notes,
+    owner.lastAssignedBy,
+    owner.lastAssignedAt
+  ])) return true;
+  if (nonEmpty(owner.source) && owner.source.trim() !== 'Manual') return true;
+
+  const risk = potential.risk || {};
+  if (nonEmpty(risk.level) && risk.level.trim() !== 'None') return true;
+  if (anyNonEmpty([risk.impactIfFails, risk.prevent, risk.ifHappens])) return true;
+
+  const changeControl = potential.changeControl || {};
+  if (changeControl.required === true || nonEmpty(changeControl.rollbackPlan)) return true;
+
+  const verification = potential.verification || {};
+  return verification.required === true || nonEmpty(verification.result);
 }
 
 /**
