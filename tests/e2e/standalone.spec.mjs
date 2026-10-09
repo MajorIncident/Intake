@@ -165,18 +165,14 @@ test('mobile Standalone accepts primary Intake input and persists it', async ({ 
   await expect(notesToggle).toBeVisible();
   expect(await page.evaluate(() => window.matchMedia('(max-width: 700px)').matches)).toBe(true);
   const beforeNotesToggle = await page.evaluate(key => window.localStorage.getItem(key), INTAKE_STORAGE_KEY);
-  await page.evaluate(() => {
-    window.__notesToggleClickCount = 0;
-    document.querySelector('#notesWorkspaceToggle')?.addEventListener('click', () => {
-      window.__notesToggleClickCount += 1;
-    });
-  });
 
-  await notesToggle.click();
-  expect(await page.evaluate(() => window.__notesToggleClickCount)).toBe(1);
+  // Pixel 7 emulation should exercise the real touch path. A synthetic mouse
+  // click can lose its target when the fixed mobile dock follows visual-viewport
+  // chrome between pointer down/up, producing no DOM click event at all.
+  await notesToggle.tap();
   await expect(notesToggle).toHaveAttribute('aria-expanded', 'true');
   await expect(notesWorkspace).not.toHaveClass(/is-collapsed/);
-  await page.getByRole('button', { name: 'Collapse notes' }).click();
+  await page.getByRole('button', { name: 'Collapse notes' }).tap();
   await expect(notesWorkspace).toHaveClass(/is-collapsed/);
 
   const afterNotesToggle = await page.evaluate(key => window.localStorage.getItem(key), INTAKE_STORAGE_KEY);
