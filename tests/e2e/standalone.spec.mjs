@@ -160,7 +160,7 @@ test('mobile Standalone accepts primary Intake input and persists it', async ({ 
   }, INTAKE_STORAGE_KEY)).toBe(problem);
 
   const notesWorkspace = page.locator('#notesWorkspace');
-  const notesToggle = page.getByRole('button', { name: 'Open notes' });
+  const notesToggle = page.locator('#notesWorkspaceToggle');
   await expect(notesWorkspace).toHaveClass(/is-collapsed/);
   await expect(notesToggle).toBeVisible();
   expect(await page.evaluate(() => window.matchMedia('(max-width: 700px)').matches)).toBe(true);
