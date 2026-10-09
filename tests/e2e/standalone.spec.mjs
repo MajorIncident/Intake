@@ -160,11 +160,21 @@ test('mobile Standalone accepts primary Intake input and persists it', async ({ 
   }, INTAKE_STORAGE_KEY)).toBe(problem);
 
   const notesWorkspace = page.locator('#notesWorkspace');
+  const notesToggle = page.getByRole('button', { name: 'Open notes' });
   await expect(notesWorkspace).toHaveClass(/is-collapsed/);
-  await expect(page.getByRole('button', { name: 'Open notes' })).toBeVisible();
+  await expect(notesToggle).toBeVisible();
+  expect(await page.evaluate(() => window.matchMedia('(max-width: 700px)').matches)).toBe(true);
   const beforeNotesToggle = await page.evaluate(key => window.localStorage.getItem(key), INTAKE_STORAGE_KEY);
+  await page.evaluate(() => {
+    window.__notesToggleClickCount = 0;
+    document.querySelector('#notesWorkspaceToggle')?.addEventListener('click', () => {
+      window.__notesToggleClickCount += 1;
+    });
+  });
 
-  await page.getByRole('button', { name: 'Open notes' }).click();
+  await notesToggle.click();
+  expect(await page.evaluate(() => window.__notesToggleClickCount)).toBe(1);
+  await expect(notesToggle).toHaveAttribute('aria-expanded', 'true');
   await expect(notesWorkspace).not.toHaveClass(/is-collapsed/);
   await page.getByRole('button', { name: 'Collapse notes' }).click();
   await expect(notesWorkspace).toHaveClass(/is-collapsed/);
@@ -180,6 +190,11 @@ test('mobile Standalone accepts primary Intake input and persists it', async ({ 
   await expectNoBlockingA11yViolations(page);
 
   await page.reload();
+
+  await expect(page.locator('#experienceRoleGate')).toBeVisible();
+  await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'unselected');
+  await expect(page.locator('[data-startup-resume="intake"]')).toContainText('Continue your saved Intake');
+  await page.locator('[data-startup-resume="intake"]').click();
 
   await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'standalone');
   await expect(page.locator('#oneLine')).toHaveValue(problem);
