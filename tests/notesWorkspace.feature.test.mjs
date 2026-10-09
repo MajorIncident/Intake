@@ -120,6 +120,18 @@ test('mobile Notes collapse is presentation-only and preserves the persisted des
   assert.deepEqual(getNotesWorkspaceState(), before);
 });
 
+test('notes toggle captures pointer activation before a fixed mobile dock can shift', () => {
+  const toggle = document.querySelector('#notesWorkspaceToggle');
+  let capturedPointerId = null;
+  toggle.setPointerCapture = pointerId => { capturedPointerId = pointerId; };
+  const event = new Event('pointerdown', { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'pointerId', { value: 17 });
+
+  toggle.dispatchEvent(event);
+
+  assert.equal(capturedPointerId, 17);
+});
+
 test('valid drop inserts at selection, dispatches editing events, and removes the note', () => {
   const id = addNote('note');
   const target = document.querySelector('#target');
