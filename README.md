@@ -33,6 +33,8 @@ AI contributors should run the following commands (or manual preview) whenever t
 
 Production Administration / Maintenance is fail-closed until a 43-character URL-safe 256-bit `INTAKE_ADMIN_TOKEN` is configured in the Vercel project environment. The value is server-only and must not be committed to this repository. See [`docs/admin-maintenance.md`](docs/admin-maintenance.md).
 
+**Run a class** requires the shared class-creation password. It defaults to `kepnertregoe` (case-insensitive) and can be changed by setting `INTAKE_CLASS_CREATION_PASSWORD` in the Vercel environment. Class creation, Student admission, and collaboration-workspace creation are rate-limited per network address. The full environment-variable list is in [`docs/playbooks/release-and-verify.md`](docs/playbooks/release-and-verify.md).
+
 ## Entry Point & Boot Logic
 - `index.html` declares the full UI layout and loads the JavaScript bundle via `<script type="module" src="main.js"></script>`.
 - `main.js` waits for `DOMContentLoaded`, then calls `boot()`. This bootstraps every feature in order:

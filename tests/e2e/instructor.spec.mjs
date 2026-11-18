@@ -87,6 +87,7 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.getByRole('heading', { name: 'Run a class' })).toBeVisible();
 
   await page.getByLabel('Class title').fill('Browser Live PSDM');
+  await page.getByLabel('Class password').fill('kepnertregoe');
   await page.getByRole('button', { name: 'Start class' }).click();
 
   await expect(page.locator('#instructorClassDashboard')).toBeVisible();

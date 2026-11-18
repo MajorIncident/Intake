@@ -4,6 +4,7 @@
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { applySchema, consumeRateLimit, createSql, memoizeUntilFailure } from './_db.js';
+import { checkRateLimit, sendRateLimited } from './_rateLimit.js';
 
 export const MAX_SNAPSHOT_BYTES = 512 * 1024;
 export const TEAM_NAME_MAX_LENGTH = 80;
@@ -469,9 +470,11 @@ function send(res, status, body) { headers(res); return res.status(status).json(
 function methodNotAllowed(res, allowed) { res.setHeader('Allow', allowed); return send(res, 405, { error: 'Method not allowed.' }); }
 
 /** Creates a Vercel create-workspace handler. @param {object} [dependencies] Dependencies. @returns {Function} Handler. */
-export function createWorkspaceHandler({ getRepository = getWorkspaceRepository } = {}) {
+export function createWorkspaceHandler({ getRepository = getWorkspaceRepository, rateLimiter = undefined } = {}) {
   return async (req, res) => {
     if (req.method !== 'POST') return methodNotAllowed(res, 'POST');
+    const limited = await checkRateLimit(req, 'workspace-create', rateLimiter);
+    if (!limited.allowed) return sendRateLimited(res, limited.retryAfterSeconds);
     const validation = validateSnapshot(req.body?.snapshot);
     if (!validation.ok) return send(res, validation.status, { error: validation.status === 413 ? 'Snapshot is too large.' : 'Invalid request.' });
     const teamName = normalizeCollaborationName(req.body?.teamName, TEAM_NAME_MAX_LENGTH);

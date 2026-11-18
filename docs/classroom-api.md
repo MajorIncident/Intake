@@ -42,13 +42,27 @@ The internal `__classroomRoute` marker is **routing only**. It is not a capabili
 
 ### `POST /api/classes`
 
-Creates a class from a title and returns:
+Creates a class from a title and the shared **class-creation password** (`classPassword`) and returns:
 
 - public class metadata;
 - one raw Instructor capability;
 - one human Student join code.
 
+The class password is a gate against anonymous class creation, not an identity. It defaults to `kepnertregoe`, is compared trimmed and case-insensitively in constant time, and can be overridden server-side with `INTAKE_CLASS_CREATION_PASSWORD`. A wrong or missing password returns **403** `{ code: "class-password-invalid" }` and creates nothing. The browser never stores it.
+
 Class expiry uses `CLASS_EXPIRY_DAYS` when set to a positive integer, otherwise 30 days.
+
+### Rate limits on unauthenticated endpoints
+
+`api/_rateLimit.js` applies fixed-window limits keyed by a SHA-256 hash of the client address (raw addresses are never stored; counters live in `intake_rate_limits`). Exceeding a limit returns **429** `{ code: "rate-limited" }` with `Retry-After`.
+
+| Endpoint | Policy | Limit |
+| --- | --- | --- |
+| `POST /api/classes` | `class-create` | 20 per hour per address (wrong-password attempts count) |
+| `POST /api/classes/admit` | `class-admit` | 150 per 10 minutes per address — sized so a whole class (≈22 Students plus re-joins) behind one school address is never blocked |
+| `POST /api/workspaces` | `workspace-create` | 60 per hour per address |
+
+Rate limiting is best-effort: if the limiter cannot reach the database the request continues (it would then fail on its own database work). The class password is always enforced.
 
 ### `GET /api/classes`
 

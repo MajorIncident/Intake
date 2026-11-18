@@ -21,13 +21,14 @@
 - return `Cache-Control: no-store` and `Referrer-Policy: no-referrer` on private responses;
 - never log raw capabilities, hashes, Authorization headers, or snapshots;
 - fail with non-enumerating errors (no hint whether another class/workspace exists);
-- rate-limit unauthenticated creation/admission endpoints.
+- rate-limit unauthenticated creation/admission endpoints with `checkRateLimit()` from `api/_rateLimit.js`.
 
 ## Schema changes
 
-Schema is created idempotently by the owning repository module. To change schema:
+Schema lives in versioned step lists (`WORKSPACE_SCHEMA` in `api/_workspace.js`, `CLASSROOM_SCHEMA` in `api/_classroom.js`) applied by `applySchema()` in `api/_db.js`: one SELECT on warm starts, otherwise all steps in one advisory-locked transaction. To change schema:
 
-1. Append a new migration step; never edit an applied one.
-2. Bump that module's schema version.
-3. Keep steps idempotent (`IF NOT EXISTS`) so a partially applied deploy can re-run safely.
-4. Add or extend a real-Postgres test.
+1. Append a new step; never edit an applied one.
+2. Bump that schema's `version`.
+3. Run `npm test` — `tests/schemaMigrations.pglite.test.mjs` fails and prints the new `fingerprint`; paste it in.
+4. Keep steps idempotent (`IF NOT EXISTS`) so a database created before versioning upgrades in place.
+5. Add or extend a real-Postgres test (`tests/*.pglite.test.mjs`). Cast any parameter whose type Postgres cannot infer.

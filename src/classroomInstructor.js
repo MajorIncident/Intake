@@ -970,10 +970,15 @@ export function createInstructorClassroomController({
     }
   };
 
-  const startClass = async titleValue => {
+  const startClass = async (titleValue, classPasswordValue = '') => {
     const title = typeof titleValue === 'string' ? titleValue.trim() : '';
+    const classPassword = typeof classPasswordValue === 'string' ? classPasswordValue.trim() : '';
     if (!title || title.length > 120) {
       setError('Enter a class title before starting the class.');
+      return false;
+    }
+    if (!classPassword) {
+      setError('Enter the class password to start a class.');
       return false;
     }
     if (!fetchImpl) {
@@ -989,9 +994,17 @@ export function createInstructorClassroomController({
       const response = await fetchImpl(INSTRUCTOR_CLASSES_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title })
+        body: JSON.stringify({ title, classPassword })
       });
       const body = await responseJson(response);
+      if (response.status === 403 && body.code === 'class-password-invalid') {
+        setError('That class password is not correct. Check it with your program administrator.');
+        return false;
+      }
+      if (response.status === 429) {
+        setError(body.error || 'Too many attempts from this network. Please wait and try again.');
+        return false;
+      }
       if (
         response.status !== 201
         || !validateInstructorCapability(body.instructorToken)
@@ -1214,7 +1227,11 @@ export function createInstructorClassroomController({
 
   const handleStartSubmit = event => {
     event.preventDefault();
-    void startClass(element('instructorClassTitleInput')?.value || '');
+    const passwordInput = element('instructorClassPasswordInput');
+    const classPassword = passwordInput?.value || '';
+    void startClass(element('instructorClassTitleInput')?.value || '', classPassword).then(started => {
+      if (started && passwordInput) passwordInput.value = '';
+    });
   };
   const handleWorkspaceCreate = event => {
     event.preventDefault();

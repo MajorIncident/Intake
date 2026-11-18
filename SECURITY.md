@@ -50,6 +50,10 @@ Public static delivery is also an explicit allowlist boundary. `scripts/build-ve
 
 After an authorized Student applies a Case Study, its selected-mode content becomes that Student/team Intake and follows normal Intake/collaboration persistence. That is expected authorized use; the protected-delivery boundary prevents unauthenticated or Standalone retrieval of the original protected resource.
 
+Class creation is gated by a shared class-creation password (default documented in `docs/classroom-api.md`, overridable with `INTAKE_CLASS_CREATION_PASSWORD`). It limits who can open classes; it is not an Instructor identity, is compared in constant time, and is never stored by the browser. Unauthenticated creation/admission endpoints are rate-limited per hashed client address (`api/_rateLimit.js`); raw addresses are not stored.
+
+Database schema changes are applied once per schema version inside a single advisory-locked transaction (`api/_db.js`). Never run destructive DDL outside that versioned path.
+
 ## Supported code
 
 Security fixes target the current `main` branch. Dependency Review, CodeQL, Dependabot, repository quality checks, and GitHub branch rules are intended to prevent known regressions from entering `main`.

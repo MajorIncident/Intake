@@ -8,6 +8,7 @@
 
 import { randomInt, randomUUID } from 'node:crypto';
 import { applySchema, createSql, memoizeUntilFailure } from './_db.js';
+import { checkRateLimit, classCreationPasswordMatches, sendRateLimited } from './_rateLimit.js';
 import {
   DISPLAY_NAME_MAX_LENGTH,
   generateWorkspaceToken,
@@ -1863,7 +1864,9 @@ function requireBearer(req) {
  * Create the class create/admin handler.
  *
  * POST creates a class and returns the raw Instructor capability plus the
- * human Student join code. GET/PATCH/DELETE require the Instructor capability.
+ * human Student join code. POST is rate-limited per client address and
+ * requires the shared class-creation password (`classPassword`, see
+ * api/_rateLimit.js). GET/PATCH/DELETE require the Instructor capability.
  *
  * @param {object} [dependencies] - Injectable dependencies.
  * @returns {Function} Vercel handler.
@@ -1872,7 +1875,8 @@ export function classHandler({
   getRepository = getClassroomRepository,
   tokenFactory = generateWorkspaceToken,
   joinCodeFactory = generateClassJoinCode,
-  idFactory = randomUUID
+  idFactory = randomUUID,
+  rateLimiter = undefined
 } = {}) {
   return async (req, res) => {
     if (!['POST', 'GET', 'PATCH', 'DELETE'].includes(req.method)) {
@@ -1881,6 +1885,11 @@ export function classHandler({
 
     try {
       if (req.method === 'POST') {
+        const limited = await checkRateLimit(req, 'class-create', rateLimiter);
+        if (!limited.allowed) return sendRateLimited(res, limited.retryAfterSeconds);
+        if (!classCreationPasswordMatches(req.body?.classPassword)) {
+          return send(res, 403, { error: 'The class password is incorrect.', code: 'class-password-invalid' });
+        }
         const title = normalizeClassroomLabel(req.body?.title, CLASS_TITLE_MAX_LENGTH);
         if (!title) return send(res, 400, { error: 'Invalid class title.' });
 
@@ -2293,10 +2302,13 @@ export function classStudentCoachingHandler({ getRepository = getClassroomReposi
  */
 export function classAdmitHandler({
   getRepository = getClassroomRepository,
-  tokenFactory = generateWorkspaceToken
+  tokenFactory = generateWorkspaceToken,
+  rateLimiter = undefined
 } = {}) {
   return async (req, res) => {
     if (req.method !== 'POST') return methodNotAllowed(res, 'POST');
+    const limited = await checkRateLimit(req, 'class-admit', rateLimiter);
+    if (!limited.allowed) return sendRateLimited(res, limited.retryAfterSeconds);
 
     const joinCode = normalizeClassJoinCode(req.body?.joinCode);
     const participantId = req.body?.participantId;

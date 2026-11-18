@@ -16,16 +16,20 @@ _Last updated: 2026-11-18 (audit/hardening branch `claude/intake-repo-audit-qii7
 
 The secure Classroom foundation (#288–#296), live-class management (#312), staged-simulation engine (#313), universal targets (#318), debrief comparison (#319), join/mobile polish (#320), compatibility reset (#328), Administration/Maintenance (#329), and the startup hub (#330) are **merged and published**.
 
-Active work: **repository audit follow-through** on `claude/intake-repo-audit-qii780` — documentation consolidation, EULA accuracy, server hardening, real-database tests, then the Classroom pilot blockers below.
+Active work: **repository audit follow-through** on `claude/intake-repo-audit-qii780` (not yet merged to `main`):
+
+- done: documentation consolidation (this file, playbooks, verbatim archive, drift guards); EULA data-usage wording; versioned advisory-locked schema; retry-safe repository init; real-Postgres (PGlite) tests; class-creation password; rate limits;
+- **fixed production bugs found by the real-SQL tests**: Instructor team assignment and Student "Mark Ready" both failed in Postgres because of untyped SQL parameters (they had only ever run against in-memory fakes);
+- next: Classroom pilot blockers below, one at a time.
 
 ## Pilot blockers (Student / Instructor modes for a real class)
 
 Worked one at a time, in order:
 
-1. **Environment** (human action): Vercel Production needs `DATABASE_URL` (or `POSTGRES_URL` / `NEON_DATABASE_URL`) and a valid 43-character `INTAKE_ADMIN_TOKEN`; then a real multi-device smoke test (see `docs/playbooks/release-and-verify.md`).
-2. **Instructor "Leave class" orphans the class** — no confirmation and no End class; the only Instructor credential is discarded.
-3. **Instructor controls the API already supports but the UI does not expose** — joins on/off, end class, rename/delete teams, cross-device handoff, and "one workspace per Student" bulk setup.
-4. **No Instructor-side Case Study assignment** — teams start empty; Students apply Case Studies themselves using a per-minute password the Instructor UI never shows.
+1. **Environment** (human action, #340): Vercel Production needs `DATABASE_URL` (or `POSTGRES_URL` / `NEON_DATABASE_URL`) and a valid 43-character `INTAKE_ADMIN_TOKEN`; then a real multi-device smoke test (see `docs/playbooks/release-and-verify.md`).
+2. **Instructor "Leave class" orphans the class** (#341) — no confirmation and no End class; the only Instructor credential is discarded.
+3. **Instructor controls the API already supports but the UI does not expose** (#342) — joins on/off, end class, rename/delete teams, cross-device handoff, and "one workspace per Student" bulk setup.
+4. **No Instructor-side Case Study assignment** (#343) — teams start empty; Students apply Case Studies themselves using a per-minute password the Instructor UI never shows.
 5. **Staged exercises unusable in production** — no authored Case Study has a `simulation`; requires #316 then #317.
 6. **Load/pilot readiness** — capacity check per `docs/operations-capacity.md`.
 
@@ -35,24 +39,30 @@ Worked one at a time, in order:
 | --- | --- | --- |
 | #316 Protected staged assets + rich Student rendering | Open, next Classroom feature after pilot blockers 2–4 | Draft PR #336 holds only a contract document (classroom-protected-assets.md on that branch) |
 | #317 First production staged KT Case Study | Open, blocked by #316 | Needs authoritative source material |
+| #340 Pilot blocker 1: environment + real smoke test | Open | Human action |
+| #341 Pilot blocker 2: Leave class orphans the class | Open | Next code blocker |
+| #342 Pilot blocker 3: Instructor class controls | Open | Includes one-workspace-per-Student |
+| #343 Pilot blocker 4: Instructor Case Study assignment | Open | |
 
 ## Open pull requests
 
 | PR | Status |
 | --- | --- |
 | #336 Add protected staged asset delivery | Draft; was stacked on #335 (merged) — retarget/refresh against `main` before continuing |
-| #337 / #309 / #311 Dependabot minor updates | Being merged one at a time (each needs an up-to-date branch) |
-| #281 eslint 10, #280 jsdom 30, #310 eslint-plugin-jsdoc 65 | Major bumps — do together in one tooling PR |
+| #337 / #309 / #311 Dependabot minor updates | #337 auto-merges when CI passes; #309 and #311 then need "Update branch" + merge one at a time (main requires up-to-date branches) |
+| #281 eslint 10, #280 jsdom 30, #310 eslint-plugin-jsdoc 65 | Major bumps — do together in one tooling PR (see lint risk below) |
 
 ## Pending human / environment actions
 
-- Configure Vercel env vars listed under blocker 1. Optional: `INTAKE_CLASS_CREATION_PASSWORD` (defaults to the documented classroom password).
+- Configure Vercel env vars listed under blocker 1. Optional: `INTAKE_CLASS_CREATION_PASSWORD` (default `kepnertregoe`).
 - Enable GitHub "Automatically delete head branches" and prune the ~100 stale `codex/*` branches (verify each has no open PR first).
 - Create a GitHub milestone "Classroom pilot" (no API tool available to the agent).
 
 ## Known risks / watch items
 
-- Browser E2E runs against a hand-written fixture server (`scripts/serve-browser-tests.mjs`), not the real `api/` handlers; real-SQL coverage is being added under `tests/*.pglite.test.mjs`.
+- Browser E2E runs against a hand-written fixture server (`scripts/serve-browser-tests.mjs`), not the real `api/` handlers. Real-SQL coverage now lives in `tests/*.pglite.test.mjs`; extend it with every SQL change.
+- **Lint is not actually enforced**: `npm run lint` runs `eslint` with no paths, which on ESLint 8 lints nothing. Linting the repo for real reports ~1,040 errors (957 missing-JSDoc). Fix together with the ESLint 10 / flat-config migration (#281) rather than piecemeal.
+- Dev-only `npm audit` findings (ajv, flatted, minimatch via ESLint 8; source-map-js fixed by #311). Production dependencies: 0 vulnerabilities.
 - Collaboration links grant equal edit access with no admin role; Classroom authorization layers over them.
 - Polling load: roughly 2.8 requests/second per connected Student — see `docs/operations-capacity.md`.
 - Class creation is gated by a shared password, not accounts/SSO.

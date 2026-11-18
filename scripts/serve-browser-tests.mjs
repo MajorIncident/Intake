@@ -936,6 +936,11 @@ async function handleClassroomApi(request, response, url) {
       return true;
     }
     const body = await readJson(request).catch(() => null);
+    // Mirrors api/_rateLimit.js: the default class-creation password, trimmed and case-insensitive.
+    if (typeof body?.classPassword !== 'string' || body.classPassword.trim().toLowerCase() !== 'kepnertregoe') {
+      sendJson(response, 403, { error: 'The class password is incorrect.', code: 'class-password-invalid' });
+      return true;
+    }
     const title = typeof body?.title === 'string' ? body.title.trim() : '';
     if (!title) {
       sendJson(response, 400, { error: 'Invalid class title.' });

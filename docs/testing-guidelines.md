@@ -32,6 +32,14 @@ The browser fixture is shared by fully-parallel specs, so stateful test identiti
 - Multi-context collaboration tests should create separate browser contexts to prove independent local storage/profile identity.
 - Prefer asserting semantic state (`hidden` / `aria-hidden` / `inert`, persisted data, HTTP method/status) over assumptions about off-canvas CSS visibility.
 
+## Real-Postgres tests (`*.pglite.test.mjs`)
+
+Server code in `api/` talks to Neon through tagged-template SQL. In-memory repositories (`tests/helpers/classroom-test-repositories.mjs`) and the browser fixture (`scripts/serve-browser-tests.mjs`) model that behaviour but never execute the SQL. Files named `*.pglite.test.mjs` run the **real repository SQL** against PGlite, an in-process WASM Postgres, through `tests/helpers/pglite-sql.mjs` and `setSqlFactoryForTesting()` from `api/_db.js`. They need no Docker, network, or credentials and run in the normal `npm test`.
+
+- Add or extend a PGlite test whenever you add or change SQL. These tests found two production bugs (untyped parameters in assignment and readiness writes) that the fakes could not.
+- Prefer running the same contract against both backends, as `tests/classroom-exercise-repository.unit.test.mjs` does, so fakes cannot drift from production.
+- Assert on meaning, not representation: real rows return `Date` objects and string `BIGINT` IDs.
+
 ## Working with `collectAppState()` and `applyAppState()`
 The application exposes snapshot helpers that make DOM integration tests reliable:
 

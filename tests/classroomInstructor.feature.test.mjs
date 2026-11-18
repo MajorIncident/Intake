@@ -425,7 +425,9 @@ test('Instructor starts a live class, creates a team, and assigns a waiting Stud
     return response(404, {});
   }, { savedSession: false });
 
-  assert.equal(await env.controller.startClass('Live PSDM Class'), true);
+  assert.equal(await env.controller.startClass('Live PSDM Class', ' kepnertregoe '), true);
+  const classCreateRequest = requests.find(([url, options]) => url === '/api/classes' && options.method === 'POST');
+  assert.deepEqual(JSON.parse(classCreateRequest[1].body), { title: 'Live PSDM Class', classPassword: 'kepnertregoe' });
   assert.equal(dom.window.document.getElementById('instructorClassTitle').textContent, 'Live PSDM Class');
   assert.equal(dom.window.document.getElementById('instructorJoinCode').textContent, 'K7FM-P4Q2');
   assert.equal(dom.window.document.getElementById('instructorParticipantSummary').textContent, '1 student · 1 waiting');
@@ -434,6 +436,7 @@ test('Instructor starts a live class, creates a team, and assigns a waiting Stud
   assert.equal(stored.instructorToken, TOKEN);
   assert.equal(stored.joinCode, 'K7FM-P4Q2');
   assert.equal(JSON.stringify(stored).includes('studentJoinToken'), false);
+  assert.equal(JSON.stringify(stored).toLowerCase().includes('kepnertregoe'), false, 'class password is never persisted');
 
   assert.equal(await env.controller.createWorkspace('group', 'Team Alpha'), true);
   assert.equal(dom.window.document.querySelectorAll('.instructor-workspace-item').length, 1);
@@ -712,4 +715,23 @@ test('Instructor observer keeps debrief comparison controls interactive while In
   assert.equal(refresh.hasAttribute('data-instructor-readonly-control'), false);
 
   env.controller.destroy();
+});
+
+test('Start class requires the class password and explains a rejected one', async () => {
+  const requests = [];
+  const env = setup(async (url, options = {}) => {
+    requests.push([url, options]);
+    if (url === '/api/classes' && options.method === 'POST') {
+      return response(403, { error: 'The class password is incorrect.', code: 'class-password-invalid' });
+    }
+    return response(404, {});
+  }, { savedSession: false });
+
+  assert.equal(await env.controller.startClass('Live PSDM Class', ''), false);
+  assert.equal(requests.length, 0, 'no request without a password');
+  assert.match(dom.window.document.getElementById('instructorClassError').textContent, /class password/i);
+
+  assert.equal(await env.controller.startClass('Live PSDM Class', 'guess'), false);
+  assert.match(dom.window.document.getElementById('instructorClassError').textContent, /not correct/);
+  assert.equal(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY), null);
 });
