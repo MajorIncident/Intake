@@ -409,7 +409,7 @@ No classroom credential is stored in browser Intake state.
 
 The repository test-change guard treats `api/` as runtime code, so future server changes require test changes.
 
-For current execution state, read `docs/classroom-workstream.md`.
+For current execution state, read `STATUS.md`.
 
 
 ## #312 live-class management contract

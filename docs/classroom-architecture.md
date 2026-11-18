@@ -124,7 +124,7 @@ On assignment revision change, the client leaves/discards old collaboration auth
 
 A pre-class local snapshot remains separately recoverable under `kt-classroom-student-local-recovery-v1`. Terminal invalid/expired class-session access clears Classroom credentials and restores local recovery where appropriate.
 
-The #292 **class join capability + assignment capability** flow remains available only as explicit legacy/recovery compatibility. No classroom metadata or capability belongs in the Intake snapshot.
+The original #292 two-code flow (class join capability + assignment capability) was removed by #328; one-code admission is the only Student path. No classroom metadata or capability belongs in the Intake snapshot.
 
 ### Instructor
 
@@ -160,8 +160,7 @@ Primary #312 credential chain:
 - **Student workspace capability** — assignment-specific `classroom-student` editable alias into exactly one collaboration workspace; revoked/rotated on reassignment or unassign.
 - **Case Study unlock password** — instructional progression control only; never server authentication.
 
-Legacy compatibility chain:
-- **Student class join capability + assignment capability** still authorize the older two-code admission endpoint and mint a per-participant editable workspace capability.
+Retired by #328: the former two-code chain (Student class join capability + assignment capability, `POST /api/classes/join`, `classroom_memberships`). It must not be reintroduced; Instructor recovery belongs to Administration / Maintenance.
 
 The Student class-session capability is never accepted by collaboration edit, Instructor observer, or Instructor coaching endpoints. The human join code is never accepted outside admission. Cross-class assignment attempts fail generically.
 
@@ -185,7 +184,7 @@ The server, not the browser, owns live assignment.
 
 The Student own-status endpoint has no roster/workspace enumeration. Display name remains presentation metadata, not identity.
 
-The legacy #291/#292 assignment-capability semantics remain supported behind the explicit two-code recovery path. Resume/recovery keys for both models stay outside `kt-intake-full-v2`, file export, templates, and summaries.
+The #291/#292 assignment-capability semantics were removed by #328. Student resume/recovery keys stay outside `kt-intake-full-v2`, file export, templates, and summaries.
 
 ## Instructor observation
 

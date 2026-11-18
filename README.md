@@ -16,7 +16,7 @@ AI contributors should run the following commands (or manual preview) whenever t
 | Command | When to run it | Notes & references |
 | --- | --- | --- |
 | `npm ci` / `npm install` | Run once after cloning or whenever `package.json` changes. | Installs the pinned toolchain for scripts, tests, and template validation. Node 24 is the repository baseline; `.nvmrc` is authoritative. See [`docs/AI-ONBOARDING.md`](docs/AI-ONBOARDING.md). |
-| `npm run dev` | During day-to-day feature work that touches `src/`, `components/`, or `scripts/`. | Starts the watcher so template manifests regenerate automatically; pair it with the guidance in [`docs/commenting-guide.md`](docs/commenting-guide.md) when wiring new anchors. |
+| `npm run dev` | During day-to-day feature work that touches `src/`, `components/`, or `scripts/`. | Builds the template manifests once, then serves the app with `npx live-server` on port 4173 (re-run `npm run build:templates` after editing `templates/`). Classroom/collaboration APIs are not served this way — use `npm run serve:browser-tests` for the deterministic API fixture; pair it with the guidance in [`docs/commenting-guide.md`](docs/commenting-guide.md) when wiring new anchors. |
 | Open `index.html` directly | For quick manual QA or smoke tests that do not require the watcher. | The static file reflects the latest bundle after any build step, so you can double-check flows without Node running. |
 | `npm run build` | After editing authored JSON under `templates/` and before opening a pull request. | Validates all authored resources and regenerates both the public Standard Template manifest and server-only protected Case Study manifest. This is a repository-authoring command, not the Vercel production command. |
 | `npm run build:templates` | Immediately after editing JSON under `templates/` or generated-manifest logic. | Validates every authored resource, writes public Standards to `src/templates.manifest.js`, and writes protected Case Studies to `api/protected-case-studies.manifest.js`. |
@@ -36,6 +36,7 @@ Production Administration / Maintenance is fail-closed until a 43-character URL-
 ## Entry Point & Boot Logic
 - `index.html` declares the full UI layout and loads the JavaScript bundle via `<script type="module" src="main.js"></script>`.
 - `main.js` waits for `DOMContentLoaded`, then calls `boot()`. This bootstraps every feature in order:
+  0. Resolve startup intent: `src/startupExperienceHub.js` shows the startup hub (Continue cards plus Work independently / Join a class / Run a class) unless an explicit `?workspace=` collaboration link routes straight to Standalone.
   1. Configure the KT table utilities (`configureKT`) with callbacks such as `autoResize`, `updatePrefaceTitles`, and `showToast`.
   2. Initialise the preface, communications log, KT table, steps drawer, and possible-causes UI.
   3. Wire the summary buttons and communication controls, plus Alt-key shortcuts for power users.
@@ -71,6 +72,7 @@ See [`docs/architecture-overview.md`](docs/architecture-overview.md) for the boo
 
 ### Storage keys
 
+- `kt-actions-by-analysis-v1`: Dedicated action registry keyed by analysis ID that powers the action list card and owner audit trail.
 - `kt-intake-full-v2`: Primary snapshot containing the intake form, table, steps, communications log, possible causes, and `notesWorkspace` notes/open preference. Save to File and Load from File include this full snapshot automatically.
 - `kt-experience-role-v1`: Local-only Standalone / Student / Instructor last-choice preference. It is deliberately excluded from `collectAppState()`, Intake file exports, summaries, templates, and **Start Fresh** clearing, and does **not** silently choose startup routing.
 - `kt-classroom-student-session-v1`: Student same-device resume key. Its current v2 envelope contains the stable Student class-session capability plus public class/participant/current-assignment context; the assignment-specific workspace capability remains memory-only and is reacquired after reload or reassignment. Older envelope formats are intentionally unsupported before production. The envelope never enters Intake exports/summaries/templates.
@@ -96,7 +98,6 @@ Experience role is a product-level choice, not an Intake workflow mode. General 
 ## Notes workspace
 
 Use **View → Notes workspace** or **Alt+N** to open or collapse the persistent notes dock. On narrow screens Notes defaults compact; opening/collapsing it there is presentation-only and does not rewrite the persisted desktop `notesWorkspace.open` preference. Add short capture notes, then quickly edit or delete them before placing them into the intake. Drag a note to an editable text field in the main intake form. Keyboard users can focus a field, then focus and activate the note card with **Enter** or **Space**. Successful placement removes the note and saves the intake; invalid targets retain it.
-- `kt-actions-by-analysis-v1`: Dedicated action registry keyed by analysis ID that powers the action list card and owner audit trail.
 
 ## Shared collaboration
 
@@ -258,6 +259,9 @@ Need to know which module owns a given storage field? Jump to the [Storage-to-Mo
 Continuous integration runs automatically on pull requests and pushes to `main`, using the repository's Node.js version via `actions/setup-node` with npm caching. The required `tests` job executes `npm ci`, the canonical `npm run quality` gate, installs Chromium, and then runs `npm run test:browser`. Node/browser failure artifacts are retained only on failure; the focused Browser E2E workflow remains available through manual dispatch.
 
 ## Additional Documentation
+- `STATUS.md` is the single live status document (what is current, active, blocked, next).
+- `docs/playbooks/` holds short task checklists (cold start, Classroom change, API change, persisted field, release/verify).
+- `docs/archive/` keeps historical delivery ledgers verbatim.
 - See `AGENTS.md` for global UI principles, module isolation rules, and contribution contracts.
 - Refer to `index.AGENTS.md` when altering the HTML structure; it documents anchor expectations and storage invariants.
 - For AI-specific onboarding notes, including module extension patterns, read `docs/AI-ONBOARDING.md`.

@@ -309,4 +309,4 @@ For #329 work:
 5. never bypass preview-first physical deletion;
 6. keep Class-owned workspace deletion coupled to owning class purge;
 7. preserve one deployable `api/admin.js` Admin function;
-8. before handoff, update `docs/classroom-workstream.md` with exact branch/HEAD/gates.
+8. before handoff, update `STATUS.md` with exact branch/HEAD/gates.
