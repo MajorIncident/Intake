@@ -175,6 +175,7 @@ export function createWorkspaceRepository() {
 export function createClassroomRepository({ observeWorkspaceById = null } = {}) {
   let nextInternalId = 1;
   let nextExerciseInternalId = 1;
+  let releaseSequence = 0;
   const classes = [];
   const workspaces = [];
   const participants = new Map();
@@ -729,7 +730,9 @@ export function createClassroomRepository({ observeWorkspaceById = null } = {}) 
         };
       }
 
-      const release = { stageId, contentId, releasedAt: 'released' };
+      // Monotonic, sortable stand-in for NOW() so ordering matches production (release order).
+      releaseSequence += 1;
+      const release = { stageId, contentId, releasedAt: `released-${String(releaseSequence).padStart(6, '0')}` };
       exerciseReleases.set(key, release);
       exercise.exerciseRevision += 1;
       exercise.updatedAt = 'updated';
@@ -754,7 +757,8 @@ export function createClassroomRepository({ observeWorkspaceById = null } = {}) 
           .filter(([key]) => key.startsWith(prefix))
           .map(([, value]) => ({ ...value }))
           .sort((a, b) => (
-            a.stageId.localeCompare(b.stageId)
+            a.releasedAt.localeCompare(b.releasedAt)
+            || a.stageId.localeCompare(b.stageId)
             || a.contentId.localeCompare(b.contentId)
           ))
       };

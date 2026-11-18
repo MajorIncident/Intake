@@ -3,6 +3,7 @@
  * @description Server-only validation, token security, Neon persistence, and injectable HTTP handlers for collaboration workspaces.
  */
 import { createHash, randomBytes } from 'node:crypto';
+import { applySchema, consumeRateLimit, createSql, memoizeUntilFailure } from './_db.js';
 
 export const MAX_SNAPSHOT_BYTES = 512 * 1024;
 export const TEAM_NAME_MAX_LENGTH = 80;
@@ -82,25 +83,17 @@ export function parseAuthorizationToken(authorization) {
   return match ? match[1] : null;
 }
 
-/** Resolves a server-only Neon integration variable. @returns {string} Connection string or empty string. */
-function connectionString() {
-  return process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.NEON_DATABASE_URL || '';
-}
-
-let repositoryPromise;
-/** Lazily initializes Neon and its idempotent schema. @returns {Promise<object>} Workspace repository. */
-export async function getWorkspaceRepository() {
-  if (!repositoryPromise) repositoryPromise = initializeRepository();
-  return repositoryPromise;
-}
-
-/** Creates the table and repository after configuration is available. @returns {Promise<object>} Repository. */
-async function initializeRepository() {
-  const connection = connectionString();
-  if (!connection) throw new Error('Database is not configured');
-  const { neon } = await import('@neondatabase/serverless');
-  const sql = neon(connection);
-  await sql`CREATE TABLE IF NOT EXISTS collaboration_workspaces (
+/**
+ * Versioned collaboration schema (also hosts shared infrastructure tables such
+ * as rate limits). Append idempotent steps only, then bump `version` and update
+ * `fingerprint` (tests/schemaMigrations.pglite.test.mjs prints the new value).
+ */
+export const WORKSPACE_SCHEMA = Object.freeze({
+  component: 'collaboration',
+  version: 2,
+  fingerprint: 'f027b67e6e6de1328d44d4f48287da6090095eaad12b2850a7c0569eaba5016d',
+  steps: Object.freeze([
+  sql => sql`CREATE TABLE IF NOT EXISTS collaboration_workspaces (
     id BIGSERIAL PRIMARY KEY,
     public_id UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
     token_hash CHAR(64) UNIQUE NOT NULL,
@@ -111,25 +104,25 @@ async function initializeRepository() {
     expires_at TIMESTAMPTZ NOT NULL,
     team_name VARCHAR(80),
     next_participant_number INTEGER NOT NULL DEFAULT 1
-  )`;
-  await sql`ALTER TABLE collaboration_workspaces ADD COLUMN IF NOT EXISTS public_id UUID DEFAULT gen_random_uuid()`;
-  await sql`UPDATE collaboration_workspaces SET public_id = gen_random_uuid() WHERE public_id IS NULL`;
-  await sql`ALTER TABLE collaboration_workspaces ALTER COLUMN public_id SET NOT NULL`;
-  await sql`CREATE UNIQUE INDEX IF NOT EXISTS collaboration_workspaces_public_id_idx ON collaboration_workspaces (public_id)`;
-  await sql`ALTER TABLE collaboration_workspaces ADD COLUMN IF NOT EXISTS team_name VARCHAR(80)`;
-  await sql`ALTER TABLE collaboration_workspaces ADD COLUMN IF NOT EXISTS next_participant_number INTEGER NOT NULL DEFAULT 1`;
-  await sql`CREATE INDEX IF NOT EXISTS collaboration_workspaces_expires_at_idx ON collaboration_workspaces (expires_at)`;
-  await sql`CREATE TABLE IF NOT EXISTS collaboration_workspace_capabilities (
+  )`,
+  sql => sql`ALTER TABLE collaboration_workspaces ADD COLUMN IF NOT EXISTS public_id UUID DEFAULT gen_random_uuid()`,
+  sql => sql`UPDATE collaboration_workspaces SET public_id = gen_random_uuid() WHERE public_id IS NULL`,
+  sql => sql`ALTER TABLE collaboration_workspaces ALTER COLUMN public_id SET NOT NULL`,
+  sql => sql`CREATE UNIQUE INDEX IF NOT EXISTS collaboration_workspaces_public_id_idx ON collaboration_workspaces (public_id)`,
+  sql => sql`ALTER TABLE collaboration_workspaces ADD COLUMN IF NOT EXISTS team_name VARCHAR(80)`,
+  sql => sql`ALTER TABLE collaboration_workspaces ADD COLUMN IF NOT EXISTS next_participant_number INTEGER NOT NULL DEFAULT 1`,
+  sql => sql`CREATE INDEX IF NOT EXISTS collaboration_workspaces_expires_at_idx ON collaboration_workspaces (expires_at)`,
+  sql => sql`CREATE TABLE IF NOT EXISTS collaboration_workspace_capabilities (
     token_hash CHAR(64) PRIMARY KEY,
     workspace_id BIGINT NOT NULL REFERENCES collaboration_workspaces(id) ON DELETE CASCADE,
     capability_kind VARCHAR(32) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ,
     revoked_at TIMESTAMPTZ
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS collaboration_workspace_capabilities_workspace_idx
-    ON collaboration_workspace_capabilities (workspace_id)`;
-  await sql`CREATE TABLE IF NOT EXISTS collaboration_participants (
+  )`,
+  sql => sql`CREATE INDEX IF NOT EXISTS collaboration_workspace_capabilities_workspace_idx
+    ON collaboration_workspace_capabilities (workspace_id)`,
+  sql => sql`CREATE TABLE IF NOT EXISTS collaboration_participants (
     workspace_id BIGINT NOT NULL REFERENCES collaboration_workspaces(id) ON DELETE CASCADE,
     participant_id UUID NOT NULL,
     display_name VARCHAR(60) NOT NULL,
@@ -137,13 +130,38 @@ async function initializeRepository() {
     joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (workspace_id, participant_id)
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS collaboration_participants_active_idx ON collaboration_participants (workspace_id, last_seen_at DESC)`;
-  await sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS editing_field VARCHAR(120)`;
-  await sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS editing_revision INTEGER`;
-  await sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS activity_state VARCHAR(16) NOT NULL DEFAULT 'active'`;
-  await sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS activity_sequence BIGINT NOT NULL DEFAULT 0`;
-  await sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`;
+  )`,
+  sql => sql`CREATE INDEX IF NOT EXISTS collaboration_participants_active_idx ON collaboration_participants (workspace_id, last_seen_at DESC)`,
+  sql => sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS editing_field VARCHAR(120)`,
+  sql => sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS editing_revision INTEGER`,
+  sql => sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS activity_state VARCHAR(16) NOT NULL DEFAULT 'active'`,
+  sql => sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS activity_sequence BIGINT NOT NULL DEFAULT 0`,
+  sql => sql`ALTER TABLE collaboration_participants ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
+  sql => sql`CREATE TABLE IF NOT EXISTS intake_rate_limits (
+    bucket CHAR(64) NOT NULL,
+    window_start TIMESTAMPTZ NOT NULL,
+    hits INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (bucket, window_start)
+  )`
+  ])
+});
+
+const memoizedWorkspaceRepository = memoizeUntilFailure(initializeRepository);
+
+/** Lazily initializes Neon and its versioned schema; a failed attempt is retried by the next caller. @returns {Promise<object>} Workspace repository. */
+export async function getWorkspaceRepository() {
+  return memoizedWorkspaceRepository();
+}
+
+/** Clears the memoized repository (tests only). @returns {void} */
+export function resetWorkspaceRepositoryForTesting() {
+  memoizedWorkspaceRepository.reset();
+}
+
+/** Creates the table and repository after configuration is available. @returns {Promise<object>} Repository. */
+async function initializeRepository() {
+  const sql = await createSql();
+  await applySchema(sql, WORKSPACE_SCHEMA);
 
   async function resolveWorkspaceId(tokenHash) {
     const rows = await sql`SELECT w.id
@@ -165,6 +183,14 @@ async function initializeRepository() {
   }
 
   return {
+    /**
+     * Consumes one fixed-window rate-limit slot.
+     * @param {{bucket: string, windowSeconds: number, limit: number}} options - Hashed bucket and policy.
+     * @returns {Promise<{allowed: boolean, hits: number}>} Counter result.
+     */
+    async consumeRateLimit(options) {
+      return consumeRateLimit(sql, options);
+    },
     async create(tokenHash, snapshot, expiryDays, teamName) {
       const rows = await sql`INSERT INTO collaboration_workspaces (token_hash, snapshot_json, expires_at, team_name)
         VALUES (${tokenHash}, ${JSON.stringify(snapshot)}::jsonb, NOW() + (${expiryDays} * INTERVAL '1 day'), ${teamName || null})

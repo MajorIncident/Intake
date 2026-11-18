@@ -7,6 +7,7 @@
  */
 
 import { randomInt, randomUUID } from 'node:crypto';
+import { applySchema, createSql, memoizeUntilFailure } from './_db.js';
 import {
   DISPLAY_NAME_MAX_LENGTH,
   generateWorkspaceToken,
@@ -34,15 +35,187 @@ export const COACHING_TARGET_ID_MAX_LENGTH = 160;
 const COACHING_FINGERPRINT_PATTERN = /^v1-[0-9a-f]{16}$/u;
 const CLASSROOM_STUDENT_CAPABILITY_KIND = 'classroom-student';
 
-let classroomRepositoryPromise;
-
 /**
- * Resolve the configured server-only database connection string.
- *
- * @returns {string} Neon/Postgres connection string or empty string.
+ * Versioned Classroom schema. Requires WORKSPACE_SCHEMA first (foreign keys to
+ * collaboration_workspaces). Append idempotent steps only, then bump `version`
+ * and update `fingerprint`.
  */
-function connectionString() {
-  return process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.NEON_DATABASE_URL || '';
+export const CLASSROOM_SCHEMA = Object.freeze({
+  component: 'classroom',
+  version: 1,
+  fingerprint: 'f3e0f669f03df0dd8316cb2f1951d5fda3ec959771cb4f7009f3934b63b71642',
+  steps: Object.freeze([
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_classes (
+    id BIGSERIAL PRIMARY KEY,
+    public_id UUID UNIQUE NOT NULL,
+    title VARCHAR(120) NOT NULL,
+    instructor_token_hash CHAR(64) UNIQUE NOT NULL,
+    student_join_code VARCHAR(8),
+    joins_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    revoked_at TIMESTAMPTZ
+  )`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_classes_expiry_idx
+    ON classroom_classes (expires_at)`,
+  sql => sql`ALTER TABLE classroom_classes
+    ADD COLUMN IF NOT EXISTS student_join_code VARCHAR(8)`,
+  sql => sql`ALTER TABLE classroom_classes
+    DROP COLUMN IF EXISTS student_join_token_hash`,
+  sql => sql`CREATE UNIQUE INDEX IF NOT EXISTS classroom_classes_student_join_code_idx
+    ON classroom_classes (student_join_code)
+    WHERE student_join_code IS NOT NULL`,
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_workspaces (
+    workspace_id BIGINT PRIMARY KEY REFERENCES collaboration_workspaces(id) ON DELETE CASCADE,
+    class_id BIGINT NOT NULL REFERENCES classroom_classes(id) ON DELETE CASCADE,
+    public_id UUID UNIQUE NOT NULL,
+    workspace_kind VARCHAR(16) NOT NULL CHECK (workspace_kind IN ('individual', 'group')),
+    label VARCHAR(120) NOT NULL,
+    individual_participant_id UUID,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    revoked_at TIMESTAMPTZ,
+    UNIQUE (class_id, workspace_id)
+  )`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_workspaces_class_idx
+    ON classroom_workspaces (class_id, created_at)`,
+  sql => sql`ALTER TABLE classroom_workspaces
+    DROP COLUMN IF EXISTS claim_token_hash`,
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_participants (
+    class_id BIGINT NOT NULL REFERENCES classroom_classes(id) ON DELETE CASCADE,
+    participant_id UUID NOT NULL,
+    display_name VARCHAR(60) NOT NULL,
+    session_token_hash CHAR(64) UNIQUE NOT NULL,
+    workspace_id BIGINT,
+    workspace_access_token_hash CHAR(64) UNIQUE,
+    assignment_revision INTEGER NOT NULL DEFAULT 0 CHECK (assignment_revision >= 0),
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    assigned_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    PRIMARY KEY (class_id, participant_id),
+    FOREIGN KEY (class_id, workspace_id)
+      REFERENCES classroom_workspaces(class_id, workspace_id)
+      ON DELETE SET NULL (workspace_id)
+  )`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_participants_class_idx
+    ON classroom_participants (class_id, joined_at)`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_participants_workspace_idx
+    ON classroom_participants (workspace_id)
+    WHERE workspace_id IS NOT NULL`,
+  sql => sql`DROP TABLE IF EXISTS classroom_memberships CASCADE`,
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_coaching_feedback (
+    class_id BIGINT NOT NULL,
+    workspace_id BIGINT NOT NULL,
+    target_id VARCHAR(160) NOT NULL,
+    status VARCHAR(32) NOT NULL CHECK (status IN ('meets-standard', 'needs-improvement')),
+    note VARCHAR(2000) NOT NULL DEFAULT '',
+    reviewed_workspace_revision INTEGER NOT NULL CHECK (reviewed_workspace_revision > 0),
+    reviewed_field_fingerprint VARCHAR(32) NOT NULL,
+    feedback_revision INTEGER NOT NULL DEFAULT 1 CHECK (feedback_revision > 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (class_id, workspace_id, target_id),
+    FOREIGN KEY (class_id, workspace_id)
+      REFERENCES classroom_workspaces(class_id, workspace_id)
+      ON DELETE CASCADE
+  )`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_coaching_feedback_workspace_idx
+    ON classroom_coaching_feedback (workspace_id, updated_at)`,
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_exercises (
+    id BIGSERIAL PRIMARY KEY,
+    public_id UUID UNIQUE NOT NULL,
+    class_id BIGINT NOT NULL REFERENCES classroom_classes(id) ON DELETE CASCADE,
+    case_study_id VARCHAR(160) NOT NULL,
+    simulation_version INTEGER NOT NULL CHECK (simulation_version > 0),
+    simulation_fingerprint CHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'draft'
+      CHECK (status IN ('draft', 'active', 'paused', 'completed')),
+    current_stage_id VARCHAR(80),
+    stage_phase VARCHAR(16) NOT NULL DEFAULT 'work'
+      CHECK (stage_phase IN ('work', 'debrief')),
+    exercise_revision INTEGER NOT NULL DEFAULT 1 CHECK (exercise_revision > 0),
+    student_editing_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    UNIQUE (class_id, id)
+  )`,
+  sql => sql`ALTER TABLE classroom_exercises
+    ADD COLUMN IF NOT EXISTS simulation_version INTEGER`,
+  sql => sql`ALTER TABLE classroom_exercises
+    ADD COLUMN IF NOT EXISTS simulation_fingerprint CHAR(64)`,
+  sql => sql`UPDATE classroom_exercises
+    SET simulation_version = COALESCE(simulation_version, 1),
+        simulation_fingerprint = COALESCE(simulation_fingerprint, repeat('0', 64))
+    WHERE simulation_version IS NULL OR simulation_fingerprint IS NULL`,
+  sql => sql`ALTER TABLE classroom_exercises
+    ALTER COLUMN simulation_version SET NOT NULL`,
+  sql => sql`ALTER TABLE classroom_exercises
+    ALTER COLUMN simulation_fingerprint SET NOT NULL`,
+  sql => sql`CREATE UNIQUE INDEX IF NOT EXISTS classroom_exercises_one_open_per_class_idx
+    ON classroom_exercises (class_id)
+    WHERE status <> 'completed'`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_exercises_class_history_idx
+    ON classroom_exercises (class_id, created_at DESC)`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_exercises_expiry_idx
+    ON classroom_exercises (expires_at)`,
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_exercise_releases (
+    exercise_id BIGINT NOT NULL REFERENCES classroom_exercises(id) ON DELETE CASCADE,
+    stage_id VARCHAR(80) NOT NULL,
+    content_id VARCHAR(80) NOT NULL,
+    released_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (exercise_id, stage_id, content_id)
+  )`,
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_exercise_workspace_state (
+    class_id BIGINT NOT NULL,
+    exercise_id BIGINT NOT NULL,
+    workspace_id BIGINT NOT NULL,
+    stage_id VARCHAR(80) NOT NULL,
+    ready_for_debrief BOOLEAN NOT NULL DEFAULT FALSE,
+    ready_at TIMESTAMPTZ,
+    ready_workspace_revision INTEGER CHECK (ready_workspace_revision IS NULL OR ready_workspace_revision > 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (exercise_id, workspace_id, stage_id),
+    FOREIGN KEY (class_id, exercise_id)
+      REFERENCES classroom_exercises(class_id, id)
+      ON DELETE CASCADE,
+    FOREIGN KEY (class_id, workspace_id)
+      REFERENCES classroom_workspaces(class_id, workspace_id)
+      ON DELETE CASCADE
+  )`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_exercise_workspace_state_class_idx
+    ON classroom_exercise_workspace_state (class_id, exercise_id, stage_id)`,
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_exercise_checkpoints (
+    class_id BIGINT NOT NULL,
+    exercise_id BIGINT NOT NULL,
+    stage_id VARCHAR(80) NOT NULL,
+    workspace_id BIGINT NOT NULL,
+    workspace_revision INTEGER NOT NULL CHECK (workspace_revision > 0),
+    snapshot JSONB NOT NULL,
+    captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (exercise_id, stage_id, workspace_id),
+    FOREIGN KEY (class_id, exercise_id)
+      REFERENCES classroom_exercises(class_id, id)
+      ON DELETE CASCADE,
+    FOREIGN KEY (class_id, workspace_id)
+      REFERENCES classroom_workspaces(class_id, workspace_id)
+      ON DELETE CASCADE
+  )`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_exercise_checkpoints_class_idx
+    ON classroom_exercise_checkpoints (class_id, exercise_id, stage_id)`
+  ])
+});
+
+const memoizedClassroomRepository = memoizeUntilFailure(initializeClassroomRepository);
+
+/** Clears the memoized repository (tests only). @returns {void} */
+export function resetClassroomRepositoryForTesting() {
+  memoizedClassroomRepository.reset();
 }
 
 /**
@@ -212,10 +385,7 @@ export function validateCoachingFingerprint(value) {
  * @returns {Promise<object>} Classroom repository.
  */
 export async function getClassroomRepository() {
-  if (!classroomRepositoryPromise) {
-    classroomRepositoryPromise = initializeClassroomRepository();
-  }
-  return classroomRepositoryPromise;
+  return memoizedClassroomRepository();
 }
 
 /**
@@ -224,188 +394,12 @@ export async function getClassroomRepository() {
  * @returns {Promise<object>} Repository implementation.
  */
 async function initializeClassroomRepository() {
-  const connection = connectionString();
-  if (!connection) throw new Error('Database is not configured');
-
   // Ensures collaboration_workspaces and alias-capability tables exist before
   // classroom foreign keys are created.
   await getWorkspaceRepository();
 
-  const { neon } = await import('@neondatabase/serverless');
-  const sql = neon(connection);
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_classes (
-    id BIGSERIAL PRIMARY KEY,
-    public_id UUID UNIQUE NOT NULL,
-    title VARCHAR(120) NOT NULL,
-    instructor_token_hash CHAR(64) UNIQUE NOT NULL,
-    student_join_code VARCHAR(8),
-    joins_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    expires_at TIMESTAMPTZ NOT NULL,
-    revoked_at TIMESTAMPTZ
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_classes_expiry_idx
-    ON classroom_classes (expires_at)`;
-  await sql`ALTER TABLE classroom_classes
-    ADD COLUMN IF NOT EXISTS student_join_code VARCHAR(8)`;
-  await sql`ALTER TABLE classroom_classes
-    DROP COLUMN IF EXISTS student_join_token_hash`;
-  await sql`CREATE UNIQUE INDEX IF NOT EXISTS classroom_classes_student_join_code_idx
-    ON classroom_classes (student_join_code)
-    WHERE student_join_code IS NOT NULL`;
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_workspaces (
-    workspace_id BIGINT PRIMARY KEY REFERENCES collaboration_workspaces(id) ON DELETE CASCADE,
-    class_id BIGINT NOT NULL REFERENCES classroom_classes(id) ON DELETE CASCADE,
-    public_id UUID UNIQUE NOT NULL,
-    workspace_kind VARCHAR(16) NOT NULL CHECK (workspace_kind IN ('individual', 'group')),
-    label VARCHAR(120) NOT NULL,
-    individual_participant_id UUID,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    revoked_at TIMESTAMPTZ,
-    UNIQUE (class_id, workspace_id)
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_workspaces_class_idx
-    ON classroom_workspaces (class_id, created_at)`;
-  await sql`ALTER TABLE classroom_workspaces
-    DROP COLUMN IF EXISTS claim_token_hash`;
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_participants (
-    class_id BIGINT NOT NULL REFERENCES classroom_classes(id) ON DELETE CASCADE,
-    participant_id UUID NOT NULL,
-    display_name VARCHAR(60) NOT NULL,
-    session_token_hash CHAR(64) UNIQUE NOT NULL,
-    workspace_id BIGINT,
-    workspace_access_token_hash CHAR(64) UNIQUE,
-    assignment_revision INTEGER NOT NULL DEFAULT 0 CHECK (assignment_revision >= 0),
-    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    assigned_at TIMESTAMPTZ,
-    revoked_at TIMESTAMPTZ,
-    PRIMARY KEY (class_id, participant_id),
-    FOREIGN KEY (class_id, workspace_id)
-      REFERENCES classroom_workspaces(class_id, workspace_id)
-      ON DELETE SET NULL (workspace_id)
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_participants_class_idx
-    ON classroom_participants (class_id, joined_at)`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_participants_workspace_idx
-    ON classroom_participants (workspace_id)
-    WHERE workspace_id IS NOT NULL`;
-
-  await sql`DROP TABLE IF EXISTS classroom_memberships CASCADE`;
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_coaching_feedback (
-    class_id BIGINT NOT NULL,
-    workspace_id BIGINT NOT NULL,
-    target_id VARCHAR(160) NOT NULL,
-    status VARCHAR(32) NOT NULL CHECK (status IN ('meets-standard', 'needs-improvement')),
-    note VARCHAR(2000) NOT NULL DEFAULT '',
-    reviewed_workspace_revision INTEGER NOT NULL CHECK (reviewed_workspace_revision > 0),
-    reviewed_field_fingerprint VARCHAR(32) NOT NULL,
-    feedback_revision INTEGER NOT NULL DEFAULT 1 CHECK (feedback_revision > 0),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (class_id, workspace_id, target_id),
-    FOREIGN KEY (class_id, workspace_id)
-      REFERENCES classroom_workspaces(class_id, workspace_id)
-      ON DELETE CASCADE
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_coaching_feedback_workspace_idx
-    ON classroom_coaching_feedback (workspace_id, updated_at)`;
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_exercises (
-    id BIGSERIAL PRIMARY KEY,
-    public_id UUID UNIQUE NOT NULL,
-    class_id BIGINT NOT NULL REFERENCES classroom_classes(id) ON DELETE CASCADE,
-    case_study_id VARCHAR(160) NOT NULL,
-    simulation_version INTEGER NOT NULL CHECK (simulation_version > 0),
-    simulation_fingerprint CHAR(64) NOT NULL,
-    status VARCHAR(16) NOT NULL DEFAULT 'draft'
-      CHECK (status IN ('draft', 'active', 'paused', 'completed')),
-    current_stage_id VARCHAR(80),
-    stage_phase VARCHAR(16) NOT NULL DEFAULT 'work'
-      CHECK (stage_phase IN ('work', 'debrief')),
-    exercise_revision INTEGER NOT NULL DEFAULT 1 CHECK (exercise_revision > 0),
-    student_editing_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    started_at TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    expires_at TIMESTAMPTZ NOT NULL,
-    UNIQUE (class_id, id)
-  )`;
-  await sql`ALTER TABLE classroom_exercises
-    ADD COLUMN IF NOT EXISTS simulation_version INTEGER`;
-  await sql`ALTER TABLE classroom_exercises
-    ADD COLUMN IF NOT EXISTS simulation_fingerprint CHAR(64)`;
-  await sql`UPDATE classroom_exercises
-    SET simulation_version = COALESCE(simulation_version, 1),
-        simulation_fingerprint = COALESCE(simulation_fingerprint, repeat('0', 64))
-    WHERE simulation_version IS NULL OR simulation_fingerprint IS NULL`;
-  await sql`ALTER TABLE classroom_exercises
-    ALTER COLUMN simulation_version SET NOT NULL`;
-  await sql`ALTER TABLE classroom_exercises
-    ALTER COLUMN simulation_fingerprint SET NOT NULL`;
-
-  await sql`CREATE UNIQUE INDEX IF NOT EXISTS classroom_exercises_one_open_per_class_idx
-    ON classroom_exercises (class_id)
-    WHERE status <> 'completed'`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_exercises_class_history_idx
-    ON classroom_exercises (class_id, created_at DESC)`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_exercises_expiry_idx
-    ON classroom_exercises (expires_at)`;
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_exercise_releases (
-    exercise_id BIGINT NOT NULL REFERENCES classroom_exercises(id) ON DELETE CASCADE,
-    stage_id VARCHAR(80) NOT NULL,
-    content_id VARCHAR(80) NOT NULL,
-    released_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (exercise_id, stage_id, content_id)
-  )`;
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_exercise_workspace_state (
-    class_id BIGINT NOT NULL,
-    exercise_id BIGINT NOT NULL,
-    workspace_id BIGINT NOT NULL,
-    stage_id VARCHAR(80) NOT NULL,
-    ready_for_debrief BOOLEAN NOT NULL DEFAULT FALSE,
-    ready_at TIMESTAMPTZ,
-    ready_workspace_revision INTEGER CHECK (ready_workspace_revision IS NULL OR ready_workspace_revision > 0),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (exercise_id, workspace_id, stage_id),
-    FOREIGN KEY (class_id, exercise_id)
-      REFERENCES classroom_exercises(class_id, id)
-      ON DELETE CASCADE,
-    FOREIGN KEY (class_id, workspace_id)
-      REFERENCES classroom_workspaces(class_id, workspace_id)
-      ON DELETE CASCADE
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_exercise_workspace_state_class_idx
-    ON classroom_exercise_workspace_state (class_id, exercise_id, stage_id)`;
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_exercise_checkpoints (
-    class_id BIGINT NOT NULL,
-    exercise_id BIGINT NOT NULL,
-    stage_id VARCHAR(80) NOT NULL,
-    workspace_id BIGINT NOT NULL,
-    workspace_revision INTEGER NOT NULL CHECK (workspace_revision > 0),
-    snapshot JSONB NOT NULL,
-    captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (exercise_id, stage_id, workspace_id),
-    FOREIGN KEY (class_id, exercise_id)
-      REFERENCES classroom_exercises(class_id, id)
-      ON DELETE CASCADE,
-    FOREIGN KEY (class_id, workspace_id)
-      REFERENCES classroom_workspaces(class_id, workspace_id)
-      ON DELETE CASCADE
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_exercise_checkpoints_class_idx
-    ON classroom_exercise_checkpoints (class_id, exercise_id, stage_id)`;
+  const sql = await createSql();
+  await applySchema(sql, CLASSROOM_SCHEMA);
 
   async function classByInstructor(tokenHash) {
     const rows = await sql`SELECT id AS internal_id, public_id AS id, title,
@@ -638,7 +632,7 @@ async function initializeClassroomRepository() {
         SET workspace_id = ${nextWorkspaceInternalId},
             workspace_access_token_hash = NULL,
             assignment_revision = assignment_revision + 1,
-            assigned_at = CASE WHEN ${nextWorkspaceInternalId} IS NULL THEN NULL ELSE NOW() END,
+            assigned_at = CASE WHEN ${nextWorkspaceInternalId}::bigint IS NULL THEN NULL ELSE NOW() END,
             updated_at = NOW()
         WHERE class_id = ${classroom.internal_id}
           AND participant_id = ${participantId}::uuid
@@ -1290,7 +1284,7 @@ async function initializeClassroomRepository() {
           ${stageId},
           ${ready},
           CASE WHEN ${ready} THEN NOW() ELSE NULL END,
-          CASE WHEN ${ready} THEN ${workspaceRevision} ELSE NULL END
+          CASE WHEN ${ready} THEN ${workspaceRevision}::integer ELSE NULL END
         )
         ON CONFLICT (exercise_id, workspace_id, stage_id) DO UPDATE
         SET ready_for_debrief = EXCLUDED.ready_for_debrief,
