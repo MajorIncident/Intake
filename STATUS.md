@@ -27,7 +27,7 @@ Active work: **repository audit follow-through** on `claude/intake-repo-audit-qi
 Worked one at a time, in order:
 
 1. **Environment** (human action, #340): Vercel Production needs `DATABASE_URL` (or `POSTGRES_URL` / `NEON_DATABASE_URL`) and a valid 43-character `INTAKE_ADMIN_TOKEN`; then a real multi-device smoke test (see `docs/playbooks/release-and-verify.md`).
-2. **Instructor "Leave class" orphans the class** (#341) — no confirmation and no End class; the only Instructor credential is discarded.
+2. ~~**Instructor "Leave class" orphans the class** (#341)~~ — **fixed on this branch**: Leave asks for confirmation and explains the class keeps running; new **End class** confirms, revokes the class server-side for everyone, then clears the device. Closes when merged.
 3. **Instructor controls the API already supports but the UI does not expose** (#342) — joins on/off, end class, rename/delete teams, cross-device handoff, and "one workspace per Student" bulk setup.
 4. **No Instructor-side Case Study assignment** (#343) — teams start empty; Students apply Case Studies themselves using a per-minute password the Instructor UI never shows.
 5. **Staged exercises unusable in production** — no authored Case Study has a `simulation`; requires #316 then #317.
@@ -40,8 +40,8 @@ Worked one at a time, in order:
 | #316 Protected staged assets + rich Student rendering | Open, next Classroom feature after pilot blockers 2–4 | Draft PR #336 holds only a contract document (classroom-protected-assets.md on that branch) |
 | #317 First production staged KT Case Study | Open, blocked by #316 | Needs authoritative source material |
 | #340 Pilot blocker 1: environment + real smoke test | Open | Human action |
-| #341 Pilot blocker 2: Leave class orphans the class | Open | Next code blocker |
-| #342 Pilot blocker 3: Instructor class controls | Open | Includes one-workspace-per-Student |
+| #341 Pilot blocker 2: Leave class orphans the class | Fixed on branch | Closes on merge |
+| #342 Pilot blocker 3: Instructor class controls | Open, next code blocker | Includes one-workspace-per-Student |
 | #343 Pilot blocker 4: Instructor Case Study assignment | Open | |
 
 ## Open pull requests

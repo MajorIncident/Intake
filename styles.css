@@ -3382,6 +3382,9 @@ body.dialog-open{overflow:hidden;}
 .instructor-dashboard__header h2{margin:0;color:var(--ink-strong);font-size:22px;letter-spacing:-.02em;}
 .instructor-dashboard__header p{margin:6px 0 0;color:var(--muted);font-size:12px;}
 .instructor-dashboard__actions{display:flex;gap:8px;flex-wrap:wrap;}
+/* End class is destructive for every Student: reuse the accessible red role tokens (light/dark aware). */
+.instructor-dashboard__end{color:var(--mi-role-red);border-color:var(--mi-role-red-border);}
+.instructor-dashboard__end:hover,.instructor-dashboard__end:focus-visible{background:var(--mi-role-red-bg);}
 .instructor-dashboard.is-collapsed{min-height:0;}
 .instructor-dashboard.is-collapsed>:not(.instructor-dashboard__header){display:none !important;}
 .instructor-dashboard.is-collapsed .instructor-dashboard__header{padding-bottom:0;border-bottom:0;align-items:center;}
