@@ -54,6 +54,8 @@ Worked one at a time, in order:
 
 ## Pending human / environment actions
 
+- **Merges to `main` are blocked (since the repo became private, 2026-11-18):** CodeQL and Dependency Review now fail with "not supported on this repository … GitHub Advanced Security" and appear to be required checks. Decide one of: enable GitHub Code Security / Advanced Security for the private repo; or remove those two from the `main` ruleset and replace them with free equivalents (e.g. `npm audit --omit=dev --audit-level=high` in CI). Until then #309/#311/#337 and this branch cannot merge.
+
 - Configure Vercel env vars listed under blocker 1. Optional: `INTAKE_CLASS_CREATION_PASSWORD` (default `kepnertregoe`).
 - Enable GitHub "Automatically delete head branches" and prune the ~100 stale `codex/*` branches (verify each has no open PR first).
 - Create a GitHub milestone "Classroom pilot" (no API tool available to the agent).
