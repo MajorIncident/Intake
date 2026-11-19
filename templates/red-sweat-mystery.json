@@ -361,5 +361,27 @@
         }
       ]
     }
+  },
+  "libraryGroup": "psdm",
+  "participantCase": {
+    "title": "Red Sweat Mystery — participant briefing",
+    "sections": [
+      {
+        "heading": "The report",
+        "body": "Eastern Airlines flight attendants have reported brief episodes of red or pink staining on exposed skin while in flight. The marks appear on the face, hands or neck. The reports do not establish a loss of ability to perform cabin duties."
+      },
+      {
+        "heading": "Initial comparisons",
+        "body": "The reported episodes involve working flight attendants, but not lead flight attendants, pilots or passengers. Most reported flights use Eastern A300 aircraft; a few involve other Eastern aircraft. No cases have been reported on Eastern DC9 flights or at other airlines."
+      },
+      {
+        "heading": "Timing and context",
+        "body": "The staining first appears within roughly 30 minutes after takeoff and is short-lived. Some A300 routes operate over water. Various cabin and safety materials changed around the introduction of these aircraft."
+      },
+      {
+        "heading": "Your task",
+        "body": "State the object and deviation; obtain a precise WHAT, WHERE, WHEN and EXTENT specification. Compare affected and unaffected groups, identify Distinctions and dated Changes, then generate and test Possible Causes. Do not assume any one newly introduced material caused the staining."
+      }
+    ]
   }
 }
