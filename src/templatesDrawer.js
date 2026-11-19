@@ -278,7 +278,9 @@ function updateTemplateTypeHint() {
     return;
   }
   templatesTypeHint.hidden = false;
-  templatesTypeHint.textContent = '';
+  templatesTypeHint.textContent = caseLibraryView
+    ? 'Start with the participant reading. Full is the final worked answer, not the starting exercise.'
+    : '';
 }
 
 function updatePasswordRequirement() {
@@ -762,6 +764,7 @@ function handleGlobalKeydown(event) {
 function refreshResourcePresentation() {
   if (!templatesDrawerReady) return;
   const policy = getResourcePolicy();
+  templatesDrawer?.classList.toggle('is-case-library', caseLibraryView);
 
   document.querySelectorAll('[data-template-resource-launcher-label]').forEach(element => {
     element.textContent = policy.launcherLabel;
