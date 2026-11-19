@@ -47,6 +47,13 @@ function getTemplateRecords() {
   ];
 }
 
+const CASE_LIBRARY_GROUPS = Object.freeze([
+  { id: 'psdm', title: 'PSDM', help: 'Problem Solving & Decision Making' },
+  { id: 'ats', title: 'ATS', help: 'Analytic Trouble Shooting' },
+  { id: 'legacy', title: 'Legacy', help: 'Earlier KT cases and The New Rational Manager' },
+  { id: 'mim', title: 'MIM', help: 'Major Incident Management cases' }
+]);
+
 const modeRecords = listTemplateModes();
 const modeIndex = new Map(modeRecords.map(mode => [mode.id, mode]));
 
@@ -68,7 +75,17 @@ let templatesModeSection = null;
 let templatesTeachingNotice = null;
 let templatesDrawerFooter = null;
 let templatesSaveBtn = null;
+let caseLibraryTools = null;
+let caseLibrarySearch = null;
+let caseLibraryFilters = null;
+let caseLibraryCount = null;
+let caseLibraryReader = null;
+let caseLibraryReaderTitle = null;
+let caseLibraryReaderSections = null;
 let passwordErrorEl = null;
+let caseLibraryView = false;
+let caseLibraryGroup = 'all';
+let caseLibraryQuery = '';
 
 let templatesDrawerOpen = false;
 let templatesDrawerReady = false;
@@ -111,8 +128,24 @@ function getAvailableTemplateRecords() {
  *
  * @returns {void}
  */
-function ensureAvailableSelection() {
+function getVisibleTemplateRecords() {
   const available = getAvailableTemplateRecords();
+  if (!caseLibraryView) return available;
+  return available.filter(template => {
+    if (template.templateKind !== TEMPLATE_KINDS.CASE_STUDY) return false;
+    const group = CASE_LIBRARY_GROUPS.some(item => item.id === template.libraryGroup)
+      ? template.libraryGroup
+      : 'mim';
+    const matchesGroup = caseLibraryGroup === 'all' || group === caseLibraryGroup;
+    const query = caseLibraryQuery.trim().toLocaleLowerCase();
+    const matchesQuery = !query
+      || `${template.name} ${template.description}`.toLocaleLowerCase().includes(query);
+    return matchesGroup && matchesQuery;
+  });
+}
+
+function ensureAvailableSelection() {
+  const available = getVisibleTemplateRecords();
   if (!available.some(template => template.id === selectedTemplateId)) {
     selectedTemplateId = available.length ? available[0].id : null;
   }
@@ -287,10 +320,42 @@ function updateModeLockState() {
   updateApplyButtonState();
 }
 
+function renderParticipantCase() {
+  if (!caseLibraryReader || !caseLibraryReaderSections || !caseLibraryReaderTitle) return;
+  caseLibraryReader.hidden = !caseLibraryView;
+  caseLibraryReaderSections.replaceChildren();
+  if (!caseLibraryView) return;
+  const template = getSelectedTemplateMeta();
+  if (!template || template.templateKind !== TEMPLATE_KINDS.CASE_STUDY) {
+    caseLibraryReaderTitle.textContent = 'Choose a case';
+    return;
+  }
+  const preview = template.participantCase;
+  caseLibraryReaderTitle.textContent = preview?.title || template.name;
+  if (!preview || !Array.isArray(preview.sections) || !preview.sections.length) {
+    const message = document.createElement('p');
+    message.textContent = 'An inline participant briefing is not yet prepared for this case. In a staged class, read the material as your instructor releases it in the Student case reference.';
+    caseLibraryReaderSections.appendChild(message);
+    return;
+  }
+  for (const section of preview.sections) {
+    if (!section || typeof section.heading !== 'string' || typeof section.body !== 'string') continue;
+    const block = document.createElement('section');
+    block.className = 'case-library__reader-section';
+    const heading = document.createElement('h4');
+    heading.textContent = section.heading;
+    const paragraph = document.createElement('p');
+    paragraph.textContent = section.body;
+    block.append(heading, paragraph);
+    caseLibraryReaderSections.appendChild(block);
+  }
+}
+
 function refreshTemplateDetails() {
   updateTemplateTypeHint();
   updatePasswordRequirement();
   updateModeLockState();
+  renderParticipantCase();
 }
 
 function updateTemplateSelection() {
@@ -757,6 +822,13 @@ export function initTemplatesDrawer({ protectedCaseStudies = null } = {}) {
   templatesTeachingNotice = document.getElementById('templatesTeachingNotice');
   templatesDrawerFooter = document.getElementById('templatesDrawerFooter');
   templatesSaveBtn = document.getElementById('templatesSaveBtn');
+  caseLibraryTools = document.getElementById('caseLibraryTools');
+  caseLibrarySearch = document.getElementById('caseLibrarySearch');
+  caseLibraryFilters = document.getElementById('caseLibraryFilters');
+  caseLibraryCount = document.getElementById('caseLibraryCount');
+  caseLibraryReader = document.getElementById('caseLibraryReader');
+  caseLibraryReaderTitle = document.getElementById('caseLibraryReaderTitle');
+  caseLibraryReaderSections = document.getElementById('caseLibraryReaderSections');
 
   templatesDrawerReady = Boolean(
     templatesDrawer
