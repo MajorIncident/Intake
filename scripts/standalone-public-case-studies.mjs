@@ -28,5 +28,6 @@ export const STANDALONE_PUBLIC_CASE_STUDY_IDS = Object.freeze([
   'microcomputer-cabinets',
   'paytrix',
   'mrs-walthers-sugar-donuts',
-  'tamworth-petrochemical'
+  'tamworth-petrochemical',
+  'red-sweat-mystery'
 ]);

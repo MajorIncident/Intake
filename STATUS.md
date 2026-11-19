@@ -4,7 +4,7 @@ This is the **single live status document** for KT Intake. Other docs describe c
 
 Update it at every durable checkpoint and before handoff — see [`docs/playbooks/status-update.md`](docs/playbooks/status-update.md). Always re-verify against GitHub (main HEAD, open PRs/issues) before trusting it.
 
-_Last updated: 2026-11-19 (`main` at `83de5e6`)._
+_Last updated: 2026-11-19 (Red Sweat case branch `feature/red-sweat-general-case-20261119` based on `main` at `e23d7b8`; main status below unchanged pending merge)._
 
 ## Product context
 
@@ -25,6 +25,13 @@ The **repository audit follow-through** merged via PR #344 (`41f002e`), followed
 ## Temporary product decisions
 
 - **Case Studies are back in Work independently** (approved 2026-11-19, until the classroom experiences fully replace self-study). Microcomputer Cabinets, Paytrix, Mrs Walthers Sugar Donuts, and Tamworth Petrochemical are published in the public manifest and applied behind the per-minute mode password, as before #299. They are downloadable from the deployed site. Switch: `scripts/standalone-public-case-studies.mjs`; removal steps in `templates/AGENTS.md`.
+
+## Red Sweat Mystery General Mode case contribution (review in progress)
+
+- Branch: `feature/red-sweat-general-case-20261119`, base `main` at `e23d7b8`; authored learner-safe `templates/red-sweat-mystery.json`, added to temporary Standalone allowlist, regenerated public and protected manifests, and added `tests/redSweatCase.unit.test.mjs`.
+- Scope: General Intake lens and all four template presentation views; initial facts/paraphrases only, empty cause/solution and Distinctions/Changes; deliberately no staged simulation or official exhibit reproduction. Public self-study content is downloadable.
+- Validation: manifest objects compared exactly against generated ordering and normalization; PASS. Full `npm run quality` and real browser checks remain REQUIRED in GitHub CI or a connected development environment (local clone unavailable because github.com DNS could not resolve).
+- Next: review PR, run `npm run quality` and `npm run test:browser`; on merge verify Work independently > General > Red Sweat Mystery can be applied without a cause/solution reveal. Remove from Standalone allowlist if distribution is not authorized.
 
 ## Pilot blockers (Student / Instructor modes for a real class)
 
@@ -51,6 +58,7 @@ Worked one at a time, in order:
 
 | PR | Status |
 | --- | --- |
+| #346 Red Sweat Mystery General Mode case | Open for review; validation pending, on this branch |
 | #336 Add protected staged asset delivery | Draft; was stacked on #335 (merged) — retarget/refresh against `main` before continuing |
 | #281 eslint 10, #280 jsdom 30, #310 eslint-plugin-jsdoc 65 | Major bumps — do together in one tooling PR (see lint risk below) |
 
