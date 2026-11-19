@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 import { TEMPLATE_MANIFEST } from '../src/templates.manifest.js';
 import { PROTECTED_CASE_STUDY_MANIFEST } from '../api/protected-case-studies.manifest.js';
+import { projectTemplateState } from '../src/templates.js';
 import { buildClassroomDebriefModel } from '../src/classroomDebriefModel.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -504,12 +505,19 @@ function managedInstructorRoster(token) {
   if (!fixture) return null;
   return {
     class: fixture.classContext,
-    workspaces: fixture.workspaces.map(workspace => ({
-      ...workspace,
-      participantCount: fixture.participants.filter(participant => participant.assignment?.id === workspace.id).length,
-      activeParticipantCount: 0,
-      editingParticipantCount: 0
-    }))
+    workspaces: fixture.workspaces.map(workspace => {
+      const state = fixture.workspaceStates.get(workspace.id);
+      const revision = state?.revision ?? 1;
+      return {
+        ...workspace,
+        participantCount: fixture.participants.filter(participant => participant.assignment?.id === workspace.id).length,
+        activeParticipantCount: 0,
+        editingParticipantCount: 0,
+        revision,
+        hasWork: revision !== (state?.caseSeededRevision ?? 1),
+        caseStudy: state?.caseStudy ? structuredClone(state.caseStudy) : null
+      };
+    })
   };
 }
 
@@ -1819,6 +1827,74 @@ async function handleClassroomApi(request, response, url) {
       self: requestBody,
       participants
     });
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/case-studies/assign') {
+    // Mirrors api/_protectedCaseStudies.js instructorCaseStudyAssignHandler (#343).
+    if (request.method !== 'POST') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const instructorToken = bearerToken(request);
+    const fixture = activeInstructorCapability(instructorToken) && !retiredInstructorToken(instructorToken)
+      ? managedInstructorFixture(instructorToken)
+      : null;
+    if (!fixture) {
+      sendJson(response, 404, { error: 'Class not found.' });
+      return true;
+    }
+    const body = await readJson(request).catch(() => null);
+    const record = PROTECTED_CASE_STUDY_MANIFEST.find(item => item.id === body?.caseStudyId);
+    if (!record) {
+      sendJson(response, body?.caseStudyId === BROWSER_STAGED_CASE.id ? 409 : 404, body?.caseStudyId === BROWSER_STAGED_CASE.id
+        ? { error: 'This Case Study is delivered through its staged exercise, so it cannot be loaded into workspaces.', code: 'staged-exercise-only' }
+        : { error: 'Case Study not found.' });
+      return true;
+    }
+    const mode = typeof body?.mode === 'string' ? body.mode : '';
+    if (!record.supportedModes.includes(mode)) {
+      sendJson(response, 400, { error: 'Choose a starting point this Case Study supports.' });
+      return true;
+    }
+    const replaceExisting = body?.replaceExisting === true;
+    const targets = body?.targets === 'all' && !replaceExisting
+      ? fixture.workspaces.map(workspace => ({ workspaceId: workspace.id, expectedRevision: null }))
+      : Array.isArray(body?.targets) && body.targets.length > 0
+        ? body.targets.map(target => ({ workspaceId: target?.workspaceId, expectedRevision: replaceExisting ? target?.expectedRevision : null }))
+        : null;
+    if (!targets || (replaceExisting && targets.some(target => !Number.isInteger(target.expectedRevision)))) {
+      sendJson(response, 400, { error: 'Invalid workspaces.' });
+      return true;
+    }
+    const exercise = classroomExercises.get(instructorToken) || null;
+    if (exercise && exercise.status !== 'completed') {
+      sendJson(response, 409, { error: 'Complete the current staged exercise before loading a Case Study into workspaces.', code: 'exercise-active' });
+      return true;
+    }
+    if (!targets.length) {
+      sendJson(response, 409, { error: 'Create a workspace first.', code: 'no-workspaces' });
+      return true;
+    }
+    const projected = projectTemplateState(record.state, mode, record.supportedModes, 'case-study');
+    const results = targets.map(target => {
+      const workspace = fixture.workspaces.find(item => item.id === target.workspaceId);
+      const state = workspace ? fixture.workspaceStates.get(workspace.id) : null;
+      if (!state) return { workspaceId: target.workspaceId, label: null, status: 'not-found', revision: null };
+      const required = target.expectedRevision ?? (state.caseSeededRevision ?? 1);
+      if (state.revision !== required) {
+        return { workspaceId: workspace.id, label: workspace.label, status: target.expectedRevision === null ? 'has-work' : 'changed', revision: state.revision };
+      }
+      const next = structuredClone(projected);
+      const lens = state.snapshot?.meta?.intakeMode;
+      if (typeof lens === 'string' && next.meta && typeof next.meta === 'object') next.meta.intakeMode = lens;
+      state.snapshot = next;
+      state.revision += 1;
+      state.caseSeededRevision = state.revision;
+      state.caseStudy = { id: record.id, name: record.name, mode, assignedAt: new Date().toISOString() };
+      return { workspaceId: workspace.id, label: workspace.label, status: 'loaded', revision: state.revision };
+    });
+    sendJson(response, 200, { caseStudy: { id: record.id, name: record.name }, mode, results });
     return true;
   }
 
