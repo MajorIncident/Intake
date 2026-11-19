@@ -20,6 +20,15 @@ If code and documentation disagree, treat the contradiction as part of the task:
 **Documentation layers.** `STATUS.md` says where things stand (only place for status). `docs/*.md` contracts say how things work and which invariants hold. `docs/playbooks/` says how to do recurring tasks. `docs/archive/` keeps delivery history verbatim — move history there, never delete it. `npm run repo:doctor` rejects status claims outside `STATUS.md`/archive and backticked file paths that no longer exist.
 
 
+## Writing an official KT Case Study into Intake
+
+When a request says to "write", "load", "author" or "convert" an official KT case from `MajorIncident/kt-application-coach` into an Intake Case Study, **always begin with** [the KT case-writing playbook](docs/playbooks/author-kt-case-study.md) and [the detailed field contract](docs/case-study-authoring.md), even if only one JSON file appears to need editing.
+
+- Invoke the **installed KT Application Coach Skill** first. If absent, use the KT repo's [validated Skill installation guide](https://github.com/MajorIncident/kt-application-coach/blob/main/docs/INSTALL.md) and require the user's installation action; do not claim that reading the repository installs a Skill or bypasses its license.
+- Source authoritative case facts, participant-stage boundaries and the **official preferred solution** from the KT repo (registry, specific case guide, participant/instructor material). Current Concept Rationale mechanics govern KT method; case-specific sources govern case facts. Never invent source data or a replacement solution.
+- Author a **single complete Full source** in `templates/` using the Intake field map (notably `impact.now` = current impact, `impact.future` = future, `impact.time` = resolution deadline/event, while symptom-onset timing is PA WHEN). General hides MIM-only fields; the Full case remains the final worked answer.
+- Populate relevant MIM-superset fields, **not** fictional incident-management activity. Preserve existing Classroom release logic, public-case copyright boundaries, generated manifests and full tests. Follow the Red Sweat #349 corrected pattern, not its earlier #346/#347 failure modes.
+
 ## Delivery-Resilient AI Work
 
 Long AI sessions must assume that a tool call, response delivery, or conversation can end unexpectedly. Repository state must therefore be the recovery mechanism.
