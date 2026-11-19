@@ -22,6 +22,10 @@ Active work: **repository audit follow-through** on `claude/intake-repo-audit-qi
 - **fixed production bugs found by the real-SQL tests**: Instructor team assignment and Student "Mark Ready" both failed in Postgres because of untyped SQL parameters (they had only ever run against in-memory fakes);
 - next: Classroom pilot blockers below, one at a time.
 
+## Temporary product decisions
+
+- **Case Studies are back in Work independently** (approved 2026-11-19, until the classroom experiences fully replace self-study). Microcomputer Cabinets, Paytrix, Mrs Walthers Sugar Donuts, and Tamworth Petrochemical are published in the public manifest and applied behind the per-minute mode password, as before #299. They are downloadable from the deployed site. Switch: `scripts/standalone-public-case-studies.mjs`; removal steps in `templates/AGENTS.md`.
+
 ## Pilot blockers (Student / Instructor modes for a real class)
 
 Worked one at a time, in order:

@@ -103,7 +103,7 @@ Standalone is the compatibility anchor.
 - no account required;
 - local Intake continues to boot from existing storage;
 - Templates available;
-- Case Studies absent from the normal resource UI;
+- Case Studies absent from the normal resource UI, except the TEMPORARY Standalone allowlist (`scripts/standalone-public-case-studies.mjs`), which Work independently applies from the public manifest behind the mode password;
 - optional existing secret-link collaboration remains available;
 - classroom APIs are not required for boot or editing.
 
@@ -238,7 +238,7 @@ The existing `templateKind` distinction remains useful.
 
 Implemented state (#295):
 
-- `src/templates.manifest.js` is the public browser manifest and contains Standard Templates only.
+- `src/templates.manifest.js` is the public browser manifest and contains Standard Templates only, plus the TEMPORARY Standalone Case Study allowlist (see `templates/AGENTS.md`).
 - `api/protected-case-studies.manifest.js` is server-only generated content containing protected Case Study metadata + full payloads.
 - All authored JSON remains under `templates/` for maintainers and is validated by `npm run build:templates`, but `.vercelignore` excludes `templates/*.json` from deployment so raw authoring files cannot be fetched as static assets.
 - Student and Instructor clients receive protected catalog metadata only after Classroom authorization. Full Case Study state is fetched on demand with an authenticated POST and then projected through the same `MODE_RULES` path used by public Templates.

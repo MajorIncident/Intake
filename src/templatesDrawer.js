@@ -30,6 +30,12 @@ import {
 import { showToast } from './toast.js';
 
 const publicTemplateRecords = listTemplates();
+// TEMPORARY Standalone transition: the generated public manifest may carry
+// allowlisted Case Studies (scripts/standalone-public-case-studies.mjs).
+const publicCaseStudyIds = new Set(publicTemplateRecords
+  .filter(record => record.templateKind === TEMPLATE_KINDS.CASE_STUDY)
+  .map(record => record.id));
+const AVAILABILITY_OPTIONS = Object.freeze({ standaloneCaseStudies: publicCaseStudyIds.size > 0 });
 let protectedCaseStudiesProvider = null;
 
 function getTemplateRecords() {
@@ -88,7 +94,7 @@ function getSelectedTemplateMeta() {
  * @returns {ReturnType<typeof getTemplateResourcePolicy>} Role/resource policy.
  */
 function getResourcePolicy() {
-  return getTemplateResourcePolicy(getActiveExperienceRole());
+  return getTemplateResourcePolicy(getActiveExperienceRole(), AVAILABILITY_OPTIONS);
 }
 
 /**
@@ -97,7 +103,7 @@ function getResourcePolicy() {
  * @returns {Array<object>} Available template metadata records.
  */
 function getAvailableTemplateRecords() {
-  return filterTemplatesForExperience(getActiveExperienceRole(), getTemplateRecords());
+  return filterTemplatesForExperience(getActiveExperienceRole(), getTemplateRecords(), AVAILABILITY_OPTIONS);
 }
 
 /**
@@ -219,7 +225,7 @@ function updateApplyButtonState() {
   if (!templatesApplyBtn) return;
   const template = getSelectedTemplateMeta();
   const canApply = template
-    ? canApplyTemplateForExperience(getActiveExperienceRole(), template.templateKind)
+    ? canApplyTemplateForExperience(getActiveExperienceRole(), template.templateKind, AVAILABILITY_OPTIONS)
     : false;
   const disabled = !canApply || !selectedTemplateId || !selectedModeId;
   templatesApplyBtn.disabled = disabled;
@@ -524,7 +530,7 @@ async function applySelectedTemplate() {
     return;
   }
   const templateMeta = getSelectedTemplateMeta();
-  if (!templateMeta || !canApplyTemplateForExperience(getActiveExperienceRole(), templateMeta.templateKind)) {
+  if (!templateMeta || !canApplyTemplateForExperience(getActiveExperienceRole(), templateMeta.templateKind, AVAILABILITY_OPTIONS)) {
     return;
   }
   const requiresPassword = !isStandardTemplate(templateMeta);
@@ -537,7 +543,13 @@ async function applySelectedTemplate() {
   }
 
   let payload = null;
+  const classroomCatalog = protectedCaseStudiesProvider?.getCatalog?.() || [];
+  const servedByClassroom = classroomCatalog.some(record => record?.id === selectedTemplateId);
   if (isStandardTemplate(templateMeta)) {
+    payload = getTemplatePayload(selectedTemplateId, modeToApply);
+  } else if (!servedByClassroom && publicCaseStudyIds.has(selectedTemplateId)) {
+    // TEMPORARY Standalone transition: apply the public copy. A connected
+    // Student/Instructor still uses the server-gated classroom path below.
     payload = getTemplatePayload(selectedTemplateId, modeToApply);
   } else {
     if (!protectedCaseStudiesProvider?.getPayload) {

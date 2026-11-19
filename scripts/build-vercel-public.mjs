@@ -10,6 +10,7 @@
 import { promises as fs } from 'node:fs';
 
 import { PROTECTED_CASE_STUDY_MANIFEST } from '../api/protected-case-studies.manifest.js';
+import { STANDALONE_PUBLIC_CASE_STUDY_IDS } from './standalone-public-case-studies.mjs';
 
 const root = new URL('../', import.meta.url);
 const output = new URL('../dist/', import.meta.url);
@@ -111,9 +112,15 @@ async function verifyOutput() {
     content: await fs.readFile(new URL(file, output), 'utf8')
   })));
 
+  // TEMPORARY Standalone transition: allowlisted Case Studies may ship only
+  // inside the generated public manifest (scripts/standalone-public-case-studies.mjs).
+  const publicAllowlist = new Set(STANDALONE_PUBLIC_CASE_STUDY_IDS);
   for (const caseStudy of PROTECTED_CASE_STUDY_MANIFEST) {
     for (const protectedText of [caseStudy.id, caseStudy.name]) {
-      const leaked = textFiles.find(item => item.content.includes(protectedText));
+      const leaked = textFiles.find(item => (
+        item.content.includes(protectedText)
+        && !(publicAllowlist.has(caseStudy.id) && item.file === 'src/templates.manifest.js')
+      ));
       if (leaked) {
         throw new Error(
           `Protected Case Study text leaked into public deployment output ${leaked.file}: ${protectedText}`
@@ -123,7 +130,8 @@ async function verifyOutput() {
   }
 
   console.log(
-    `[build:vercel-public] Built ${files.length} public file(s) in dist/ with no internal docs or protected Case Study identifiers.`
+    `[build:vercel-public] Built ${files.length} public file(s) in dist/ with no internal docs or protected Case Study identifiers`
+    + (publicAllowlist.size ? ` (except ${publicAllowlist.size} TEMPORARY Standalone Case Studies in src/templates.manifest.js).` : '.')
   );
 }
 

@@ -31,7 +31,7 @@ Individual commands remain useful while developing, but a PR is not complete unt
 Case Study authoring source is intentionally present in Git but intentionally absent from the public Vercel deployment surface.
 
 - `templates/*.json` is repository/build-time source and is excluded by `.vercelignore`.
-- `src/templates.manifest.js` is public and may contain Standard Templates only.
+- `src/templates.manifest.js` is public and may contain Standard Templates only. TEMPORARY exception: the Case Studies listed in `scripts/standalone-public-case-studies.mjs` are also published in the public manifest so Work independently can load them (see `templates/AGENTS.md`).
 - `api/protected-case-studies.manifest.js` is server-only generated content and may contain protected Case Study metadata/payloads.
 - Browser runtime files must never import or duplicate the server-only manifest.
 - `scripts/build-vercel-public.mjs` generates the **only** public static surface under `dist/`: `index.html`, `main.js`, `styles.css`, browser JavaScript under `src/` and `components/`, plus the explicitly public `docs/eula.md` linked from the app footer.

@@ -70,9 +70,13 @@ test('Standalone input generates a summary and survives a real browser reload', 
   expect(pageErrors).toEqual([]);
 });
 
-test('Standalone resource drawer exposes public Templates only and remains accessible', async ({ page }, testInfo) => {
+test('Work independently drawer offers Templates and the temporary Case Studies, and applies Microcomputer Cabinets without a class', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop resource-menu journey; mobile navigation is covered separately.');
   const pageErrors = watchPageErrors(page);
+  const classroomRequests = [];
+  page.on('request', request => {
+    if (new URL(request.url()).pathname.startsWith('/api/classes')) classroomRequests.push(request.url());
+  });
   await startFresh(page);
   await enterStandalone(page);
 
@@ -81,13 +85,23 @@ test('Standalone resource drawer exposes public Templates only and remains acces
 
   const drawer = page.locator('#templatesDrawer');
   await expect(drawer).toBeVisible();
-  await expect(drawer.locator('#templatesDrawerTitle')).toHaveText('Templates');
+  await expect(drawer.locator('#templatesDrawerTitle')).toHaveText('Templates & Case Studies');
   await expect(drawer.getByRole('group', { name: 'Templates' })).toBeVisible();
   await expect(drawer.getByText('Checkout Latency Spike', { exact: true })).toBeVisible();
-  await expect(drawer.getByRole('group', { name: 'Case Studies' })).toHaveCount(0);
+  await expect(drawer.getByRole('group', { name: 'Case Studies' })).toBeVisible();
+  await expect(drawer.getByText('Microcomputer Cabinets', { exact: true })).toBeVisible();
+  await expect(drawer.getByText('Paytrix', { exact: true })).toBeVisible();
   await expect(page.locator('#templatesAuthSection')).toBeHidden();
-
   await expectNoBlockingA11yViolations(page);
+
+  await drawer.getByText('Microcomputer Cabinets', { exact: true }).click();
+  await expect(page.locator('#templatesAuthSection')).toBeVisible();
+  const minutes = String(new Date().getMinutes()).padStart(2, '0');
+  await page.locator('#templatesPassword').fill(`full${minutes}`);
+  await page.locator('#templatesApplyBtn').click();
+
+  await expect(page.locator('#oneLine')).toHaveValue('Cabinets are being rejected');
+  expect(classroomRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
 });
 

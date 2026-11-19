@@ -235,7 +235,7 @@ The existing rotating Case Study mode password remains an instructional progress
 
 The build produces two generated resources:
 
-- `src/templates.manifest.js` — public Standard Templates only;
+- `src/templates.manifest.js` — public Standard Templates only (plus the TEMPORARY Standalone Case Study allowlist in `scripts/standalone-public-case-studies.mjs`);
 - `api/protected-case-studies.manifest.js` — server-only Case Study metadata and payloads.
 
 Authored `templates/*.json` files are excluded from Vercel uploads. Production functions consume the committed server-only manifest, while GitHub CI continues to validate all authored JSON and generated-file freshness.

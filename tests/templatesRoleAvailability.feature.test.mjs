@@ -93,7 +93,8 @@ test('closed Templates drawer is inert and opening restores interaction', () => 
 
 test('drawer projects normal resources across Standalone, Student, and Instructor', () => {
   assert.ok(resourceKinds().includes('standard'));
-  assert.equal(resourceKinds().includes('case-study'), false, 'Standalone must not render Case Studies');
+  assert.ok(resourceKinds().includes('case-study'), 'TEMPORARY: Standalone renders the allowlisted Case Studies');
+  assert.equal(dom.window.document.getElementById('templatesDrawerTitle').textContent, 'Templates & Case Studies');
 
   applyExperienceRole(EXPERIENCE_ROLE_IDS.STUDENT);
   assert.ok(resourceKinds().includes('standard'));
@@ -123,9 +124,48 @@ test('drawer projects normal resources across Standalone, Student, and Instructo
 
   applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
   assert.ok(resourceKinds().includes('standard'));
-  assert.equal(resourceKinds().includes('case-study'), false);
-  assert.equal(dom.window.document.getElementById('templatesDrawerTitle').textContent, 'Templates');
+  assert.ok(resourceKinds().includes('case-study'));
+  assert.equal(dom.window.document.getElementById('templatesDrawerTitle').textContent, 'Templates & Case Studies');
 });
+
+for (const [caseId, expectedOneLine] of [
+  ['microcomputer-cabinets', 'Cabinets are being rejected'],
+  ['paytrix', null]
+]) {
+  test(`Work independently applies the ${caseId} Case Study from the public copy behind the mode password`, async () => {
+    applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
+    lastAppliedState = null;
+    let providerCalls = 0;
+    const originalGetPayload = protectedProvider.getPayload;
+    protectedProvider.getPayload = async id => { providerCalls += 1; return originalGetPayload(id); };
+    try {
+      const caseButton = dom.window.document.querySelector(`#templatesList [data-template-id="${caseId}"]`);
+      assert.ok(caseButton, `${caseId} is listed in Work independently`);
+      caseButton.click();
+      assert.equal(dom.window.document.getElementById('templatesAuthSection').hidden, false, 'mode password is still required');
+
+      const full = dom.window.document.querySelector('#templatesModeGroup input[value="full"], [data-template-mode="full"]');
+      if (full) full.click();
+      const password = dom.window.document.getElementById('templatesPassword');
+      password.value = 'wrong';
+      dom.window.document.getElementById('templatesApplyBtn').click();
+      await new Promise(resolve => setImmediate(resolve));
+      await new Promise(resolve => setImmediate(resolve));
+      assert.equal(lastAppliedState, null, 'a wrong mode password does not apply the case');
+
+      const minutes = String(new Date().getMinutes()).padStart(2, '0');
+      password.value = `full${minutes}`;
+      dom.window.document.getElementById('templatesApplyBtn').click();
+      await new Promise(resolve => setImmediate(resolve));
+      await new Promise(resolve => setImmediate(resolve));
+      assert.ok(lastAppliedState, `${caseId} applied`);
+      if (expectedOneLine) assert.equal(lastAppliedState.pre.oneLine, expectedOneLine);
+      assert.equal(providerCalls, 0, 'Standalone never calls the classroom provider');
+    } finally {
+      protectedProvider.getPayload = originalGetPayload;
+    }
+  });
+}
 
 
 test('authorized Case Study payload is fetched only when Student applies it', async () => {
