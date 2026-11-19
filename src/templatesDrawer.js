@@ -21,6 +21,7 @@ import {
   TEMPLATE_KINDS
 } from './templates.js';
 import { applyAppState, collectAppState } from './appState.js';
+import { templateModePassword } from './templateModes.js';
 import { getActiveExperienceRole } from './experienceRoleController.js';
 import {
   canApplyTemplateForExperience,
@@ -495,9 +496,7 @@ function handleModeClick(event) {
 
 function buildExpectedPassword() {
   if (!selectedModeId) return '';
-  const minutes = String(new Date().getMinutes()).padStart(2, '0');
-  const normalizedModeKey = selectedModeId.replace(/-/g, '');
-  return `${normalizedModeKey}${minutes}`;
+  return templateModePassword(selectedModeId, new Date());
 }
 
 function validatePassword() {
