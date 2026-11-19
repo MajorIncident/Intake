@@ -364,23 +364,31 @@
   },
   "libraryGroup": "psdm",
   "participantCase": {
-    "title": "Red Sweat Mystery — participant briefing",
+    "title": "Red Sweat Mystery — participant case",
     "sections": [
       {
-        "heading": "The report",
-        "body": "Eastern Airlines flight attendants have reported brief episodes of red or pink staining on exposed skin while in flight. The marks appear on the face, hands or neck. The reports do not establish a loss of ability to perform cabin duties."
+        "heading": "An unusual report",
+        "body": "In early 1980, some Eastern Airlines flight attendants reported a red or pink fluid or stain appearing on exposed skin during flight. The appearance was described as red perspiration, especially on faces, hands and necks. It was temporary, and the available reports do not establish that affected crew members became unable to carry out cabin duties."
       },
       {
-        "heading": "Initial comparisons",
-        "body": "The reported episodes involve working flight attendants, but not lead flight attendants, pilots or passengers. Most reported flights use Eastern A300 aircraft; a few involve other Eastern aircraft. No cases have been reported on Eastern DC9 flights or at other airlines."
+        "heading": "Who is and is not reporting it",
+        "body": "The affected people are working flight attendants. Lead flight attendants, pilots and passengers on the same flights have not reported the same condition. These distinctions matter even though the same aircraft environment may be shared by several groups."
       },
       {
-        "heading": "Timing and context",
-        "body": "The staining first appears within roughly 30 minutes after takeoff and is short-lived. Some A300 routes operate over water. Various cabin and safety materials changed around the introduction of these aircraft."
+        "heading": "Aircraft, routes and timing",
+        "body": "Most of the reports involve Eastern's Airbus A300 aircraft, with a few on other Eastern aircraft. There are no reported cases on Eastern DC9 services or on other airlines. The red or pink appearance begins within about 30 minutes after takeoff and does not persist indefinitely. Many Eastern A300 flights took over routes that previously used other aircraft, including routes over water."
       },
       {
-        "heading": "Your task",
-        "body": "State the object and deviation; obtain a precise WHAT, WHERE, WHEN and EXTENT specification. Compare affected and unaffected groups, identify Distinctions and dated Changes, then generate and test Possible Causes. Do not assume any one newly introduced material caused the staining."
+        "heading": "Possible environmental explanations",
+        "body": "Medical and environmental possibilities were considered, but the available information did not establish an explanation. Eastern had made multiple changes in equipment and cabin materials associated with its A300 operation. Investigators should not assume that every material or system change occurred at the same time or affected the same people."
+      },
+      {
+        "heading": "Additional information: equipment and materials",
+        "body": "New or different materials and practices associated with the A300 operation included cabin-cleaning products, coatings, service-cart and rack plastics, safety-equipment arrangements and an experimental air-filter cartridge. Crews were trained to demonstrate new life vests before A300 operations began in January 1980. The filter program had its own testing and rollout timing."
+      },
+      {
+        "heading": "Your investigation",
+        "body": "Use the facts to sharpen WHAT, WHERE, WHEN and EXTENT IS / IS NOT boundaries. Look for differences between affected and unaffected flights, equipment, people and activities; date any relevant Changes. Build mechanisms that explain the whole pattern and test them against close comparisons. The participant exercise stops here, before the separately published resolution."
       }
     ]
   }
