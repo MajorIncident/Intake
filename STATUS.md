@@ -58,6 +58,7 @@ Worked one at a time, in order:
 
 | PR | Status |
 | --- | --- |
+| #346 Red Sweat Mystery General Mode case | Open for review; validation pending, on this branch |
 | #336 Add protected staged asset delivery | Draft; was stacked on #335 (merged) — retarget/refresh against `main` before continuing |
 | #281 eslint 10, #280 jsdom 30, #310 eslint-plugin-jsdoc 65 | Major bumps — do together in one tooling PR (see lint risk below) |
 
