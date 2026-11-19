@@ -4,7 +4,7 @@ This is the **single live status document** for KT Intake. Other docs describe c
 
 Update it at every durable checkpoint and before handoff — see [`docs/playbooks/status-update.md`](docs/playbooks/status-update.md). Always re-verify against GitHub (main HEAD, open PRs/issues) before trusting it.
 
-_Last updated: 2026-11-19 (#342 draft PR #352, branch `claude/intake-repo-audit-qii780`, based on `main` at `1075ba8`)._
+_Last updated: 2026-11-19 (#342 PR #352 ready for review, branch `claude/intake-repo-audit-qii780`, based on `main` at `1075ba8`)._
 
 ## Product context
 
@@ -36,7 +36,7 @@ Worked one at a time, in order:
 
 1. **Environment** (human action, #340): Vercel Production needs `DATABASE_URL` (or `POSTGRES_URL` / `NEON_DATABASE_URL`) and a valid 43-character `INTAKE_ADMIN_TOKEN`; then a real multi-device smoke test (see `docs/playbooks/release-and-verify.md`).
 2. ~~**Instructor "Leave class" orphans the class** (#341)~~ — **done (#344)**: Leave asks for confirmation and explains the class keeps running; new **End class** confirms, revokes the class server-side for everyone, then clears the device.
-3. **Instructor class controls** (#342) — **implemented in draft PR #352** (server `6c3b643`, client `8eafc64`, e2e `35a4039`): pause/allow joins, rename and guarded remove of teams, "Give each waiting Student their own workspace" (re-runnable), and a one-time device-transfer code (single use, 10 min, rotates the Instructor credential). Also fixed: team names over 80 characters returned 500; Start class button contrast. Remaining: review/merge, then smoke-test steps 8a–8c in `docs/playbooks/release-and-verify.md`.
+3. **Instructor class controls** (#342) — **implemented in PR #352 (ready for review)** (server `6c3b643`, client `8eafc64`, e2e `35a4039`): pause/allow joins, rename and guarded remove of teams, "Give each waiting Student their own workspace" (re-runnable), and a one-time device-transfer code (single use, 10 min, rotates the Instructor credential). Also fixed: team names over 80 characters returned 500; Start class button contrast. Remaining: review/merge, then smoke-test steps 8a–8c in `docs/playbooks/release-and-verify.md`.
 4. **No Instructor-side Case Study assignment** (#343) — teams start empty; Students apply Case Studies themselves using a per-minute password the Instructor UI never shows.
 5. **Staged exercises unusable in production** — no authored Case Study has a `simulation`; requires #316 then #317.
 6. **Load/pilot readiness** — capacity check per `docs/operations-capacity.md`.
@@ -48,7 +48,7 @@ Worked one at a time, in order:
 | #316 Protected staged assets + rich Student rendering | Open, next Classroom feature after pilot blockers 2–4 | Draft PR #336 holds only a contract document (classroom-protected-assets.md on that branch) |
 | #317 First production staged KT Case Study | Open, blocked by #316 | Needs authoritative source material |
 | #340 Pilot blocker 1: environment + real smoke test | Open | Human action |
-| #342 Pilot blocker 3: Instructor class controls | In review | Draft PR #352 |
+| #342 Pilot blocker 3: Instructor class controls | In review | PR #352 |
 | #343 Pilot blocker 4: Instructor Case Study assignment | Open | |
 | #348 Existing Case Study completeness audit | Open | Follow-up quality backlog; apply new KT authoring playbook before case changes |
 
@@ -56,8 +56,7 @@ Worked one at a time, in order:
 
 | PR | Status |
 | --- | --- |
-| #351 Official KT-to-Intake Case Study authoring documentation | Open; docs-only branch, exact-head CI/owner review required |
-| #352 #342 Instructor class controls | Draft; quality 436 tests + browser 30 passed / 12 intentional skips on `35a4039` |
+| #352 #342 Instructor class controls | Ready for review; awaiting owner merge approval. Local quality 436 tests + browser 30 passed / 12 intentional skips |
 | #336 Add protected staged asset delivery | Draft; was stacked on #335 (merged) — retarget/refresh against `main` before continuing |
 | #281 eslint 10, #280 jsdom 30, #310 eslint-plugin-jsdoc 65 | Major bumps — do together in one tooling PR (see lint risk below) |
 
