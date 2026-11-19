@@ -562,7 +562,8 @@ async function applySelectedTemplate() {
       payload = projectTemplateState(
         protectedRecord.state,
         modeToApply,
-        protectedRecord.supportedModes
+        protectedRecord.supportedModes,
+        TEMPLATE_KINDS.CASE_STUDY
       );
     }
   }
