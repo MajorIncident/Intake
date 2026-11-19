@@ -106,3 +106,33 @@ test('Instructor connection uses the Instructor route and disconnect clears meta
   assert.equal(controller.getCatalog().length, 0);
   assert.equal(controller.getState().connected, false);
 });
+
+test('student catalog exposes only sanitized authorized participant reading and clones it', async () => {
+  const controller = createClassroomCaseStudiesController({
+    fetchImpl: async () => response(200, {
+      caseStudies: [{
+        id: 'case-reader',
+        name: 'Reader case',
+        description: 'Participant version',
+        templateKind: 'case-study',
+        supportedModes: ['intake', 'full'],
+        libraryGroup: 'ats',
+        state: { secret: 'Never expose this' },
+        participantCase: {
+          title: 'Case for students',
+          sections: [{ heading: 'Facts', body: 'A measured deviation.' }]
+        }
+      }]
+    })
+  });
+  assert.equal(await controller.connectStudent(STUDENT), true);
+  const records = controller.getCatalog();
+  assert.equal(records[0].libraryGroup, 'ats');
+  assert.equal(records[0].participantCase.sections[0].body, 'A measured deviation.');
+  assert.equal('state' in records[0], false);
+  records[0].participantCase.sections[0].body = 'tampered';
+  assert.equal(controller.getCatalog()[0].participantCase.sections[0].body, 'A measured deviation.');
+  controller.disconnect();
+  assert.deepEqual(controller.getCatalog(), []);
+});
+
