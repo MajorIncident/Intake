@@ -31,6 +31,12 @@ Applies to all authored JSON files inside `templates/`.
 - Standalone **Intake → IS / IS NOT → D&C → Full** are the existing template projections; **Full is the final worked answer**. They are not the live class's server-controlled release schedule. Case Study actions and containment/debrief fields are omitted from introductory projections; Standard Templates retain their previous behavior. Classroom progression, authorization, evidence release, and optional `simulation` definitions stay owned by the existing staged-exercise system; **do not write a separate reveal engine into each Case Study**.
 - All future Case Study PRs need regression tests for source completeness, mode projection, full round-trip of MIM-only buckets, and no early view exposing answer-key actions/confirmation. Richness is judged by case/source suitability; a non-applicable field can remain blank without reducing correctness.
 
+## Case Library participant reading fields
+
+Case Studies may add top-level `libraryGroup` (one of `psdm | ats | legacy | mim`) and `participantCase: {title, sections: [{heading, body}]}`. These are **metadata/learner-readable, not full Intake state**, and are validated by `scripts/build-templates-manifest.mjs`. Never add either to a Standard Template.
+
+`participantCase` is a concise, faithful **participant-stage** reading copy using plain text only, without cause/solution spoilers or protected instructor exhibits. Respect staged roles and initial stopping points; Square Donuts, for example, begins with factory orientation rather than the later problem reveal. The authorized GET catalog may return this briefing only for **non-staged** cases; `simulation` cases must receive text and figures through authorized released-content APIs. Public Standalone exposes only existing allowlisted copies (and Full remains downloadable there). Original KT images/pages require reviewed distribution rights and protected asset delivery before adding figures; text-only sections are the baseline. New source group entries belong in `docs/case-library-inventory.md` and tracked issue #353.
+
 ## Security boundary
 
 Authored JSON is build-time source, not a production static asset.
