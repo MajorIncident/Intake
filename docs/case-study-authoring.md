@@ -74,6 +74,10 @@ The prefacing evidence and Impact are **different jobs**. Do not put a long disc
 - If the official case has a **preferred solution**, use it first. Do not replace it with a hypothetical consulting exercise or new creative scenario. Where the official case is silent, apply the KT Skill's generic guidance and preserve assumptions.
 - For unresolved data, use concise NMD/blank entries as supported by schema and document how evidence would be obtained **only if** it materially changes the analysis; avoid verbose caveat cascades. Correctness beats filled-cell percentage.
 
+### Case Library delivery fields
+
+Alongside the complete `state`, author `libraryGroup` and `participantCase` under the Case Study's **top-level JSON**, following [the Case Library inventory](case-library-inventory.md) and tracked [program #353](https://github.com/MajorIncident/Intake/issues/353). `libraryGroup` is `psdm`, `ats`, `legacy` or `mim`; New Rational Manager PA examples belong under Legacy with their specific source provenance recorded in the inventory, not falsely called KT's Major Incident Management cases. `participantCase.sections` contains short headings and participant-readable plain-text body sections, with no Full-cause spoilers or source content that has not yet been released. A staged case's initial material belongs in the existing `simulation.studentContent` release path. Include imagery only after source rights, protected asset delivery and stage authorization are confirmed, not as public PDF copies or remote embeds. Build group/browser metadata from the source once; a source listing does not imply its Full case has already been audited.
+
 ## 3. Presentation and classroom boundaries
 
 `Intake -> IS / IS NOT -> D&C -> Full` is the **Standalone template projection sequence**:
