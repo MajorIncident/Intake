@@ -85,8 +85,13 @@ let caseLibraryCount = null;
 let caseLibraryReader = null;
 let caseLibraryReaderTitle = null;
 let caseLibraryReaderSections = null;
+let caseLibraryContinueBtn = null;
+let caseLibraryBackToReadingBtn = null;
+let templatesModeTitle = null;
+let templatesModeHelp = null;
 let passwordErrorEl = null;
 let caseLibraryView = false;
+let caseLibraryWorking = false;
 let caseLibraryGroup = 'all';
 let caseLibraryQuery = '';
 
@@ -263,7 +268,7 @@ function updateApplyButtonState() {
   const canApply = template
     ? canApplyTemplateForExperience(getActiveExperienceRole(), template.templateKind, AVAILABILITY_OPTIONS)
     : false;
-  const disabled = !canApply || !selectedTemplateId || !selectedModeId;
+  const disabled = !canApply || !selectedTemplateId || !selectedModeId || (caseLibraryView && !caseLibraryWorking);
   templatesApplyBtn.disabled = disabled;
 }
 
@@ -288,7 +293,7 @@ function updateTemplateTypeHint() {
 
 function updatePasswordRequirement() {
   const policy = getResourcePolicy();
-  const needsPassword = policy.canApply && !isStandardTemplate();
+  const needsPassword = policy.canApply && !isStandardTemplate() && (!caseLibraryView || caseLibraryWorking);
   if (templatesAuthSection) {
     templatesAuthSection.hidden = !needsPassword;
   }
@@ -304,7 +309,7 @@ function updateModeLockState() {
   const policy = getResourcePolicy();
   const lockModes = isStandardTemplate();
   if (templatesModeSection) {
-    templatesModeSection.hidden = !policy.canApply;
+    templatesModeSection.hidden = !policy.canApply || (caseLibraryView && !caseLibraryWorking);
   }
   if (lockModes) {
     selectedModeId = TEMPLATE_MODE_IDS.FULL;
@@ -345,6 +350,19 @@ function renderParticipantCase() {
   }
   for (const section of preview.sections) {
     if (!section || typeof section.heading !== 'string' || typeof section.body !== 'string') continue;
+    if (section.reveal === true) {
+      // Self-study only: later participant handout is user-disclosed, NOT an
+      // access-control gate. Classroom GET excludes these until authored release.
+      const disclosure = document.createElement('details');
+      disclosure.className = 'case-library__reader-section case-library__reveal';
+      const summary = document.createElement('summary');
+      summary.textContent = `Show later participant handout: ${section.heading}`;
+      const paragraph = document.createElement('p');
+      paragraph.textContent = section.body;
+      disclosure.append(summary, paragraph);
+      caseLibraryReaderSections.appendChild(disclosure);
+      continue;
+    }
     const block = document.createElement('section');
     block.className = 'case-library__reader-section';
     const heading = document.createElement('h4');
@@ -356,11 +374,31 @@ function renderParticipantCase() {
   }
 }
 
+/** Keep working options after the case reader, including in the Instructor view. */
+function syncCaseLibraryStep() {
+  const readingFirst = caseLibraryView && !caseLibraryWorking;
+  const policy = getResourcePolicy();
+  if (caseLibraryContinueBtn) {
+    caseLibraryContinueBtn.hidden = !caseLibraryView || caseLibraryWorking || !policy.canApply || !selectedTemplateId;
+    caseLibraryContinueBtn.setAttribute('aria-expanded', caseLibraryWorking ? 'true' : 'false');
+  }
+  if (caseLibraryBackToReadingBtn) caseLibraryBackToReadingBtn.hidden = !caseLibraryView || !caseLibraryWorking;
+  if (templatesModeSection) templatesModeSection.hidden = !policy.canApply || readingFirst;
+  if (templatesDrawerFooter) templatesDrawerFooter.hidden = !policy.canApply || readingFirst;
+  if (templatesModeTitle) templatesModeTitle.textContent = caseLibraryView ? 'Step 2 · Work with the case' : 'Mode';
+  if (templatesModeHelp) templatesModeHelp.textContent = caseLibraryView
+    ? 'Start from Intake and develop the answer. Full loads the completed reference solution.'
+    : 'Decide how much detail to apply from the chosen template.';
+  if (templatesApplyBtn) templatesApplyBtn.textContent = caseLibraryView ? 'Load selected view into Intake' : 'Apply resource';
+  updateApplyButtonState();
+}
+
 function refreshTemplateDetails() {
   updateTemplateTypeHint();
   updatePasswordRequirement();
   updateModeLockState();
   renderParticipantCase();
+  syncCaseLibraryStep();
 }
 
 function updateTemplateSelection() {
