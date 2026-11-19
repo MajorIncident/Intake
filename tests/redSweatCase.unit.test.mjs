@@ -103,9 +103,9 @@ test('Full view includes causes, test verdicts, assumptions, elimination and con
   assert.ok(full.actions.items.every(item => item.notes.includes('not a documented historical')), 'proposed actions are explicitly distinguished');
   assert.match(full.ops.containDesc, /HISTORICAL POST-EXERCISE RESULT/);
   assert.match(full.decisionAnalysis.decision, /ILLUSTRATIVE EXERCISE/);
-  assert.match(full.decisionAnalysis.options, /A\\. Inspect/);
+  assert.ok(full.decisionAnalysis.options.includes('A. Inspect'));
   assert.equal(full.decisionAnalysis.timestamp, '', 'no fabricated historical decision timestamp');
-  assert.match(full.potentialProblemAnalysis.risk.impactIfFails, /ILLUSTRATIVE IF\\/THEN/);
+  assert.ok(full.potentialProblemAnalysis.risk.impactIfFails.includes('ILLUSTRATIVE IF/THEN'));
   assert.equal(full.potentialProblemAnalysis.changeControl.required, true);
   assert.equal(full.potentialProblemAnalysis.verification.required, true);
   assert.ok(full.handover['remaining-risks'].length > 0);
