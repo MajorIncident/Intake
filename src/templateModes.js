@@ -22,6 +22,22 @@ export const TEMPLATE_MODE_IDS = Object.freeze({
  * Human-friendly definitions for the available template modes.
  * @type {ReadonlyArray<{ id: keyof typeof TEMPLATE_MODE_IDS, name: string, description: string }>}
  */
+/**
+ * Presentation labels for Case Study teaching progression.
+ *
+ * These describe an ordered reference/debrief progression, NOT authorization
+ * or live Classroom stage control. Intermediate classroom stages (cause
+ * generation, destructive testing, etc.) can be added with a server-gated
+ * simulation definition; Full must remain the final answer/debrief.
+ * Keep stable mode IDs unchanged for imports and mode-password compatibility.
+ */
+export const CASE_STUDY_STAGE_LABELS = Object.freeze({
+  [TEMPLATE_MODE_IDS.INTAKE]: '1. Intake',
+  [TEMPLATE_MODE_IDS.IS_IS_NOT]: '2. IS / IS NOT',
+  [TEMPLATE_MODE_IDS.DC]: '3. D&C',
+  [TEMPLATE_MODE_IDS.FULL]: 'Final — Full Answer'
+});
+
 export const TEMPLATE_MODES = Object.freeze([
   {
     id: TEMPLATE_MODE_IDS.INTAKE,
@@ -41,7 +57,7 @@ export const TEMPLATE_MODES = Object.freeze([
   {
     id: TEMPLATE_MODE_IDS.FULL,
     name: 'Full',
-    description: 'Includes actions plus every other section for an end-to-end walkthrough.'
+    description: 'For Case Studies, the final worked answer/debrief: includes causes, testing, and confirmation. Standard Templates remain full working templates.'
   }
 ]);
 
