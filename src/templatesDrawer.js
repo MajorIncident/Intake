@@ -28,6 +28,7 @@ import {
   getTemplateResourcePolicy
 } from './templateAvailability.js';
 import { showToast } from './toast.js';
+import { CASE_STUDY_STAGE_LABELS } from './templateModes.js';
 
 const publicTemplateRecords = listTemplates();
 // TEMPORARY Standalone transition: the generated public manifest may carry
@@ -114,7 +115,11 @@ function getAvailableTemplateRecords() {
 function ensureAvailableSelection() {
   const available = getAvailableTemplateRecords();
   if (!available.some(template => template.id === selectedTemplateId)) {
-    selectedTemplateId = available.length ? available[0].id : null;
+    const first = available[0] || null;
+    selectedTemplateId = first?.id || null;
+    selectedModeId = first?.templateKind === TEMPLATE_KINDS.CASE_STUDY
+      ? TEMPLATE_MODE_IDS.INTAKE
+      : TEMPLATE_MODE_IDS.FULL;
   }
 }
 
@@ -245,7 +250,9 @@ function updateTemplateTypeHint() {
     return;
   }
   templatesTypeHint.hidden = false;
-  templatesTypeHint.textContent = '';
+  templatesTypeHint.textContent = selectedModeId === TEMPLATE_MODE_IDS.FULL
+    ? 'Final answer: this view includes the worked case and its conclusion. Use it for the last debrief, not the first class step.'
+    : 'Work through Intake, IS / IS NOT, and D&C before the Final answer. The Final view reveals the completed case.';
 }
 
 function updatePasswordRequirement() {
@@ -262,6 +269,23 @@ function updatePasswordRequirement() {
   }
 }
 
+/**
+ * Case Study mode titles show their teaching sequence. Standard Templates
+ * continue to use the original mode names; labels never unlock content.
+ *
+ * @returns {void}
+ */
+function updateModeLabels() {
+  if (!templatesModeGroup) return;
+  const isCaseStudy = getSelectedTemplateMeta()?.templateKind === TEMPLATE_KINDS.CASE_STUDY;
+  templatesModeGroup.querySelectorAll('.templates-mode').forEach(button => {
+    const id = button.dataset.mode || '';
+    const mode = modeIndex.get(id);
+    if (!mode) return;
+    button.textContent = isCaseStudy ? (CASE_STUDY_STAGE_LABELS[id] || mode.name) : mode.name;
+  });
+}
+
 function updateModeLockState() {
   const policy = getResourcePolicy();
   const lockModes = isStandardTemplate();
@@ -272,6 +296,7 @@ function updateModeLockState() {
     selectedModeId = TEMPLATE_MODE_IDS.FULL;
   }
   if (templatesModeGroup) {
+    updateModeLabels();
     templatesModeGroup.classList.toggle('is-locked', lockModes);
     const buttons = templatesModeGroup.querySelectorAll('.templates-mode');
     buttons.forEach(button => {
@@ -467,6 +492,11 @@ function handleTemplateClick(event) {
     return;
   }
   selectedTemplateId = id;
+  const selected = getSelectedTemplateMeta();
+  selectedModeId = selected?.templateKind === TEMPLATE_KINDS.CASE_STUDY
+    ? TEMPLATE_MODE_IDS.INTAKE
+    : TEMPLATE_MODE_IDS.FULL;
+  clearPasswordError();
   updateTemplateSelection();
   refreshTemplateDetails();
   updateApplyButtonState();
@@ -489,6 +519,7 @@ function handleModeClick(event) {
   }
   selectedModeId = id;
   updateModeSelection();
+  updateTemplateTypeHint();
   clearPasswordError();
   updateApplyButtonState();
 }
