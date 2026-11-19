@@ -63,6 +63,11 @@ function validateParticipantCase(value, errors) {
       || section.body.length > 6000) {
       errors.push(`participantCase.sections[${index}] needs heading and body plain text within limits`);
     }
+    // A self-study reveal is a presentation cue, not Classroom access control.
+    // Classroom Students receive stage-filtered content from authenticated endpoints.
+    if (isRecord(section) && section.reveal !== undefined && typeof section.reveal !== 'boolean') {
+      errors.push(`participantCase.sections[${index}].reveal must be a boolean`);
+    }
   });
 }
 
