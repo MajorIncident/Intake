@@ -157,11 +157,16 @@ function projectTable(tableEntries, tableFields = DEFAULT_TABLE_FIELDS) {
     .filter(Boolean);
 }
 
-function projectState(fullState, modeId) {
+function projectState(fullState, modeId, templateKind = TEMPLATE_KINDS.STANDARD) {
   const rule = MODE_RULES[modeId];
   if (!rule) {
     return null;
   }
+  // A Case Study's complete authored actions are answer-key material. Earlier
+  // presentation views must not include them; Standard Templates retain their
+  // existing actions behavior.
+  const includeActions = rule.includeActions
+    && (templateKind !== TEMPLATE_KINDS.CASE_STUDY || modeId === TEMPLATE_MODE_IDS.FULL);
   const projected = {
     meta: clone(fullState.meta),
     pre: clone(fullState.pre),
@@ -171,7 +176,7 @@ function projectState(fullState, modeId) {
     causes: rule.includeCauses ? clone(fullState.causes) : [],
     likelyCauseId: rule.includeCauses ? fullState.likelyCauseId : null,
     steps: rule.includeSteps ? clone(fullState.steps) : clone(DEFAULT_STEPS_STATE),
-    actions: rule.includeActions ? clone(fullState.actions) : clone(DEFAULT_ACTIONS_STATE)
+    actions: includeActions ? clone(fullState.actions) : clone(DEFAULT_ACTIONS_STATE)
   };
   // Case Studies are authored as complete source/exemplar snapshots. Preserve
   // supported Major Incident fields in Full, then clear later-step exemplar
@@ -190,7 +195,7 @@ function projectState(fullState, modeId) {
   if (!rule.includeTable) {
     projected.ops.tableFocusMode = BASE_OPS.tableFocusMode;
   }
-  if (!rule.includeActions) {
+  if (!includeActions) {
     projected.actions.analysisId = '';
   }
   if (!rule.includeSteps) {
@@ -227,7 +232,7 @@ function normalizeManifestState(state) {
   if (!state || typeof state !== 'object') {
     throw new Error('Invalid template manifest state payload.');
   }
-  return {
+  const normalized = {
     meta: clone(state.meta),
     pre: clone(state.pre),
     impact: clone(state.impact),
@@ -238,6 +243,14 @@ function normalizeManifestState(state) {
     steps: normalizeSteps(state.steps),
     actions: normalizeActions(state.actions)
   };
+  // The complete MIM source may also contain these persisted fields. Never
+  // silently discard them before Full projection.
+  for (const field of ['appearance', 'handover', 'decisionAnalysis', 'potentialProblemAnalysis', 'notesWorkspace']) {
+    if (Object.prototype.hasOwnProperty.call(state, field)) {
+      normalized[field] = clone(state[field]);
+    }
+  }
+  return normalized;
 }
 
 hydrateManifest(TEMPLATE_MANIFEST);
@@ -300,12 +313,12 @@ export function listTemplateModes() {
  * @param {string[]} [supportedModes] Modes authorized by the resource metadata.
  * @returns {import('./storage.js').SerializedAppState|null} Projected payload or null.
  */
-export function projectTemplateState(fullState, modeId, supportedModes = Array.from(MODE_INDEX.keys())) {
+export function projectTemplateState(fullState, modeId, supportedModes = Array.from(MODE_INDEX.keys()), templateKind = TEMPLATE_KINDS.STANDARD) {
   if (!fullState || typeof fullState !== 'object' || typeof modeId !== 'string') return null;
   const normalizedMode = MODE_INDEX.has(modeId.trim()) ? modeId.trim() : null;
   const normalizedSupported = sanitizeSupportedModes(supportedModes);
   if (!normalizedMode || !normalizedSupported.includes(normalizedMode)) return null;
-  return projectState(normalizeManifestState(fullState), /** @type {keyof typeof MODE_RULES} */ (normalizedMode));
+  return projectState(normalizeManifestState(fullState), /** @type {keyof typeof MODE_RULES} */ (normalizedMode), templateKind);
 }
 
 /**
@@ -326,7 +339,7 @@ export function getTemplatePayload(templateId, modeId) {
   if (!normalizedMode || !template.supportedModes.includes(normalizedMode)) {
     return null;
   }
-  return projectState(template.state, /** @type {keyof typeof MODE_RULES} */ (normalizedMode));
+  return projectState(template.state, /** @type {keyof typeof MODE_RULES} */ (normalizedMode), template.templateKind);
 }
 
 export { TEMPLATE_MODE_IDS, TEMPLATE_KINDS };
