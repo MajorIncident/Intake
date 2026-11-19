@@ -192,6 +192,14 @@ function projectState(fullState, modeId, templateKind = TEMPLATE_KINDS.STANDARD)
         : (field === 'notesWorkspace' ? { notes: [], open: false } : {});
     }
   }
+  if (templateKind === TEMPLATE_KINDS.CASE_STUDY && modeId !== TEMPLATE_MODE_IDS.FULL) {
+    // The complete source may contain the historical resolution in MIM-only
+    // containment/comms fields. Earlier local template views omit it, while
+    // Classroom exercise release remains a separate server authorization.
+    projected.ops.containDesc = '';
+    projected.ops.containStatus = 'assessing';
+    projected.ops.commLog = [];
+  }
   if (!rule.includeTable) {
     projected.ops.tableFocusMode = BASE_OPS.tableFocusMode;
   }
