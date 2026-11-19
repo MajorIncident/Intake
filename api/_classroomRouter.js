@@ -22,6 +22,7 @@ import {
 } from './_classroom.js';
 import {
   instructorCaseStudiesHandler,
+  instructorCaseStudyAssignHandler,
   studentCaseStudiesHandler
 } from './_protectedCaseStudies.js';
 import {
@@ -46,6 +47,7 @@ export const CLASSROOM_ROUTE_IDS = Object.freeze([
   'coaching-student',
   'debrief',
   'case-studies',
+  'case-studies-assign',
   'case-studies-student',
   'exercise',
   'exercise-checkpoint',
@@ -67,6 +69,7 @@ function defaultHandlers() {
     'coaching-student': classStudentCoachingHandler(),
     debrief: classDebriefHandler(),
     'case-studies': instructorCaseStudiesHandler(),
+    'case-studies-assign': instructorCaseStudyAssignHandler(),
     'case-studies-student': studentCaseStudiesHandler(),
     exercise: classExerciseHandler(),
     'exercise-checkpoint': classExerciseCheckpointHandler(),

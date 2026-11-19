@@ -44,8 +44,8 @@ const CLASSROOM_STUDENT_CAPABILITY_KIND = 'classroom-student';
  */
 export const CLASSROOM_SCHEMA = Object.freeze({
   component: 'classroom',
-  version: 2,
-  fingerprint: 'cb184cf52fb4f4c16821936c34b8f539120cafd6ee7c02f97bbea520d891878b',
+  version: 3,
+  fingerprint: '8e57635fd7c9bc9a96baa35d1df5b1143dc30471693fb8df856311fd2c1b9481',
   steps: Object.freeze([
   sql => sql`CREATE TABLE IF NOT EXISTS classroom_classes (
     id BIGSERIAL PRIMARY KEY,
@@ -217,7 +217,20 @@ export const CLASSROOM_SCHEMA = Object.freeze({
     ADD COLUMN IF NOT EXISTS instructor_transfer_expires_at TIMESTAMPTZ`,
   sql => sql`CREATE UNIQUE INDEX IF NOT EXISTS classroom_classes_instructor_transfer_idx
     ON classroom_classes (instructor_transfer_hash)
-    WHERE instructor_transfer_hash IS NOT NULL`
+    WHERE instructor_transfer_hash IS NOT NULL`,
+  // v3 (#343): the Case Study an Instructor last loaded into a workspace, and
+  // the collaboration revision it produced. A workspace whose revision still
+  // equals that baseline (or 1 when never loaded) has no Student work.
+  sql => sql`ALTER TABLE classroom_workspaces
+    ADD COLUMN IF NOT EXISTS case_study_id VARCHAR(120)`,
+  sql => sql`ALTER TABLE classroom_workspaces
+    ADD COLUMN IF NOT EXISTS case_study_name VARCHAR(120)`,
+  sql => sql`ALTER TABLE classroom_workspaces
+    ADD COLUMN IF NOT EXISTS case_study_mode VARCHAR(16)`,
+  sql => sql`ALTER TABLE classroom_workspaces
+    ADD COLUMN IF NOT EXISTS case_seeded_revision INTEGER`,
+  sql => sql`ALTER TABLE classroom_workspaces
+    ADD COLUMN IF NOT EXISTS case_assigned_at TIMESTAMPTZ`
   ])
 });
 
@@ -260,6 +273,33 @@ export function normalizeClassroomWorkspaceKind(value) {
   return typeof value === 'string' && CLASS_WORKSPACE_KINDS.includes(value)
     ? /** @type {'individual'|'group'} */ (value)
     : null;
+}
+
+/**
+ * Shape an Instructor roster row: nests the loaded Case Study (#343) and
+ * normalizes the collaboration revision and work flag.
+ *
+ * @param {object} row - Flat repository row.
+ * @returns {object} Roster workspace view.
+ */
+export function classWorkspaceView(row) {
+  const {
+    caseStudyId,
+    caseStudyName,
+    caseStudyMode,
+    caseAssignedAt,
+    revision,
+    hasWork,
+    ...rest
+  } = row;
+  return {
+    ...rest,
+    revision: Number(revision) || 1,
+    hasWork: hasWork === true,
+    caseStudy: caseStudyId
+      ? { id: caseStudyId, name: caseStudyName || caseStudyId, mode: caseStudyMode || null, assignedAt: caseAssignedAt || null }
+      : null
+  };
 }
 
 /**
@@ -1741,7 +1781,13 @@ async function initializeClassroomRepository() {
             WHERE cp.last_seen_at >= NOW() - 30 * INTERVAL '1 second'
               AND cp.activity_state = 'editing'
           )::int AS "editingParticipantCount",
-          MAX(cp.last_seen_at) AS "lastSeenAt"
+          MAX(cp.last_seen_at) AS "lastSeenAt",
+          w.revision,
+          (w.revision <> COALESCE(cw.case_seeded_revision, 1)) AS "hasWork",
+          cw.case_study_id AS "caseStudyId",
+          cw.case_study_name AS "caseStudyName",
+          cw.case_study_mode AS "caseStudyMode",
+          cw.case_assigned_at AS "caseAssignedAt"
         FROM classroom_workspaces cw
         LEFT JOIN classroom_participants live_cp
           ON live_cp.class_id = cw.class_id
@@ -1752,9 +1798,89 @@ async function initializeClassroomRepository() {
         WHERE cw.class_id = ${classroom.internal_id}
           AND cw.revoked_at IS NULL
           AND w.expires_at > NOW()
-        GROUP BY cw.workspace_id, cw.public_id, cw.workspace_kind, cw.label, cw.created_at
+        GROUP BY cw.workspace_id, cw.public_id, cw.workspace_kind, cw.label, cw.created_at,
+          w.revision, cw.case_seeded_revision, cw.case_study_id, cw.case_study_name,
+          cw.case_study_mode, cw.case_assigned_at
         ORDER BY cw.created_at, cw.workspace_id`;
-      return { classroom, workspaces: rows };
+      return { classroom, workspaces: rows.map(classWorkspaceView) };
+    },
+
+    /**
+     * Load a projected Case Study snapshot into one class workspace (#343).
+     *
+     * One statement: the collaboration revision only advances when it still
+     * equals `expectedRevision`, or — when that is null — the untouched
+     * baseline (the revision the last load produced, else 1). The workspace's
+     * current Intake lens (`meta.intakeMode`) is kept, as the drawer does.
+     *
+     * @param {string} instructorHash - Instructor capability hash.
+     * @param {{workspacePublicId: string, caseStudyId: string, caseStudyName: string, mode: string, snapshot: object, expectedRevision: number|null}} input - Load request.
+     * @returns {Promise<{status: 'loaded'|'has-work'|'changed', revision: number, workspace: object}|null>} Outcome, or null when the workspace is not in this class.
+     */
+    async loadCaseStudyIntoWorkspace(instructorHash, {
+      workspacePublicId,
+      caseStudyId,
+      caseStudyName,
+      mode,
+      snapshot,
+      expectedRevision = null
+    }) {
+      const rows = await sql`WITH target AS (
+          SELECT cw.workspace_id, cw.public_id, cw.workspace_kind, cw.label,
+            w.revision AS current_revision,
+            COALESCE(cw.case_seeded_revision, 1) AS baseline,
+            w.snapshot_json #> '{meta,intakeMode}' AS lens
+          FROM classroom_workspaces cw
+          JOIN classroom_classes c ON c.id = cw.class_id
+          JOIN collaboration_workspaces w ON w.id = cw.workspace_id
+          WHERE c.instructor_token_hash = ${instructorHash}
+            AND c.revoked_at IS NULL
+            AND c.expires_at > NOW()
+            AND cw.public_id = ${workspacePublicId}::uuid
+            AND cw.revoked_at IS NULL
+            AND w.expires_at > NOW()
+        ), written AS (
+          UPDATE collaboration_workspaces w
+          SET snapshot_json = CASE
+                WHEN jsonb_typeof(t.lens) = 'string'
+                  AND jsonb_typeof(${JSON.stringify(snapshot)}::jsonb -> 'meta') = 'object'
+                THEN jsonb_set(${JSON.stringify(snapshot)}::jsonb, '{meta,intakeMode}', t.lens)
+                ELSE ${JSON.stringify(snapshot)}::jsonb
+              END,
+              revision = w.revision + 1,
+              updated_at = NOW()
+          FROM target t
+          WHERE w.id = t.workspace_id
+            AND w.revision = COALESCE(${expectedRevision}::integer, t.baseline)
+          RETURNING w.id, w.revision
+        ), marked AS (
+          UPDATE classroom_workspaces cw
+          SET case_study_id = ${caseStudyId}::text,
+              case_study_name = ${caseStudyName}::text,
+              case_study_mode = ${mode}::text,
+              case_seeded_revision = written.revision,
+              case_assigned_at = NOW(),
+              updated_at = NOW()
+          FROM written
+          WHERE cw.workspace_id = written.id
+          RETURNING cw.workspace_id
+        )
+        SELECT t.public_id AS id, t.workspace_kind AS kind, t.label,
+          t.current_revision AS "currentRevision",
+          written.revision AS "writtenRevision"
+        FROM target t
+        LEFT JOIN written ON written.id = t.workspace_id`;
+      const row = rows[0];
+      if (!row) return null;
+      const workspace = { id: row.id, kind: row.kind, label: row.label };
+      if (row.writtenRevision !== null && row.writtenRevision !== undefined) {
+        return { status: 'loaded', revision: Number(row.writtenRevision), workspace };
+      }
+      return {
+        status: expectedRevision === null ? 'has-work' : 'changed',
+        revision: Number(row.currentRevision),
+        workspace
+      };
     },
 
     async listWorkspaceSnapshotsForInstructor(instructorHash) {

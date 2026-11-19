@@ -60,6 +60,10 @@
       "destination": "/api/classroom?__classroomRoute=case-studies"
     },
     {
+      "source": "/api/classes/case-studies/assign",
+      "destination": "/api/classroom?__classroomRoute=case-studies-assign"
+    },
+    {
       "source": "/api/classes/case-studies/student",
       "destination": "/api/classroom?__classroomRoute=case-studies-student"
     },
