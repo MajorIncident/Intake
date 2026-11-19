@@ -449,15 +449,22 @@ function renderTemplatesList() {
   if (!templatesListEl) return;
   templatesListEl.innerHTML = '';
   const policy = getResourcePolicy();
-  const availableTemplates = getAvailableTemplateRecords();
+  const availableTemplates = getVisibleTemplateRecords();
   ensureAvailableSelection();
+  if (caseLibraryCount) {
+    caseLibraryCount.textContent = caseLibraryView
+      ? `${availableTemplates.length} case${availableTemplates.length === 1 ? '' : 's'} available in this view`
+      : '';
+  }
 
   if (!availableTemplates.length) {
     const empty = document.createElement('p');
     empty.className = 'templates-list__empty';
-    empty.textContent = policy.teachingOnly
-      ? 'No teaching Case Studies are available yet.'
-      : 'No resources are available yet.';
+    empty.textContent = caseLibraryView
+      ? 'No available cases match this group and search. Only authorized cases are listed.'
+      : policy.teachingOnly
+        ? 'No teaching Case Studies are available yet.'
+        : 'No resources are available yet.';
     templatesListEl.appendChild(empty);
     selectedTemplateId = null;
     updateApplyButtonState();
@@ -468,6 +475,19 @@ function renderTemplatesList() {
   const standardTemplates = availableTemplates.filter(template => template.templateKind === TEMPLATE_KINDS.STANDARD);
   const caseTemplates = availableTemplates.filter(template => template.templateKind === TEMPLATE_KINDS.CASE_STUDY);
   const fragment = document.createDocumentFragment();
+
+  if (caseLibraryView) {
+    for (const group of CASE_LIBRARY_GROUPS) {
+      const records = caseTemplates.filter(item => (item.libraryGroup || 'mim') === group.id);
+      const section = buildTemplatesGroup(group.title, group.help, records);
+      if (section) fragment.appendChild(section);
+    }
+    templatesListEl.appendChild(fragment);
+    updateTemplateSelection();
+    refreshTemplateDetails();
+    updateApplyButtonState();
+    return;
+  }
 
   const standardGroup = buildTemplatesGroup(
     'Templates',
@@ -528,10 +548,11 @@ function handleTemplateClick(event) {
   }
   event.preventDefault();
   const id = target.dataset.templateId;
-  if (!id || id === selectedTemplateId || !getTemplateRecords().some(template => template.id === id)) {
+  if (!id || id === selectedTemplateId || !getVisibleTemplateRecords().some(template => template.id === id)) {
     return;
   }
   selectedTemplateId = id;
+  if (caseLibraryView) selectedModeId = TEMPLATE_MODE_IDS.INTAKE;
   updateTemplateSelection();
   refreshTemplateDetails();
   updateApplyButtonState();
@@ -694,7 +715,7 @@ function setTemplatesDrawer(open, { skipFocus = false } = {}) {
     templatesBackdrop.classList.toggle('is-open', shouldOpen);
     templatesBackdrop.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
   }
-  document.querySelectorAll('[data-open-templates-drawer]').forEach(launcher => {
+  document.querySelectorAll('[data-open-templates-drawer], [data-open-case-library]').forEach(launcher => {
     launcher.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
   });
   document.body.classList.toggle('templates-drawer-open', shouldOpen);
@@ -745,13 +766,23 @@ function refreshResourcePresentation() {
   document.querySelectorAll('[data-template-resource-launcher-label]').forEach(element => {
     element.textContent = policy.launcherLabel;
   });
-  if (templatesDrawerTitle) templatesDrawerTitle.textContent = policy.drawerTitle;
-  if (templatesDrawerSubtitle) templatesDrawerSubtitle.textContent = policy.drawerSubtitle;
-  if (templatesResourceHeading) templatesResourceHeading.textContent = policy.resourceHeading;
-  if (templatesResourceHelp) templatesResourceHelp.textContent = policy.resourceHelp;
+  if (templatesDrawerTitle) templatesDrawerTitle.textContent = caseLibraryView ? 'Case Library' : policy.drawerTitle;
+  if (templatesDrawerSubtitle) templatesDrawerSubtitle.textContent = caseLibraryView
+    ? 'Explore available cases by source, read the participant briefing here, then select the appropriate working stage.'
+    : policy.drawerSubtitle;
+  if (templatesResourceHeading) templatesResourceHeading.textContent = caseLibraryView ? 'Available Case Studies' : policy.resourceHeading;
+  if (templatesResourceHelp) templatesResourceHelp.textContent = caseLibraryView
+    ? 'Only cases available to your current experience are listed. Staged classroom information is released separately.'
+    : policy.resourceHelp;
+  if (caseLibraryTools) caseLibraryTools.hidden = !caseLibraryView;
+  if (caseLibraryFilters) {
+    caseLibraryFilters.querySelectorAll('[data-case-group]').forEach(button => {
+      button.setAttribute('aria-pressed', button.dataset.caseGroup === caseLibraryGroup ? 'true' : 'false');
+    });
+  }
   if (templatesTeachingNotice) templatesTeachingNotice.hidden = !policy.teachingOnly;
   if (templatesDrawerFooter) templatesDrawerFooter.hidden = !policy.canApply;
-  if (templatesSaveBtn) templatesSaveBtn.hidden = !policy.canSaveCurrent;
+  if (templatesSaveBtn) templatesSaveBtn.hidden = caseLibraryView || !policy.canSaveCurrent;
 
   renderTemplatesList();
   updatePasswordRequirement();
@@ -762,6 +793,22 @@ function wireDrawerInternalEvents() {
   if (!templatesDrawerReady) return;
   if (templatesListEl) {
     templatesListEl.addEventListener('click', handleTemplateClick);
+  }
+  if (caseLibrarySearch) {
+    caseLibrarySearch.addEventListener('input', () => {
+      caseLibraryQuery = caseLibrarySearch.value;
+      renderTemplatesList();
+    });
+  }
+  if (caseLibraryFilters) {
+    caseLibraryFilters.addEventListener('click', event => {
+      const button = event.target.closest?.('[data-case-group]');
+      if (!button || !caseLibraryFilters.contains(button)) return;
+      const group = button.dataset.caseGroup;
+      if (group !== 'all' && !CASE_LIBRARY_GROUPS.some(item => item.id === group)) return;
+      caseLibraryGroup = group;
+      refreshResourcePresentation();
+    });
   }
   if (templatesModeGroup) {
     templatesModeGroup.addEventListener('click', handleModeClick);
@@ -843,7 +890,7 @@ export function initTemplatesDrawer({ protectedCaseStudies = null } = {}) {
     return;
   }
 
-  document.querySelectorAll('[data-open-templates-drawer]').forEach(launcher => {
+  document.querySelectorAll('[data-open-templates-drawer], [data-open-case-library]').forEach(launcher => {
     launcher.setAttribute('aria-expanded', 'false');
   });
   templatesDrawer.setAttribute('aria-hidden', 'true');
@@ -862,9 +909,26 @@ export function initTemplatesDrawer({ protectedCaseStudies = null } = {}) {
  */
 export function openTemplatesDrawer() {
   if (!templatesDrawerReady) return;
-  if (!templatesDrawerOpen) {
-    rememberReturnFocus();
-  }
+  if (!templatesDrawerOpen) rememberReturnFocus();
+  caseLibraryView = false;
+  refreshResourcePresentation();
+  setTemplatesDrawer(true);
+}
+
+/**
+ * Open the dedicated Case Library view in the existing accessible drawer.
+ * Case search and source filters are presentation state, not Intake data.
+ * @returns {void}
+ */
+export function openCaseLibrary() {
+  if (!templatesDrawerReady) return;
+  if (!templatesDrawerOpen) rememberReturnFocus();
+  caseLibraryView = true;
+  caseLibraryGroup = 'all';
+  caseLibraryQuery = '';
+  selectedModeId = TEMPLATE_MODE_IDS.INTAKE;
+  if (caseLibrarySearch) caseLibrarySearch.value = '';
+  refreshResourcePresentation();
   setTemplatesDrawer(true);
 }
 
