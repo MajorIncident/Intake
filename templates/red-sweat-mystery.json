@@ -152,23 +152,23 @@
       {
         "id": "cause-red-sweat-demonstration-vest-ink",
         "suspect": "New demonstration life vests",
-        "accusation": "Shed flaking red ink while handled during the safety demonstration",
-        "impact": "Red pigment transfers to working attendants' exposed skin and perspiration spreads it into apparently red sweat shortly after takeoff",
-        "summaryText": "Newly introduced demonstration life vests shed red ink on handlers; perspiration smears the transferred pigment into the reported red/pink spots. This is the historical confirmed cause from the separate post-exercise reveal.",
+        "accusation": "Red ink on the vests flakes off when attendants handle them",
+        "impact": "Ink transfers to exposed skin; perspiration smears it, making sweat appear red",
+        "summaryText": "Flaking red ink from the new demonstration vests transferred during safety demonstrations and was spread by perspiration.",
         "confidence": "high",
-        "evidence": "POST-EXERCISE REVEAL / historical case outcome (not starting evidence): Flaking red ink from new demonstration vests transferred during over-water safety demonstrations; perspiration spread the pigment. Reports stopped after the demonstration vests were removed. For teaching, distinguish the Most Probable Cause from confirmed True Cause. Confirmation options: verify which crews/aircraft handled the new vests; observe transfer during a controlled demonstration; conduct a safe materials-transfer experiment; or replace/remove the defective demonstration equipment and monitor for nonrecurrence. Only the historical removal/outcome is reported, not any live testing by this workbook.",
+        "evidence": "True Cause: The new life vests used in cabin safety demonstrations shed red ink onto the flight attendants. Sweat spread the pigment. Reports of red sweat stopped when the vests were removed.",
         "findings": {
           "what-object": {
             "mode": "assumption",
-            "note": "Working attendants' vest handling explains their exposure, unlike pilots/passengers. Check whether the unaffected lead attendants did not handle these same demonstration vests; that role-level comparison is not fully documented in the learner facts."
+            "note": "The affected flight attendants handled the vests; confirm that unaffected lead attendants did not handle the same vests. Pilots and passengers did not conduct the cabin demonstration."
           },
           "where-location": {
             "mode": "assumption",
-            "note": "Over-water A300 safety demonstrations give a specific path for vest contact and the A300 concentration; verify vest distribution on the few affected other Eastern aircraft and the unaffected DC9/other-carrier flights. Aircraft type itself is not a cause."
+            "note": "Over-water demonstrations explain the concentration on affected Eastern flights. Verify the vest inventory on affected non-A300 aircraft and unaffected DC9 and other-carrier flights."
           },
           "when-description": {
             "mode": "yes",
-            "note": "Vest contact occurs at the departure demonstration, then perspiration can smear deposited ink soon after takeoff; this fits the first-30-minute onset rather than requiring a later in-flight exposure. The separate historical reveal confirms the red-ink transfer mechanism."
+            "note": "The vests are handled during the safety demonstration near departure. Deposited red ink can become visible when perspiration spreads it shortly after takeoff."
           }
         },
         "editing": false,
@@ -176,24 +176,24 @@
       },
       {
         "id": "cause-red-sweat-cleaning-residue",
-        "suspect": "A300 cabin cleaning products",
-        "accusation": "Left red-tinted residue on crew-contacted surfaces",
-        "impact": "The residue transfers to working attendants' exposed skin and becomes visible as perspiration spreads it",
-        "summaryText": "A newly used A300 cleaner might deposit transferable red residue on surfaces handled by cabin crew, becoming visible with perspiration.",
+        "suspect": "New cabin cleaning products",
+        "accusation": "Leave colored residue on surfaces touched by attendants",
+        "impact": "Residue transfers to skin and becomes visible when mixed with sweat",
+        "summaryText": "A new cleaning product leaves transferable colored residue on surfaces handled by the affected attendants.",
         "confidence": "low",
-        "evidence": "UNCONFIRMED learner alternative. No evidence in the available participant dossier establishes that a cleaning product contains red pigment, affects only demonstrators, or was used on all affected aircraft. Compare actual products, dates, surfaces and affected/unaffected flights before treating this as causal.",
+        "evidence": "No red pigment transfer from a cleaner is established. Its contact pattern, use across aircraft and timing would need to match the specification.",
         "findings": {
           "what-object": {
             "mode": "assumption",
-            "note": "Requires working attendants, but not pilots, passengers or lead attendants, to contact the residue-bearing surfaces. The role/exposure split has not been established."
+            "note": "Only the affected attendants would have to contact the relevant cleaned surfaces; lead attendants, pilots and passengers would have to avoid the same exposure."
           },
           "where-location": {
             "mode": "assumption",
-            "note": "A300-specific cleaner might explain many A300 reports, but needs evidence that the affected non-A300 Eastern flights also used it and the DC9/other-carrier comparison flights did not."
+            "note": "The same cleaner would need to be used on the affected A300 and other Eastern flights, but not on unaffected DC9 or other-carrier flights."
           },
           "when-description": {
             "mode": "assumption",
-            "note": "Requires contact shortly before takeoff and red residue that becomes visible rapidly with sweat; neither the contact timing nor red-staining chemistry has been demonstrated."
+            "note": "Surface contact would need to occur before or immediately after takeoff, with pigment appearing in the first 30 minutes."
           }
         },
         "editing": false,
@@ -201,24 +201,24 @@
       },
       {
         "id": "cause-red-sweat-cart-plastic",
-        "suspect": "New A300 service-cart or rack plastics",
-        "accusation": "Released transferable colored residue when cabin crew handled service equipment",
-        "impact": "Color transfers to exposed skin during preparation and becomes visible as the crew perspire",
-        "summaryText": "New cart/rack plastics might transfer colored material to attendants handling equipment and appear as red spotting after departure.",
+        "suspect": "New cabin cart and rack plastics",
+        "accusation": "Transfer colored material to attendants during handling",
+        "impact": "Transferred color is spread by perspiration and appears as red sweat",
+        "summaryText": "A new plastic cabin component sheds color on contact with flight attendants before departure.",
         "confidence": "low",
-        "evidence": "UNCONFIRMED learner alternative. An A300 equipment difference could generate a hypothesis, but the material must actually shed red pigment, and the hypothesis must still fit other Eastern aircraft, unaffected lead attendants, and onset timing.",
+        "evidence": "No material-transfer finding supports this explanation. It requires role-specific contact and matching equipment across the affected aircraft.",
         "findings": {
           "what-object": {
             "mode": "assumption",
-            "note": "Assumes only affected working attendants handled the residue-bearing carts/racks and unaffected lead attendants did not; verify actual handling roles."
+            "note": "Affected attendants would have to handle the colored plastic while lead attendants, pilots and passengers did not."
           },
           "where-location": {
             "mode": "assumption",
-            "note": "Needs evidence of the same plastic on a few affected non-A300 flights but absence on Eastern DC9 and unaffected carriers; no such fleet inventory is supplied."
+            "note": "Affected non-A300 Eastern flights would need the same plastic; unaffected DC9 and other carriers would need not to have it."
           },
           "when-description": {
             "mode": "assumption",
-            "note": "Requires handling the cart/rack before or immediately after takeoff rather than later during cabin service, plus evidence of red pigment transfer."
+            "note": "Contact would have to occur at departure, not only during later cabin service, to explain the first-30-minute onset."
           }
         },
         "editing": false,
@@ -226,24 +226,24 @@
       },
       {
         "id": "cause-red-sweat-air-filter-ozone",
-        "suspect": "Experimental A300 air-filter cartridges",
-        "accusation": "Failed to screen ozone, producing an airborne skin reaction",
-        "impact": "Cabin-air exposure would supposedly cause red/pink skin moisture during flight",
-        "summaryText": "An experimental air-filter change might alter cabin air and cause a skin reaction, but this explanation conflicts with crew specificity and with the dated filter rollout.",
+        "suspect": "Experimental air filters",
+        "accusation": "Do not remove ozone from cabin air",
+        "impact": "Ozone exposure causes an apparent red-sweat skin reaction",
+        "summaryText": "An experimental cabin air filter permits an ozone exposure that would produce the reported skin effect.",
         "confidence": "low",
-        "evidence": "REJECTED by destructive testing and timing. Instructor guidance says the cartridges were still being tested and were not fully implemented until after the deviation began. A later rollout cannot explain the earlier reports, regardless of whether ozone could produce this visible effect.",
+        "evidence": "Eliminated by Change timing: the filters were still in tests and were not fully implemented until after the red-sweat reports began.",
         "findings": {
           "what-object": {
-            "mode": "fail",
-            "note": "A shared cabin-air exposure would not naturally explain why affected working attendants develop red spots while nearby pilots, lead attendants and passengers do not. There is no supported role-specific ozone mechanism."
+            "mode": "assumption",
+            "note": "Cabin-air exposure would also reach lead attendants, pilots and passengers; this cause needs an unverified explanation for why only working attendants are affected."
           },
           "where-location": {
             "mode": "assumption",
-            "note": "Assumes the trial cartridges are unique to affected A300s and also somehow account for the few affected non-A300 Eastern aircraft; verify installations rather than equating 'A300' with a causal filter."
+            "note": "The relevant filter would have to be present on affected A300 and other Eastern aircraft but absent on unaffected DC9s and other carriers."
           },
           "when-description": {
             "mode": "fail",
-            "note": "Cabin air would remain present beyond the first 30 minutes, while the deviation is reported only at early onset. More decisively, the filter implementation occurred after the problem started, so the dated Change cannot be causal."
+            "note": "The proposed filter change was implemented after the problem had already started and therefore cannot explain the earlier red-sweat occurrences."
           }
         },
         "editing": false,
@@ -256,177 +256,47 @@
       "drawerOpen": false
     },
     "actions": {
-      "analysisId": "red-sweat-pa-exemplar",
+      "analysisId": "red-sweat-mystery",
       "items": [
         {
-          "id": "red-sweat-verify-crew-exposure",
-          "analysisId": "red-sweat-pa-exemplar",
+          "id": "red-sweat-remove-demo-vests",
+          "analysisId": "red-sweat-mystery",
           "createdAt": "",
           "createdBy": "",
-          "summary": "Compare life-vest demonstration exposure by crew role and flight",
-          "detail": "Proposed confirmation of the remaining WHAT/WHERE assumptions: compare which working attendants and lead attendants actually handled the new demonstration vests; then map affected A300 and other Eastern flights against routes, DC9 comparisons and the demonstration-vest inventory. Preserve both IS and close IS NOT facts.",
+          "summary": "Remove the new demonstration life vests",
+          "detail": "The new vests were removed; reports of red sweat then stopped.",
           "owner": {
-            "name": "Cabin Safety / Flight Operations SME (illustrative)",
-            "category": "Teaching role (not a historical person)",
-            "subOwner": "Cabin Safety / Flight Operations SME (illustrative)",
-            "notes": "Proposed role for a modern training exercise. No named historical owner is documented.",
+            "name": "",
+            "category": "",
+            "subOwner": "",
+            "notes": "",
             "lastAssignedBy": "",
             "lastAssignedAt": "",
             "source": "Manual"
           },
-          "role": "Cabin Safety / Flight Operations SME (illustrative)",
-          "status": "Planned",
-          "priority": "High",
+          "role": "",
+          "status": "Done",
+          "priority": "Med",
           "dueAt": "",
           "startedAt": "",
           "completedAt": "",
           "dependencies": [],
           "risk": {
-            "level": "Medium",
-            "impactIfFails": "Exposure mismatch could leave alternative mechanisms untested.",
-            "prevent": "Use a standardized role/aircraft/route inventory.",
-            "ifHappens": "Reopen the PA specification and candidate testing where exceptions are found."
+            "level": "None",
+            "impactIfFails": "",
+            "prevent": "",
+            "ifHappens": ""
           },
           "changeControl": {
-            "required": false,
-            "rollbackPlan": ""
+            "required": false
           },
           "verification": {
             "required": true,
-            "result": "Role, aircraft and route records discriminate whether vest handlers uniquely match affected flights and crews, including close unaffected comparisons."
+            "result": "Red-sweat reports ceased after the new demonstration vests were removed."
           },
           "links": {},
-          "auditTrail": [],
-          "notes": "PROPOSED/ILLUSTRATIVE ACTION ONLY; not a documented historical assignment or completed field test. Historical facts and proposed confirmation steps must remain distinct."
-        },
-        {
-          "id": "red-sweat-material-check",
-          "analysisId": "red-sweat-pa-exemplar",
-          "createdAt": "",
-          "createdBy": "",
-          "summary": "Inspect demonstration-vest red printing for transferable pigment",
-          "detail": "Proposed observation / safe experiment (not reported as performed historically): examine suspect and control demonstration vests for flaking red print; document contact transfer to an inert material under controlled conditions, using authorized technical and safety personnel. No human exposure experiment.",
-          "owner": {
-            "name": "Cabin Equipment / Materials Specialist (illustrative)",
-            "category": "Teaching role (not a historical person)",
-            "subOwner": "Cabin Equipment / Materials Specialist (illustrative)",
-            "notes": "Proposed role for a modern training exercise. No named historical owner is documented.",
-            "lastAssignedBy": "",
-            "lastAssignedAt": "",
-            "source": "Manual"
-          },
-          "role": "Cabin Equipment / Materials Specialist (illustrative)",
-          "status": "Planned",
-          "priority": "High",
-          "dueAt": "",
-          "startedAt": "",
-          "completedAt": "",
-          "dependencies": [
-            "red-sweat-verify-crew-exposure"
-          ],
-          "risk": {
-            "level": "Medium",
-            "impactIfFails": "An unsafe or contaminated specimen could create misleading or hazardous conclusions.",
-            "prevent": "Use authorized handling, documented controls and no human testing.",
-            "ifHappens": "Stop tests and refer specimens to qualified laboratory staff."
-          },
-          "changeControl": {
-            "required": false,
-            "rollbackPlan": ""
-          },
-          "verification": {
-            "required": true,
-            "result": "Controlled observation shows red pigment flaking from the suspect life vest, transfer on contact and compatibility with the reported visible spots; clean controls do not show equivalent transfer."
-          },
-          "links": {},
-          "auditTrail": [],
-          "notes": "PROPOSED/ILLUSTRATIVE ACTION ONLY; not a documented historical assignment or completed field test. Historical facts and proposed confirmation steps must remain distinct."
-        },
-        {
-          "id": "red-sweat-safe-equipment-replacement",
-          "analysisId": "red-sweat-pa-exemplar",
-          "createdAt": "",
-          "createdBy": "",
-          "summary": "Replace or quarantine suspect demonstration vests without reducing safety readiness",
-          "detail": "HISTORICAL OUTCOME: the participant case's later reveal says reports ceased after removal of new demonstration life vests. PROPOSED MODERN EXECUTION: use approved substitute demonstration equipment, preserve passenger-safety briefing capability, isolate only the suspect lot where feasible and document the change.",
-          "owner": {
-            "name": "Cabin Safety / Authorized Fleet Operations (illustrative)",
-            "category": "Teaching role (not a historical person)",
-            "subOwner": "Cabin Safety / Authorized Fleet Operations (illustrative)",
-            "notes": "Proposed role for a modern training exercise. No named historical owner is documented.",
-            "lastAssignedBy": "",
-            "lastAssignedAt": "",
-            "source": "Manual"
-          },
-          "role": "Cabin Safety / Authorized Fleet Operations (illustrative)",
-          "status": "Planned",
-          "priority": "High",
-          "dueAt": "",
-          "startedAt": "",
-          "completedAt": "",
-          "dependencies": [
-            "red-sweat-material-check"
-          ],
-          "risk": {
-            "level": "High",
-            "impactIfFails": "Removing safety equipment without approved replacement could compromise required passenger safety demonstrations.",
-            "prevent": "Authorize compliant substitutes and flight-operation checks before implementing.",
-            "ifHappens": "Stop the change, restore compliant demonstration capability and pursue controlled inspection before further use."
-          },
-          "changeControl": {
-            "required": true,
-            "rollbackPlan": "Restore compliant approved equipment and pause any unsafe substitution; escalation authority remains with operator's safety-management process."
-          },
-          "verification": {
-            "required": true,
-            "result": "Safety demonstrations continue with approved equipment; red-sweat case reports stop on matched follow-up flights without additional unexplained safety incidents. Historical source reports cessation but not the exact monitoring protocol."
-          },
-          "links": {},
-          "auditTrail": [],
-          "notes": "PROPOSED/ILLUSTRATIVE ACTION ONLY; not a documented historical assignment or completed field test. Historical facts and proposed confirmation steps must remain distinct."
-        },
-        {
-          "id": "red-sweat-recurrence-monitor",
-          "analysisId": "red-sweat-pa-exemplar",
-          "createdAt": "",
-          "createdBy": "",
-          "summary": "Monitor recurrence by crew, route, aircraft and material lot",
-          "detail": "Proposed confirmation step after any approved corrective action: compare symptom reports across similar over-water flights, working/lead attendant roles and equipped/non-equipped aircraft. Record new cases and non-cases with denominators. Do not equate temporary silence with conclusive proof without adequate exposure and time coverage.",
-          "owner": {
-            "name": "Quality Assurance / Crew Health Coordinator (illustrative)",
-            "category": "Teaching role (not a historical person)",
-            "subOwner": "Quality Assurance / Crew Health Coordinator (illustrative)",
-            "notes": "Proposed role for a modern training exercise. No named historical owner is documented.",
-            "lastAssignedBy": "",
-            "lastAssignedAt": "",
-            "source": "Manual"
-          },
-          "role": "Quality Assurance / Crew Health Coordinator (illustrative)",
-          "status": "Planned",
-          "priority": "Med",
-          "dueAt": "",
-          "startedAt": "",
-          "completedAt": "",
-          "dependencies": [
-            "red-sweat-safe-equipment-replacement"
-          ],
-          "risk": {
-            "level": "Medium",
-            "impactIfFails": "Early closure could hide recurrence or unidentified second exposure.",
-            "prevent": "Predefine comparison flights, reporting period and contact inventory.",
-            "ifHappens": "Reopen the cause evaluation if symptoms recur or unaffected comparators begin reporting."
-          },
-          "changeControl": {
-            "required": false,
-            "rollbackPlan": ""
-          },
-          "verification": {
-            "required": true,
-            "result": "An adequate representative observation period shows no further reported red/pink spotting with suspect vests removed, while approved demonstrations remain available; review exceptions rather than assuming universal resolution."
-          },
-          "links": {},
-          "auditTrail": [],
-          "notes": "PROPOSED/ILLUSTRATIVE ACTION ONLY; not a documented historical assignment or completed field test. Historical facts and proposed confirmation steps must remain distinct."
+          "notes": "PSDM Participant Workbook, Red Sweat Mystery Is Solved.",
+          "auditTrail": []
         }
       ]
     },
