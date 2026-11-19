@@ -39,11 +39,14 @@ const AVAILABILITY_OPTIONS = Object.freeze({ standaloneCaseStudies: publicCaseSt
 let protectedCaseStudiesProvider = null;
 
 function getTemplateRecords() {
+  // Public allowlisted self-study cases include their completed Full source.
+  // In Classroom, catalog identity and learner preview MUST come from the
+  // authorized in-memory server catalog, not a public record with the same ID.
+  if (getActiveExperienceRole() === 'standalone') return publicTemplateRecords;
   const protectedRecords = protectedCaseStudiesProvider?.getCatalog?.() || [];
-  const seen = new Set(publicTemplateRecords.map(record => record.id));
   return [
-    ...publicTemplateRecords,
-    ...protectedRecords.filter(record => record && !seen.has(record.id))
+    ...publicTemplateRecords.filter(record => record.templateKind === TEMPLATE_KINDS.STANDARD),
+    ...protectedRecords.filter(record => record?.templateKind === TEMPLATE_KINDS.CASE_STUDY)
   ];
 }
 
