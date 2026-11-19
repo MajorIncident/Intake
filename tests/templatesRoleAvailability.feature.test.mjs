@@ -128,6 +128,45 @@ test('drawer projects normal resources across Standalone, Student, and Instructo
   assert.equal(dom.window.document.getElementById('templatesDrawerTitle').textContent, 'Templates & Case Studies');
 });
 
+test('Case Study modes start at Intake, show teaching order, and reserve Full for Final', () => {
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
+  const caseButton = dom.window.document.querySelector('#templatesList [data-template-id="red-sweat-mystery"]');
+  assert.ok(caseButton);
+  caseButton.click();
+  const modeButtons = [...dom.window.document.querySelectorAll('#templatesModeGroup [data-mode]')];
+  assert.deepEqual(modeButtons.map(button => button.dataset.mode), [
+    TEMPLATE_MODE_IDS.INTAKE,
+    TEMPLATE_MODE_IDS.IS_IS_NOT,
+    TEMPLATE_MODE_IDS.DC,
+    TEMPLATE_MODE_IDS.FULL
+  ]);
+  assert.deepEqual(modeButtons.map(button => button.textContent), [
+    '1. Intake',
+    '2. IS / IS NOT',
+    '3. D&C',
+    'Final — Full Answer'
+  ]);
+  assert.equal(
+    dom.window.document.querySelector('#templatesModeGroup [data-mode="intake"]').getAttribute('aria-pressed'),
+    'true',
+    'choosing a case must never default to the solution'
+  );
+  const final = dom.window.document.querySelector('#templatesModeGroup [data-mode="full"]');
+  final.click();
+  assert.equal(final.getAttribute('aria-pressed'), 'true');
+  assert.match(dom.window.document.getElementById('templatesTypeHint').textContent, /final debrief/i);
+
+  const standard = dom.window.document.querySelector('#templatesList [data-template-id="checkout-latency"]');
+  assert.ok(standard);
+  standard.click();
+  assert.equal(dom.window.document.querySelector('#templatesModeGroup [data-mode="full"]').textContent, 'Full');
+  assert.equal(
+    dom.window.document.querySelector('#templatesModeGroup [data-mode="full"]').getAttribute('aria-pressed'),
+    'true',
+    'standard working templates still use normal Full mode'
+  );
+});
+
 for (const [caseId, expectedOneLine] of [
   ['microcomputer-cabinets', 'Cabinets are being rejected'],
   ['paytrix', null]
@@ -144,8 +183,9 @@ for (const [caseId, expectedOneLine] of [
       caseButton.click();
       assert.equal(dom.window.document.getElementById('templatesAuthSection').hidden, false, 'mode password is still required');
 
-      const full = dom.window.document.querySelector('#templatesModeGroup input[value="full"], [data-template-mode="full"]');
-      if (full) full.click();
+      const full = dom.window.document.querySelector('#templatesModeGroup [data-mode="full"]');
+      assert.ok(full);
+      full.click();
       const password = dom.window.document.getElementById('templatesPassword');
       password.value = 'wrong';
       dom.window.document.getElementById('templatesApplyBtn').click();
@@ -174,6 +214,7 @@ test('authorized Case Study payload is fetched only when Student applies it', as
   assert.ok(caseButton);
   caseButton.click();
 
+  dom.window.document.querySelector('#templatesModeGroup [data-mode="full"]').click();
   const password = dom.window.document.getElementById('templatesPassword');
   const minutes = String(new Date().getMinutes()).padStart(2, '0');
   password.value = `full${minutes}`;
