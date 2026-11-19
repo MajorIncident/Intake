@@ -32,9 +32,10 @@ The **repository audit follow-through** merged via PR #344 (`41f002e`), followed
 - **Product-owner authoring decision (2026-11-19):** every Case Study should contain a **maximally complete source/exemplar in the full Major Incident field schema**, even if `meta.intakeMode` defaults to General for a historically non-MIM case. General simply hides MIM-specific DOM fields; an actual MIM rendition can show them without changing case source. Classroom already controls staged disclosure; do not create a duplicate reveal mechanism in case JSON.
 - Red Sweat authored record now includes complete core preface/impact/operations, 10 factual PA question rows, four causes, three D&C pairs, twelve test findings, selected MPC, 27 canonical MIM steps (all unchecked because no verified historical bridge/operation completion), four proposed actions with role/risk/verification metadata, a teaching DA, teaching PPA, five-category handover, five instructor/assumption notes, and display metadata.
 - Factual vs illustrative boundary: historical cause and disappearance after demonstration-vest removal are attributed to the **separate post-exercise reveal**; actions, approval roles, decisions, risk ratings and follow-up validation are explicit **modern teaching adaptations**, not Eastern's actual 1980 incident log. Real named owners, severity, bridge/cadence and timestamps stay blank rather than invented.
-- Loader work: source/exemplar Full projection now retains optional MIM `handover`, `decisionAnalysis`, `potentialProblemAnalysis`, `notesWorkspace` and `appearance`, previously silently dropped. Initial Case Study template modes keep cause, action, containment, notes, MIM exemplars and debrief out of learner-starting snapshots; Standard Templates retain existing behavior, and live classroom exercise server permissions are unchanged.
+- Loader work: source/exemplar Full projection now retains optional MIM `handover`, `decisionAnalysis`, `potentialProblemAnalysis`, `notesWorkspace` and `appearance`, previously silently dropped. Initial Case Study template modes keep cause, action, containment, notes, MIM exemplars and debrief out of learner-starting snapshots; Standard Templates retain existing behavior, and live classroom exercise server permissions are unchanged. Applying a Case Study preserves the user's currently selected General or Major Incident lens while loading the complete record.
 - Validation: authored JSON and generated manifests must match; regression assertions added for authored completeness, Full source fidelity, role-aware application, no early answer leakage, and no fabricated historical events. Required `npm run quality` + `npm run test:browser` in GitHub CI on **exact branch head** are pending. No live browser smoke or production deploy has been claimed.
 - Distribution: self-study allowlist still publishes the Full worked resolution in the public JS; per-minute instructional password does not protect copyrighted case answers. Confirm rights or remove from allowlist before merge.
+- Follow-up content audit filed in #348 to bring the remaining Microcomputer Cabinets, Paytrix, Mrs Walthers Sugar Donuts and Tamworth Case Studies to the complete source standard without fabricating missing evidence.
 - Next: inspect PR #347 checks, correct any failures, review disclosure and source distinctions, then merge and verify Vercel READY SHA and manual MIM-vs-General display.
 
 ## Pilot blockers (Student / Instructor modes for a real class)
@@ -57,6 +58,7 @@ Worked one at a time, in order:
 | #340 Pilot blocker 1: environment + real smoke test | Open | Human action |
 | #342 Pilot blocker 3: Instructor class controls | Open, next code blocker | Includes one-workspace-per-Student |
 | #343 Pilot blocker 4: Instructor Case Study assignment | Open | |
+| #348 Existing Case Study completeness audit | Open | Follow-up after #347; source-grounded, no invented historical data |
 
 ## Open pull requests
 
