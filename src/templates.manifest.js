@@ -2739,6 +2739,168 @@ const manifest = [
         ]
       }
     }
+  },
+  {
+    "id": "red-sweat-mystery",
+    "name": "Red Sweat Mystery",
+    "description": "Eastern flight attendants report unexplained red/pink spotting; learner-safe PA practice.",
+    "templateKind": "case-study",
+    "supportedModes": [
+      "intake",
+      "is-is-not",
+      "dc",
+      "full"
+    ],
+    "state": {
+      "meta": {
+        "version": 3,
+        "savedAt": null,
+        "intakeMode": "general"
+      },
+      "pre": {
+        "oneLine": "Eastern Airlines flight attendants have red sweat.",
+        "proof": "LEARNER CASE BRIEF — RED SWEAT MYSTERY\nEastern Airlines received reports of flight attendants noticing a temporary reddish or pink fluid or marking on exposed skin while on duty. The cause has not been established.\n\nREPORTED COMPARISONS\n• Flight attendants are the reported group. Lead flight attendants, pilots and passengers are not reported affected.\n• Most reports involve Eastern A300 aircraft, with a few aboard other Eastern aircraft. No cases were reported on Eastern DC9 aircraft or other airlines.\n• Reported body sites include face, hands and neck.\n• In affected flights, the signs begin within roughly 30 minutes after takeoff and are short-lived.\n\nBACKGROUND FOR INVESTIGATION\nEastern A300 operations introduced multiple unfamiliar materials or practices, including cleaning agents, surface coatings, cart/rack plastics, passenger safety-demonstration equipment and an experimental air-filter cartridge. Crews were trained on new life-vest demonstrations ahead of January A300 operations. A300 aircraft also replaced older equipment on many routes involving travel over water. Several medical and environmental explanations had already been considered without a conclusion.\n\nYOUR TASK\nUsing only the reported facts, refine the Problem Statement and IS / IS NOT specification. Identify Distinctions and date relevant Changes. Propose mechanisms, destructively test candidate causes against the entire specification, and recommend a confirmation method. Do not assume that a new feature is automatically the cause.\n\nSource: summarized and paraphrased from KT's PSDM participant case dossier; not the complete official case handout. Later solution/debrief intentionally excluded.\n© Kepner-Tregoe 2024–2026. DEMO / EVALUATION COPY — NOT LICENSED FOR COMMERCIAL USE.",
+        "objectPrefill": "Eastern Airlines flight attendants",
+        "healthy": "Normal perspiration without unexplained reddish or pink spotting.",
+        "now": "Temporary red/pink fluid or marks on exposed skin during flight."
+      },
+      "impact": {
+        "now": "Crew reports describe an unexplained condition; operational and medical impact are not quantified (NMD).",
+        "future": "NMD — do not infer an impact or mitigation before further investigation.",
+        "time": "NMD — no verified response deadline in the learner case."
+      },
+      "ops": {
+        "bridgeOpenedUtc": "",
+        "icName": "",
+        "bcName": "",
+        "semOpsName": "",
+        "severity": "",
+        "detectMonitoring": false,
+        "detectUserReport": false,
+        "detectAutomation": false,
+        "detectOther": false,
+        "evScreenshot": false,
+        "evLogs": false,
+        "evMetrics": false,
+        "evRepro": false,
+        "evOther": false,
+        "containStatus": "assessing",
+        "containDesc": "",
+        "commCadence": "",
+        "commLog": [],
+        "commNextDueIso": "",
+        "commNextUpdateTime": "",
+        "tableFocusMode": "comprehensive"
+      },
+      "table": [
+        {
+          "band": "WHAT",
+          "note": "Define the object and its factual deviation."
+        },
+        {
+          "questionId": "what-object",
+          "q": "WHAT — Which specific people have the reported deviation?",
+          "is": "Flight attendants on affected Eastern Airlines flights.",
+          "no": "Lead flight attendants, pilots and passengers are not reported affected.",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "questionId": "what-deviation",
+          "q": "WHAT — What deviation is observed?",
+          "is": "Temporary red/pink fluid or spotting resembling reddish sweat.",
+          "no": "NMD — close comparisons with other skin changes are not documented.",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "band": "WHERE",
+          "note": "Locate the symptoms, the affected operation and close comparisons."
+        },
+        {
+          "questionId": "where-location",
+          "q": "WHERE — On which aircraft, carrier or routes is the deviation reported?",
+          "is": "Most reports involve Eastern A300 flights; a few involve other Eastern aircraft. A300s frequently served over-water routes.",
+          "no": "No reported cases on Eastern DC9 aircraft or at other airlines. Specific route-by-route comparisons: NMD.",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "questionId": "where-on-object",
+          "q": "WHERE — Where on the affected people is the deviation seen?",
+          "is": "Exposed skin, including face, hands and neck.",
+          "no": "NMD — other body sites are not established as factual IS NOTs.",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "band": "WHEN",
+          "note": "Separate actual onset from publication date and possible changes."
+        },
+        {
+          "questionId": "when-first-observed",
+          "q": "WHEN — When was the deviation first observed?",
+          "is": "The case was reported in early March 1980; the first occurrence date is NMD.",
+          "no": "NMD — do not treat the report publication date as the first occurrence.",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "questionId": "when-pattern",
+          "q": "WHEN — What pattern has been observed since the first occurrence?",
+          "is": "Several reported episodes; symptoms described as short-lived.",
+          "no": "NMD — frequency and unaffected intervals are not established.",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "questionId": "when-description",
+          "q": "WHEN — When in the flight lifecycle does the deviation appear?",
+          "is": "Within approximately the first 30 minutes after takeoff on affected flights.",
+          "no": "NMD — onset before takeoff or in later flight phases is not explicitly ruled out.",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "band": "EXTENT",
+          "note": "Record only supported magnitude, size, count and trend facts."
+        },
+        {
+          "questionId": "extent-population",
+          "q": "EXTENT — How many people or flights are affected?",
+          "is": "Most reported cases involve A300 operations; total affected people and flights: NMD.",
+          "no": "NMD — no denominator or quantified unaffected population.",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "questionId": "extent-size",
+          "q": "EXTENT — How much red/pink fluid or spotting is present in one occurrence?",
+          "is": "Reported red/pink spotting or fluid; quantitative amount: NMD.",
+          "no": "NMD — no factual small/large close comparison.",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "questionId": "extent-count",
+          "q": "EXTENT — How many occurrences per affected person?",
+          "is": "NMD — occurrences per person not supplied.",
+          "no": "NMD — no established count-based IS NOT.",
+          "di": "",
+          "ch": ""
+        }
+      ],
+      "causes": [],
+      "likelyCauseId": null,
+      "steps": {
+        "items": [],
+        "drawerOpen": false
+      },
+      "actions": {
+        "analysisId": "",
+        "items": []
+      }
+    }
   }
 ];
 
