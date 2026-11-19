@@ -793,3 +793,192 @@ test('End class revokes the class on the server for everyone before clearing thi
   assert.equal(dom.window.document.getElementById('oneLine').value, 'Local before observation');
   assert.match(env.calls.toasts.at(-1), /Ended/);
 });
+
+const W3 = '33333333-3333-4333-8333-333333333333';
+const W4 = '44444444-4444-4444-8444-444444444444';
+const P3 = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+
+/**
+ * Builds a stateful fake Instructor API for the #342 class controls.
+ * @param {object} state - Mutable roster/participants/joins state.
+ * @param {Array} requests - Request log.
+ * @returns {Function} fetch double.
+ */
+function controlsApi(state, requests) {
+  return async (url, options = {}) => {
+    requests.push([url, options]);
+    const body = options.body ? JSON.parse(options.body) : null;
+    const classMeta = { id: 'class-1', title: 'Problem Solving 101', joinCode: 'K7FMP4Q2', expiresAt: '2099-01-01T00:00:00Z', joinsEnabled: state.joins };
+    if (url === '/api/classes' && options.method === 'PATCH' && body.action === 'set-joins') {
+      state.joins = body.enabled;
+      return response(200, { class: { ...classMeta, joinsEnabled: state.joins } });
+    }
+    if (url === '/api/classes' && options.method === 'PATCH' && body.action === 'create-transfer') {
+      return response(200, { transferCode: 'ABCD-EFGH-JKMN', expiresAt: '2099-01-01T00:10:00Z' });
+    }
+    if (url === '/api/classes/workspaces' && options.method === 'GET') return response(200, { class: classMeta, workspaces: state.workspaces });
+    if (url === '/api/classes/workspaces' && options.method === 'POST') {
+      const workspace = { id: state.nextIds.shift(), kind: body.kind, label: body.label, participantCount: 0, activeParticipantCount: 0, editingParticipantCount: 0 };
+      state.workspaces.push(workspace);
+      return response(201, { workspace });
+    }
+    if (url === '/api/classes/workspaces' && options.method === 'PATCH') {
+      const workspace = state.workspaces.find(item => item.id === body.workspaceId);
+      workspace.label = body.label;
+      return response(200, { workspace: { id: workspace.id, kind: workspace.kind, label: workspace.label } });
+    }
+    if (url === '/api/classes/workspaces' && options.method === 'DELETE') {
+      state.workspaces = state.workspaces.filter(item => item.id !== body.workspaceId);
+      return response(200, { removed: true, workspace: { id: body.workspaceId } });
+    }
+    if (url === '/api/classes/participants' && options.method === 'GET') return response(200, { class: classMeta, participants: state.participants });
+    if (url === '/api/classes/participants' && options.method === 'PATCH') {
+      const participant = state.participants.find(item => item.id === body.participantId);
+      const workspace = state.workspaces.find(item => item.id === body.workspaceId);
+      participant.assignment = { id: workspace.id, kind: workspace.kind, label: workspace.label };
+      participant.assignmentRevision += 1;
+      workspace.participantCount = (workspace.participantCount || 0) + 1;
+      return response(200, { class: classMeta, participant, assignment: participant.assignment, changed: true });
+    }
+    if (String(url).startsWith('/api/classes/observe')) {
+      const id = new URL(url, 'https://intake.test').searchParams.get('workspaceId');
+      const workspace = state.workspaces.find(item => item.id === id);
+      if (!workspace) return response(404, {});
+      return response(200, {
+        class: classMeta,
+        workspace: { id, kind: workspace.kind, label: workspace.label, teamName: workspace.label, revision: 1, expiresAt: '2099-01-01T00:00:00Z', updatedAt: '2026-10-01T00:00:00Z' },
+        participants: [],
+        snapshot: { pre: { oneLine: workspace.label } }
+      });
+    }
+    return response(404, {});
+  };
+}
+
+test('Instructor pauses and resumes new joins from the class panel', async () => {
+  const state = { joins: true, workspaces: rosterBody().workspaces, participants: participantBody().participants, nextIds: [] };
+  const requests = [];
+  const env = setup(controlsApi(state, requests));
+  await settle();
+  const button = dom.window.document.getElementById('instructorJoinsToggleBtn');
+  assert.equal(button.textContent, 'Pause new joins');
+
+  button.click();
+  await settle();
+  const patch = requests.find(([url, options]) => url === '/api/classes' && options.method === 'PATCH');
+  assert.deepEqual(JSON.parse(patch[1].body), { action: 'set-joins', enabled: false });
+  assert.equal(button.textContent, 'Allow new joins');
+  assert.equal(button.getAttribute('aria-pressed'), 'true');
+  assert.match(dom.window.document.getElementById('instructorJoinsStatus').textContent, /paused/);
+
+  await env.controller.refreshRoster();
+  assert.equal(env.controller.getState().joinsEnabled, false, 'roster polling keeps the server joins state');
+});
+
+test('Instructor renames the selected workspace and can only remove an empty one', async () => {
+  const workspaces = rosterBody().workspaces;
+  workspaces.push({ id: W3, kind: 'group', label: 'Spare team', participantCount: 0, activeParticipantCount: 0, editingParticipantCount: 0 });
+  const state = { joins: true, workspaces, participants: participantBody().participants, nextIds: [] };
+  const requests = [];
+  const prompts = [];
+  const env = setup(controlsApi(state, requests), { confirmImpl: message => { prompts.push(message); return true; } });
+  await settle();
+
+  await env.controller.selectWorkspace(W2);
+  await settle();
+  const doc = dom.window.document;
+  assert.equal(doc.getElementById('instructorWorkspaceManage').hidden, false);
+  doc.getElementById('instructorWorkspaceRenameBtn').click();
+  assert.equal(doc.getElementById('instructorWorkspaceRenameForm').hidden, false);
+  assert.equal(doc.getElementById('instructorWorkspaceRenameInput').value, 'Team Beta');
+  doc.getElementById('instructorWorkspaceRenameInput').value = 'Team Gamma';
+  doc.getElementById('instructorWorkspaceRenameForm').dispatchEvent(new dom.window.Event('submit', { cancelable: true }));
+  await settle();
+  const rename = requests.find(([url, options]) => url === '/api/classes/workspaces' && options.method === 'PATCH');
+  assert.deepEqual(JSON.parse(rename[1].body), { workspaceId: W2, label: 'Team Gamma' });
+  assert.equal(doc.getElementById('instructorObservedWorkspace').textContent, 'Team Gamma');
+  assert.equal(doc.getElementById('instructorWorkspaceRenameForm').hidden, true);
+
+  assert.equal(await env.controller.removeWorkspace(W2), false, 'a team with Students cannot be removed');
+  assert.equal(requests.some(([url, options]) => url === '/api/classes/workspaces' && options.method === 'DELETE'), false);
+  assert.match(doc.getElementById('instructorClassError').textContent, /Move or unassign/);
+  assert.equal(prompts.length, 0, 'no confirmation is shown for a blocked removal');
+
+  assert.equal(await env.controller.removeWorkspace(W3), true);
+  const removal = requests.find(([url, options]) => url === '/api/classes/workspaces' && options.method === 'DELETE');
+  assert.deepEqual(JSON.parse(removal[1].body), { workspaceId: W3 });
+  assert.match(prompts[0], /cannot be undone/);
+  assert.equal(env.controller.getState().workspaces.some(item => item.id === W3), false);
+});
+
+test('one workspace per Student assigns every Waiting Student and is safe to run again', async () => {
+  const participants = participantBody().participants;
+  participants.push({ id: P3, displayName: 'Casey', assignmentRevision: 0, joinedAt: '2026-10-01T00:02:00Z', updatedAt: '2026-10-01T00:02:00Z', assignment: null });
+  const workspaces = rosterBody().workspaces;
+  workspaces.push({ id: W4, kind: 'individual', label: 'Blair', participantCount: 0, activeParticipantCount: 0, editingParticipantCount: 0 });
+  const state = { joins: true, workspaces, participants, nextIds: [W3] };
+  const requests = [];
+  const env = setup(controlsApi(state, requests));
+  await settle();
+  requests.length = 0;
+
+  const result = await env.controller.createIndividualWorkspacesForWaiting();
+  assert.deepEqual(result, { assigned: 2, total: 2 });
+  const creates = requests.filter(([url, options]) => url === '/api/classes/workspaces' && options.method === 'POST');
+  assert.equal(creates.length, 1, 'the existing empty "Blair" workspace is reused');
+  assert.deepEqual(JSON.parse(creates[0][1].body), { kind: 'individual', label: 'Casey', snapshot: {} });
+  const assignments = requests
+    .filter(([url, options]) => url === '/api/classes/participants' && options.method === 'PATCH')
+    .map(([, options]) => JSON.parse(options.body));
+  assert.deepEqual(assignments, [
+    { participantId: P2, workspaceId: W4 },
+    { participantId: P3, workspaceId: W3 }
+  ]);
+  assert.match(dom.window.document.getElementById('instructorIndividualWorkspacesStatus').textContent, /2 Students now have their own workspace/);
+  assert.equal(dom.window.document.getElementById('instructorIndividualWorkspacesBtn').disabled, true, 'nothing left to do');
+
+  requests.length = 0;
+  assert.deepEqual(await env.controller.createIndividualWorkspacesForWaiting(), { assigned: 0, total: 0 });
+  assert.equal(requests.length, 0);
+});
+
+test('Move to another device shows a one-time code, and another device continues the class with it', async () => {
+  const state = { joins: true, workspaces: rosterBody().workspaces, participants: participantBody().participants, nextIds: [] };
+  const requests = [];
+  const deviceA = setup(controlsApi(state, requests));
+  await settle();
+  dom.window.document.getElementById('instructorMoveDeviceBtn').click();
+  await settle();
+  const doc = dom.window.document;
+  assert.equal(doc.getElementById('instructorTransferPanel').hidden, false);
+  assert.equal(doc.getElementById('instructorTransferCode').textContent, 'ABCD-EFGH-JKMN');
+  assert.equal(doc.getElementById('instructorMoveDeviceBtn').getAttribute('aria-expanded'), 'true');
+  assert.equal(JSON.stringify(dom.window.localStorage).includes('ABCD'), false, 'the code is never stored');
+  doc.getElementById('instructorTransferCloseBtn').click();
+  assert.equal(doc.getElementById('instructorTransferPanel').hidden, true);
+  deviceA.controller.destroy();
+
+  const NEW_TOKEN = 'n'.repeat(43);
+  const deviceRequests = [];
+  const deviceB = setup(async (url, options = {}) => {
+    deviceRequests.push([url, options]);
+    if (url === '/api/classes/transfer') {
+      const code = JSON.parse(options.body).transferCode;
+      return code === 'ABCDEFGHJKMN'
+        ? response(200, { class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z', joinsEnabled: true }, instructorToken: NEW_TOKEN, joinCode: 'K7FM-P4Q2' })
+        : response(404, { error: 'That transfer code is not valid. Codes work once and expire after 10 minutes.', code: 'transfer-invalid' });
+    }
+    return controlsApi(state, requests)(url, options);
+  }, { savedSession: false });
+
+  assert.equal(await deviceB.controller.redeemTransferCode('short'), false);
+  assert.equal(deviceRequests.length, 0, 'malformed codes are not sent');
+  assert.equal(await deviceB.controller.redeemTransferCode('ZZZZ-ZZZZ-ZZZZ'), false);
+  assert.match(dom.window.document.getElementById('instructorClassError').textContent, /not valid/);
+
+  assert.equal(await deviceB.controller.redeemTransferCode(' abcd-efgh-jkmn '), true);
+  const stored = JSON.parse(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY));
+  assert.equal(stored.instructorToken, NEW_TOKEN);
+  assert.equal(stored.class.id, 'class-1');
+  assert.equal(dom.window.document.getElementById('instructorClassDashboard').hidden, false);
+});

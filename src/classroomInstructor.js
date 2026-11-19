@@ -19,6 +19,7 @@ export const INSTRUCTOR_CLASSES_ENDPOINT = '/api/classes';
 export const INSTRUCTOR_WORKSPACES_ENDPOINT = '/api/classes/workspaces';
 export const INSTRUCTOR_PARTICIPANTS_ENDPOINT = '/api/classes/participants';
 export const INSTRUCTOR_OBSERVE_ENDPOINT = '/api/classes/observe';
+export const INSTRUCTOR_TRANSFER_ENDPOINT = '/api/classes/transfer';
 
 const CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const JOIN_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{8}$/;
@@ -138,6 +139,9 @@ export function createInstructorClassroomController({
   let localRecovery = null;
   let latestObservation = null;
   let checkpointView = null;
+  let joinsEnabled = true;
+  let transferInfo = null;
+  let bulkRunning = false;
   let destroyed = false;
   let busy = false;
   let searchQuery = '';
@@ -194,7 +198,14 @@ export function createInstructorClassroomController({
       'instructorWorkspaceCreateBtn',
       'instructorCopyJoinCodeBtn',
       'instructorShareClassBtn',
-      'instructorShowJoinQrBtn'
+      'instructorShowJoinQrBtn',
+      'instructorJoinsToggleBtn',
+      'instructorMoveDeviceBtn',
+      'instructorTransferRedeemBtn',
+      'instructorIndividualWorkspacesBtn',
+      'instructorWorkspaceRenameBtn',
+      'instructorWorkspaceRenameSaveBtn',
+      'instructorWorkspaceRemoveBtn'
     ].forEach(id => {
       if (element(id)) element(id).disabled = value;
     });
@@ -304,8 +315,64 @@ export function createInstructorClassroomController({
     return joinQrExpanded;
   };
 
+  const renderJoins = () => {
+    const button = element('instructorJoinsToggleBtn');
+    if (button) {
+      button.textContent = joinsEnabled ? 'Pause new joins' : 'Allow new joins';
+      button.setAttribute('aria-pressed', String(!joinsEnabled));
+    }
+    if (element('instructorJoinsStatus')) {
+      element('instructorJoinsStatus').textContent = joinsEnabled
+        ? 'New Students can join with this code.'
+        : 'New joins are paused. Students already in the class are not affected.';
+    }
+  };
+
+  const renderTransferPanel = () => {
+    const panel = element('instructorTransferPanel');
+    const button = element('instructorMoveDeviceBtn');
+    const visible = Boolean(transferInfo);
+    if (panel) panel.hidden = !visible;
+    if (button) button.setAttribute('aria-expanded', String(visible));
+    if (!visible) return;
+    if (element('instructorTransferCode')) element('instructorTransferCode').textContent = transferInfo.code;
+    if (element('instructorTransferExpiry')) {
+      const expires = Date.parse(transferInfo.expiresAt);
+      const time = Number.isFinite(expires)
+        ? new Date(expires).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+        : '';
+      element('instructorTransferExpiry').textContent = time
+        ? `Works once, until ${time}.`
+        : 'Works once, for 10 minutes.';
+    }
+  };
+
+  const selectedLiveWorkspace = () => (
+    checkpointView ? null : workspaces.find(item => item.id === selectedWorkspaceId) || null
+  );
+
+  const renderWorkspaceManage = () => {
+    const workspace = selectedLiveWorkspace();
+    if (element('instructorWorkspaceManage')) element('instructorWorkspaceManage').hidden = !workspace;
+    const form = element('instructorWorkspaceRenameForm');
+    if (!workspace && form && !form.hidden) {
+      form.hidden = true;
+      element('instructorWorkspaceRenameBtn')?.setAttribute('aria-expanded', 'false');
+    }
+  };
+
+  const renderBulkIndividual = () => {
+    const button = element('instructorIndividualWorkspacesBtn');
+    if (!button) return;
+    const waiting = participants.filter(participant => !participant.assignment).length;
+    button.disabled = busy || bulkRunning || waiting === 0;
+  };
+
   const renderDashboard = () => {
     if (!activeSession) return;
+    renderJoins();
+    renderTransferPanel();
+    renderWorkspaceManage();
     setConnectedLayout(true);
     setStatus(selectedWorkspaceId ? 'observing' : 'connected');
     if (element('instructorClassEntryCard')) element('instructorClassEntryCard').hidden = true;
@@ -451,6 +518,7 @@ export function createInstructorClassroomController({
       list.append(row);
     });
 
+    renderBulkIndividual();
     if (!participants.length) {
       const empty = documentRef.createElement('p');
       empty.className = 'instructor-participant-empty';
@@ -461,6 +529,7 @@ export function createInstructorClassroomController({
 
   const renderObservation = body => {
     if (element('instructorObservationNotice')) element('instructorObservationNotice').hidden = false;
+    renderWorkspaceManage();
     if (element('instructorObservedWorkspace')) element('instructorObservedWorkspace').textContent = body.workspace?.label || 'Selected workspace';
     if (element('instructorObservedRevision')) element('instructorObservedRevision').textContent = `Revision ${body.workspace?.revision || '—'}`;
     if (element('instructorObserverStatus')) element('instructorObserverStatus').textContent = 'Live read-only view';
@@ -491,6 +560,7 @@ export function createInstructorClassroomController({
 
   const renderCheckpointObservation = checkpoint => {
     if (element('instructorObservationNotice')) element('instructorObservationNotice').hidden = false;
+    renderWorkspaceManage();
     if (element('instructorObservedWorkspace')) {
       element('instructorObservedWorkspace').textContent = checkpoint.workspaceLabel || 'Selected workspace';
     }
@@ -726,6 +796,9 @@ export function createInstructorClassroomController({
   const terminalClass = message => {
     onClassDisconnected();
     stopLive();
+    transferInfo = null;
+    joinsEnabled = true;
+    renderTransferPanel();
     clearInstructorSession(storage);
     activeSession = null;
     workspaces = [];
@@ -862,7 +935,10 @@ export function createInstructorClassroomController({
       if (
         [workspaceResponse.status, participantResponse.status].some(status => status === 404 || status === 401)
       ) {
-        return terminalClass('This instructor class is no longer available. Use the current Instructor access code.');
+        return terminalClass(
+          'This class is no longer managed from this device. It may have been moved to another device or ended. '
+          + 'Start a new class, continue it here with a transfer code, or ask an administrator.'
+        );
       }
       if (
         !workspaceResponse.ok
@@ -881,6 +957,7 @@ export function createInstructorClassroomController({
       activeSession.joinCode = formatInstructorJoinCode(
         workspaceBody.class.joinCode || activeSession.joinCode || ''
       );
+      if (typeof workspaceBody.class.joinsEnabled === 'boolean') joinsEnabled = workspaceBody.class.joinsEnabled;
       if (selectedWorkspaceId && !workspaces.some(item => item.id === selectedWorkspaceId)) {
         selectedWorkspaceId = '';
         latestObservation = null;
@@ -921,7 +998,7 @@ export function createInstructorClassroomController({
       if (
         [workspaceResponse.status, participantResponse.status].some(status => status === 404 || status === 401)
       ) {
-        return terminalClass('The Instructor access code was not accepted or has expired.');
+        return terminalClass('This saved class was not accepted or has expired. It may have been moved to another device or ended.');
       }
       if (
         !workspaceResponse.ok
@@ -1122,6 +1199,292 @@ export function createInstructorClassroomController({
     }
   };
 
+  const authorizedJsonHeaders = () => ({
+    Authorization: `Bearer ${activeSession.instructorToken}`,
+    'Content-Type': 'application/json'
+  });
+
+  /**
+   * Turns new Student joins on or off for the class (existing Students are unaffected).
+   * @param {boolean} enabled - Whether new joins are allowed.
+   * @returns {Promise<boolean>} True when the server accepted the change.
+   */
+  const setJoins = async enabled => {
+    if (!activeSession || busy) return false;
+    setBusy(true);
+    setError('');
+    try {
+      const response = await fetchImpl(INSTRUCTOR_CLASSES_ENDPOINT, {
+        method: 'PATCH',
+        headers: authorizedJsonHeaders(),
+        body: JSON.stringify({ action: 'set-joins', enabled: Boolean(enabled) })
+      });
+      const body = await responseJson(response);
+      if (!response.ok || typeof body.class?.joinsEnabled !== 'boolean') {
+        setError(body.error || 'Could not change whether new Students can join.');
+        return false;
+      }
+      joinsEnabled = body.class.joinsEnabled;
+      toast(joinsEnabled ? 'New Students can join again.' : 'New joins paused.');
+      return true;
+    } catch {
+      setError('Could not change whether new Students can join. Check your connection.');
+      return false;
+    } finally {
+      setBusy(false);
+      renderJoins();
+    }
+  };
+
+  /**
+   * Renames a class workspace (team or individual).
+   * @param {string} workspaceId - Public workspace ID.
+   * @param {string} labelValue - New name.
+   * @returns {Promise<boolean>} True when renamed.
+   */
+  const renameWorkspace = async (workspaceId, labelValue) => {
+    if (!activeSession || busy || !workspaces.some(item => item.id === workspaceId)) return false;
+    const label = typeof labelValue === 'string' ? labelValue.trim() : '';
+    if (!label || label.length > 80) {
+      setError('Enter a workspace name of up to 80 characters.');
+      return false;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      const response = await fetchImpl(INSTRUCTOR_WORKSPACES_ENDPOINT, {
+        method: 'PATCH',
+        headers: authorizedJsonHeaders(),
+        body: JSON.stringify({ workspaceId, label })
+      });
+      const body = await responseJson(response);
+      if (!response.ok || !validWorkspace(body.workspace)) {
+        setError(body.error || 'Could not rename the workspace.');
+        return false;
+      }
+      if (element('instructorWorkspaceRenameForm')) element('instructorWorkspaceRenameForm').hidden = true;
+      element('instructorWorkspaceRenameBtn')?.setAttribute('aria-expanded', 'false');
+      if (workspaceId === selectedWorkspaceId && element('instructorObservedWorkspace')) {
+        element('instructorObservedWorkspace').textContent = body.workspace.label;
+      }
+      toast('Workspace renamed.');
+      await refreshRoster();
+      return true;
+    } catch {
+      setError('Could not rename the workspace. Check your connection.');
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * Removes an empty class workspace after confirmation. The server refuses
+   * while Students are assigned, so a Student is never stranded.
+   * @param {string} workspaceId - Public workspace ID.
+   * @returns {Promise<boolean>} True when removed.
+   */
+  const removeWorkspace = async workspaceId => {
+    const workspace = workspaces.find(item => item.id === workspaceId);
+    if (!activeSession || busy || !workspace) return false;
+    if ((Number(workspace.participantCount) || 0) > 0) {
+      setError(`Move or unassign the Students in “${workspace.label}” before removing it.`);
+      return false;
+    }
+    const proceed = confirmImpl(
+      `Remove “${workspace.label}”?\n\n`
+      + 'Its Intake work will no longer be available to anyone in the class. This cannot be undone.'
+    );
+    if (!proceed) return false;
+    setBusy(true);
+    setError('');
+    try {
+      const response = await fetchImpl(INSTRUCTOR_WORKSPACES_ENDPOINT, {
+        method: 'DELETE',
+        headers: authorizedJsonHeaders(),
+        body: JSON.stringify({ workspaceId })
+      });
+      const body = await responseJson(response);
+      if (!response.ok) {
+        setError(body.error || 'Could not remove the workspace.');
+        return false;
+      }
+      toast(`Removed “${workspace.label}”.`);
+      await refreshRoster();
+      return true;
+    } catch {
+      setError('Could not remove the workspace. Check your connection.');
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const setBulkStatus = message => {
+    if (element('instructorIndividualWorkspacesStatus')) {
+      element('instructorIndividualWorkspacesStatus').textContent = message || '';
+    }
+  };
+
+  /**
+   * Gives every Waiting Student an individual workspace named after them and
+   * assigns them to it. Re-running only touches Students still Waiting, and an
+   * empty individual workspace with the same name is reused rather than duplicated.
+   * @returns {Promise<{assigned: number, total: number}>} Progress summary.
+   */
+  const createIndividualWorkspacesForWaiting = async () => {
+    if (!activeSession || busy || bulkRunning) return { assigned: 0, total: 0 };
+    const waiting = participants.filter(participant => !participant.assignment);
+    if (!waiting.length) {
+      setBulkStatus('No Students are waiting.');
+      return { assigned: 0, total: 0 };
+    }
+    bulkRunning = true;
+    setBusy(true);
+    setError('');
+    let assigned = 0;
+    const claimed = new Set();
+    try {
+      for (const [index, participant] of waiting.entries()) {
+        setBulkStatus(`Setting up ${index + 1} of ${waiting.length}…`);
+        const label = (participant.displayName || 'Student').trim().slice(0, 80) || 'Student';
+        let workspace = workspaces.find(item => (
+          item.kind === 'individual'
+          && item.label === label
+          && !(Number(item.participantCount) > 0)
+          && !claimed.has(item.id)
+        ));
+        if (!workspace) {
+          const created = await fetchImpl(INSTRUCTOR_WORKSPACES_ENDPOINT, {
+            method: 'POST',
+            headers: authorizedJsonHeaders(),
+            body: JSON.stringify({ kind: 'individual', label, snapshot: {} })
+          });
+          const createdBody = await responseJson(created);
+          if (!created.ok || !validWorkspace(createdBody.workspace)) {
+            throw new Error(createdBody.error || 'Could not create a workspace.');
+          }
+          workspace = { ...createdBody.workspace, participantCount: 0 };
+          workspaces.push(workspace);
+        }
+        claimed.add(workspace.id);
+        const assignment = await fetchImpl(INSTRUCTOR_PARTICIPANTS_ENDPOINT, {
+          method: 'PATCH',
+          headers: authorizedJsonHeaders(),
+          body: JSON.stringify({ participantId: participant.id, workspaceId: workspace.id })
+        });
+        const assignmentBody = await responseJson(assignment);
+        if (!assignment.ok) throw new Error(assignmentBody.error || 'Could not assign a Student.');
+        workspace.participantCount = 1;
+        assigned += 1;
+      }
+      setBulkStatus(`${assigned} Student${assigned === 1 ? '' : 's'} now ${assigned === 1 ? 'has' : 'have'} their own workspace.`);
+      toast('Individual workspaces are ready.');
+    } catch (error) {
+      setBulkStatus('');
+      setError(
+        `Set up ${assigned} of ${waiting.length}. ${error?.message || 'Something went wrong.'} `
+        + 'Run it again to finish the rest.'
+      );
+    } finally {
+      bulkRunning = false;
+      setBusy(false);
+      await refreshRoster();
+    }
+    return { assigned, total: waiting.length };
+  };
+
+  /**
+   * Creates a one-time code that moves this class to another Instructor device.
+   * @returns {Promise<boolean>} True when a code is shown.
+   */
+  const createTransferCode = async () => {
+    if (!activeSession || busy) return false;
+    setBusy(true);
+    setError('');
+    try {
+      const response = await fetchImpl(INSTRUCTOR_CLASSES_ENDPOINT, {
+        method: 'PATCH',
+        headers: authorizedJsonHeaders(),
+        body: JSON.stringify({ action: 'create-transfer' })
+      });
+      const body = await responseJson(response);
+      if (!response.ok || !/^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/u.test(body.transferCode || '')) {
+        setError(body.error || 'Could not create a transfer code.');
+        return false;
+      }
+      transferInfo = { code: body.transferCode, expiresAt: body.expiresAt || null };
+      renderTransferPanel();
+      return true;
+    } catch {
+      setError('Could not create a transfer code. Check your connection.');
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const closeTransferPanel = () => {
+    transferInfo = null;
+    renderTransferPanel();
+  };
+
+  /**
+   * Continues a class on this device using a transfer code from the other device.
+   * @param {string} codeValue - Code as typed.
+   * @returns {Promise<boolean>} True when this device now manages the class.
+   */
+  const redeemTransferCode = async codeValue => {
+    const transferCode = typeof codeValue === 'string' ? codeValue.toUpperCase().replace(/[\s-]+/gu, '') : '';
+    if (!/^[A-Z2-9]{12}$/u.test(transferCode)) {
+      setError('Enter the 12-character transfer code shown on the other device.');
+      return false;
+    }
+    if (!fetchImpl || busy) return false;
+    setBusy(true);
+    setStatus('creating');
+    setError('');
+    disconnectStandaloneCollaboration();
+    try {
+      const response = await fetchImpl(INSTRUCTOR_TRANSFER_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transferCode })
+      });
+      const body = await responseJson(response);
+      if (
+        !response.ok
+        || !validateInstructorCapability(body.instructorToken)
+        || typeof body.class?.id !== 'string'
+        || typeof body.class?.title !== 'string'
+      ) {
+        setError(body.error || 'That transfer code is not valid. Codes work once and expire after 10 minutes.');
+        return false;
+      }
+      const movedSession = {
+        version: INSTRUCTOR_SESSION_VERSION,
+        instructorToken: body.instructorToken,
+        joinCode: formatInstructorJoinCode(body.joinCode || ''),
+        class: { id: body.class.id, title: body.class.title, expiresAt: body.class.expiresAt || null },
+        selectedWorkspaceId: null,
+        openedAt: new Date(now()).toISOString()
+      };
+      activeSession = movedSession;
+      if (typeof body.class.joinsEnabled === 'boolean') joinsEnabled = body.class.joinsEnabled;
+      saveSession();
+      toast(`Now managing “${body.class.title}” on this device.`);
+      return activateClass(body.instructorToken, '', {
+        joinCode: movedSession.joinCode,
+        openedAt: movedSession.openedAt
+      });
+    } catch {
+      setError('Could not continue the class. Check your connection.');
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const copyText = async (value, successMessage) => {
     if (!value) return false;
     try {
@@ -1207,6 +1570,9 @@ export function createInstructorClassroomController({
   const leaveClass = () => {
     onClassDisconnected();
     stopLive();
+    transferInfo = null;
+    joinsEnabled = true;
+    renderTransferPanel();
     clearInstructorSession(storage);
     activeSession = null;
     workspaces = [];
@@ -1312,6 +1678,47 @@ export function createInstructorClassroomController({
   };
   const handleRetry = () => { void resume(); };
   const handleLeave = () => requestLeaveClass();
+  const handleJoinsToggle = () => { void setJoins(!joinsEnabled); };
+  const handleMoveDevice = () => {
+    if (transferInfo) { closeTransferPanel(); return; }
+    void createTransferCode();
+  };
+  const handleTransferCopy = () => { if (transferInfo) void copyText(transferInfo.code, 'Transfer code copied.'); };
+  const handleTransferClose = () => closeTransferPanel();
+  const handleTransferSubmit = event => {
+    event.preventDefault();
+    const input = element('instructorTransferCodeInput');
+    void redeemTransferCode(input?.value || '').then(moved => {
+      if (moved && input) input.value = '';
+    });
+  };
+  const handleBulkIndividual = () => { void createIndividualWorkspacesForWaiting(); };
+  const handleRenameOpen = () => {
+    const workspace = selectedLiveWorkspace();
+    const form = element('instructorWorkspaceRenameForm');
+    if (!workspace || !form) return;
+    const opening = form.hidden;
+    form.hidden = !opening;
+    element('instructorWorkspaceRenameBtn')?.setAttribute('aria-expanded', String(opening));
+    if (opening) {
+      const input = element('instructorWorkspaceRenameInput');
+      if (input) {
+        input.value = workspace.label;
+        input.focus?.();
+      }
+    }
+  };
+  const handleRenameSubmit = event => {
+    event.preventDefault();
+    if (!selectedWorkspaceId) return;
+    void renameWorkspace(selectedWorkspaceId, element('instructorWorkspaceRenameInput')?.value || '');
+  };
+  const handleRenameCancel = () => {
+    if (element('instructorWorkspaceRenameForm')) element('instructorWorkspaceRenameForm').hidden = true;
+    element('instructorWorkspaceRenameBtn')?.setAttribute('aria-expanded', 'false');
+    element('instructorWorkspaceRenameBtn')?.focus?.();
+  };
+  const handleRemove = () => { if (selectedWorkspaceId) void removeWorkspace(selectedWorkspaceId); };
   const handleEndClass = () => { void endClass(); };
   const handleReturnToLive = () => { void returnToLiveObservation(); };
   const handleSearch = event => {
@@ -1348,6 +1755,16 @@ export function createInstructorClassroomController({
     element('instructorClassRetryBtn')?.addEventListener('click', handleRetry);
     element('instructorClassLeaveBtn')?.addEventListener('click', handleLeave);
     element('instructorClassEndBtn')?.addEventListener('click', handleEndClass);
+    element('instructorJoinsToggleBtn')?.addEventListener('click', handleJoinsToggle);
+    element('instructorMoveDeviceBtn')?.addEventListener('click', handleMoveDevice);
+    element('instructorTransferCopyBtn')?.addEventListener('click', handleTransferCopy);
+    element('instructorTransferCloseBtn')?.addEventListener('click', handleTransferClose);
+    element('instructorTransferForm')?.addEventListener('submit', handleTransferSubmit);
+    element('instructorIndividualWorkspacesBtn')?.addEventListener('click', handleBulkIndividual);
+    element('instructorWorkspaceRenameBtn')?.addEventListener('click', handleRenameOpen);
+    element('instructorWorkspaceRenameForm')?.addEventListener('submit', handleRenameSubmit);
+    element('instructorWorkspaceRenameCancelBtn')?.addEventListener('click', handleRenameCancel);
+    element('instructorWorkspaceRemoveBtn')?.addEventListener('click', handleRemove);
     element('instructorObservationLiveBtn')?.addEventListener('click', handleReturnToLive);
     element('instructorWorkspaceSearch')?.addEventListener('input', handleSearch);
     element('instructorWorkspaceFilter')?.addEventListener('change', handleFilter);
@@ -1374,6 +1791,16 @@ export function createInstructorClassroomController({
     element('instructorClassRetryBtn')?.removeEventListener('click', handleRetry);
     element('instructorClassLeaveBtn')?.removeEventListener('click', handleLeave);
     element('instructorClassEndBtn')?.removeEventListener('click', handleEndClass);
+    element('instructorJoinsToggleBtn')?.removeEventListener('click', handleJoinsToggle);
+    element('instructorMoveDeviceBtn')?.removeEventListener('click', handleMoveDevice);
+    element('instructorTransferCopyBtn')?.removeEventListener('click', handleTransferCopy);
+    element('instructorTransferCloseBtn')?.removeEventListener('click', handleTransferClose);
+    element('instructorTransferForm')?.removeEventListener('submit', handleTransferSubmit);
+    element('instructorIndividualWorkspacesBtn')?.removeEventListener('click', handleBulkIndividual);
+    element('instructorWorkspaceRenameBtn')?.removeEventListener('click', handleRenameOpen);
+    element('instructorWorkspaceRenameForm')?.removeEventListener('submit', handleRenameSubmit);
+    element('instructorWorkspaceRenameCancelBtn')?.removeEventListener('click', handleRenameCancel);
+    element('instructorWorkspaceRemoveBtn')?.removeEventListener('click', handleRemove);
     element('instructorObservationLiveBtn')?.removeEventListener('click', handleReturnToLive);
     element('instructorWorkspaceSearch')?.removeEventListener('input', handleSearch);
     element('instructorWorkspaceFilter')?.removeEventListener('change', handleFilter);
@@ -1398,12 +1825,19 @@ export function createInstructorClassroomController({
     leaveClass,
     requestLeaveClass,
     endClass,
+    setJoins,
+    renameWorkspace,
+    removeWorkspace,
+    createIndividualWorkspacesForWaiting,
+    createTransferCode,
+    redeemTransferCode,
     setRailExpanded: expanded => setRailExpanded(expanded, { user: true }),
     getState: () => ({
       activeSession, workspaces, participants, selectedWorkspaceId, observerEpoch,
       latestObservation,
       checkpointView: checkpointView ? { ...checkpointView } : null,
-      busy, searchQuery, kindFilter, lastError, railExpanded, joinQrExpanded
+      busy, searchQuery, kindFilter, lastError, railExpanded, joinQrExpanded,
+      joinsEnabled, transferInfo: transferInfo ? { ...transferInfo } : null
     })
   };
 }
