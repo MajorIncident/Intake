@@ -14,7 +14,7 @@
  * database the request proceeds, because the endpoint then fails on its own
  * database work anyway. The class password is always enforced.
  */
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 
 import { rateLimitBucket } from './_db.js';
 import { getWorkspaceRepository } from './_workspace.js';
@@ -107,13 +107,19 @@ export function configuredClassCreationPassword() {
 }
 
 /**
- * Compares a submitted class password in constant time.
+ * Compares a submitted class password in constant time without hashing it.
+ * The password is never stored, so no password hash is needed; only its
+ * length (already documented) can differ observably.
  * @param {unknown} submitted - Password from the request body.
  * @returns {boolean} Whether it matches.
  */
 export function classCreationPasswordMatches(submitted) {
-  const candidate = normalizeClassPassword(submitted);
-  if (!candidate) return false;
-  const digest = value => createHash('sha256').update(value).digest();
-  return timingSafeEqual(digest(candidate), digest(configuredClassCreationPassword()));
+  const candidate = Buffer.from(normalizeClassPassword(submitted), 'utf8');
+  const expected = Buffer.from(configuredClassCreationPassword(), 'utf8');
+  if (candidate.length === 0) return false;
+  if (candidate.length !== expected.length) {
+    timingSafeEqual(expected, expected);
+    return false;
+  }
+  return timingSafeEqual(candidate, expected);
 }
