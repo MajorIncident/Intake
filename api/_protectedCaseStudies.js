@@ -32,7 +32,19 @@ function catalog(manifest) {
     name: entry.name,
     description: entry.description,
     templateKind: entry.templateKind,
-    supportedModes: [...entry.supportedModes]
+    supportedModes: [...entry.supportedModes],
+    libraryGroup: typeof entry.libraryGroup === 'string' ? entry.libraryGroup : 'mim',
+    // A preview is exclusively learner-stage authored text, never a Full state.
+    // Staged cases receive released material through the existing exercise API.
+    ...(entry.simulation || !entry.participantCase ? {} : {
+      participantCase: {
+        title: entry.participantCase.title,
+        sections: entry.participantCase.sections.map(section => ({
+          heading: section.heading,
+          body: section.body
+        }))
+      }
+    })
   }));
 }
 
