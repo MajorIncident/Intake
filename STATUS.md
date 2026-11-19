@@ -4,7 +4,7 @@ This is the **single live status document** for KT Intake. Other docs describe c
 
 Update it at every durable checkpoint and before handoff — see [`docs/playbooks/status-update.md`](docs/playbooks/status-update.md). Always re-verify against GitHub (main HEAD, open PRs/issues) before trusting it.
 
-_Last updated: 2026-11-19 (Issue #350 / PR #351 documentation branch `docs/350-kt-case-authoring-playbook`, based on `main` at `ce3dd06`)._
+_Last updated: 2026-11-19 (Issue #353 / PR #354 first Case Library tranche; branch `feature/353-case-library-navigation-and-reader`, current tests pending)._
 
 ## Product context
 
@@ -26,14 +26,15 @@ The **repository audit follow-through** merged via PR #344 (`41f002e`), followed
 
 - **Case Studies are back in Work independently** (approved 2026-11-19, until the classroom experiences fully replace self-study). Microcomputer Cabinets, Paytrix, Mrs Walthers Sugar Donuts, Tamworth Petrochemical, and Red Sweat Mystery are published in the public manifest and applied behind the per-minute mode password, as before #299. They are downloadable from the deployed site. Switch: `scripts/standalone-public-case-studies.mjs`; removal steps in `templates/AGENTS.md`.
 
-## KT official-case authoring workflow (Issue #350 / PR #351)
+## Case Library program (Issue #353 / PR #354)
 
-- **Accepted source precedent:** Red Sweat Mystery official-solution correction [#349](https://github.com/MajorIncident/Intake/pull/349) is **merged** at `ce3dd06` on `main` (2026-11-19); its exact production deployment state has not been rechecked in this documentation slice. The earlier #346/#347 content mistakes are retained as anti-patterns.
-- **Current documentation work:** [Issue #350](https://github.com/MajorIncident/Intake/issues/350), [PR #351](https://github.com/MajorIncident/Intake/pull/351), branch `docs/350-kt-case-authoring-playbook` based on `main` `ce3dd06`. New `docs/case-study-authoring.md` and `docs/playbooks/author-kt-case-study.md`; discovery links in root/template `AGENTS.md`, playbook index and README.
-- **Companion KT-repository work:** [KT issue #563](https://github.com/MajorIncident/kt-application-coach/issues/563), [KT PR #564](https://github.com/MajorIncident/kt-application-coach/pull/564). They document invoking/installing the canonical Skill and the official case-source side; Intake owns JSON field mapping and CI.
-- **Product-owner authoring decisions codified:** official KT case answer first; use the installed Skill or request installation, fetch case authority/participant/instructor evidence, map current/future/deadline Impact correctly, keep symptom onset in KT WHEN, write factual paired IS/IS NOT/D&C, test mechanisms and confirm the True Cause. **Full = final solution.** Use the complete MIM state surface where relevant but do not fabricate operations, DA/PPA, task registers or repeated provenance caveats. Classroom already owns stage release; public Standalone full-answer rights remain separately governed.
-- **Scope:** docs only; no authored Case Study payload, generated manifest, server, database, skill source or release changes. Documentation and path checks committed; canonical `npm run quality` + `npm run test:browser` and PR policy checks must be verified on exact head in GitHub CI. Do not claim production acceptance or a new Skill release from these PRs.
-- **Next:** verify exact-head CI and repo-hygiene guards for Intake #351 and KT #564; reconcile any doc links/check failures; obtain owner approval/merge decisions, update status at merge, and leave both docs as the cold-start route for future official KT case requests.
+- **Master tracker:** [Issue #353](https://github.com/MajorIncident/Intake/issues/353). First implementation PR: [#354](https://github.com/MajorIncident/Intake/pull/354), branch `feature/353-case-library-navigation-and-reader`, based on `main` `1075ba8`. Separate open [PR #352](https://github.com/MajorIncident/Intake/pull/352) addresses Instructor class controls; avoid changing its areas without reviewing the diff.
+- **Committed tranche 1:** dedicated **Cases** menu opening a source-grouped, searchable in-app Case Library within the authorized Templates drawer; PSDM/ATS/Legacy/MIM filters and a readable inline participant briefing. Five existing cases now carry `libraryGroup` and text-only `participantCase`: Red Sweat, Microcomputer Cabinets and Tamworth (PSDM), Mrs. Walther's Square Donuts (ATS), Paytrix (MIM). Square Donuts text is factory orientation only, not its later staged problem reveal.
+- **Inventory:** `docs/case-library-inventory.md` lists 50 distinct official PA case/exercise families (10 PSDM, 4 extra ATS, 20 legacy loose, 16 New Rational Manager PA/human-performance under Legacy) plus 1 MIM native. Only the five existing Intake cases appear in the interface; **46** official KT cases remain unauthored and four existing non-Red-Sweat solutions still need complete official-source audits. Do not label inventory entries complete or publicly accessible.
+- **Security:** authorized Classroom GET metadata includes only source group and learner-safe `participantCase` text, **never Full `state`**; staged cases omit `participantCase` and continue to use existing server-released stage content. Standalone sees only temporary allowlisted public cases, which already expose their Full answer in the public bundle. New inline preview renderer uses `textContent`, has no remote embeds/images, and does not persist into `kt-intake-full-v2`. Original KT figures/pages require explicit publication rights plus protected media support in [#316](https://github.com/MajorIncident/Intake/issues/316) / draft [#336](https://github.com/MajorIncident/Intake/pull/336) before adding.
+- **Testing and evidence:** source JSON + both manifests regenerated and committed, targeted API/DOM/regression assertions added. First exact-head GitHub `tests` CI failed on `verify:summary` because the new search input lacked explicit local-only metadata; corrected by adding `data-persistence="local-only" data-summary="exclude"` on the input. **CI on the current head is pending**; no production deploy/manual live browser acceptance is claimed. Run `npm run quality`, `npm run test:browser`, `npm run verify:protected-cases`; check exact-head gates and correct further failures.
+- **Scope and next tranche:** PR #354 is the navigation/participant-text foundation **not the 50 completed cases or imagery**. After green tests and reviewed merge, pursue protected rich in-page media/authorization (T2) and small official-source case-writing batches (T3+). Use [Case Study authoring contract](docs/case-study-authoring.md) and KT Skill first. Preserve Classroom stage release, code/media rights and one complete Full source per case.
+- **Cold restart:** refresh issue #353, PR #354 current head/checks and this file. Continue with docs/anchor, manifest/gate verification, UI smoke, update the PR and master issue. Explicit user merge decision required; no silent production rollout.
 
 ## Pilot blockers (Student / Instructor modes for a real class)
 
@@ -56,13 +57,14 @@ Worked one at a time, in order:
 | #342 Pilot blocker 3: Instructor class controls | Open, next code blocker | Includes one-workspace-per-Student |
 | #343 Pilot blocker 4: Instructor Case Study assignment | Open | |
 | #348 Existing Case Study completeness audit | Open | Follow-up quality backlog; apply new KT authoring playbook before case changes |
-| #350 KT-to-Intake case-writing playbook | Open | Documentation PR #351; companion KT repo #563 / #564 |
+| #353 Case Library program | Open | PR #354 T1 navigation/inline reader; T2 media and T3+ case batches remain |
 
 ## Open pull requests
 
 | PR | Status |
 | --- | --- |
-| #351 Official KT-to-Intake Case Study authoring documentation | Open; docs-only branch, exact-head CI/owner review required |
+| #354 Case Library navigation and participant reader | Open; first tranche; exact-head CI/browser acceptance pending |
+| #352 Instructor class controls | Open; parallel branch, review before overlapping UI changes |
 | #336 Add protected staged asset delivery | Draft; was stacked on #335 (merged) — retarget/refresh against `main` before continuing |
 | #281 eslint 10, #280 jsdom 30, #310 eslint-plugin-jsdoc 65 | Major bumps — do together in one tooling PR (see lint risk below) |
 
