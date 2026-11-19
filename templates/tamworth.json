@@ -570,15 +570,35 @@
   },
   "libraryGroup": "psdm",
   "participantCase": {
-    "title": "Tamworth — participant briefing",
+    "title": "Tamworth Petrochemical — participant case",
     "sections": [
       {
-        "heading": "The customer report",
-        "body": "Tamworth customers report an even, faint fog across photographs made from its sheet film. The company has reproduced the effect using X-rays. The deviation is film fogging, not merely the existence of complaints."
+        "heading": "The photographic product",
+        "body": "Tamworth Petrochemical Company recently acquired Hi-Grade Photo Products. One of its products, Hi-Grade 202, is a sensitive photographic film sold as roll film, sheet film and film-pack. In ordinary use the developed image should reflect the photograph taken, without an extra uniform veil or fog."
       },
       {
-        "heading": "Your investigation",
-        "body": "Identify exactly which film, distribution circumstances and conditions are affected. Develop close factual IS NOT comparisons and test possible explanations of the fogging. Keep the cause unknown until the evidence supports it."
+        "heading": "The customer problem",
+        "body": "Dealers are returning Hi-Grade 202 sheet film because photographs are fogged. The fog appears when the film is developed, rather than forming afterward. Returned boxes show the problem across the full surface of the negatives, not only at the edges or in isolated spots. The affected film is still within its 18-month shelf life."
+      },
+      {
+        "heading": "Where and when complaints are appearing",
+        "body": "The complaints have developed over roughly ten days and have begun spreading across the country. Smaller outlets with slower stock turnover are reporting the problem first. Larger outlets have not yet reported the same volume, but Tamworth expects they may be affected as their stock is sold. The issue has generated replacement costs and concern about dealer confidence."
+      },
+      {
+        "heading": "Film formats and packaging",
+        "body": "The film formats have different handling and packaging arrangements. Sheet film is separated using interleaf paper, unlike the roll and film-pack formats. Tamworth has also introduced a newer zip-top package. Packaging changes and supplier changes are among several events that investigators have been asked to consider, but their significance is not yet established."
+      },
+      {
+        "heading": "Manufacturing and supplier history",
+        "body": "Several facts have attracted attention: a fire in the emulsion department, changes to mixing personnel and training, delayed bulk-storage containers, and a different supplier for interleaf paper introduced months earlier. Each of these could prompt questions. The dates, scope, material use and ability of each proposed mechanism to explain the pattern still require testing."
+      },
+      {
+        "heading": "Competing explanations",
+        "body": "Manufacturing suspects the newer zip-top package and wants to return to an earlier version. Research has produced a similar appearance by deliberately exposing good sheet film to radiation and proposes a broader radioactivity investigation. Reproducing the appearance does not by itself establish that radiation caused the customer returns."
+      },
+      {
+        "heading": "Your assignment",
+        "body": "Specify the actual deviation and the closest unaffected film products, dealers, locations, timing and extent. Develop and destructively test complete Possible Cause mechanisms before selecting a Most Probable Cause and a proportionate confirmation approach. The participant source does not disclose the final cause."
       }
     ]
   }
