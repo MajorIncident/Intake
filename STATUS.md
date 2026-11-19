@@ -4,7 +4,7 @@ This is the **single live status document** for KT Intake. Other docs describe c
 
 Update it at every durable checkpoint and before handoff — see [`docs/playbooks/status-update.md`](docs/playbooks/status-update.md). Always re-verify against GitHub (main HEAD, open PRs/issues) before trusting it.
 
-_Last updated: 2026-11-18 (audit/hardening branch `claude/intake-repo-audit-qii780`, based on `main` at `cf4febb`)._
+_Last updated: 2026-11-19 (`main` at `83de5e6`)._
 
 ## Product context
 
@@ -16,11 +16,11 @@ _Last updated: 2026-11-18 (audit/hardening branch `claude/intake-repo-audit-qii7
 
 The secure Classroom foundation (#288–#296), live-class management (#312), staged-simulation engine (#313), universal targets (#318), debrief comparison (#319), join/mobile polish (#320), compatibility reset (#328), Administration/Maintenance (#329), and the startup hub (#330) are **merged and published**.
 
-Active work: **repository audit follow-through** on `claude/intake-repo-audit-qii780` (PR to `main` open; merging once required checks pass):
+The **repository audit follow-through** merged via PR #344 (`41f002e`), followed by Dependabot #337, #338, #339, #311, #309:
 
 - done: documentation consolidation (this file, playbooks, verbatim archive, drift guards); EULA data-usage wording; versioned advisory-locked schema; retry-safe repository init; real-Postgres (PGlite) tests; class-creation password; rate limits;
 - **fixed production bugs found by the real-SQL tests**: Instructor team assignment and Student "Mark Ready" both failed in Postgres because of untyped SQL parameters (they had only ever run against in-memory fakes);
-- next: Classroom pilot blockers below, one at a time.
+- next: confirm the `main` deployment is READY, run the real-class smoke test (#340), then Classroom pilot blocker #342.
 
 ## Temporary product decisions
 
@@ -31,7 +31,7 @@ Active work: **repository audit follow-through** on `claude/intake-repo-audit-qi
 Worked one at a time, in order:
 
 1. **Environment** (human action, #340): Vercel Production needs `DATABASE_URL` (or `POSTGRES_URL` / `NEON_DATABASE_URL`) and a valid 43-character `INTAKE_ADMIN_TOKEN`; then a real multi-device smoke test (see `docs/playbooks/release-and-verify.md`).
-2. ~~**Instructor "Leave class" orphans the class** (#341)~~ — **fixed on this branch**: Leave asks for confirmation and explains the class keeps running; new **End class** confirms, revokes the class server-side for everyone, then clears the device. Closes when merged.
+2. ~~**Instructor "Leave class" orphans the class** (#341)~~ — **done (#344)**: Leave asks for confirmation and explains the class keeps running; new **End class** confirms, revokes the class server-side for everyone, then clears the device.
 3. **Instructor controls the API already supports but the UI does not expose** (#342) — joins on/off, end class, rename/delete teams, cross-device handoff, and "one workspace per Student" bulk setup.
 4. **No Instructor-side Case Study assignment** (#343) — teams start empty; Students apply Case Studies themselves using a per-minute password the Instructor UI never shows.
 5. **Staged exercises unusable in production** — no authored Case Study has a `simulation`; requires #316 then #317.
@@ -44,7 +44,6 @@ Worked one at a time, in order:
 | #316 Protected staged assets + rich Student rendering | Open, next Classroom feature after pilot blockers 2–4 | Draft PR #336 holds only a contract document (classroom-protected-assets.md on that branch) |
 | #317 First production staged KT Case Study | Open, blocked by #316 | Needs authoritative source material |
 | #340 Pilot blocker 1: environment + real smoke test | Open | Human action |
-| #341 Pilot blocker 2: Leave class orphans the class | Fixed on branch | Closes on merge |
 | #342 Pilot blocker 3: Instructor class controls | Open, next code blocker | Includes one-workspace-per-Student |
 | #343 Pilot blocker 4: Instructor Case Study assignment | Open | |
 
@@ -53,7 +52,6 @@ Worked one at a time, in order:
 | PR | Status |
 | --- | --- |
 | #336 Add protected staged asset delivery | Draft; was stacked on #335 (merged) — retarget/refresh against `main` before continuing |
-| #337 / #309 / #311 / #338 / #339 Dependabot minor and security updates | Merge one at a time after the audit PR (main requires up-to-date branches) |
 | #281 eslint 10, #280 jsdom 30, #310 eslint-plugin-jsdoc 65 | Major bumps — do together in one tooling PR (see lint risk below) |
 
 ## Pending human / environment actions
