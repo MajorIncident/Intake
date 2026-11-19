@@ -579,6 +579,13 @@ async function applySelectedTemplate() {
   }
 
   const rollbackSnapshot = collectAppState();
+  // Case source/exemplar fullness is independent of the operator's selected
+  // Intake workflow lens. A General view can hide MIM sections, while a
+  // selected Major Incident lens can expose them without reauthoring the case.
+  if (templateMeta.templateKind === TEMPLATE_KINDS.CASE_STUDY
+      && payload.meta && rollbackSnapshot?.meta?.intakeMode) {
+    payload.meta.intakeMode = rollbackSnapshot.meta.intakeMode;
+  }
   try {
     applyAppState(payload);
   } catch (error) {
