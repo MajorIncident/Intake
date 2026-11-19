@@ -76,6 +76,12 @@ The prefacing evidence and Impact are **different jobs**. Do not put a long disc
 
 ### Case Library delivery fields
 
+Participant reading comes **before** applying an Intake mode. On selecting an authorized case in the dedicated Case Library, the reader shows `participantCase` first, followed by an explicit **Continue to analysis options** action; only then are Intake, IS/IS NOT, D&C and Full selectors visible. The later Full option remains an answered exemplar. Reader/filter/step state is client presentation only, never saved in `kt-intake-full-v2`.
+
+For cases with two participant handouts in different stages, e.g. Mrs. Walther's Square Donuts, an optional `reveal: true` on a `participantCase.sections[]` record produces a native collapsed self-study later-handout disclosure. **That is not access control.** The Classroom Student catalog filters these later sections server-side, while Instructor catalog can list them. Authored `simulation` cases omit `participantCase` from the catalog altogether and must use the existing authorized stage-release API; do not build a separate reveal engine. Never put Full cause in initial reader text. The original PDF pages/images remain subject to source rights and secure asset delivery (#355).
+
+
+
 Alongside the complete `state`, author `libraryGroup` and `participantCase` under the Case Study's **top-level JSON**, following [the Case Library inventory](case-library-inventory.md) and tracked [program #353](https://github.com/MajorIncident/Intake/issues/353). `libraryGroup` is `psdm`, `ats`, `legacy` or `mim`; New Rational Manager PA examples belong under Legacy with their specific source provenance recorded in the inventory, not falsely called KT's Major Incident Management cases. `participantCase.sections` contains short headings and participant-readable plain-text body sections, with no Full-cause spoilers or source content that has not yet been released. A staged case's initial material belongs in the existing `simulation.studentContent` release path. Include imagery only after source rights, protected asset delivery and stage authorization are confirmed, not as public PDF copies or remote embeds. Build group/browser metadata from the source once; a source listing does not imply its Full case has already been audited.
 
 ## 3. Presentation and classroom boundaries
