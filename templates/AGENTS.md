@@ -46,7 +46,7 @@ The rotating Case Study mode password is pedagogy only. Authorization comes from
 
 Approved by the product owner on 2026-11-19 until the Student/Instructor experiences fully replace self-study.
 
-- `scripts/standalone-public-case-studies.mjs` lists the Case Study IDs that are **also** published to the public manifest (currently Microcomputer Cabinets, Paytrix, Mrs Walthers Sugar Donuts, Tamworth Petrochemical).
+- `scripts/standalone-public-case-studies.mjs` lists the Case Study IDs that are **also** published to the public manifest (currently Microcomputer Cabinets, Paytrix, Mrs Walthers Sugar Donuts, Tamworth Petrochemical, Red Sweat Mystery).
 - Work independently lists them and applies the public copy behind the per-minute mode password (`<mode><minute>`, e.g. `full07`) — the pre-#299 behaviour. Connected Students/Instructors still receive them through the server-gated Classroom API.
 - Consequence: those cases and their answers are downloadable from the deployed site. The mode password is pedagogy, not protection.
 - Guards: only listed IDs may appear in the public manifest or `dist/`; a Case Study with a staged `simulation` can never be listed; `simulation` is never copied publicly.
