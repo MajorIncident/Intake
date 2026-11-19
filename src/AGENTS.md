@@ -35,6 +35,10 @@ At narrow widths, Student Class context, Student Case reference, the Team/people
 
 ## Case Library view (Issue #353)
 
+The dedicated Cases menu opens the Case Library as a reader-first flow: choose case, read source-grounded initial `participantCase`, optionally expand the later self-study handout, then expressly continue to modes/Full. The mode/password/Apply controls are hidden until Continue and the current mode defaults to Intake. This is presentation state; the Full-mode source already exists behind separate rights/authorization boundaries. **Classroom must never choose a public allowlisted case record over a protected catalog record with the same ID**; Student/Instructor case enumeration and preview come only from the authorized, in-memory GET catalog. Never load a protected Full state for a preview. The Student GET server omits `reveal:true` sections and all `participantCase` when a staged `simulation` exists, retaining the authoritative Student exercise release for staged content.
+
+## Protected Classroom resources
+
 `templatesDrawer.js` also owns the local-only Case Library UI, source-group/search state, safe `textContent` rendering of `participantCase` sections, and the dedicated Cases menu. It must **not** fetch a Full case to show a participant briefing, persist search/selected case in the Intake snapshot, or bypass active staged exercises. `classroomCaseStudies.js` accepts only the authorized GET catalog's sanitized learner-safe `participantCase` and source group, and clears them on disconnect. The server excludes participant previews for all `simulation` cases, whose released material is shown through `classroomExerciseStudent.js`.
 
 ## Protected Classroom resources
