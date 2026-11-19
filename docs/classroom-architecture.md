@@ -234,6 +234,12 @@ Changing a target ID is a data migration.
 
 ## Case Library participant previews
 
+Reader-first Case Library: source/role-aware choice → inline plain-text participant reading → explicit Continue → mode/Apply controls. The selected Full representation is a completed answer and is *not* shown by merely selecting a case. `participantCase.sections[].reveal: true` labels a later **self-study** participant handout (Square Donuts' `The Problem`); Standalone displays a native collapsed disclosure. Authenticated Student GET excludes that later content, while Instructor GET may include it. Actual staged Classroom data must still use the existing server-released `simulation` endpoint, and for a staged case even the initial preview is omitted from the general catalog. Do not confuse a self-study disclosure with real server authorization. Because a temporary public allowlist contains some Full cases, UI mode progression and the rotating password remain pedagogical, not secrecy.
+
+**Source ownership:** Paytrix is Intake-native `mim`, not an official PSDM/ATS workbook source. KT repo [MIM companion index](https://github.com/MajorIncident/kt-application-coach/blob/main/docs/INTAKE_MIM_CASE_LIBRARY.md) (proposed PR #575) is separate from its official case registry.
+
+
+
 The Cases menu opens a separate view of the existing Templates drawer (not a new auth or persistence path). `libraryGroup` and `participantCase` are **top-level authored Case Study metadata**, not serialized Intake. The Classroom authorized GET catalog returns only safe initial reader content; `state`, Instructor explanations and Full are absent. For every authored `simulation`, that GET catalog omits `participantCase` entirely: only the existing Student staged exercise endpoint may deliver role/stage-released text and future approved assets. Standalone sees only the temporary allowlisted copies. No original source PDF, instructor pack, or protected figure is provided through the public reader. Full Case Study application retains its existing server authorization and stage bypass protection. A student may read a brief without unlocking/applying the Full case; search/selected group is in-memory view state only.
 
 ## Templates and Case Studies
