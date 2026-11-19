@@ -4,13 +4,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { APP_STATE_VERSION } from '../src/appStateVersion.js';
 import { exportAppStateToFile, importAppStateFromFile } from '../src/fileTransfer.js';
 
 test('fileTransfer: exportAppStateToFile packages state into a downloadable blob', () => {
   let collected = 0;
   const collect = () => {
     collected += 1;
-    return { meta: { version: 1 }, pre: { oneLine: 'Example' } };
+    return { meta: { version: APP_STATE_VERSION }, pre: { oneLine: 'Example' } };
   };
 
   class FakeBlob {
@@ -83,7 +84,7 @@ test('fileTransfer: importAppStateFromFile migrates, resets, and applies state',
       readAsText(target) {
         assert.strictEqual(target, file);
         setTimeout(() => {
-          this.result = JSON.stringify({ meta: { version: 1 }, pre: { oneLine: 'Example' } });
+          this.result = JSON.stringify({ meta: { version: APP_STATE_VERSION }, pre: { oneLine: 'Example' } });
           if (typeof this.onload === 'function') {
             this.onload({ target: this });
           }
@@ -93,7 +94,7 @@ test('fileTransfer: importAppStateFromFile migrates, resets, and applies state',
     return readerInstance;
   };
 
-  const migratedState = { meta: { version: 1 }, pre: { oneLine: 'Example' } };
+  const migratedState = { meta: { version: APP_STATE_VERSION }, pre: { oneLine: 'Example' } };
   let migrateInput = null;
   const migrate = raw => {
     migrateInput = raw;
@@ -120,3 +121,38 @@ test('fileTransfer: importAppStateFromFile migrates, resets, and applies state',
   assert.deepEqual(migrateInput, JSON.parse(readerInstance.result), 'migration sees parsed JSON');
   assert.deepEqual(result, { success: true, message: 'Intake snapshot imported from file ✨' });
 });
+
+test('fileTransfer: importAppStateFromFile rejects obsolete snapshot versions with a clear message', async () => {
+  const file = new Blob(['{}'], { type: 'application/json' });
+  const createReader = () => ({
+    result: null,
+    onload: null,
+    onerror: null,
+    readAsText() {
+      setTimeout(() => {
+        this.result = JSON.stringify({ meta: { version: APP_STATE_VERSION - 1 }, pre: { oneLine: 'Old' } });
+        this.onload?.({ target: this });
+      }, 0);
+    }
+  });
+
+  let migrated = false;
+  let applied = false;
+  const result = await importAppStateFromFile(file, {
+    createReader,
+    migrate: () => {
+      migrated = true;
+      return {};
+    },
+    apply: () => {
+      applied = true;
+    }
+  });
+
+  assert.equal(result.success, false);
+  assert.match(result.message, new RegExp(`schema version ${APP_STATE_VERSION - 1}`));
+  assert.match(result.message, new RegExp(`schema version ${APP_STATE_VERSION} only`));
+  assert.equal(migrated, false, 'unsupported file never enters normalization');
+  assert.equal(applied, false, 'unsupported file is never applied');
+});
+

@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { afterEach, beforeEach, mock, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
+import { APP_STATE_VERSION } from '../src/appStateVersion.js';
 import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
 
 let dom = null;
@@ -234,7 +235,7 @@ test('main: start fresh restores the steps badge to 0 of 27', async () => {
     { id: '1', label: 'Prefilled', checked: true }
   ]));
   localStorage.setItem('steps.drawerOpen', 'true');
-  localStorage.setItem('kt-intake-full-v2', JSON.stringify({ meta: { version: 2 } }));
+  localStorage.setItem('kt-intake-full-v2', JSON.stringify({ meta: { version: APP_STATE_VERSION } }));
   localStorage.setItem('kt-actions-by-analysis-v1', JSON.stringify({ analysis: [] }));
   localStorage.setItem('kt-analysis-id', 'analysis-old');
 

@@ -26,12 +26,6 @@ const CONTAINMENT_STATUS_LABELS = Object.freeze({
   closed: 'Closed'
 });
 
-const LEGACY_CONTAINMENT_STATUS_LABELS = Object.freeze({
-  none: CONTAINMENT_STATUS_LABELS.assessing,
-  mitigation: CONTAINMENT_STATUS_LABELS.stabilized,
-  restore: CONTAINMENT_STATUS_LABELS.restoring
-});
-
 const SUMMARY_MODE_CONFIG = Object.freeze({
   [INTAKE_MODE_IDS.GENERAL]: Object.freeze({
     prefaceSection: '— Intake Summary —',
@@ -357,8 +351,7 @@ function formatChipsetSelections(list){
 function containmentStatusText(state){
   if(!state || typeof state.getContainmentStatus !== 'function') return '';
   const status = state.getContainmentStatus();
-  if(CONTAINMENT_STATUS_LABELS[status]) return CONTAINMENT_STATUS_LABELS[status];
-  return LEGACY_CONTAINMENT_STATUS_LABELS[status] || '';
+  return CONTAINMENT_STATUS_LABELS[status] || '';
 }
 
 /**

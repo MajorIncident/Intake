@@ -7,6 +7,8 @@
  */
 
 import { randomInt, randomUUID } from 'node:crypto';
+import { applySchema, createSql, memoizeUntilFailure } from './_db.js';
+import { checkRateLimit, classCreationPasswordMatches, sendRateLimited } from './_rateLimit.js';
 import {
   DISPLAY_NAME_MAX_LENGTH,
   generateWorkspaceToken,
@@ -34,15 +36,187 @@ export const COACHING_TARGET_ID_MAX_LENGTH = 160;
 const COACHING_FINGERPRINT_PATTERN = /^v1-[0-9a-f]{16}$/u;
 const CLASSROOM_STUDENT_CAPABILITY_KIND = 'classroom-student';
 
-let classroomRepositoryPromise;
-
 /**
- * Resolve the configured server-only database connection string.
- *
- * @returns {string} Neon/Postgres connection string or empty string.
+ * Versioned Classroom schema. Requires WORKSPACE_SCHEMA first (foreign keys to
+ * collaboration_workspaces). Append idempotent steps only, then bump `version`
+ * and update `fingerprint`.
  */
-function connectionString() {
-  return process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.NEON_DATABASE_URL || '';
+export const CLASSROOM_SCHEMA = Object.freeze({
+  component: 'classroom',
+  version: 1,
+  fingerprint: 'f3e0f669f03df0dd8316cb2f1951d5fda3ec959771cb4f7009f3934b63b71642',
+  steps: Object.freeze([
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_classes (
+    id BIGSERIAL PRIMARY KEY,
+    public_id UUID UNIQUE NOT NULL,
+    title VARCHAR(120) NOT NULL,
+    instructor_token_hash CHAR(64) UNIQUE NOT NULL,
+    student_join_code VARCHAR(8),
+    joins_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    revoked_at TIMESTAMPTZ
+  )`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_classes_expiry_idx
+    ON classroom_classes (expires_at)`,
+  sql => sql`ALTER TABLE classroom_classes
+    ADD COLUMN IF NOT EXISTS student_join_code VARCHAR(8)`,
+  sql => sql`ALTER TABLE classroom_classes
+    DROP COLUMN IF EXISTS student_join_token_hash`,
+  sql => sql`CREATE UNIQUE INDEX IF NOT EXISTS classroom_classes_student_join_code_idx
+    ON classroom_classes (student_join_code)
+    WHERE student_join_code IS NOT NULL`,
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_workspaces (
+    workspace_id BIGINT PRIMARY KEY REFERENCES collaboration_workspaces(id) ON DELETE CASCADE,
+    class_id BIGINT NOT NULL REFERENCES classroom_classes(id) ON DELETE CASCADE,
+    public_id UUID UNIQUE NOT NULL,
+    workspace_kind VARCHAR(16) NOT NULL CHECK (workspace_kind IN ('individual', 'group')),
+    label VARCHAR(120) NOT NULL,
+    individual_participant_id UUID,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    revoked_at TIMESTAMPTZ,
+    UNIQUE (class_id, workspace_id)
+  )`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_workspaces_class_idx
+    ON classroom_workspaces (class_id, created_at)`,
+  sql => sql`ALTER TABLE classroom_workspaces
+    DROP COLUMN IF EXISTS claim_token_hash`,
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_participants (
+    class_id BIGINT NOT NULL REFERENCES classroom_classes(id) ON DELETE CASCADE,
+    participant_id UUID NOT NULL,
+    display_name VARCHAR(60) NOT NULL,
+    session_token_hash CHAR(64) UNIQUE NOT NULL,
+    workspace_id BIGINT,
+    workspace_access_token_hash CHAR(64) UNIQUE,
+    assignment_revision INTEGER NOT NULL DEFAULT 0 CHECK (assignment_revision >= 0),
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    assigned_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    PRIMARY KEY (class_id, participant_id),
+    FOREIGN KEY (class_id, workspace_id)
+      REFERENCES classroom_workspaces(class_id, workspace_id)
+      ON DELETE SET NULL (workspace_id)
+  )`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_participants_class_idx
+    ON classroom_participants (class_id, joined_at)`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_participants_workspace_idx
+    ON classroom_participants (workspace_id)
+    WHERE workspace_id IS NOT NULL`,
+  sql => sql`DROP TABLE IF EXISTS classroom_memberships CASCADE`,
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_coaching_feedback (
+    class_id BIGINT NOT NULL,
+    workspace_id BIGINT NOT NULL,
+    target_id VARCHAR(160) NOT NULL,
+    status VARCHAR(32) NOT NULL CHECK (status IN ('meets-standard', 'needs-improvement')),
+    note VARCHAR(2000) NOT NULL DEFAULT '',
+    reviewed_workspace_revision INTEGER NOT NULL CHECK (reviewed_workspace_revision > 0),
+    reviewed_field_fingerprint VARCHAR(32) NOT NULL,
+    feedback_revision INTEGER NOT NULL DEFAULT 1 CHECK (feedback_revision > 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (class_id, workspace_id, target_id),
+    FOREIGN KEY (class_id, workspace_id)
+      REFERENCES classroom_workspaces(class_id, workspace_id)
+      ON DELETE CASCADE
+  )`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_coaching_feedback_workspace_idx
+    ON classroom_coaching_feedback (workspace_id, updated_at)`,
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_exercises (
+    id BIGSERIAL PRIMARY KEY,
+    public_id UUID UNIQUE NOT NULL,
+    class_id BIGINT NOT NULL REFERENCES classroom_classes(id) ON DELETE CASCADE,
+    case_study_id VARCHAR(160) NOT NULL,
+    simulation_version INTEGER NOT NULL CHECK (simulation_version > 0),
+    simulation_fingerprint CHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'draft'
+      CHECK (status IN ('draft', 'active', 'paused', 'completed')),
+    current_stage_id VARCHAR(80),
+    stage_phase VARCHAR(16) NOT NULL DEFAULT 'work'
+      CHECK (stage_phase IN ('work', 'debrief')),
+    exercise_revision INTEGER NOT NULL DEFAULT 1 CHECK (exercise_revision > 0),
+    student_editing_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    UNIQUE (class_id, id)
+  )`,
+  sql => sql`ALTER TABLE classroom_exercises
+    ADD COLUMN IF NOT EXISTS simulation_version INTEGER`,
+  sql => sql`ALTER TABLE classroom_exercises
+    ADD COLUMN IF NOT EXISTS simulation_fingerprint CHAR(64)`,
+  sql => sql`UPDATE classroom_exercises
+    SET simulation_version = COALESCE(simulation_version, 1),
+        simulation_fingerprint = COALESCE(simulation_fingerprint, repeat('0', 64))
+    WHERE simulation_version IS NULL OR simulation_fingerprint IS NULL`,
+  sql => sql`ALTER TABLE classroom_exercises
+    ALTER COLUMN simulation_version SET NOT NULL`,
+  sql => sql`ALTER TABLE classroom_exercises
+    ALTER COLUMN simulation_fingerprint SET NOT NULL`,
+  sql => sql`CREATE UNIQUE INDEX IF NOT EXISTS classroom_exercises_one_open_per_class_idx
+    ON classroom_exercises (class_id)
+    WHERE status <> 'completed'`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_exercises_class_history_idx
+    ON classroom_exercises (class_id, created_at DESC)`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_exercises_expiry_idx
+    ON classroom_exercises (expires_at)`,
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_exercise_releases (
+    exercise_id BIGINT NOT NULL REFERENCES classroom_exercises(id) ON DELETE CASCADE,
+    stage_id VARCHAR(80) NOT NULL,
+    content_id VARCHAR(80) NOT NULL,
+    released_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (exercise_id, stage_id, content_id)
+  )`,
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_exercise_workspace_state (
+    class_id BIGINT NOT NULL,
+    exercise_id BIGINT NOT NULL,
+    workspace_id BIGINT NOT NULL,
+    stage_id VARCHAR(80) NOT NULL,
+    ready_for_debrief BOOLEAN NOT NULL DEFAULT FALSE,
+    ready_at TIMESTAMPTZ,
+    ready_workspace_revision INTEGER CHECK (ready_workspace_revision IS NULL OR ready_workspace_revision > 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (exercise_id, workspace_id, stage_id),
+    FOREIGN KEY (class_id, exercise_id)
+      REFERENCES classroom_exercises(class_id, id)
+      ON DELETE CASCADE,
+    FOREIGN KEY (class_id, workspace_id)
+      REFERENCES classroom_workspaces(class_id, workspace_id)
+      ON DELETE CASCADE
+  )`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_exercise_workspace_state_class_idx
+    ON classroom_exercise_workspace_state (class_id, exercise_id, stage_id)`,
+  sql => sql`CREATE TABLE IF NOT EXISTS classroom_exercise_checkpoints (
+    class_id BIGINT NOT NULL,
+    exercise_id BIGINT NOT NULL,
+    stage_id VARCHAR(80) NOT NULL,
+    workspace_id BIGINT NOT NULL,
+    workspace_revision INTEGER NOT NULL CHECK (workspace_revision > 0),
+    snapshot JSONB NOT NULL,
+    captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (exercise_id, stage_id, workspace_id),
+    FOREIGN KEY (class_id, exercise_id)
+      REFERENCES classroom_exercises(class_id, id)
+      ON DELETE CASCADE,
+    FOREIGN KEY (class_id, workspace_id)
+      REFERENCES classroom_workspaces(class_id, workspace_id)
+      ON DELETE CASCADE
+  )`,
+  sql => sql`CREATE INDEX IF NOT EXISTS classroom_exercise_checkpoints_class_idx
+    ON classroom_exercise_checkpoints (class_id, exercise_id, stage_id)`
+  ])
+});
+
+const memoizedClassroomRepository = memoizeUntilFailure(initializeClassroomRepository);
+
+/** Clears the memoized repository (tests only). @returns {void} */
+export function resetClassroomRepositoryForTesting() {
+  memoizedClassroomRepository.reset();
 }
 
 /**
@@ -212,10 +386,7 @@ export function validateCoachingFingerprint(value) {
  * @returns {Promise<object>} Classroom repository.
  */
 export async function getClassroomRepository() {
-  if (!classroomRepositoryPromise) {
-    classroomRepositoryPromise = initializeClassroomRepository();
-  }
-  return classroomRepositoryPromise;
+  return memoizedClassroomRepository();
 }
 
 /**
@@ -224,198 +395,12 @@ export async function getClassroomRepository() {
  * @returns {Promise<object>} Repository implementation.
  */
 async function initializeClassroomRepository() {
-  const connection = connectionString();
-  if (!connection) throw new Error('Database is not configured');
-
   // Ensures collaboration_workspaces and alias-capability tables exist before
   // classroom foreign keys are created.
   await getWorkspaceRepository();
 
-  const { neon } = await import('@neondatabase/serverless');
-  const sql = neon(connection);
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_classes (
-    id BIGSERIAL PRIMARY KEY,
-    public_id UUID UNIQUE NOT NULL,
-    title VARCHAR(120) NOT NULL,
-    instructor_token_hash CHAR(64) UNIQUE NOT NULL,
-    student_join_token_hash CHAR(64) UNIQUE NOT NULL,
-    joins_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    expires_at TIMESTAMPTZ NOT NULL,
-    revoked_at TIMESTAMPTZ
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_classes_expiry_idx
-    ON classroom_classes (expires_at)`;
-  await sql`ALTER TABLE classroom_classes
-    ADD COLUMN IF NOT EXISTS student_join_code VARCHAR(8)`;
-  await sql`CREATE UNIQUE INDEX IF NOT EXISTS classroom_classes_student_join_code_idx
-    ON classroom_classes (student_join_code)
-    WHERE student_join_code IS NOT NULL`;
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_workspaces (
-    workspace_id BIGINT PRIMARY KEY REFERENCES collaboration_workspaces(id) ON DELETE CASCADE,
-    class_id BIGINT NOT NULL REFERENCES classroom_classes(id) ON DELETE CASCADE,
-    public_id UUID UNIQUE NOT NULL,
-    workspace_kind VARCHAR(16) NOT NULL CHECK (workspace_kind IN ('individual', 'group')),
-    label VARCHAR(120) NOT NULL,
-    claim_token_hash CHAR(64) UNIQUE NOT NULL,
-    individual_participant_id UUID,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    revoked_at TIMESTAMPTZ,
-    UNIQUE (class_id, workspace_id)
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_workspaces_class_idx
-    ON classroom_workspaces (class_id, created_at)`;
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_participants (
-    class_id BIGINT NOT NULL REFERENCES classroom_classes(id) ON DELETE CASCADE,
-    participant_id UUID NOT NULL,
-    display_name VARCHAR(60) NOT NULL,
-    session_token_hash CHAR(64) UNIQUE NOT NULL,
-    workspace_id BIGINT,
-    workspace_access_token_hash CHAR(64) UNIQUE,
-    assignment_revision INTEGER NOT NULL DEFAULT 0 CHECK (assignment_revision >= 0),
-    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    assigned_at TIMESTAMPTZ,
-    revoked_at TIMESTAMPTZ,
-    PRIMARY KEY (class_id, participant_id),
-    FOREIGN KEY (class_id, workspace_id)
-      REFERENCES classroom_workspaces(class_id, workspace_id)
-      ON DELETE SET NULL (workspace_id)
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_participants_class_idx
-    ON classroom_participants (class_id, joined_at)`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_participants_workspace_idx
-    ON classroom_participants (workspace_id)
-    WHERE workspace_id IS NOT NULL`;
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_memberships (
-    class_id BIGINT NOT NULL,
-    workspace_id BIGINT NOT NULL,
-    participant_id UUID NOT NULL,
-    access_token_hash CHAR(64) UNIQUE NOT NULL,
-    joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (class_id, participant_id),
-    FOREIGN KEY (class_id, workspace_id)
-      REFERENCES classroom_workspaces(class_id, workspace_id)
-      ON DELETE CASCADE
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_memberships_workspace_idx
-    ON classroom_memberships (workspace_id)`;
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_coaching_feedback (
-    class_id BIGINT NOT NULL,
-    workspace_id BIGINT NOT NULL,
-    target_id VARCHAR(160) NOT NULL,
-    status VARCHAR(32) NOT NULL CHECK (status IN ('meets-standard', 'needs-improvement')),
-    note VARCHAR(2000) NOT NULL DEFAULT '',
-    reviewed_workspace_revision INTEGER NOT NULL CHECK (reviewed_workspace_revision > 0),
-    reviewed_field_fingerprint VARCHAR(32) NOT NULL,
-    feedback_revision INTEGER NOT NULL DEFAULT 1 CHECK (feedback_revision > 0),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (class_id, workspace_id, target_id),
-    FOREIGN KEY (class_id, workspace_id)
-      REFERENCES classroom_workspaces(class_id, workspace_id)
-      ON DELETE CASCADE
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_coaching_feedback_workspace_idx
-    ON classroom_coaching_feedback (workspace_id, updated_at)`;
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_exercises (
-    id BIGSERIAL PRIMARY KEY,
-    public_id UUID UNIQUE NOT NULL,
-    class_id BIGINT NOT NULL REFERENCES classroom_classes(id) ON DELETE CASCADE,
-    case_study_id VARCHAR(160) NOT NULL,
-    simulation_version INTEGER NOT NULL CHECK (simulation_version > 0),
-    simulation_fingerprint CHAR(64) NOT NULL,
-    status VARCHAR(16) NOT NULL DEFAULT 'draft'
-      CHECK (status IN ('draft', 'active', 'paused', 'completed')),
-    current_stage_id VARCHAR(80),
-    stage_phase VARCHAR(16) NOT NULL DEFAULT 'work'
-      CHECK (stage_phase IN ('work', 'debrief')),
-    exercise_revision INTEGER NOT NULL DEFAULT 1 CHECK (exercise_revision > 0),
-    student_editing_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    started_at TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    expires_at TIMESTAMPTZ NOT NULL,
-    UNIQUE (class_id, id)
-  )`;
-  await sql`ALTER TABLE classroom_exercises
-    ADD COLUMN IF NOT EXISTS simulation_version INTEGER`;
-  await sql`ALTER TABLE classroom_exercises
-    ADD COLUMN IF NOT EXISTS simulation_fingerprint CHAR(64)`;
-  await sql`UPDATE classroom_exercises
-    SET simulation_version = COALESCE(simulation_version, 1),
-        simulation_fingerprint = COALESCE(simulation_fingerprint, repeat('0', 64))
-    WHERE simulation_version IS NULL OR simulation_fingerprint IS NULL`;
-  await sql`ALTER TABLE classroom_exercises
-    ALTER COLUMN simulation_version SET NOT NULL`;
-  await sql`ALTER TABLE classroom_exercises
-    ALTER COLUMN simulation_fingerprint SET NOT NULL`;
-
-  await sql`CREATE UNIQUE INDEX IF NOT EXISTS classroom_exercises_one_open_per_class_idx
-    ON classroom_exercises (class_id)
-    WHERE status <> 'completed'`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_exercises_class_history_idx
-    ON classroom_exercises (class_id, created_at DESC)`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_exercises_expiry_idx
-    ON classroom_exercises (expires_at)`;
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_exercise_releases (
-    exercise_id BIGINT NOT NULL REFERENCES classroom_exercises(id) ON DELETE CASCADE,
-    stage_id VARCHAR(80) NOT NULL,
-    content_id VARCHAR(80) NOT NULL,
-    released_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (exercise_id, stage_id, content_id)
-  )`;
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_exercise_workspace_state (
-    class_id BIGINT NOT NULL,
-    exercise_id BIGINT NOT NULL,
-    workspace_id BIGINT NOT NULL,
-    stage_id VARCHAR(80) NOT NULL,
-    ready_for_debrief BOOLEAN NOT NULL DEFAULT FALSE,
-    ready_at TIMESTAMPTZ,
-    ready_workspace_revision INTEGER CHECK (ready_workspace_revision IS NULL OR ready_workspace_revision > 0),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (exercise_id, workspace_id, stage_id),
-    FOREIGN KEY (class_id, exercise_id)
-      REFERENCES classroom_exercises(class_id, id)
-      ON DELETE CASCADE,
-    FOREIGN KEY (class_id, workspace_id)
-      REFERENCES classroom_workspaces(class_id, workspace_id)
-      ON DELETE CASCADE
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_exercise_workspace_state_class_idx
-    ON classroom_exercise_workspace_state (class_id, exercise_id, stage_id)`;
-
-  await sql`CREATE TABLE IF NOT EXISTS classroom_exercise_checkpoints (
-    class_id BIGINT NOT NULL,
-    exercise_id BIGINT NOT NULL,
-    stage_id VARCHAR(80) NOT NULL,
-    workspace_id BIGINT NOT NULL,
-    workspace_revision INTEGER NOT NULL CHECK (workspace_revision > 0),
-    snapshot JSONB NOT NULL,
-    captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (exercise_id, stage_id, workspace_id),
-    FOREIGN KEY (class_id, exercise_id)
-      REFERENCES classroom_exercises(class_id, id)
-      ON DELETE CASCADE,
-    FOREIGN KEY (class_id, workspace_id)
-      REFERENCES classroom_workspaces(class_id, workspace_id)
-      ON DELETE CASCADE
-  )`;
-  await sql`CREATE INDEX IF NOT EXISTS classroom_exercise_checkpoints_class_idx
-    ON classroom_exercise_checkpoints (class_id, exercise_id, stage_id)`;
+  const sql = await createSql();
+  await applySchema(sql, CLASSROOM_SCHEMA);
 
   async function classByInstructor(tokenHash) {
     const rows = await sql`SELECT id AS internal_id, public_id AS id, title,
@@ -423,17 +408,6 @@ async function initializeClassroomRepository() {
         joins_enabled AS "joinsEnabled", expires_at AS "expiresAt"
       FROM classroom_classes
       WHERE instructor_token_hash = ${tokenHash}
-        AND revoked_at IS NULL
-        AND expires_at > NOW()`;
-    return rows[0] || null;
-  }
-
-  async function classByJoin(tokenHash) {
-    const rows = await sql`SELECT id AS internal_id, public_id AS id, title,
-        joins_enabled AS "joinsEnabled", expires_at AS "expiresAt"
-      FROM classroom_classes
-      WHERE student_join_token_hash = ${tokenHash}
-        AND joins_enabled = TRUE
         AND revoked_at IS NULL
         AND expires_at > NOW()`;
     return rows[0] || null;
@@ -451,14 +425,13 @@ async function initializeClassroomRepository() {
   }
 
   return {
-    async createClass({ publicId, title, instructorHash, studentJoinHash, studentJoinCode = null, expiryDays }) {
+    async createClass({ publicId, title, instructorHash, studentJoinCode, expiryDays }) {
       const rows = await sql`INSERT INTO classroom_classes
-        (public_id, title, instructor_token_hash, student_join_token_hash, student_join_code, expires_at)
+        (public_id, title, instructor_token_hash, student_join_code, expires_at)
         VALUES (
           ${publicId}::uuid,
           ${title},
           ${instructorHash},
-          ${studentJoinHash},
           ${studentJoinCode},
           NOW() + (${expiryDays} * INTERVAL '1 day')
         )
@@ -660,7 +633,7 @@ async function initializeClassroomRepository() {
         SET workspace_id = ${nextWorkspaceInternalId},
             workspace_access_token_hash = NULL,
             assignment_revision = assignment_revision + 1,
-            assigned_at = CASE WHEN ${nextWorkspaceInternalId} IS NULL THEN NULL ELSE NOW() END,
+            assigned_at = CASE WHEN ${nextWorkspaceInternalId}::bigint IS NULL THEN NULL ELSE NOW() END,
             updated_at = NOW()
         WHERE class_id = ${classroom.internal_id}
           AND participant_id = ${participantId}::uuid
@@ -1312,7 +1285,7 @@ async function initializeClassroomRepository() {
           ${stageId},
           ${ready},
           CASE WHEN ${ready} THEN NOW() ELSE NULL END,
-          CASE WHEN ${ready} THEN ${workspaceRevision} ELSE NULL END
+          CASE WHEN ${ready} THEN ${workspaceRevision}::integer ELSE NULL END
         )
         ON CONFLICT (exercise_id, workspace_id, stage_id) DO UPDATE
         SET ready_for_debrief = EXCLUDED.ready_for_debrief,
@@ -1547,16 +1520,6 @@ async function initializeClassroomRepository() {
         : null;
     },
 
-    async rotateStudentJoin(instructorHash, nextHash) {
-      const rows = await sql`UPDATE classroom_classes
-        SET student_join_token_hash = ${nextHash}, updated_at = NOW()
-        WHERE instructor_token_hash = ${instructorHash}
-          AND revoked_at IS NULL
-          AND expires_at > NOW()
-        RETURNING public_id AS id, title, joins_enabled AS "joinsEnabled", expires_at AS "expiresAt"`;
-      return rows[0] || null;
-    },
-
     async rotateInstructor(instructorHash, nextHash) {
       const rows = await sql`UPDATE classroom_classes
         SET instructor_token_hash = ${nextHash}, updated_at = NOW()
@@ -1597,18 +1560,17 @@ async function initializeClassroomRepository() {
       return { id: rows[0].public_id };
     },
 
-    async addWorkspace(instructorHash, { publicId, workspaceId, kind, label, claimHash }) {
+    async addWorkspace(instructorHash, { publicId, workspaceId, kind, label }) {
       const classroom = await classByInstructor(instructorHash);
       if (!classroom) return null;
       const rows = await sql`INSERT INTO classroom_workspaces
-        (workspace_id, class_id, public_id, workspace_kind, label, claim_token_hash)
+        (workspace_id, class_id, public_id, workspace_kind, label)
         VALUES (
           ${workspaceId},
           ${classroom.internal_id},
           ${publicId}::uuid,
           ${kind},
-          ${label},
-          ${claimHash}
+          ${label}
         )
         RETURNING public_id AS id, workspace_kind AS kind, label, created_at AS "createdAt"`;
       return { classroom, workspace: rows[0] };
@@ -1622,10 +1584,7 @@ async function initializeClassroomRepository() {
           cw.workspace_kind AS kind,
           cw.label,
           cw.created_at AS "createdAt",
-          (
-            COUNT(DISTINCT cm.participant_id)
-            + COUNT(DISTINCT live_cp.participant_id)
-          )::int AS "participantCount",
+          COUNT(DISTINCT live_cp.participant_id)::int AS "participantCount",
           COUNT(DISTINCT cp.participant_id) FILTER (
             WHERE cp.last_seen_at >= NOW() - 30 * INTERVAL '1 second'
           )::int AS "activeParticipantCount",
@@ -1635,7 +1594,6 @@ async function initializeClassroomRepository() {
           )::int AS "editingParticipantCount",
           MAX(cp.last_seen_at) AS "lastSeenAt"
         FROM classroom_workspaces cw
-        LEFT JOIN classroom_memberships cm ON cm.workspace_id = cw.workspace_id
         LEFT JOIN classroom_participants live_cp
           ON live_cp.class_id = cw.class_id
           AND live_cp.workspace_id = cw.workspace_id
@@ -1787,7 +1745,7 @@ async function initializeClassroomRepository() {
     },
 
     async getStudentContext(accessHash) {
-      const liveRows = await sql`SELECT
+      const rows = await sql`SELECT
           c.id AS "classInternalId",
           c.public_id AS "classId",
           c.title AS "classTitle",
@@ -1813,31 +1771,7 @@ async function initializeClassroomRepository() {
           AND c.expires_at > NOW()
           AND cw.revoked_at IS NULL
           AND w.expires_at > NOW()`;
-      let scope = liveRows[0];
-
-      if (!scope) {
-        const legacyRows = await sql`SELECT
-            c.id AS "classInternalId",
-            c.public_id AS "classId",
-            c.title AS "classTitle",
-            c.expires_at AS "classExpiresAt",
-            cw.workspace_id AS "workspaceInternalId",
-            cw.public_id AS "workspaceId",
-            cw.workspace_kind AS "workspaceKind",
-            cw.label AS "workspaceLabel"
-          FROM classroom_memberships cm
-          JOIN classroom_classes c ON c.id = cm.class_id
-          JOIN classroom_workspaces cw
-            ON cw.class_id = cm.class_id AND cw.workspace_id = cm.workspace_id
-          JOIN collaboration_workspaces w ON w.id = cw.workspace_id
-          WHERE cm.access_token_hash = ${accessHash}
-            AND c.revoked_at IS NULL
-            AND c.expires_at > NOW()
-            AND cw.revoked_at IS NULL
-            AND w.expires_at > NOW()`;
-        scope = legacyRows[0];
-      }
-
+      const scope = rows[0];
       if (!scope) return null;
       return {
         classroom: { id: scope.classId, title: scope.classTitle, expiresAt: scope.classExpiresAt },
@@ -1868,106 +1802,7 @@ async function initializeClassroomRepository() {
         feedback
       };
     },
-    async rotateWorkspaceClaim(instructorHash, workspacePublicId, nextHash) {
-      const classroom = await classByInstructor(instructorHash);
-      if (!classroom) return null;
-      const rows = await sql`UPDATE classroom_workspaces
-        SET claim_token_hash = ${nextHash}, updated_at = NOW()
-        WHERE class_id = ${classroom.internal_id}
-          AND public_id = ${workspacePublicId}::uuid
-          AND revoked_at IS NULL
-        RETURNING public_id AS id, workspace_kind AS kind, label`;
-      return rows[0] ? { classroom, workspace: rows[0] } : null;
-    },
 
-    async revokeWorkspaceClaim(instructorHash, workspacePublicId) {
-      const classroom = await classByInstructor(instructorHash);
-      if (!classroom) return null;
-      const rows = await sql`UPDATE classroom_workspaces
-        SET revoked_at = NOW(), updated_at = NOW()
-        WHERE class_id = ${classroom.internal_id}
-          AND public_id = ${workspacePublicId}::uuid
-          AND revoked_at IS NULL
-        RETURNING workspace_id, public_id AS id`;
-      if (!rows[0]) return null;
-      await sql`UPDATE collaboration_workspaces
-        SET expires_at = NOW(), updated_at = NOW()
-        WHERE id = ${rows[0].workspace_id}`;
-      return { classroom, workspace: rows[0] };
-    },
-
-    async joinWorkspace({ studentJoinHash, claimHash, participantId, accessHash, workspaceRepository }) {
-      const classroom = await classByJoin(studentJoinHash);
-      if (!classroom) return null;
-
-      const assignments = await sql`SELECT
-          cw.workspace_id,
-          cw.public_id AS id,
-          cw.workspace_kind AS kind,
-          cw.label,
-          cw.individual_participant_id,
-          w.expires_at AS "expiresAt"
-        FROM classroom_workspaces cw
-        JOIN collaboration_workspaces w ON w.id = cw.workspace_id
-        WHERE cw.class_id = ${classroom.internal_id}
-          AND cw.claim_token_hash = ${claimHash}
-          AND cw.revoked_at IS NULL
-          AND w.expires_at > NOW()`;
-      const assignment = assignments[0];
-      if (!assignment) return null;
-
-      if (assignment.kind === 'individual') {
-        const claimed = await sql`UPDATE classroom_workspaces
-          SET individual_participant_id = COALESCE(individual_participant_id, ${participantId}::uuid),
-              updated_at = NOW()
-          WHERE workspace_id = ${assignment.workspace_id}
-            AND (individual_participant_id IS NULL OR individual_participant_id = ${participantId}::uuid)
-          RETURNING workspace_id`;
-        if (!claimed[0]) return null;
-      }
-
-      const previous = await sql`SELECT access_token_hash
-        FROM classroom_memberships
-        WHERE class_id = ${classroom.internal_id}
-          AND participant_id = ${participantId}::uuid`;
-
-      const capabilityCreated = await workspaceRepository.createCapability(
-        assignment.workspace_id,
-        accessHash,
-        CLASSROOM_STUDENT_CAPABILITY_KIND,
-        classroom.expiresAt
-      );
-      if (!capabilityCreated) {
-        throw new Error('Unable to create student workspace capability');
-      }
-
-      await sql`INSERT INTO classroom_memberships
-        (class_id, workspace_id, participant_id, access_token_hash)
-        VALUES (
-          ${classroom.internal_id},
-          ${assignment.workspace_id},
-          ${participantId}::uuid,
-          ${accessHash}
-        )
-        ON CONFLICT (class_id, participant_id) DO UPDATE
-        SET workspace_id = EXCLUDED.workspace_id,
-            access_token_hash = EXCLUDED.access_token_hash,
-            updated_at = NOW()`;
-
-      if (previous[0]?.access_token_hash && previous[0].access_token_hash !== accessHash) {
-        await workspaceRepository.revokeCapability(previous[0].access_token_hash);
-      }
-
-      return {
-        classroom,
-        workspace: {
-          id: assignment.id,
-          kind: assignment.kind,
-          label: assignment.label,
-          expiresAt: assignment.expiresAt
-        }
-      };
-    }
   };
 }
 
@@ -2028,8 +1863,10 @@ function requireBearer(req) {
 /**
  * Create the class create/admin handler.
  *
- * POST creates a class and returns raw instructor + student-join capabilities
- * once. GET/PATCH/DELETE require the instructor capability.
+ * POST creates a class and returns the raw Instructor capability plus the
+ * human Student join code. POST is rate-limited per client address and
+ * requires the shared class-creation password (`classPassword`, see
+ * api/_rateLimit.js). GET/PATCH/DELETE require the Instructor capability.
  *
  * @param {object} [dependencies] - Injectable dependencies.
  * @returns {Function} Vercel handler.
@@ -2038,7 +1875,8 @@ export function classHandler({
   getRepository = getClassroomRepository,
   tokenFactory = generateWorkspaceToken,
   joinCodeFactory = generateClassJoinCode,
-  idFactory = randomUUID
+  idFactory = randomUUID,
+  rateLimiter = undefined
 } = {}) {
   return async (req, res) => {
     if (!['POST', 'GET', 'PATCH', 'DELETE'].includes(req.method)) {
@@ -2047,26 +1885,28 @@ export function classHandler({
 
     try {
       if (req.method === 'POST') {
+        const limited = await checkRateLimit(req, 'class-create', rateLimiter);
+        if (!limited.allowed) return sendRateLimited(res, limited.retryAfterSeconds);
+        if (!classCreationPasswordMatches(req.body?.classPassword)) {
+          return send(res, 403, { error: 'The class password is incorrect.', code: 'class-password-invalid' });
+        }
         const title = normalizeClassroomLabel(req.body?.title, CLASS_TITLE_MAX_LENGTH);
         if (!title) return send(res, 400, { error: 'Invalid class title.' });
 
         const repository = await getRepository();
         const instructorToken = tokenFactory();
-        const studentJoinToken = tokenFactory();
         const joinCode = normalizeClassJoinCode(joinCodeFactory());
         if (!joinCode) throw new Error('Join-code generator returned an invalid code');
         const classroom = await repository.createClass({
           publicId: idFactory(),
           title,
           instructorHash: hashWorkspaceToken(instructorToken),
-          studentJoinHash: hashWorkspaceToken(studentJoinToken),
           studentJoinCode: joinCode,
           expiryDays: getClassExpiryDays()
         });
         return send(res, 201, {
           class: classroom,
           instructorToken,
-          studentJoinToken,
           joinCode: formatClassJoinCode(joinCode)
         });
       }
@@ -2096,16 +1936,6 @@ export function classHandler({
       }
 
       const action = req.body?.action;
-      if (action === 'rotate-student-join') {
-        const studentJoinToken = tokenFactory();
-        const classroom = await repository.rotateStudentJoin(
-          instructorHash,
-          hashWorkspaceToken(studentJoinToken)
-        );
-        return classroom
-          ? send(res, 200, { class: classroom, studentJoinToken })
-          : send(res, 404, { error: 'Class not found.' });
-      }
       if (action === 'rotate-instructor') {
         const instructorToken = tokenFactory();
         const classroom = await repository.rotateInstructor(
@@ -2145,8 +1975,8 @@ export function classWorkspacesHandler({
   idFactory = randomUUID
 } = {}) {
   return async (req, res) => {
-    if (!['GET', 'POST', 'PATCH'].includes(req.method)) {
-      return methodNotAllowed(res, 'GET, POST, PATCH');
+    if (!['GET', 'POST'].includes(req.method)) {
+      return methodNotAllowed(res, 'GET, POST');
     }
     const authorization = requireBearer(req);
     if (!authorization.ok) {
@@ -2163,31 +1993,6 @@ export function classWorkspacesHandler({
         return result
           ? send(res, 200, { class: result.classroom, workspaces: result.workspaces })
           : send(res, 404, { error: 'Class not found.' });
-      }
-
-      if (req.method === 'PATCH') {
-        const workspaceId = req.body?.workspaceId;
-        if (!validateClassroomId(workspaceId)) {
-          return send(res, 400, { error: 'Invalid workspace.' });
-        }
-        if (req.body?.action === 'rotate-assignment') {
-          const assignmentToken = tokenFactory();
-          const result = await repository.rotateWorkspaceClaim(
-            instructorHash,
-            workspaceId,
-            hashWorkspaceToken(assignmentToken)
-          );
-          return result
-            ? send(res, 200, { workspace: result.workspace, assignmentToken })
-            : send(res, 404, { error: 'Workspace not found.' });
-        }
-        if (req.body?.action === 'revoke-assignment') {
-          const result = await repository.revokeWorkspaceClaim(instructorHash, workspaceId);
-          return result
-            ? send(res, 200, { revoked: true, workspaceId: result.workspace.id })
-            : send(res, 404, { error: 'Workspace not found.' });
-        }
-        return send(res, 400, { error: 'Invalid workspace action.' });
       }
 
       const kind = normalizeClassroomWorkspaceKind(req.body?.kind);
@@ -2207,7 +2012,6 @@ export function classWorkspacesHandler({
 
       const workspaceRepository = await getWorkspaceRepo();
       const workspaceToken = tokenFactory();
-      const assignmentToken = tokenFactory();
       const workspace = await workspaceRepository.createUntil(
         hashWorkspaceToken(workspaceToken),
         snapshot,
@@ -2218,8 +2022,7 @@ export function classWorkspacesHandler({
         publicId: idFactory(),
         workspaceId: workspace.id,
         kind,
-        label,
-        claimHash: hashWorkspaceToken(assignmentToken)
+        label
       });
       if (!result) {
         return send(res, 404, { error: 'Class not found.' });
@@ -2230,8 +2033,7 @@ export function classWorkspacesHandler({
           ...result.workspace,
           revision: workspace.revision,
           expiresAt: workspace.expires_at
-        },
-        assignmentToken
+        }
       });
     } catch {
       return send(res, 500, { error: 'Unable to access class workspaces.' });
@@ -2500,10 +2302,13 @@ export function classStudentCoachingHandler({ getRepository = getClassroomReposi
  */
 export function classAdmitHandler({
   getRepository = getClassroomRepository,
-  tokenFactory = generateWorkspaceToken
+  tokenFactory = generateWorkspaceToken,
+  rateLimiter = undefined
 } = {}) {
   return async (req, res) => {
     if (req.method !== 'POST') return methodNotAllowed(res, 'POST');
+    const limited = await checkRateLimit(req, 'class-admit', rateLimiter);
+    if (!limited.allowed) return sendRateLimited(res, limited.retryAfterSeconds);
 
     const joinCode = normalizeClassJoinCode(req.body?.joinCode);
     const participantId = req.body?.participantId;
@@ -2679,88 +2484,6 @@ export function classStudentAccessHandler({
       });
     } catch {
       return send(res, 500, { error: 'Unable to issue Student workspace access.' });
-    }
-  };
-}
-
-/**
- * Create the student class-join handler.
- *
- * The shared class join capability never enumerates workspaces. A join succeeds
- * only when paired with a separate assignment capability for the same class.
- * The response issues a per-participant workspace capability that is accepted
- * by the existing collaboration session/presence endpoints.
- *
- * @param {object} [dependencies] - Injectable dependencies.
- * @returns {Function} Vercel handler.
- */
-export function classJoinHandler({
-  getRepository = getClassroomRepository,
-  getWorkspaceRepo = getWorkspaceRepository,
-  tokenFactory = generateWorkspaceToken
-} = {}) {
-  return async (req, res) => {
-    if (req.method !== 'POST') {
-      return methodNotAllowed(res, 'POST');
-    }
-    const authorization = requireBearer(req);
-    if (!authorization.ok) {
-      return send(res, authorization.status, { error: authorization.error });
-    }
-
-    const participantId = req.body?.participantId;
-    const displayName = normalizeCollaborationName(
-      req.body?.displayName,
-      DISPLAY_NAME_MAX_LENGTH
-    );
-    const assignmentToken = req.body?.assignmentToken;
-
-    if (
-      !validateParticipantId(participantId)
-      || displayName === null
-      || !validateToken(assignmentToken)
-    ) {
-      return send(res, 400, { error: 'Invalid class join request.' });
-    }
-
-    try {
-      const repository = await getRepository();
-      const workspaceRepository = await getWorkspaceRepo();
-      const workspaceToken = tokenFactory();
-      const result = await repository.joinWorkspace({
-        studentJoinHash: hashWorkspaceToken(authorization.token),
-        claimHash: hashWorkspaceToken(assignmentToken),
-        participantId,
-        accessHash: hashWorkspaceToken(workspaceToken),
-        workspaceRepository
-      });
-
-      if (!result) {
-        // Deliberately generic: do not reveal whether the class or assignment exists.
-        return send(res, 404, { error: 'Class assignment not found.' });
-      }
-
-      const presence = await workspaceRepository.upsertPresence(
-        hashWorkspaceToken(workspaceToken),
-        participantId,
-        displayName
-      );
-      if (!presence) {
-        throw new Error('Joined classroom workspace could not register presence');
-      }
-
-      return send(res, 200, {
-        class: {
-          id: result.classroom.id,
-          title: result.classroom.title,
-          expiresAt: result.classroom.expiresAt
-        },
-        workspace: result.workspace,
-        workspaceToken,
-        ...presence
-      });
-    } catch {
-      return send(res, 500, { error: 'Unable to join class workspace.' });
     }
   };
 }

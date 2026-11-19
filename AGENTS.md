@@ -7,13 +7,17 @@ This file applies to the entire repository unless a more specific `AGENTS.md` fi
 Before editing code in a new human or AI session:
 
 1. Refresh repository state and confirm the current `main` HEAD, active branch, relevant open PR/issue, and recent commits. Never trust branch or PR state remembered from another chat.
-2. Read this file, then every scoped `AGENTS.md` that governs files you expect to touch.
-3. For architecture, persistence, API, CI, deployment, or security work, also read `docs/AI-ONBOARDING.md` and `docs/REPOSITORY-OPERATIONS.md`.
-4. Run `npm ci` after cloning/dependency changes and use `npm run quality` as the canonical definition of repository health.
-5. Work on a short-lived branch and pull request. Do not modify `main` directly.
-6. Before coding, identify the repository invariants affected. Before handoff, state what changed, what passed, what was manually verified, and any external setting that still needs human action.
+2. Read `STATUS.md` — the single live status document (current phase, active work, blockers, next action).
+3. Read this file, then every scoped `AGENTS.md` that governs files you expect to touch.
+4. Open the matching playbook in `docs/playbooks/` (cold start, Classroom change, API change, persisted field, release/verify). Each playbook names the contract documents you actually need, so you do not have to read every contract up front.
+5. For architecture, persistence, API, CI, deployment, or security work, also read `docs/AI-ONBOARDING.md` and `docs/REPOSITORY-OPERATIONS.md`.
+6. Run `npm ci` after cloning/dependency changes and use `npm run quality` as the canonical definition of repository health.
+7. Work on a short-lived branch and pull request. Do not modify `main` directly.
+8. Before coding, identify the repository invariants affected. Before handoff, state what changed, what passed, what was manually verified, and any external setting that still needs human action.
 
 If code and documentation disagree, treat the contradiction as part of the task: verify current behaviour and update the stale documentation in the same PR.
+
+**Documentation layers.** `STATUS.md` says where things stand (only place for status). `docs/*.md` contracts say how things work and which invariants hold. `docs/playbooks/` says how to do recurring tasks. `docs/archive/` keeps delivery history verbatim — move history there, never delete it. `npm run repo:doctor` rejects status claims outside `STATUS.md`/archive and backticked file paths that no longer exist.
 
 
 ## Delivery-Resilient AI Work
@@ -23,13 +27,13 @@ Long AI sessions must assume that a tool call, response delivery, or conversatio
 - Split broad implementation into **durable checkpoints** that can be understood and validated independently: for example server/API, domain registry, client UI, tests, documentation, and final CI/review.
 - Commit each meaningful checkpoint before beginning the next risky or wide change. Do not accumulate a large multi-concern change only in chat/tool state.
 - Prefer several small repository mutations over one very large orchestration call that rewrites many unrelated files at once.
-- After every meaningful checkpoint, update the relevant workstream/restart document with the branch, HEAD SHA, what is complete, what is intentionally incomplete, and the exact next action.
+- After every meaningful checkpoint, update `STATUS.md` (see `docs/playbooks/status-update.md`) with the branch, HEAD SHA, what is complete, what is intentionally incomplete, and the exact next action.
 - Open or update the implementation PR early. The PR body should explain architecture, invariants, checkpoints, validation, rollback, and cold-restart instructions while work is still in progress.
 - Keep user-facing progress messages concise. Large logs, diffs, test output, and detailed implementation state belong in the repository/PR rather than one giant chat response.
 - Before a potentially long validation/review phase, ensure the latest implementation is already committed and restart documentation is current.
 - Keep each AI work slice small enough to finish, checkpoint, and report independently. When a known slow or externally observable gate would mostly consume chat/context waiting, stop after the durable checkpoint and hand the exact pending check to the human for manual confirmation rather than burning the session on passive polling.
 - A manual gate handoff is valid only when the exact branch/HEAD is committed, the command/check and expected success condition are recorded, no further mutation depends on an unverified result, and the next AI session re-verifies repository state before continuing.
-- If message delivery or a tool call times out, **do not reconstruct from memory or blindly repeat mutations**. First inspect the branch HEAD, PR, issue, and restart ledger; determine what actually persisted; continue from that verified state.
+- If message delivery or a tool call times out, **do not reconstruct from memory or blindly repeat mutations**. First inspect the branch HEAD, PR, issue, and `STATUS.md`; determine what actually persisted; continue from that verified state.
 - If a batch fails before writing, explicitly verify that the branch HEAD is unchanged before retrying in a smaller batch.
 - A cold AI should be able to resume from GitHub without needing prior chat history. If it cannot, documentation/checkpointing is incomplete.
 
@@ -37,11 +41,12 @@ See `docs/REPOSITORY-OPERATIONS.md#delivery-resilience-for-ai-assisted-work` for
 
 ## Long-running Classroom Program
 
-The Standalone / Student / Instructor program is tracked by #288. Any work touching experience roles, classes, classroom workspaces, instructor observation, coaching, or protected Case Studies must read `docs/classroom-architecture.md`, `docs/classroom-roadmap.md`, and `docs/classroom-workstream.md` before editing. Class/API authorization work must additionally read `docs/classroom-api.md` and `api/AGENTS.md`. Staged exercise/debrief work under #313 must also read `docs/classroom-staged-simulation.md`. Work on universal Intake target identity, dynamic coaching targets, staged `intakeTargetIds`, or #319 debrief comparison must also read `docs/intake-target-identity.md`; that contract forbids template IDs and DOM selectors from becoming semantic target identity. Work on #328–#330, legacy credential/save cleanup, Administration/Maintenance, retention/purge behavior, or startup/resume routing must also read `docs/preproduction-hardening.md`; until #328 lands, legacy-path documentation may describe current runtime behavior even though the approved target is to remove that compatibility before public production.
+The Standalone / Student / Instructor program is tracked by #288. Any work touching experience roles, classes, classroom workspaces, instructor observation, coaching, or protected Case Studies must read `STATUS.md`, `docs/playbooks/classroom-change.md`, and `docs/classroom-architecture.md` before editing (the playbook's read map lists which further contract applies). Class/API authorization work must additionally read `docs/classroom-api.md` and `api/AGENTS.md`. Staged exercise/debrief work under #313 must also read `docs/classroom-staged-simulation.md`. Work on universal Intake target identity, dynamic coaching targets, staged `intakeTargetIds`, or #319 debrief comparison must also read `docs/intake-target-identity.md`; that contract forbids template IDs and DOM selectors from becoming semantic target identity. Work on #328–#330, legacy credential/save cleanup, Administration/Maintenance, retention/purge behavior, or startup/resume routing must also read `docs/preproduction-hardening.md`. Work on #329, `/api/admin`, `INTAKE_ADMIN_TOKEN`, maintenance inventory, Instructor recovery, or physical purge must additionally read `docs/admin-maintenance.md`; Admin is not an experience role and destructive cleanup remains preview-first.
 
 Classroom invariants:
 
 - experience role (`standalone | student | instructor`) is independent from intake mode and template kind;
+- startup intent is explicit: `kt-experience-role-v1` is last-choice metadata only; substantive saved Intake, Student resume, and Instructor resume remain separate Continue contexts, and only explicit `?workspace=` Standalone authority bypasses the startup hub;
 - experience/class/session state never enters `kt-intake-full-v2`, exported Intake files, summaries, or curated Intake payloads;
 - Standalone remains backend-optional;
 - Student/team editing reuses the existing collaboration snapshot/revision/presence engine;
@@ -49,11 +54,11 @@ Classroom invariants:
 - coaching uses separate persistence/revision semantics;
 - student credentials never provide class/workspace enumeration;
 - Case Study unlock passwords are pedagogy, not authentication;
-- protected Case Study metadata/payloads are server-gated, absent from public browser/static assets, and authored `templates/*.json` remains excluded from Vercel deployment; `src/templates.manifest.js` is Standard-only and browser code must never import `api/protected-case-studies.manifest.js`.
+- protected Case Study metadata/payloads are server-gated, absent from public browser/static assets, and authored `templates/*.json` remains excluded from Vercel deployment; `src/templates.manifest.js` is Standard-only except for the TEMPORARY Standalone Case Study allowlist in `scripts/standalone-public-case-studies.mjs` (see `templates/AGENTS.md`), and browser code must never import `api/protected-case-studies.manifest.js`.
 - staged simulation content follows `docs/classroom-staged-simulation.md`: future-stage and Instructor-only material are server-withheld, complete protected Case Study `state` cannot bypass an active staged release, and exercise/checkpoint state never enters Intake serialization;
 - public Vercel static output comes only from generated `dist/`; never set `outputDirectory` back to `.` or otherwise expose repository docs/tests/scripts/AGENTS/authoring files. `scripts/build-vercel-public.mjs` owns the allowlisted browser bundle and is part of the canonical quality gate.
 
-Every classroom PR must update `docs/classroom-workstream.md` before handoff with its issue, PR/base dependency, current HEAD, completed/incomplete work, validation, risks, and exact next action. For stacked PRs, state the merge order and never describe an unmerged dependent PR as independently mergeable.
+Every classroom PR must update `STATUS.md` before handoff with its issue, PR/base dependency, current HEAD, completed/incomplete work, validation, risks, and exact next action. For stacked PRs, state the merge order and never describe an unmerged dependent PR as independently mergeable.
 
 ## UI/UX Principles
 - **Apple-like spacing:** Use generous whitespace, especially around sections, cards, and form controls. Maintain consistent padding and margins (e.g., multiples of 8px) to create a calm, breathable layout.

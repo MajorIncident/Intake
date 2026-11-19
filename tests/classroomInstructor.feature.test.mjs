@@ -8,7 +8,9 @@ import { JSDOM } from 'jsdom';
 
 import {
   INSTRUCTOR_SESSION_STORAGE_KEY,
-  createInstructorClassroomController
+  INSTRUCTOR_SESSION_VERSION,
+  createInstructorClassroomController,
+  persistInstructorSession
 } from '../src/classroomInstructor.js';
 import {
   applyExperienceRole,
@@ -93,7 +95,9 @@ function setup(fetchImpl, {
   onObservationEnd = () => {},
   onClassConnected = () => {},
   onClassDisconnected = () => {},
-  mobile = false
+  mobile = false,
+  savedSession = true,
+  confirmImpl = undefined
 } = {}) {
   dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
   if (mobile) {
@@ -105,12 +109,27 @@ function setup(fetchImpl, {
     });
   }
   persistExperienceRolePreference(EXPERIENCE_ROLE_IDS.INSTRUCTOR, dom.window.localStorage);
+  if (savedSession) {
+    persistInstructorSession(dom.window.localStorage, {
+      version: INSTRUCTOR_SESSION_VERSION,
+      instructorToken: TOKEN,
+      joinCode: 'K7FM-P4Q2',
+      class: {
+        id: 'class-1',
+        title: 'Problem Solving 101',
+        expiresAt: '2099-01-01T00:00:00Z'
+      },
+      selectedWorkspaceId: W1,
+      openedAt: '2026-10-01T00:00:00Z'
+    });
+  }
   initExperienceRoleController({
     documentRef: dom.window.document,
     windowRef: dom.window,
     storage: dom.window.localStorage,
     location: dom.window.location
   });
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.INSTRUCTOR, { persist: false, announce: false });
 
   dom.window.document.getElementById('oneLine').value = 'Local before observation';
   dom.window.localStorage.setItem('sentinel', 'keep-me');
@@ -143,6 +162,7 @@ function setup(fetchImpl, {
     onObservationEnd,
     onClassConnected,
     onClassDisconnected,
+    ...(confirmImpl ? { confirmImpl } : {}),
     setTimeoutImpl: fn => {
       calls.timers.push(fn);
       return calls.timers.length;
@@ -171,7 +191,7 @@ test('Instructor class rail defaults collapsed on mobile and remains explicitly 
     return response(404, {});
   }, { mobile: true });
 
-  await env.controller.openClass(TOKEN);
+  await settle();
 
   const dashboard = dom.window.document.getElementById('instructorClassDashboard');
   const toggle = dom.window.document.getElementById('instructorClassPanelToggle');
@@ -207,7 +227,7 @@ test('Instructor Share class copies a fragment-only join URL without forwarding 
     value: { writeText: async value => copied.push(value) }
   });
 
-  await env.controller.openClass(TOKEN);
+  await settle();
   dom.window.history.replaceState(null, '', '/?workspace=must-not-leak');
 
   assert.equal(await env.controller.shareClass(), true);
@@ -238,7 +258,7 @@ test('Instructor Share class prefers native Web Share with the same safe human-c
     value: { writeText: async value => copied.push(value) }
   });
 
-  await env.controller.openClass(TOKEN);
+  await settle();
   dom.window.history.replaceState(null, '', '/?workspace=must-not-leak');
 
   assert.equal(await env.controller.shareClass(), true);
@@ -262,7 +282,7 @@ test('Instructor QR panel renders the safe join URL locally without exposing it 
     return response(404, {});
   });
 
-  await env.controller.openClass(TOKEN);
+  await settle();
   dom.window.history.replaceState(null, '', '/?workspace=must-not-leak');
 
   assert.equal(env.controller.toggleJoinQr(), true);
@@ -290,7 +310,7 @@ test('Instructor QR panel renders the safe join URL locally without exposing it 
   env.controller.destroy();
 });
 
-test('Instructor opens one class, renders roster, and observes through the GET-only class endpoint', async () => {
+test('Instructor resumes one saved class, renders roster, and observes through the GET-only class endpoint', async () => {
   const requests = [];
   const env = setup(async (url, options) => {
     requests.push([url, options]);
@@ -300,7 +320,7 @@ test('Instructor opens one class, renders roster, and observes through the GET-o
     return response(404, {});
   });
 
-  await env.controller.openClass(TOKEN);
+  await settle();
 
   const stored = JSON.parse(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY));
   assert.equal(stored.instructorToken, TOKEN);
@@ -343,7 +363,6 @@ test('Instructor starts a live class, creates a team, and assigns a waiting Stud
           expiresAt: '2099-01-01T00:00:00Z'
         },
         instructorToken: TOKEN,
-        studentJoinToken: 'j'.repeat(43),
         joinCode: 'K7FM-P4Q2'
       });
     }
@@ -375,7 +394,7 @@ test('Instructor starts a live class, creates a team, and assigns a waiting Stud
         editingParticipantCount: 0
       };
       workspaces.push(workspace);
-      return response(201, { workspace, assignmentToken: 'x'.repeat(43) });
+      return response(201, { workspace });
     }
     if (url === '/api/classes/participants' && options.method === 'PATCH') {
       const body = JSON.parse(options.body);
@@ -406,9 +425,11 @@ test('Instructor starts a live class, creates a team, and assigns a waiting Stud
       });
     }
     return response(404, {});
-  });
+  }, { savedSession: false });
 
-  assert.equal(await env.controller.startClass('Live PSDM Class'), true);
+  assert.equal(await env.controller.startClass('Live PSDM Class', ' kepnertregoe '), true);
+  const classCreateRequest = requests.find(([url, options]) => url === '/api/classes' && options.method === 'POST');
+  assert.deepEqual(JSON.parse(classCreateRequest[1].body), { title: 'Live PSDM Class', classPassword: 'kepnertregoe' });
   assert.equal(dom.window.document.getElementById('instructorClassTitle').textContent, 'Live PSDM Class');
   assert.equal(dom.window.document.getElementById('instructorJoinCode').textContent, 'K7FM-P4Q2');
   assert.equal(dom.window.document.getElementById('instructorParticipantSummary').textContent, '1 student · 1 waiting');
@@ -417,6 +438,7 @@ test('Instructor starts a live class, creates a team, and assigns a waiting Stud
   assert.equal(stored.instructorToken, TOKEN);
   assert.equal(stored.joinCode, 'K7FM-P4Q2');
   assert.equal(JSON.stringify(stored).includes('studentJoinToken'), false);
+  assert.equal(JSON.stringify(stored).toLowerCase().includes('kepnertregoe'), false, 'class password is never persisted');
 
   assert.equal(await env.controller.createWorkspace('group', 'Team Alpha'), true);
   assert.equal(dom.window.document.querySelectorAll('.instructor-workspace-item').length, 1);
@@ -465,7 +487,6 @@ test('rapid Instructor workspace switching aborts/stales the previous observer a
     return response(404, {});
   });
 
-  const opening = env.controller.openClass(TOKEN);
   await settle();
   await env.controller.selectWorkspace(W2);
 
@@ -474,7 +495,7 @@ test('rapid Instructor workspace switching aborts/stales the previous observer a
   assert.equal(env.controller.getState().selectedWorkspaceId, W2);
 
   resolveFirst(response(200, observeBody(W1, 'First')));
-  await opening;
+  await settle();
   assert.equal(dom.window.document.getElementById('oneLine').value, 'Second');
 });
 
@@ -485,7 +506,7 @@ test('Instructor search and kind filter narrow the roster without changing autho
     if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
     return response(404, {});
   });
-  await env.controller.openClass(TOKEN);
+  await settle();
 
   const search = dom.window.document.getElementById('instructorWorkspaceSearch');
   search.value = 'beta';
@@ -509,7 +530,7 @@ test('switching away from Instructor restores local Intake and keeps same-device
     if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
     return response(404, {});
   });
-  await env.controller.openClass(TOKEN);
+  await settle();
 
   applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
   await settle();
@@ -527,7 +548,7 @@ test('Leave class clears Instructor resume and restores local Intake', async () 
     if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
     return response(404, {});
   });
-  await env.controller.openClass(TOKEN);
+  await settle();
 
   assert.equal(env.controller.leaveClass(), true);
   assert.equal(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY), null);
@@ -542,7 +563,7 @@ test('revoked Instructor access clears saved resume instead of falling back to e
     return response(500, {});
   });
 
-  assert.equal(await env.controller.openClass(TOKEN), false);
+  await settle();
   assert.equal(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY), null);
   assert.match(dom.window.document.getElementById('instructorClassError').textContent, /not accepted|expired/i);
 });
@@ -561,7 +582,7 @@ test('Instructor observer lifecycle emits coaching integration hooks without gra
     onObservationEnd: () => { ended += 1; }
   });
 
-  await env.controller.openClass(TOKEN);
+  await settle();
 
   assert.deepEqual(observed.at(-1), {
     instructorToken: TOKEN,
@@ -588,7 +609,7 @@ test('Instructor class lifecycle exposes protected-resource capability hooks', a
     onClassDisconnected: () => { disconnected += 1; }
   });
 
-  await env.controller.openClass(TOKEN);
+  await settle();
   assert.deepEqual(connected, [TOKEN]);
 
   applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
@@ -622,7 +643,7 @@ test('Instructor checkpoint view pauses live observation and returns explicitly 
     onObservationEnd: () => { ended += 1; }
   });
 
-  await env.controller.openClass(TOKEN);
+  await settle();
   assert.equal(dom.window.document.getElementById('oneLine').value, 'First');
   assert.equal(dom.window.document.getElementById('instructorObservationLiveBtn').hidden, true);
 
@@ -682,7 +703,7 @@ test('Instructor observer keeps debrief comparison controls interactive while In
     return response(404, {});
   });
 
-  await env.controller.openClass(TOKEN);
+  await settle();
 
   const oneLine = dom.window.document.getElementById('oneLine');
   const target = dom.window.document.getElementById('instructorDebriefTargetSelect');
@@ -696,4 +717,79 @@ test('Instructor observer keeps debrief comparison controls interactive while In
   assert.equal(refresh.hasAttribute('data-instructor-readonly-control'), false);
 
   env.controller.destroy();
+});
+
+test('Start class requires the class password and explains a rejected one', async () => {
+  const requests = [];
+  const env = setup(async (url, options = {}) => {
+    requests.push([url, options]);
+    if (url === '/api/classes' && options.method === 'POST') {
+      return response(403, { error: 'The class password is incorrect.', code: 'class-password-invalid' });
+    }
+    return response(404, {});
+  }, { savedSession: false });
+
+  assert.equal(await env.controller.startClass('Live PSDM Class', ''), false);
+  assert.equal(requests.length, 0, 'no request without a password');
+  assert.match(dom.window.document.getElementById('instructorClassError').textContent, /class password/i);
+
+  assert.equal(await env.controller.startClass('Live PSDM Class', 'guess'), false);
+  assert.match(dom.window.document.getElementById('instructorClassError').textContent, /not correct/);
+  assert.equal(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY), null);
+});
+
+test('Leave class asks first, explains the class keeps running, and keeps the session when cancelled', async () => {
+  const prompts = [];
+  let answer = false;
+  const env = setup(async url => {
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  }, { confirmImpl: message => { prompts.push(message); return answer; } });
+  await settle();
+
+  assert.equal(env.controller.requestLeaveClass(), false);
+  assert.notEqual(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY), null, 'cancel keeps the Instructor credential');
+  assert.match(prompts[0], /keeps running/);
+  assert.match(prompts[0], /administrator/);
+  assert.match(prompts[0], /End class/);
+
+  answer = true;
+  dom.window.document.getElementById('instructorClassLeaveBtn').click();
+  assert.equal(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY), null);
+  assert.equal(prompts.length, 2);
+});
+
+test('End class revokes the class on the server for everyone before clearing this device', async () => {
+  const requests = [];
+  let answer = false;
+  let deleteStatus = 500;
+  const env = setup(async (url, options = {}) => {
+    requests.push([url, options]);
+    if (url === '/api/classes' && options.method === 'DELETE') {
+      return response(deleteStatus, deleteStatus === 200 ? { revoked: true, classId: 'class-1' } : { error: 'Unable to access class.' });
+    }
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  }, { confirmImpl: message => { assert.match(message, /for everyone/); return answer; } });
+  await settle();
+
+  assert.equal(await env.controller.endClass(), false);
+  assert.equal(requests.some(([url, options]) => url === '/api/classes' && options.method === 'DELETE'), false, 'no request without confirmation');
+
+  answer = true;
+  assert.equal(await env.controller.endClass(), false, 'server failure keeps the class and the credential');
+  assert.notEqual(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY), null);
+  assert.match(dom.window.document.getElementById('instructorClassError').textContent, /Unable to access class|Could not end/);
+
+  deleteStatus = 200;
+  assert.equal(await env.controller.endClass(), true);
+  const deleteRequest = requests.filter(([url, options]) => url === '/api/classes' && options.method === 'DELETE').at(-1);
+  assert.equal(deleteRequest[1].headers.Authorization, 'Bearer ' + TOKEN);
+  assert.equal(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY), null);
+  assert.equal(dom.window.document.getElementById('oneLine').value, 'Local before observation');
+  assert.match(env.calls.toasts.at(-1), /Ended/);
 });

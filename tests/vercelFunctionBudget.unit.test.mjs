@@ -13,7 +13,6 @@ import {
 const EXPECTED_CLASSROOM_REWRITES = Object.freeze({
   '/api/classes': 'root',
   '/api/classes/admit': 'admit',
-  '/api/classes/join': 'join',
   '/api/classes/participants': 'participants',
   '/api/classes/student': 'student',
   '/api/classes/student/access': 'student-access',
@@ -72,6 +71,7 @@ test('repository stays below the conservative Vercel Hobby function budget', asy
   const candidates = await listVercelFunctionCandidates('api');
   assert.equal(candidates.length <= VERCEL_HOBBY_FUNCTION_LIMIT, true);
   assert.deepEqual(candidates, [
+    'api/admin.js',
     'api/classroom.js',
     'api/protected-case-studies.manifest.js',
     'api/workspaces/index.js',

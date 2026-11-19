@@ -31,6 +31,18 @@ test('returns prompt when all hypothesis fields are empty', async () => {
   assert.equal(result, 'Add suspect, accusation, and impact to craft a strong hypothesis.');
 });
 
+test('ignores retired hypothesis and summary fallback fields', async () => {
+  const sentenceBuilder = await loadKtModule();
+  const result = sentenceBuilder({
+    hypothesis: 'Retired hypothesis text',
+    summary: 'Retired summary text',
+    suspect: '',
+    accusation: '',
+    impact: ''
+  });
+  assert.equal(result, 'Add suspect, accusation, and impact to craft a strong hypothesis.');
+});
+
 test('smoothly handles gerunds for accusation and impact', async () => {
   const sentenceBuilder = await loadKtModule();
   const result = sentenceBuilder({

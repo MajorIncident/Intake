@@ -1195,15 +1195,6 @@ export function buildHypothesisSentence(cause){
   if(stored){
     return stored;
   }
-  const legacy = typeof cause.hypothesis === 'string' ? cause.hypothesis.trim() : '';
-  if(legacy){
-    return legacy;
-  }
-  const legacySummary = typeof cause.summary === 'string' ? cause.summary.trim() : '';
-  if(legacySummary){
-    return legacySummary;
-  }
-
   const suspectClean = trimValue(cause.suspect);
   const accusationClean = trimValue(cause.accusation);
   const impactClean = trimValue(cause.impact);

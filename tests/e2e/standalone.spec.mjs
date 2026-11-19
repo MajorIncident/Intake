@@ -59,15 +59,24 @@ test('Standalone input generates a summary and survives a real browser reload', 
 
   await page.reload();
 
+  await expect(page.locator('#experienceRoleGate')).toBeVisible();
+  await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'unselected');
+  await expect(page.locator('[data-startup-resume="intake"]')).toContainText('Continue your saved Intake');
+  await page.locator('[data-startup-resume="intake"]').click();
+
   await expect(page.locator('#experienceRoleGate')).toBeHidden();
   await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'standalone');
   await expect(page.locator('#oneLine')).toHaveValue(problem);
   expect(pageErrors).toEqual([]);
 });
 
-test('Standalone resource drawer exposes public Templates only and remains accessible', async ({ page }, testInfo) => {
+test('Work independently drawer offers Templates and the temporary Case Studies, and applies Microcomputer Cabinets without a class', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop resource-menu journey; mobile navigation is covered separately.');
   const pageErrors = watchPageErrors(page);
+  const classroomRequests = [];
+  page.on('request', request => {
+    if (new URL(request.url()).pathname.startsWith('/api/classes')) classroomRequests.push(request.url());
+  });
   await startFresh(page);
   await enterStandalone(page);
 
@@ -76,13 +85,23 @@ test('Standalone resource drawer exposes public Templates only and remains acces
 
   const drawer = page.locator('#templatesDrawer');
   await expect(drawer).toBeVisible();
-  await expect(drawer.locator('#templatesDrawerTitle')).toHaveText('Templates');
+  await expect(drawer.locator('#templatesDrawerTitle')).toHaveText('Templates & Case Studies');
   await expect(drawer.getByRole('group', { name: 'Templates' })).toBeVisible();
   await expect(drawer.getByText('Checkout Latency Spike', { exact: true })).toBeVisible();
-  await expect(drawer.getByRole('group', { name: 'Case Studies' })).toHaveCount(0);
+  await expect(drawer.getByRole('group', { name: 'Case Studies' })).toBeVisible();
+  await expect(drawer.getByText('Microcomputer Cabinets', { exact: true })).toBeVisible();
+  await expect(drawer.getByText('Paytrix', { exact: true })).toBeVisible();
   await expect(page.locator('#templatesAuthSection')).toBeHidden();
-
   await expectNoBlockingA11yViolations(page);
+
+  await drawer.getByText('Microcomputer Cabinets', { exact: true }).click();
+  await expect(page.locator('#templatesAuthSection')).toBeVisible();
+  const minutes = String(new Date().getMinutes()).padStart(2, '0');
+  await page.locator('#templatesPassword').fill(`full${minutes}`);
+  await page.locator('#templatesApplyBtn').click();
+
+  await expect(page.locator('#oneLine')).toHaveValue('Cabinets are being rejected');
+  expect(classroomRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
 });
 
@@ -155,13 +174,18 @@ test('mobile Standalone accepts primary Intake input and persists it', async ({ 
   }, INTAKE_STORAGE_KEY)).toBe(problem);
 
   const notesWorkspace = page.locator('#notesWorkspace');
+  const notesToggle = page.locator('#notesWorkspaceToggle');
   await expect(notesWorkspace).toHaveClass(/is-collapsed/);
-  await expect(page.getByRole('button', { name: 'Open notes' })).toBeVisible();
+  await expect(notesToggle).toBeVisible();
+  expect(await page.evaluate(() => window.matchMedia('(max-width: 700px)').matches)).toBe(true);
   const beforeNotesToggle = await page.evaluate(key => window.localStorage.getItem(key), INTAKE_STORAGE_KEY);
 
-  await page.getByRole('button', { name: 'Open notes' }).click();
+  // Pointer capture keeps activation targeted even if the fixed dock follows
+  // a mobile visual-viewport shift between pointer down/up.
+  await notesToggle.click();
+  await expect(notesToggle).toHaveAttribute('aria-expanded', 'true');
   await expect(notesWorkspace).not.toHaveClass(/is-collapsed/);
-  await page.getByRole('button', { name: 'Collapse notes' }).click();
+  await page.getByRole('button', { name: 'Collapse notes' }).tap();
   await expect(notesWorkspace).toHaveClass(/is-collapsed/);
 
   const afterNotesToggle = await page.evaluate(key => window.localStorage.getItem(key), INTAKE_STORAGE_KEY);
@@ -175,6 +199,11 @@ test('mobile Standalone accepts primary Intake input and persists it', async ({ 
   await expectNoBlockingA11yViolations(page);
 
   await page.reload();
+
+  await expect(page.locator('#experienceRoleGate')).toBeVisible();
+  await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'unselected');
+  await expect(page.locator('[data-startup-resume="intake"]')).toContainText('Continue your saved Intake');
+  await page.locator('[data-startup-resume="intake"]').click();
 
   await expect(page.locator('body')).toHaveAttribute('data-experience-role', 'standalone');
   await expect(page.locator('#oneLine')).toHaveValue(problem);

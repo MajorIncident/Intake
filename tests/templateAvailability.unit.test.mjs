@@ -43,3 +43,13 @@ test('missing role defaults to least-privileged Standalone resource visibility',
   assert.equal(getTemplateResourcePolicy(null).role, EXPERIENCE_ROLE_IDS.STANDALONE);
   assert.deepEqual(filterTemplatesForExperience(null, RESOURCES).map(item => item.id), ['standard']);
 });
+
+test('TEMPORARY Standalone Case Study option lets Work independently list and apply Case Studies only when enabled', () => {
+  const options = { standaloneCaseStudies: true };
+  assert.equal(isTemplateKindAvailableForExperience(EXPERIENCE_ROLE_IDS.STANDALONE, TEMPLATE_KINDS.CASE_STUDY), false, 'default stays Templates-only');
+  assert.equal(isTemplateKindAvailableForExperience(EXPERIENCE_ROLE_IDS.STANDALONE, TEMPLATE_KINDS.CASE_STUDY, options), true);
+  assert.equal(canApplyTemplateForExperience(EXPERIENCE_ROLE_IDS.STANDALONE, TEMPLATE_KINDS.CASE_STUDY, options), true);
+  assert.equal(getTemplateResourcePolicy(EXPERIENCE_ROLE_IDS.STANDALONE, options).drawerTitle, 'Templates & Case Studies');
+  assert.equal(getTemplateResourcePolicy(EXPERIENCE_ROLE_IDS.STUDENT, options), getTemplateResourcePolicy(EXPERIENCE_ROLE_IDS.STUDENT), 'Student policy unchanged');
+  assert.equal(canApplyTemplateForExperience(EXPERIENCE_ROLE_IDS.INSTRUCTOR, TEMPLATE_KINDS.CASE_STUDY, options), false, 'Instructor stays teaching-only');
+});

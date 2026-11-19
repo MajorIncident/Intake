@@ -170,7 +170,14 @@ export function initNotesWorkspace({ onSave: save = () => {}, showToast: toast =
     notes.push({ id: createId(), text }); input.value = ''; render(); onSave(); showToast('Note captured.');
   });
   document.querySelector('#notesWorkspaceInput')?.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); document.querySelector('#notesWorkspaceAddBtn')?.click(); } });
-  document.querySelector('#notesWorkspaceToggle')?.addEventListener('click', () => toggleNotesWorkspace());
+  const workspaceToggle = document.querySelector('#notesWorkspaceToggle');
+  workspaceToggle?.addEventListener('pointerdown', event => {
+    // A fixed bottom dock can shift when the mobile visual viewport changes
+    // between pointer down/up. Capture keeps normal button activation targeted
+    // to this control without changing keyboard/programmatic click semantics.
+    try { workspaceToggle.setPointerCapture?.(event.pointerId); } catch {}
+  });
+  workspaceToggle?.addEventListener('click', () => toggleNotesWorkspace());
   document.addEventListener('focusin', event => { if (isEditableIntakeField(event.target)) lastFocusedField = event.target; });
   document.addEventListener('dragstart', event => { if (event.target.closest?.('button,input')) { event.preventDefault(); return; } const item = event.target.closest?.('.notes-workspace__item[data-note-id]'); if (!item) return; event.dataTransfer?.setData('text/x-intake-note-id', item.dataset.noteId); event.dataTransfer?.setData('text/plain', item.querySelector('.notes-workspace__text')?.textContent || ''); event.dataTransfer.effectAllowed = 'copy'; });
   document.addEventListener('dragover', event => { if (isEditableIntakeField(event.target)) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; } });

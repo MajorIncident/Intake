@@ -9,6 +9,7 @@ import { afterEach, beforeEach, mock, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
 import { HANDOVER_SECTIONS, mountHandoverCard } from '../components/handover/HandoverCard.js';
+import { APP_STATE_VERSION } from '../src/appStateVersion.js';
 import { collectHandoverState, applyHandoverState } from '../src/handover.js';
 import { migrateAppState } from '../src/storage.js';
 import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
@@ -112,8 +113,8 @@ test('applyHandoverState triggers resizing when restoring saved values', () => {
   assert.deepEqual(resizeCalls, HANDOVER_SECTIONS.map(section => section.id), 'autoResize runs for each textarea during hydration');
 });
 
-test('migrateAppState seeds empty handover sections when absent', () => {
-  const migrated = migrateAppState({ meta: { version: 1 } });
+test('migrateAppState seeds empty handover sections in a current snapshot when absent', () => {
+  const migrated = migrateAppState({ meta: { version: APP_STATE_VERSION } });
 
   assert.ok(migrated.handover, 'handover bucket exists');
   assert.deepEqual(migrated.handover['current-state'], []);

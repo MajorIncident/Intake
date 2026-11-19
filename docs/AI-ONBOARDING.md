@@ -2,12 +2,12 @@
 
 This guide describes the current modular architecture so a fresh AI coding session can confidently extend, test, and maintain KT Intake. Do not assume a previous chat's branch, PR, deployment, or repository state; follow the Cold Start Protocol in the root `AGENTS.md` first.
 
-For any work in the Standalone / Student / Instructor program (#288), also read `docs/classroom-architecture.md`, `docs/classroom-roadmap.md`, and `docs/classroom-workstream.md` before editing. For class/API authorization work, also read `docs/classroom-api.md` and `api/AGENTS.md`. Those files are the durable source for program invariants, dependency order, capability boundaries, and the exact continuation point.
+Start from `STATUS.md` (current state) and `docs/playbooks/` (task checklists). For any work in the Standalone / Student / Instructor program (#288), also read `docs/playbooks/classroom-change.md` and `docs/classroom-architecture.md` before editing. For class/API authorization work, also read `docs/classroom-api.md` and `api/AGENTS.md`. Contracts are the durable source for invariants and capability boundaries; `STATUS.md` is the only source for the continuation point.
 
 ## Entry Point & Boot Sequence
 1. `index.html` renders the full layout and loads the ES module entry via `<script type="module" src="main.js"></script>`.
 2. `main.js` registers a `DOMContentLoaded` listener that calls `boot()`.
-3. `boot()` restores the independent product experience through `initExperienceRoleController()` before configuring the Intake feature modules. Existing saved Intakes / collaboration links become Standalone; genuinely new browsers receive the required chooser.
+3. `boot()` initializes `src/startupExperienceHub.js` and `initExperienceRoleController()`. Ordinary launch stays unselected and shows explicit Continue/new-session choices; only an explicit `?workspace=` collaboration capability routes directly to Standalone.
 4. `boot()` then performs the Intake initialization:
    - Wires the KT helpers by calling `configureKT({ autoResize, updatePrefaceTitles, showToast, getObjectFull, getDeviationFull })`.
    - Initialises each feature module: `initPreface`, `initializeCommunications`, `initStepsFeature`, `initTable`, `ensurePossibleCausesUI`, and `renderCauses`.
@@ -20,8 +20,10 @@ For any work in the Standalone / Student / Instructor program (#288), also read 
 | ------ | ----------- |
 | `src/appState.js` | `collectAppState()`, `applyAppState()`, `getSummaryState()` for round-trip UI testing and summary hydration. |
 | `src/experienceRoles.js` | Canonical Standalone / Student / Instructor IDs, labels, and declarative product-surface policy. |
-| `src/experienceRoleController.js` | First-run chooser, role resume/switching, backward-compatible Standalone migration, and local-only `kt-experience-role-v1` preference. |
-| `src/classroomStudent.js` | Normal one-code Student admission, Waiting/own-status polling, class-session resume, assignment-specific workspace access/reassignment/unassign, legacy two-code recovery, and coaching/resource lifecycle hooks. |
+| `src/experienceRoleController.js` | Applies Standalone/Student/Instructor surface projection, owns the startup/View dialog focus lifecycle, and persists the local-only `kt-experience-role-v1` last-choice preference. The preference is not startup authority. |
+| `src/classroomStudent.js` | One-code Student admission, Waiting/own-status polling, current class-session resume, assignment-specific memory-only workspace access/reassignment/unassign, and coaching/resource lifecycle hooks. |
+| `src/startupExperienceHub.js` | Detects substantive saved Intake and current Student/Instructor resumes independently, renders Continue cards, highlights safe `#join` intent, and owns explicit replacement confirmations. Delegates real class resume/revalidation to the Classroom controllers. |
+| `src/adminMaintenance.js` | Administration / Maintenance dialog, tab-scoped Admin credential envelope, lifecycle inventory/filtering, recovery display, and signed preview/commit UX. It never sets an Intake experience role. |
 | `src/classroomInstructor.js` | Start Class, human join-code display, same-device Instructor resume, live roster/team assignment management, read-only observation, and coaching lifecycle hooks. |
 | `src/coachableFields.js` | Stable coaching target IDs and versioned field fingerprints; DOM placement is deliberately separate from persistence identity. |
 | `src/classroomCoaching.js` | Instructor coaching controls and Student read-only feedback rendering through the separate coaching API. |
@@ -37,7 +39,8 @@ For any work in the Standalone / Student / Instructor program (#288), also read 
 | `src/summary.js` | `generateSummary()`, `setSummaryStateProvider()`, helpers that compose both clipboard output and AI prompts. |
 | `src/toast.js` | `showToast()` for lightweight notifications reused by comms and bootstrapping.
 | `api/_workspace.js` | Existing collaboration persistence/handlers plus explicitly edit-capable workspace aliases. Only `classroom-student` aliases may resolve through legacy read/write collaboration endpoints. |
-| `api/_classroom.js` | Class/live-participant schema and capabilities, one-code admission, own-status/current-access exchange, Instructor assign/reassign/unassign, class-scoped observation, legacy admission compatibility, and separate coaching APIs. |
+| `api/_admin.js`, `api/admin.js` | Server-only Admin authorization, lifecycle inventory, signed purge previews, class revoke, Instructor authority rotation, and guarded purge. Requires `INTAKE_ADMIN_TOKEN`; read `docs/admin-maintenance.md`. |
+| `api/_classroom.js` | Class/live-participant schema and capabilities, one-code admission, own-status/current-access exchange, Instructor assign/reassign/unassign, class-scoped observation, and separate coaching APIs. |
 | `api/_protectedCaseStudies.js` | Server-only protected Case Study catalog/payload delivery. Instructor access is class-scoped; Student access resolves only the currently active Classroom workspace authority. #313 staged release must extend this boundary rather than shipping unreleased case content to the browser. |
 
 ## Working Agreement for AI Agents

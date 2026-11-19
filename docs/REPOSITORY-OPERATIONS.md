@@ -31,7 +31,7 @@ Individual commands remain useful while developing, but a PR is not complete unt
 Case Study authoring source is intentionally present in Git but intentionally absent from the public Vercel deployment surface.
 
 - `templates/*.json` is repository/build-time source and is excluded by `.vercelignore`.
-- `src/templates.manifest.js` is public and may contain Standard Templates only.
+- `src/templates.manifest.js` is public and may contain Standard Templates only. TEMPORARY exception: the Case Studies listed in `scripts/standalone-public-case-studies.mjs` are also published in the public manifest so Work independently can load them (see `templates/AGENTS.md`).
 - `api/protected-case-studies.manifest.js` is server-only generated content and may contain protected Case Study metadata/payloads.
 - Browser runtime files must never import or duplicate the server-only manifest.
 - `scripts/build-vercel-public.mjs` generates the **only** public static surface under `dist/`: `index.html`, `main.js`, `styles.css`, browser JavaScript under `src/` and `components/`, plus the explicitly public `docs/eula.md` linked from the app footer.
@@ -156,7 +156,7 @@ A single batch may touch several files when they form one coherent concern. Avoi
 
 - Send short progress updates after durable checkpoints rather than holding all results until the end.
 - Summarize results; do not paste full CI logs or large diffs into chat unless specifically needed.
-- Store detailed evidence in commits, PR descriptions, issues, and workstream documents.
+- Store detailed evidence in commits, PR descriptions, issues, and `STATUS.md`.
 - When a response could become large, split it into named parts and finish each part with a durable repository checkpoint.
 - Prefer "Part 1 committed at <SHA>; next is Part 2" over a long narrative describing uncommitted work.
 
@@ -180,7 +180,7 @@ If delivery or execution times out:
 
 1. Inspect the current branch HEAD and compare it with the last documented SHA.
 2. Inspect the active PR and issue before creating another branch/PR or repeating work.
-3. Read the restart/workstream document and the last few commits.
+3. Read `STATUS.md` and the last few commits.
 4. Determine whether the failed operation:
    - wrote nothing;
    - partially wrote repository state;
@@ -196,8 +196,8 @@ Never assume a timeout means "nothing happened."
 For programs likely to span many turns:
 
 - the parent issue owns the program scope and child issue sequence;
-- the PR owns the implementation record for the active slice;
-- a workstream/restart document owns the live continuation point;
+- the PR owns the implementation record for the slice in progress;
+- `STATUS.md` owns the live continuation point;
 - architecture/API/security docs own durable decisions;
 - commits own completed checkpoints;
 - chat is only a control surface, never the source of truth.
@@ -211,10 +211,11 @@ For multi-PR programs, repository state must carry the plan and progress rather 
 - architecture and invariants live in `docs/classroom-architecture.md`;
 - server capability/API contracts live in `docs/classroom-api.md`;
 - dependency/merge sequencing lives in `docs/classroom-roadmap.md`;
-- live progress and the exact restart point live in `docs/classroom-workstream.md`;
+- live progress and the exact restart point live in `STATUS.md` (history is archived verbatim under `docs/archive/`);
+- recurring procedures live in `docs/playbooks/`;
 - the parent issue links the child implementation issues.
 
-When stacking PRs, each PR must name its exact base branch/PR, dependency, merge order, rollback boundary, and cold-restart next action. Before handoff, update the workstream document so a new session can continue without reconstructing prior conversation context.
+When stacking PRs, each PR must name its exact base branch/PR, dependency, merge order, rollback boundary, and cold-restart next action. Before handoff, update `STATUS.md` so a new session can continue without reconstructing prior conversation context.
 
 ## Scheduled maintenance
 

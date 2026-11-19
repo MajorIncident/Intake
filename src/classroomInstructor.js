@@ -120,6 +120,8 @@ export function createInstructorClassroomController({
   onObservationEnd = () => {},
   onClassConnected = () => {},
   onClassDisconnected = () => {},
+  onResumeUnavailable = () => {},
+  confirmImpl = message => (typeof windowRef?.confirm === 'function' ? windowRef.confirm(message) === true : false),
   setTimeoutImpl = globalThis.setTimeout?.bind(globalThis),
   clearTimeoutImpl = globalThis.clearTimeout?.bind(globalThis),
   AbortControllerImpl = globalThis.AbortController
@@ -236,8 +238,6 @@ export function createInstructorClassroomController({
     if (element('instructorClassEntryCard')) element('instructorClassEntryCard').hidden = false;
     if (element('instructorClassDashboard')) element('instructorClassDashboard').hidden = true;
     if (element('instructorClassStartForm')) element('instructorClassStartForm').hidden = retry;
-    if (element('instructorExistingClass')) element('instructorExistingClass').hidden = retry;
-    if (element('instructorClassForm')) element('instructorClassForm').hidden = false;
     if (element('instructorClassResumePanel')) element('instructorClassResumePanel').hidden = !retry;
     if (element('instructorClassResumeTitle')) {
       element('instructorClassResumeTitle').textContent = activeSession?.class?.title || 'Saved instructor class';
@@ -733,7 +733,9 @@ export function createInstructorClassroomController({
     selectedWorkspaceId = '';
     restoreLocal();
     renderEntry();
-    setError(message || 'This instructor class is no longer available.');
+    const explanation = message || 'This instructor class is no longer available.';
+    setError(explanation);
+    onResumeUnavailable(explanation);
     return false;
   };
 
@@ -955,7 +957,6 @@ export function createInstructorClassroomController({
       renderDashboard();
       renderParticipants();
       renderRoster();
-      if (element('instructorClassCode')) element('instructorClassCode').value = '';
       if (element('instructorClassTitleInput')) element('instructorClassTitleInput').value = '';
       if (selectedWorkspaceId) await selectWorkspace(selectedWorkspaceId);
       else restoreLocal();
@@ -970,19 +971,15 @@ export function createInstructorClassroomController({
     }
   };
 
-  const openClass = async instructorCode => {
-    const token = typeof instructorCode === 'string' ? instructorCode.trim() : '';
-    if (!validateInstructorCapability(token)) {
-      setError('Enter the current Instructor access code for this class.');
-      return false;
-    }
-    return activateClass(token);
-  };
-
-  const startClass = async titleValue => {
+  const startClass = async (titleValue, classPasswordValue = '') => {
     const title = typeof titleValue === 'string' ? titleValue.trim() : '';
+    const classPassword = typeof classPasswordValue === 'string' ? classPasswordValue.trim() : '';
     if (!title || title.length > 120) {
       setError('Enter a class title before starting the class.');
+      return false;
+    }
+    if (!classPassword) {
+      setError('Enter the class password to start a class.');
       return false;
     }
     if (!fetchImpl) {
@@ -998,9 +995,17 @@ export function createInstructorClassroomController({
       const response = await fetchImpl(INSTRUCTOR_CLASSES_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title })
+        body: JSON.stringify({ title, classPassword })
       });
       const body = await responseJson(response);
+      if (response.status === 403 && body.code === 'class-password-invalid') {
+        setError('That class password is not correct. Check it with your program administrator.');
+        return false;
+      }
+      if (response.status === 429) {
+        setError(body.error || 'Too many attempts from this network. Please wait and try again.');
+        return false;
+      }
       if (
         response.status !== 201
         || !validateInstructorCapability(body.instructorToken)
@@ -1190,10 +1195,9 @@ export function createInstructorClassroomController({
     activeSession = stored;
     selectedWorkspaceId = stored.selectedWorkspaceId || '';
     if (isInstructorSessionExpired(stored, now())) {
-      return terminalClass('Your saved Instructor class access has expired. Use the current Instructor access code.');
+      return terminalClass('Your saved Instructor class access has expired. Start a new class; recovery will be handled through Administration / Maintenance.');
     }
     if (element('instructorClassStartForm')) element('instructorClassStartForm').hidden = true;
-    if (element('instructorExistingClass')) element('instructorExistingClass').hidden = true;
     if (element('instructorClassResumePanel')) element('instructorClassResumePanel').hidden = false;
     if (element('instructorClassResumeTitle')) element('instructorClassResumeTitle').textContent = stored.class.title;
     if (element('instructorClassResumeMessage')) element('instructorClassResumeMessage').textContent = 'Reconnecting to your class roster…';
@@ -1215,6 +1219,67 @@ export function createInstructorClassroomController({
     return true;
   };
 
+  const classTitleForMessages = () => activeSession?.class?.title || 'this class';
+
+  /**
+   * Leaves the class on this device after explicit confirmation. The class keeps
+   * running for Students; this device loses its only Instructor credential.
+   * @returns {boolean} True when the Instructor left.
+   */
+  const requestLeaveClass = () => {
+    if (!activeSession) return leaveClass();
+    const proceed = confirmImpl(
+      `Leave “${classTitleForMessages()}” on this device?\n\n`
+      + 'The class keeps running and Students can keep working, but this device will no longer be able to manage it. '
+      + 'Getting it back requires an administrator.\n\n'
+      + 'To close the class for everyone instead, choose End class.'
+    );
+    if (!proceed) return false;
+    return leaveClass();
+  };
+
+  /**
+   * Ends the class for everyone (server revocation) after explicit confirmation,
+   * then clears this device's Instructor session.
+   * @returns {Promise<boolean>} True when the class was ended.
+   */
+  const endClass = async () => {
+    if (!activeSession || busy) return false;
+    const title = classTitleForMessages();
+    const proceed = confirmImpl(
+      `End “${title}” for everyone?\n\n`
+      + 'Students lose access immediately, new joins stop, and the class cannot be reopened. '
+      + 'Team work stays readable only to administrators until it expires.'
+    );
+    if (!proceed) return false;
+    if (!fetchImpl) {
+      setError('The class service is unavailable right now.');
+      return false;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      const response = await fetchImpl(INSTRUCTOR_CLASSES_ENDPOINT, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${activeSession.instructorToken}` }
+      });
+      const body = await responseJson(response);
+      // 404 means the class is already ended/expired; either way this device is done with it.
+      if (!response.ok && response.status !== 404) {
+        setError(body.error || 'Could not end the class. Please try again.');
+        return false;
+      }
+    } catch {
+      setError('Could not reach the class service. The class is still running; please try again.');
+      return false;
+    } finally {
+      setBusy(false);
+    }
+    leaveClass();
+    toast(`Ended “${title}”. Students no longer have access.`);
+    return true;
+  };
+
   const pause = () => {
     onClassDisconnected();
     stopLive();
@@ -1224,11 +1289,11 @@ export function createInstructorClassroomController({
 
   const handleStartSubmit = event => {
     event.preventDefault();
-    void startClass(element('instructorClassTitleInput')?.value || '');
-  };
-  const handleSubmit = event => {
-    event.preventDefault();
-    void openClass(element('instructorClassCode')?.value || '');
+    const passwordInput = element('instructorClassPasswordInput');
+    const classPassword = passwordInput?.value || '';
+    void startClass(element('instructorClassTitleInput')?.value || '', classPassword).then(started => {
+      if (started && passwordInput) passwordInput.value = '';
+    });
   };
   const handleWorkspaceCreate = event => {
     event.preventDefault();
@@ -1246,7 +1311,8 @@ export function createInstructorClassroomController({
     setRailExpanded(!event.matches);
   };
   const handleRetry = () => { void resume(); };
-  const handleLeave = () => leaveClass();
+  const handleLeave = () => requestLeaveClass();
+  const handleEndClass = () => { void endClass(); };
   const handleReturnToLive = () => { void returnToLiveObservation(); };
   const handleSearch = event => {
     searchQuery = event?.target?.value || '';
@@ -1273,7 +1339,6 @@ export function createInstructorClassroomController({
 
   const init = () => {
     element('instructorClassStartForm')?.addEventListener('submit', handleStartSubmit);
-    element('instructorClassForm')?.addEventListener('submit', handleSubmit);
     element('instructorWorkspaceCreateForm')?.addEventListener('submit', handleWorkspaceCreate);
     element('instructorCopyJoinCodeBtn')?.addEventListener('click', handleCopyJoinCode);
     element('instructorShareClassBtn')?.addEventListener('click', handleShareClass);
@@ -1282,6 +1347,7 @@ export function createInstructorClassroomController({
     mobileRailQuery?.addEventListener?.('change', handleRailMediaChange);
     element('instructorClassRetryBtn')?.addEventListener('click', handleRetry);
     element('instructorClassLeaveBtn')?.addEventListener('click', handleLeave);
+    element('instructorClassEndBtn')?.addEventListener('click', handleEndClass);
     element('instructorObservationLiveBtn')?.addEventListener('click', handleReturnToLive);
     element('instructorWorkspaceSearch')?.addEventListener('input', handleSearch);
     element('instructorWorkspaceFilter')?.addEventListener('change', handleFilter);
@@ -1299,7 +1365,6 @@ export function createInstructorClassroomController({
     onObservationEnd();
     restoreReadonlyProjection();
     element('instructorClassStartForm')?.removeEventListener('submit', handleStartSubmit);
-    element('instructorClassForm')?.removeEventListener('submit', handleSubmit);
     element('instructorWorkspaceCreateForm')?.removeEventListener('submit', handleWorkspaceCreate);
     element('instructorCopyJoinCodeBtn')?.removeEventListener('click', handleCopyJoinCode);
     element('instructorShareClassBtn')?.removeEventListener('click', handleShareClass);
@@ -1308,6 +1373,7 @@ export function createInstructorClassroomController({
     mobileRailQuery?.removeEventListener?.('change', handleRailMediaChange);
     element('instructorClassRetryBtn')?.removeEventListener('click', handleRetry);
     element('instructorClassLeaveBtn')?.removeEventListener('click', handleLeave);
+    element('instructorClassEndBtn')?.removeEventListener('click', handleEndClass);
     element('instructorObservationLiveBtn')?.removeEventListener('click', handleReturnToLive);
     element('instructorWorkspaceSearch')?.removeEventListener('input', handleSearch);
     element('instructorWorkspaceFilter')?.removeEventListener('change', handleFilter);
@@ -1318,7 +1384,6 @@ export function createInstructorClassroomController({
   return {
     init,
     destroy,
-    openClass,
     startClass,
     createWorkspace,
     assignParticipant,
@@ -1331,6 +1396,8 @@ export function createInstructorClassroomController({
     inspectCheckpoint,
     returnToLiveObservation,
     leaveClass,
+    requestLeaveClass,
+    endClass,
     setRailExpanded: expanded => setRailExpanded(expanded, { user: true }),
     getState: () => ({
       activeSession, workspaces, participants, selectedWorkspaceId, observerEpoch,

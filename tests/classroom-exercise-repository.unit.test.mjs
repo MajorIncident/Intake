@@ -5,13 +5,55 @@
  * semantics that the later exercise handlers will orchestrate.
  */
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { after } from 'node:test';
 
 import {
   createClassroomRepository,
   createWorkspaceRepository,
   testTokenHash
 } from './helpers/classroom-test-repositories.mjs';
+import { setSqlFactoryForTesting } from '../api/_db.js';
+import { getWorkspaceRepository, resetWorkspaceRepositoryForTesting } from '../api/_workspace.js';
+import { getClassroomRepository, resetClassroomRepositoryForTesting } from '../api/_classroom.js';
+import { createPgliteSql } from './helpers/pglite-sql.mjs';
+
+const openDatabases = [];
+
+/**
+ * Builds the production Neon repositories over a fresh in-process Postgres.
+ * @returns {Promise<{classrooms: object, workspaceRepo: object, countExercises: Function}>} Real repositories.
+ */
+async function createPostgresRepositories() {
+  const sql = await createPgliteSql();
+  openDatabases.push(sql);
+  setSqlFactoryForTesting(() => sql);
+  resetWorkspaceRepositoryForTesting();
+  resetClassroomRepositoryForTesting();
+  const workspaceRepo = await getWorkspaceRepository();
+  const classrooms = await getClassroomRepository();
+  const countExercises = async () => Number((await sql`SELECT count(*) AS total FROM classroom_exercises`)[0].total);
+  return { classrooms, workspaceRepo, countExercises };
+}
+
+// The same repository contract runs against the in-memory model used by the
+// API/browser tests AND the real production SQL, so the two cannot drift.
+const BACKENDS = [
+  {
+    name: 'memory',
+    create: async () => {
+      const classrooms = createClassroomRepository();
+      return { classrooms, workspaceRepo: createWorkspaceRepository(), countExercises: async () => classrooms.exercises.length };
+    }
+  },
+  { name: 'postgres', create: createPostgresRepositories }
+];
+
+after(async () => {
+  setSqlFactoryForTesting(null);
+  resetWorkspaceRepositoryForTesting();
+  resetClassroomRepositoryForTesting();
+  await Promise.all(openDatabases.map(sql => sql.close()));
+});
 
 const CLASS_A_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const CLASS_B_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -29,15 +71,15 @@ async function classPair(classrooms) {
     publicId: CLASS_A_ID,
     title: 'Class A',
     instructorHash: testTokenHash('A'),
-    studentJoinHash: testTokenHash('C'),
-    studentJoinCode: 'K7FMP4Q2'
+    studentJoinCode: 'K7FMP4Q2',
+    expiryDays: 30
   });
   await classrooms.createClass({
     publicId: CLASS_B_ID,
     title: 'Class B',
     instructorHash: testTokenHash('B'),
-    studentJoinHash: testTokenHash('D'),
-    studentJoinCode: 'M8RNQ5W3'
+    studentJoinCode: 'M8RNQ5W3',
+    expiryDays: 30
   });
 }
 
@@ -64,8 +106,9 @@ async function addWorkspace(classrooms, workspaceRepo, {
   return workspace;
 }
 
-test('exercise creation permits one open exercise per class and inherits class retention', async () => {
-  const classrooms = createClassroomRepository();
+for (const backend of BACKENDS) {
+test(`[${backend.name}] exercise creation permits one open exercise per class and inherits class retention`, async () => {
+  const { classrooms, countExercises } = await backend.create();
   await classPair(classrooms);
 
   const createdA = await classrooms.createExercise(testTokenHash('A'), {
@@ -80,7 +123,7 @@ test('exercise creation permits one open exercise per class and inherits class r
   assert.equal(createdA.exercise.simulationFingerprint, SIMULATION_FINGERPRINT);
   assert.equal(createdA.exercise.exerciseRevision, 1);
   assert.equal(createdA.exercise.currentStageId, null);
-  assert.equal(createdA.exercise.expiresAt, createdA.classroom.expiresAt);
+  assert.equal(new Date(createdA.exercise.expiresAt).getTime(), new Date(createdA.classroom.expiresAt).getTime());
 
   const duplicateOpen = await classrooms.createExercise(testTokenHash('A'), {
     publicId: EXERCISE_A2_ID,
@@ -90,7 +133,7 @@ test('exercise creation permits one open exercise per class and inherits class r
   });
   assert.equal(duplicateOpen.status, 'exists');
   assert.equal(duplicateOpen.exercise.id, EXERCISE_A_ID);
-  assert.equal(classrooms.exercises.length, 1);
+  assert.equal(await countExercises(), 1);
 
   const createdB = await classrooms.createExercise(testTokenHash('B'), {
     publicId: EXERCISE_B_ID,
@@ -100,7 +143,7 @@ test('exercise creation permits one open exercise per class and inherits class r
   });
   assert.equal(createdB.status, 'created');
   assert.equal(createdB.classroom.id, CLASS_B_ID);
-  assert.equal(classrooms.exercises.length, 2);
+  assert.equal(await countExercises(), 2);
 
   assert.equal(await classrooms.getExerciseForInstructor(testTokenHash('B'), EXERCISE_A_ID), null);
 
@@ -108,8 +151,8 @@ test('exercise creation permits one open exercise per class and inherits class r
   assert.equal(await classrooms.getCurrentExerciseForInstructor(testTokenHash('A')), null);
 });
 
-test('exercise lifecycle mutation is optimistic and completion permits a later exercise', async () => {
-  const classrooms = createClassroomRepository();
+test(`[${backend.name}] exercise lifecycle mutation is optimistic and completion permits a later exercise`, async () => {
+  const { classrooms } = await backend.create();
   await classPair(classrooms);
   await classrooms.createExercise(testTokenHash('A'), {
     publicId: EXERCISE_A_ID,
@@ -128,7 +171,7 @@ test('exercise lifecycle mutation is optimistic and completion permits a later e
   });
   assert.equal(started.status, 'updated');
   assert.equal(started.exercise.exerciseRevision, 2);
-  assert.equal(started.exercise.startedAt, 'started');
+  assert.ok(started.exercise.startedAt, 'start records a start time');
 
   const stale = await classrooms.updateExerciseLifecycle(testTokenHash('A'), {
     exercisePublicId: EXERCISE_A_ID,
@@ -163,7 +206,7 @@ test('exercise lifecycle mutation is optimistic and completion permits a later e
     studentEditingEnabled: false
   });
   assert.equal(completed.exercise.exerciseRevision, 4);
-  assert.equal(completed.exercise.completedAt, 'completed');
+  assert.ok(completed.exercise.completedAt, 'completion records a completion time');
   assert.equal(await classrooms.getCurrentExerciseForInstructor(testTokenHash('A')), null);
 
   const next = await classrooms.createExercise(testTokenHash('A'), {
@@ -176,8 +219,8 @@ test('exercise lifecycle mutation is optimistic and completion permits a later e
   assert.equal(next.exercise.id, EXERCISE_A2_ID);
 });
 
-test('optional release is idempotent and only a new release advances exercise revision', async () => {
-  const classrooms = createClassroomRepository();
+test(`[${backend.name}] optional release is idempotent and only a new release advances exercise revision`, async () => {
+  const { classrooms } = await backend.create();
   await classPair(classrooms);
   await classrooms.createExercise(testTokenHash('A'), {
     publicId: EXERCISE_A_ID,
@@ -237,16 +280,16 @@ test('optional release is idempotent and only a new release advances exercise re
   assert.deepEqual(
     listed.releases.map(({ stageId, contentId }) => ({ stageId, contentId })),
     [
-      { stageId: 'stage-1', contentId: 'evidence-2' },
-      { stageId: 'stage-1', contentId: 'hint-1' }
-    ]
+      { stageId: 'stage-1', contentId: 'hint-1' },
+      { stageId: 'stage-1', contentId: 'evidence-2' }
+    ],
+    'releases are listed in release order'
   );
   assert.equal(await classrooms.listExerciseReleasesForInstructor(testTokenHash('B'), EXERCISE_A_ID), null);
 });
 
-test('readiness belongs to the current workspace and reassignment never carries old-team readiness', async () => {
-  const classrooms = createClassroomRepository();
-  const workspaceRepo = createWorkspaceRepository();
+test(`[${backend.name}] readiness belongs to the current workspace and reassignment never carries old-team readiness`, async () => {
+  const { classrooms, workspaceRepo } = await backend.create();
   await classPair(classrooms);
   await addWorkspace(classrooms, workspaceRepo, {
     publicId: WORKSPACE_A_ID,
@@ -354,9 +397,8 @@ test('readiness belongs to the current workspace and reassignment never carries 
   assert.equal(waiting.status, 'waiting');
 });
 
-test('debrief checkpoints are class-scoped, immutable, idempotent, and snapshot-isolated', async () => {
-  const classrooms = createClassroomRepository();
-  const workspaceRepo = createWorkspaceRepository();
+test(`[${backend.name}] debrief checkpoints are class-scoped, immutable, idempotent, and snapshot-isolated`, async () => {
+  const { classrooms, workspaceRepo } = await backend.create();
   await classPair(classrooms);
   await addWorkspace(classrooms, workspaceRepo, {
     publicId: WORKSPACE_A_ID,
@@ -459,3 +501,4 @@ test('debrief checkpoints are class-scoped, immutable, idempotent, and snapshot-
   );
   assert.equal(wrongInstructorRead, null);
 });
+}

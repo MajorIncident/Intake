@@ -19,157 +19,129 @@ globalThis.__actionsStoreMocks = {
 
 const { migrateAppState } = await import('../src/storage.js?actions-tests');
 
-function getFirstCauseFinding(state, key) {
-  if (!state || !Array.isArray(state.causes) || !state.causes.length) {
-    return null;
-  }
-  const cause = state.causes[0];
-  if (!cause || typeof cause !== 'object') {
-    return null;
-  }
-  const findings = cause.findings || {};
-  return findings[key] || null;
-}
+test('migrateAppState rejects missing and obsolete pre-production schema versions', () => {
+  const candidates = [
+    {},
+    { meta: {} },
+    { meta: { version: APP_STATE_VERSION - 1 } },
+    { meta: { version: 1 } }
+  ];
 
-test('migrateAppState normalizes legacy states without meta', () => {
-  const legacyState = {
-    pre: { oneLine: 'Legacy summary', proof: 'Evidence' },
-    impact: { now: 'Now', future: 'Later', time: 'Soon' },
-    ops: {
-      containmentStatus: 'mitigation',
-      detectMonitoring: 'true'
-    },
-    commCadence: 'hourly',
-    commNextDueIso: '2024-01-01T00:00:00.000Z',
-    commLog: [{ channel: 'internal', message: 'ping' }],
-    possibleCauses: [
-      {
-        id: 'legacy-cause',
-        suspect: 'Cache layer',
-        findings: {
-          primary: { explainIs: 'Cache misses are elevated' }
-        }
-      }
-    ],
-    steps: [
-      { stepId: 'kickoff', title: 'Kickoff investigation', checked: 'true' }
-    ],
-    likelyCauseId: 5
-  };
-
-  const migrated = migrateAppState(legacyState);
-
-  assert.ok(migrated, 'migration should return a state object');
-  assert.equal(migrated.meta.version, APP_STATE_VERSION, 'state should be upgraded to current version');
-  assert.equal(migrated.meta.savedAt, null, 'legacy states do not include savedAt metadata');
-
-  assert.equal(migrated.pre.oneLine, 'Legacy summary');
-  assert.equal(migrated.impact.future, 'Later');
-
-  assert.equal(migrated.ops.containStatus, 'stabilized', 'legacy containment values map to new names');
-  assert.equal(migrated.ops.detectMonitoring, true, 'boolean like fields are normalized');
-  assert.equal(migrated.ops.commCadence, 'hourly', 'root communication cadence migrates into ops');
-  assert.equal(migrated.ops.commNextDueIso, '2024-01-01T00:00:00.000Z');
-  assert.equal(Array.isArray(migrated.ops.commLog), true);
-  assert.equal(migrated.ops.commLog.length, 1);
-  assert.equal(migrated.ops.tableFocusMode, '', 'missing focus mode defaults to an empty string');
-
-  const finding = getFirstCauseFinding(migrated, 'primary');
-  assert.ok(finding, 'cause findings should be preserved');
-  assert.equal(finding.mode, 'yes', 'legacy findings convert to valid modes');
-  assert.equal(finding.note, 'Cache misses are elevated');
-
-  assert.equal(Array.isArray(migrated.table), true);
-  assert.equal(migrated.likelyCauseId, '5', 'numeric likely cause ids are stringified');
-
-  assert.deepEqual(migrated.steps, {
-    items: [
-      { id: 'kickoff', label: 'Kickoff investigation', checked: true }
-    ],
-    drawerOpen: false
+  candidates.forEach(candidate => {
+    assert.equal(migrateAppState(candidate), null);
   });
 });
 
-test('migrateAppState preserves savedAt for already versioned states', () => {
-  const savedAt = '2024-05-01T12:00:00.000Z';
-  const versioned = {
-    meta: { version: 1, savedAt },
-    pre: { proof: 'Updated proof' },
-    ops: {},
-    causes: [],
-    steps: { items: [], drawerOpen: true }
+test('migrateAppState sanitizes the current canonical snapshot shape', () => {
+  const row = ROWS.find(candidate => candidate.id);
+  const savedAt = '2026-10-08T12:00:00.000Z';
+  const current = {
+    meta: { version: APP_STATE_VERSION, savedAt, intakeMode: 'it' },
+    pre: {
+      oneLine: 'Current problem',
+      proof: 'Evidence',
+      objectPrefill: 42,
+      healthy: 'Normal',
+      now: 'Abnormal'
+    },
+    impact: { now: 'Now', future: 'Later', time: 'Soon' },
+    ops: {
+      containStatus: 'stabilized',
+      detectMonitoring: true,
+      detectUserReport: 'true',
+      commCadence: 'hourly',
+      commLog: [{ channel: 'internal', message: 'ping' }],
+      tableFocusMode: 'differences'
+    },
+    table: [{ id: row.id, is: 'A', isNot: 'B' }],
+    causes: [{
+      id: 'cause-current',
+      suspect: 'Cache layer',
+      confidence: 'HIGH',
+      findings: {
+        [row.id]: { mode: 'yes', note: 'Stable current key' }
+      }
+    }],
+    likelyCauseId: 5,
+    steps: {
+      items: [{ id: 'kickoff', label: 'Kickoff investigation', checked: true }],
+      drawerOpen: true
+    }
   };
 
-  const migrated = migrateAppState(versioned);
+  const normalized = migrateAppState(current);
 
-  assert.ok(migrated);
-  assert.equal(migrated.meta.version, APP_STATE_VERSION);
-  assert.equal(migrated.meta.savedAt, savedAt);
-  assert.equal(migrated.pre.proof, 'Updated proof');
-  assert.equal(migrated.ops.tableFocusMode, '');
-  assert.deepEqual(migrated.ops.commLog, []);
-  assert.deepEqual(migrated.steps, { items: [], drawerOpen: true });
+  assert.ok(normalized);
+  assert.equal(normalized.meta.version, APP_STATE_VERSION);
+  assert.equal(normalized.meta.savedAt, savedAt);
+  assert.equal(normalized.meta.intakeMode, 'it');
+  assert.equal(normalized.pre.oneLine, 'Current problem');
+  assert.equal(normalized.pre.objectPrefill, '42');
+  assert.equal(normalized.ops.containStatus, 'stabilized');
+  assert.equal(normalized.ops.detectMonitoring, true);
+  assert.equal(normalized.ops.detectUserReport, false, 'non-boolean values are not legacy-coerced');
+  assert.equal(normalized.ops.commCadence, 'hourly');
+  assert.equal(normalized.ops.commLog.length, 1);
+  assert.equal(normalized.ops.tableFocusMode, 'differences');
+  assert.equal(normalized.causes[0].confidence, 'high');
+  assert.deepEqual(normalized.causes[0].findings[row.id], {
+    mode: 'yes',
+    note: 'Stable current key'
+  });
+  assert.equal(normalized.likelyCauseId, '5');
+  assert.deepEqual(normalized.steps, {
+    items: [{ id: 'kickoff', label: 'Kickoff investigation', checked: true }],
+    drawerOpen: true
+  });
 });
 
-test('migrateAppState replaces legacy finding prompts with stable row IDs', () => {
+test('migrateAppState does not remap historical finding prompt text', () => {
   const row = ROWS.find(candidate => candidate.id && candidate.q);
-  const unknownKey = 'Unmapped legacy finding';
-  const migrated = migrateAppState({
-    meta: { version: 1, savedAt: null },
+  const normalized = migrateAppState({
+    meta: { version: APP_STATE_VERSION, savedAt: null },
     causes: [{
-      id: 'cause-with-legacy-findings',
+      id: 'cause-current',
       findings: {
-        [row.q]: { mode: 'fail', note: 'Legacy prompt value' },
-        [row.id]: { mode: 'yes', note: 'Stable value wins' },
-        [unknownKey]: { mode: 'assumption', note: 'Keep this key' }
+        [row.id]: { mode: 'yes', note: 'Stable value' },
+        [row.q]: { mode: 'fail', note: 'Unmapped historical prompt text' }
       }
     }]
   });
 
-  const findings = migrated.causes[0].findings;
-  assert.deepEqual(findings[row.id], { mode: 'yes', note: 'Stable value wins' });
-  assert.equal(Object.hasOwn(findings, row.q), false, 'legacy prompt key is removed');
-  assert.deepEqual(findings[unknownKey], { mode: 'assumption', note: 'Keep this key' });
-});
-
-test('migrateAppState defensively normalizes legacy finding prompts in current imports', () => {
-  const row = ROWS.find(candidate => candidate.id && candidate.q);
-  const migrated = migrateAppState({
-    meta: { version: APP_STATE_VERSION, savedAt: null },
-    causes: [{ findings: { [row.q]: { mode: 'yes', note: 'Imported legacy key' } } }]
+  assert.ok(normalized);
+  assert.deepEqual(normalized.causes[0].findings[row.id], {
+    mode: 'yes',
+    note: 'Stable value'
   });
-
-  assert.deepEqual(migrated.causes[0].findings, {
-    [row.id]: { mode: 'yes', note: 'Imported legacy key' }
+  assert.deepEqual(normalized.causes[0].findings[row.q], {
+    mode: 'fail',
+    note: 'Unmapped historical prompt text'
   });
 });
 
 test('migrateAppState retains sanitized actions snapshots when present', () => {
-  const migrated = migrateAppState({
+  const normalized = migrateAppState({
     meta: { version: APP_STATE_VERSION, savedAt: null },
     pre: {},
     ops: {},
     steps: { items: [], drawerOpen: false },
     actions: {
       analysisId: '  analysis-from-snapshot  ',
-      items: [
-        {
-          id: 'action-123',
-          analysisId: 'outdated-id',
-          summary: 'Restore service',
-          owner: { name: '  Lead Owner  ' },
-          status: 'In-Progress'
-        }
-      ]
+      items: [{
+        id: 'action-123',
+        analysisId: 'outdated-id',
+        summary: 'Restore service',
+        owner: { name: '  Lead Owner  ' },
+        status: 'In-Progress'
+      }]
     }
   });
 
-  assert.ok(migrated);
-  assert.equal(Object.prototype.hasOwnProperty.call(migrated, 'actions'), true);
-  assert.equal(migrated.actions.analysisId, 'analysis-from-snapshot');
-  assert.equal(Array.isArray(migrated.actions.items), true);
-  assert.equal(migrated.actions.items.length, 1);
-  const [action] = migrated.actions.items;
+  assert.ok(normalized);
+  assert.equal(Object.prototype.hasOwnProperty.call(normalized, 'actions'), true);
+  assert.equal(normalized.actions.analysisId, 'analysis-from-snapshot');
+  assert.equal(normalized.actions.items.length, 1);
+  const [action] = normalized.actions.items;
   assert.equal(action.analysisId, 'analysis-from-snapshot');
   assert.equal(action.summary, 'Restore service');
   assert.equal(action.owner.name, 'Lead Owner');
@@ -178,18 +150,19 @@ test('migrateAppState retains sanitized actions snapshots when present', () => {
   assert.deepEqual(action.verification, { required: false });
 });
 
-test('migrateAppState omits actions when legacy snapshots lack the field', () => {
-  const legacy = migrateAppState({
-    meta: { version: 1, savedAt: null },
+test('migrateAppState keeps actions optional in a current-version snapshot', () => {
+  const normalized = migrateAppState({
+    meta: { version: APP_STATE_VERSION, savedAt: null },
     pre: {},
     ops: {},
     steps: { items: [], drawerOpen: false }
   });
 
-  assert.ok(legacy);
-  assert.equal(Object.prototype.hasOwnProperty.call(legacy, 'actions'), false);
+  assert.ok(normalized);
+  assert.equal(Object.prototype.hasOwnProperty.call(normalized, 'actions'), false);
 });
-test('migrateAppState normalizes persisted intake modes for saved snapshots', () => {
+
+test('migrateAppState normalizes persisted intake modes for current snapshots', () => {
   const modes = [
     ['General', 'general'],
     ['IT', 'it'],
@@ -198,28 +171,28 @@ test('migrateAppState normalizes persisted intake modes for saved snapshots', ()
   ];
 
   modes.forEach(([label, intakeMode]) => {
-    const migrated = migrateAppState({
+    const normalized = migrateAppState({
       meta: { version: APP_STATE_VERSION, savedAt: null, intakeMode },
       pre: {},
       ops: {},
       steps: { items: [], drawerOpen: false }
     });
 
-    assert.ok(migrated, `${label} state should migrate`);
-    assert.equal(migrated.meta.intakeMode, intakeMode, `${label} state should restore its active mode`);
+    assert.ok(normalized, `${label} state should normalize`);
+    assert.equal(normalized.meta.intakeMode, intakeMode, `${label} state should restore its active mode`);
   });
 });
 
 test('migrateAppState defaults missing or unknown intake modes to General', () => {
-  [undefined, '', 'unknown-mode'].forEach((intakeMode) => {
-    const migrated = migrateAppState({
+  [undefined, '', 'unknown-mode'].forEach(intakeMode => {
+    const normalized = migrateAppState({
       meta: { version: APP_STATE_VERSION, savedAt: null, intakeMode },
       pre: {},
       ops: {},
       steps: { items: [], drawerOpen: false }
     });
 
-    assert.ok(migrated, 'state should migrate with a normalized mode');
-    assert.equal(migrated.meta.intakeMode, 'general');
+    assert.ok(normalized);
+    assert.equal(normalized.meta.intakeMode, 'general');
   });
 });

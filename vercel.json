@@ -20,10 +20,6 @@
       "destination": "/api/classroom?__classroomRoute=admit"
     },
     {
-      "source": "/api/classes/join",
-      "destination": "/api/classroom?__classroomRoute=join"
-    },
-    {
       "source": "/api/classes/participants",
       "destination": "/api/classroom?__classroomRoute=participants"
     },

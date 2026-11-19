@@ -35,7 +35,7 @@ Deliver:
 
 - this architecture document;
 - this roadmap;
-- workstream status/handoff document;
+- workstream status/handoff document (now `STATUS.md`; the original ledger is archived in `docs/archive/classroom-workstream-ledger.md`);
 - classroom rules in root `AGENTS.md`;
 - PR template support for program/stack/handoff metadata;
 - repository doctor protection for the durable classroom docs.
@@ -193,7 +193,7 @@ Validation evidence:
 ## Slice 8 — Browser/E2E and required CI
 
 **Issue:** #296, using #279  
-**Implementation:** draft PR #308 on `feature/classroom-browser-e2e`
+**Implementation:** PR #308 (merged)
 
 Implemented browser foundation / critical paths:
 
@@ -240,23 +240,23 @@ Canonical contract: `docs/preproduction-hardening.md`.
 
 ### P0 — pre-production hardening
 
-**#328 — Pre-production compatibility reset**
+**#328 — Pre-production compatibility reset — COMPLETE**
 
-Remove the legacy Student two-code access path, the public Instructor access-code recovery form, and obsolete save/local compatibility migrations that exist only because of pre-production development history. Keep the current one-code Student admission + stable class-session model, current same-device Instructor resume, and intentional Standalone collaboration. This is explicitly allowed to be breaking because there are no production users to migrate.
+Merged via PR #332 as `8ad3eb2b80d080d244556b9280a0fd2f83565193`. Removed the legacy Student two-code access path, the public Instructor access-code recovery form, and obsolete save/local compatibility migrations that exist only because of pre-production development history. Keep the current one-code Student admission + stable class-session model, current same-device Instructor resume, and intentional Standalone collaboration. This is explicitly allowed to be breaking because there are no production users to migrate.
 
-**#329 — Administration / Maintenance lifecycle cleanup**
+**#329 — Administration / Maintenance lifecycle cleanup — COMPLETE**
 
-Add a separately authorized maintenance surface that inventories Classroom and Standalone collaboration data, derives idle/expired state from server timestamps + recent presence, previews destructive cleanup, and safely purges selected or bulk stale records. Administration is not a fourth Intake experience role. It also becomes the intentional recovery path for rotating/reissuing Instructor authority after #328 removes the public Instructor access-code form.
+Merged PR #333 as `b04684f2432aa474cb84874aa26aa08a5f4c5ab7` implements the canonical contract in `docs/admin-maintenance.md`: a separately authorized maintenance surface that inventories Classroom and Standalone collaboration data, derives idle/expired state from server timestamps + recent presence, previews destructive cleanup, and safely purges selected or bulk stale records. Administration is not a fourth Intake experience role. It also becomes the intentional recovery path for rotating/reissuing Instructor authority after #328 removes the public Instructor access-code form.
 
-**#330 — Startup experience hub + explicit resume**
+**#330 — Startup experience hub + explicit resume — COMPLETE**
 
-Replace implicit role restoration with a startup hub that offers **Continue where you left off** when valid saved/resumable context exists, plus **Work independently**, **Join a class**, **Run a class**, and secondary **Administration / Maintenance** entry. Cached Intake, Student resume, and Instructor resume are presented as separate explicit choices rather than silently selecting a role.
+Merged PR #334 as `ad7b9835adf3fd5338658f29b634e18b13b2def5` replaces implicit role restoration with a startup hub that offers **Continue where you left off** when valid saved/resumable context exists, plus **Work independently**, **Join a class**, **Run a class**, and secondary **Administration / Maintenance** entry. Cached Intake, Student resume, and Instructor resume are presented as separate explicit choices rather than silently selecting a role. Exact-head GitHub gates passed and the merged `main` deployment reached Vercel production **READY**.
 
 ### P1 — production simulation enablement
 
 **#316 — Protected staged case assets and rich Student case rendering**
 
-Still technically unblocked, but intentionally ordered **after #328–#330**. Add server-gated protected assets plus accessible table/image/document-page rendering without weakening progressive disclosure or the minimal public-static boundary.
+Ordered after the pre-production hardening sequence #328–#330 (complete). Add server-gated protected assets plus accessible table/image/document-page rendering without weakening progressive disclosure or the minimal public-static boundary.
 
 **#317 — Author and validate the first production staged KT Case Study**
 
@@ -278,7 +278,7 @@ PRODUCTION SIMULATION ENABLEMENT
   #317  first production staged KT Case Study
 ```
 
-**Current product decision:** begin with **#328** after this roadmap/hygiene checkpoint is merged. Do not start #316/#317 first; their architecture should be built on the simplified credential, persistence, maintenance, and startup contracts.
+**Ordering decision:** #328–#330 are complete and production-published. #316 precedes #317. For what is active right now (including Classroom pilot blockers that come before #316), see `STATUS.md`.
 
 ## Stacked PR rules
 
@@ -304,7 +304,7 @@ At minimum, inspect and update where relevant:
 - `docs/architecture-overview.md`;
 - `docs/classroom-architecture.md`;
 - `docs/classroom-roadmap.md`;
-- `docs/classroom-workstream.md`;
+- `STATUS.md`;
 - `docs/REPOSITORY-OPERATIONS.md`;
 - `docs/AI-ONBOARDING.md`;
 - `SECURITY.md`;

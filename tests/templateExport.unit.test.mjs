@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { APP_STATE_VERSION } from '../src/appStateVersion.js';
 import { exportCurrentStateAsTemplate } from '../src/templateExport.js';
 import { TEMPLATE_MODE_IDS } from '../src/templateModes.js';
 import { TEMPLATE_KINDS } from '../src/templateKinds.js';
@@ -54,7 +55,7 @@ test('exportCurrentStateAsTemplate emits standard template payloads without extr
     name: 'My Template',
     description: 'Created from current intake.',
     templateKind: TEMPLATE_KINDS.STANDARD,
-    collect: () => ({ meta: { version: 1, savedAt: null } }),
+    collect: () => ({ meta: { version: APP_STATE_VERSION, savedAt: null } }),
     BlobCtor: FakeBlob,
     documentRef,
     urlRef,
@@ -71,7 +72,7 @@ test('exportCurrentStateAsTemplate emits standard template payloads without extr
 
 test('case study template exports include every supported mode', () => {
   const { FakeBlob, blobs, link, documentRef, urlRef } = createStubs();
-  const state = { meta: { version: 1, savedAt: null }, pre: {}, impact: {}, ops: {}, table: [], causes: [], steps: {}, actions: {} };
+  const state = { meta: { version: APP_STATE_VERSION, savedAt: null }, pre: {}, impact: {}, ops: {}, table: [], causes: [], steps: {}, actions: {} };
   const result = exportCurrentStateAsTemplate({
     name: 'Case Study',
     description: 'Password protected template.',

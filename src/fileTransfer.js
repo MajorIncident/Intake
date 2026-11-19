@@ -9,6 +9,7 @@
  */
 
 import { collectAppState, applyAppState, resetAnalysisId } from './appState.js';
+import { APP_STATE_VERSION } from './appStateVersion.js';
 import { migrateAppState } from './storage.js';
 
 /**
@@ -130,6 +131,18 @@ export function importAppStateFromFile(file, {
           return;
         }
 
+        const fileVersion = parsed?.meta?.version;
+        if (fileVersion !== APP_STATE_VERSION) {
+          const found = Number.isInteger(fileVersion)
+            ? `schema version ${fileVersion}`
+            : 'a missing or unsupported schema version';
+          resolve({
+            success: false,
+            message: `Import failed: this file uses ${found}; this build supports Intake schema version ${APP_STATE_VERSION} only.`
+          });
+          return;
+        }
+
         let migrated = null;
         try {
           migrated = migrate(parsed);
@@ -139,7 +152,7 @@ export function importAppStateFromFile(file, {
         }
 
         if (!migrated || typeof migrated !== 'object') {
-          resolve({ success: false, message: 'Import failed: snapshot was empty after migration.' });
+          resolve({ success: false, message: 'Import failed: the current-version snapshot is invalid.' });
           return;
         }
 

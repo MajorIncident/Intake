@@ -12,8 +12,29 @@ These rules apply to all server-only modules below `api/`.
 - Keep the conservative deployable-function count at or below 12 and preserve `npm run verify:vercel-functions` in both `quality` and the Vercel build command.
 - Schema changes must remain additive/idempotent and be documented in the README plus the owning architecture document.
 - Validate method, authorization, identifiers, names, and payload size before expensive or mutating work.
+- Unauthenticated creation/admission endpoints must call `checkRateLimit()` from `api/_rateLimit.js` before mutating anything. `POST /api/classes` must also enforce `classCreationPasswordMatches()`.
+- Schema lives in versioned `*_SCHEMA` step lists applied by `applySchema()` in `api/_db.js`. Append idempotent steps only, bump the version, and update the fingerprint (the schema test prints it). Never add raw DDL to a repository initializer.
+- Interpolated SQL parameters whose type Postgres cannot infer (only used in `IS NULL`, `CASE ... THEN $n`, etc.) must carry an explicit cast. Real-Postgres tests (`tests/*.pglite.test.mjs`) catch these; extend them when you add SQL.
 - Responses containing capabilities or private Intake data use `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
 - Display names are presentation metadata, never identity or authorization.
+
+## Administration / Maintenance boundary
+
+Read `docs/admin-maintenance.md` before editing `api/admin.js`, `api/_admin.js`, `INTAKE_ADMIN_TOKEN`, maintenance inventory, lifecycle recovery, or purge behavior.
+
+Rules:
+
+- Administration is not Standalone, Student, or Instructor authority and must never be accepted on normal Classroom/collaboration endpoints.
+- `INTAKE_ADMIN_TOKEN` is environment-only and must never be stored in the database, browser localStorage, Intake state, URLs, logs, analytics, or test snapshots.
+- `/api/admin` is the single deployable Admin entrypoint; do not create a directory of Admin function wrappers.
+- Admin responses are always `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
+- Inventory may return non-secret public maintenance IDs and lifecycle metadata, but never raw capability values/hashes or Intake snapshots.
+- Instructor recovery rotates to a new capability and returns that raw value once; historical bearer credentials are not recoverable.
+- Physical purge is preview-first. The signed preview must be short-lived, commit must re-read/revalidate the exact candidate plan, and a changed plan returns conflict rather than silently widening deletion.
+- Recent collaboration presence is activity. Never purge an apparently idle workspace based only on old snapshot/update time when recent presence exists.
+- Class-owned collaboration workspaces are physically deleted only with their owning class.
+- Bulk purge SQL must guard the complete requested candidate set before mutation and preserve FK cascade integrity.
+- Do not introduce autonomous scheduled deletion until a separate roadmap item explicitly approves it.
 
 ## Classroom capability boundaries
 
@@ -34,14 +55,10 @@ human Student join code
   -> existing collaboration edit APIs
 ```
 
-The legacy `Student join capability + assignment capability` chain remains an explicit two-code compatibility path.
-
 Rules:
 
 - Human join code and Student class-session capability must never enumerate classroom workspaces.
 - Student class-session capability must never edit collaboration directly.
-- Legacy Student join capability alone must never enumerate classroom workspaces.
-- Legacy assignment capability must resolve only within the active class represented by the Student join capability.
 - Instructor workspace listing must be scoped to exactly the class represented by the Instructor capability.
 - Classroom workspaces reuse `collaboration_workspaces`; do not create a parallel snapshot/revision/presence engine.
 - Raw bearer capabilities are returned only at creation/rotation. Persist only SHA-256 hashes.
@@ -62,15 +79,14 @@ Instructor observation for #293 must **not** be inserted as a workspace alias. `
 ## Retention and revocation
 
 - Classroom workspaces must not outlive their class; create them with the class's absolute expiry timestamp.
-- Rotating a Student join or assignment capability stops future admission through the old token but does not eject already joined students.
-- Revoking an assignment expires its underlying collaboration workspace.
+- Assign/reassign/unassign must revoke the participant's previous assignment-specific workspace capability before destination/current access can be issued.
 - Revoking a class disables joins and expires all of its classroom workspaces.
-- Existing Standalone secret-link collaboration remains backward compatible.
+- Existing Standalone secret-link collaboration remains supported.
 
 ## Enumeration and errors
 
 - Student-facing endpoints return only the resolved class/workspace after successful authorization; never return a class roster or workspace catalog.
-- Cross-class join/assignment mismatches use a generic not-found response rather than revealing which secret was valid.
+- Cross-class assignment attempts fail without revealing unrelated class/workspace state.
 - Instructor APIs may enumerate only their own class.
 - Coaching endpoints are a separate channel: Instructor capability may read/write feedback only in its class; Student workspace capability may read feedback only for its resolved membership and never write it.
 - Coaching PUT/DELETE must never route through collaboration snapshot mutation or advance `collaboration_workspaces.revision`.
@@ -80,7 +96,7 @@ Instructor observation for #293 must **not** be inserted as a workspace alias. `
 
 - `api/protected-case-studies.manifest.js` is server-only generated content. Never import it from browser runtime modules.
 - Instructor `/api/classes/case-studies` access is scoped by `getClassByInstructor()`.
-- Student `/api/classes/case-studies/student` access is scoped by `getStudentContext()` using the already-issued classroom workspace capability; do not accept a Student workspace selector or legacy collaboration token as a substitute.
+- Student `/api/classes/case-studies/student` access is scoped by `getStudentContext()` using the already-issued classroom workspace capability; do not accept a Student workspace selector or Standalone collaboration capability as a substitute.
 - GET returns metadata catalog only. POST accepts `caseStudyId` in the JSON body and may return the full protected payload after authorization.
 - Protected content and identifiers must not be added to URL query strings, logs, analytics, or error telemetry.
 - Protected responses are always `no-store` / `no-referrer`.
@@ -102,18 +118,18 @@ Classroom API changes must preserve automated coverage for:
 - reassignment/unassign revoking old workspace authority before destination access;
 - stale old-team token rejection and no Intake snapshot merge;
 - credential rotation and revocation;
-- live and legacy classroom workspace tokens through the existing collaboration session API;
+- current assignment-specific Classroom workspace capabilities through the existing collaboration session API;
 - edit-capability kind restrictions;
-- legacy two-code Classroom and Standalone collaboration behavior;
+- Standalone collaboration behavior remains isolated from Classroom authority;
 - coaching class scoping, independent feedback revisions, Student read-only access, and zero Student snapshot-revision changes;
-- protected Case Study Instructor class scoping, Student membership-bound access, rejection of legacy Standalone collaboration capabilities, metadata-only catalogs, POST-only payload selection, and private response headers.
+- protected Case Study Instructor class scoping, Student live-assignment access, rejection of Standalone collaboration capabilities, metadata-only catalogs, POST-only payload selection, and private response headers.
 
 
 ## #312 live-class capability direction
 
 Read `docs/classroom-live-management.md` before implementing #312.
 
-The new capability chain is intentionally different from the legacy two-code admission path:
+The current capability chain is:
 
 ```text
 human join code (admission locator only)
@@ -130,7 +146,6 @@ Rules:
 - on assign/reassign/unassign, revoke the previous workspace-access capability before destination access is issued;
 - never remap one still-active edit token from an old workspace to a new workspace;
 - no assignment operation copies or merges Intake snapshots;
-- keep legacy `/api/classes/join` and `classroom_memberships` working during the additive migration;
 - Student status endpoints return only that Student's assignment; they never enumerate classmates/workspaces.
 - `PATCH /api/classes/participants` must revoke any existing assignment-specific workspace capability before changing the participant's workspace assignment; destination access is issued only later through `POST /api/classes/student/access`.
 - live Student coaching/protected-resource authorization must validate that the participant's stored workspace-access hash still corresponds to an active, unrevoked `classroom-student` collaboration capability; the stored hash alone is not sufficient authority.

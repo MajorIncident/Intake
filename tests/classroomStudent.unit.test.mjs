@@ -19,18 +19,6 @@ import {
 
 const TOKEN = 'a'.repeat(43);
 
-function validSession(overrides = {}) {
-  return {
-    version: STUDENT_SESSION_VERSION,
-    class: { id: 'class-1', title: 'Problem Solving 101', expiresAt: '2099-01-01T00:00:00Z' },
-    workspace: { id: 'workspace-1', kind: 'group', label: 'Team Alpha', expiresAt: '2099-01-01T00:00:00Z' },
-    participant: { id: '11111111-1111-4111-8111-111111111111', displayName: 'Alex' },
-    workspaceToken: TOKEN,
-    joinedAt: '2026-10-01T00:00:00Z',
-    ...overrides
-  };
-}
-
 function validLiveSession(overrides = {}) {
   return {
     version: STUDENT_SESSION_VERSION,
@@ -76,34 +64,25 @@ test('live Student resume retains the class session but never persists assignmen
   dom.window.close();
 });
 
-test('Student resume envelope round-trips only the issued workspace capability and context', () => {
+test('Student resume envelope rejects obsolete and invalid authority and detects expiry', () => {
   const dom = new JSDOM('', { url: 'https://intake.test/' });
-  const session = validSession();
 
-  assert.equal(persistStudentSession(dom.window.localStorage, session), true);
-  const restored = readStudentSession(dom.window.localStorage);
+  dom.window.localStorage.setItem(STUDENT_SESSION_STORAGE_KEY, JSON.stringify({
+    version: 1,
+    class: { id: 'class-1', title: 'Legacy', expiresAt: '2099-01-01T00:00:00Z' },
+    workspace: { id: 'workspace-1', kind: 'group', label: 'Team Alpha', expiresAt: '2099-01-01T00:00:00Z' },
+    participant: { id: '11111111-1111-4111-8111-111111111111', displayName: 'Alex' },
+    workspaceToken: TOKEN
+  }));
+  assert.equal(readStudentSession(dom.window.localStorage), null, 'pre-reset workspace-token resumes are not migrated');
 
-  assert.deepEqual(restored, session);
-  assert.equal('studentJoinToken' in restored, false);
-  assert.equal('assignmentToken' in restored, false);
-  assert.equal(dom.window.localStorage.getItem(STUDENT_SESSION_STORAGE_KEY).includes('class-1'), true);
-
-  clearStudentSession(dom.window.localStorage);
-  assert.equal(readStudentSession(dom.window.localStorage), null);
-  dom.window.close();
-});
-
-test('Student resume envelope rejects invalid capabilities and detects expiry', () => {
-  const dom = new JSDOM('', { url: 'https://intake.test/' });
-  dom.window.localStorage.setItem(STUDENT_SESSION_STORAGE_KEY, JSON.stringify(validSession({ workspaceToken: 'bad' })));
-  assert.equal(readStudentSession(dom.window.localStorage), null);
   dom.window.localStorage.setItem(STUDENT_SESSION_STORAGE_KEY, JSON.stringify(validLiveSession({ studentSessionToken: 'bad' })));
   assert.equal(readStudentSession(dom.window.localStorage), null);
   dom.window.localStorage.setItem(STUDENT_SESSION_STORAGE_KEY, JSON.stringify(validLiveSession({ workspaceToken: TOKEN })));
   assert.equal(readStudentSession(dom.window.localStorage), null);
 
-  assert.equal(isStudentSessionExpired(validSession(), Date.parse('2026-10-01T00:00:00Z')), false);
-  assert.equal(isStudentSessionExpired(validSession({
+  assert.equal(isStudentSessionExpired(validLiveSession(), Date.parse('2026-10-01T00:00:00Z')), false);
+  assert.equal(isStudentSessionExpired(validLiveSession({
     class: { id: 'class-1', title: 'Expired', expiresAt: '2026-09-30T00:00:00Z' }
   }), Date.parse('2026-10-01T00:00:00Z')), true);
   dom.window.close();

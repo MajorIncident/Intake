@@ -93,8 +93,9 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
 
   try {
     await startFresh(instructor);
-    await instructor.getByRole('button', { name: /Teach a class/ }).click();
+    await instructor.getByRole('button', { name: /Run a class/ }).click();
     await instructor.getByLabel('Class title').fill('Integrated Browser Classroom');
+    await instructor.getByLabel('Class password').fill('kepnertregoe');
     await instructor.getByRole('button', { name: 'Start class' }).click();
 
     await expect(instructor.locator('#instructorClassDashboard')).toBeVisible();
@@ -327,8 +328,9 @@ test('Instructor compares immutable debrief checkpoint with current live Intake'
 
   try {
     await startFresh(instructor);
-    await instructor.getByRole('button', { name: /Teach a class/ }).click();
+    await instructor.getByRole('button', { name: /Run a class/ }).click();
     await instructor.getByLabel('Class title').fill('Integrated Browser Classroom');
+    await instructor.getByLabel('Class password').fill('kepnertregoe');
     await instructor.getByRole('button', { name: 'Start class' }).click();
     await expect(instructor.locator('#instructorClassDashboard')).toBeVisible();
 
@@ -438,8 +440,9 @@ test('Instructor share link opens normal Student admission with fragment-only hu
     await instructorContext.grantPermissions(['clipboard-read', 'clipboard-write']);
 
     await startFresh(instructor);
-    await instructor.getByRole('button', { name: /Teach a class/ }).click();
+    await instructor.getByRole('button', { name: /Run a class/ }).click();
     await instructor.getByLabel('Class title').fill('Integrated Browser Classroom');
+    await instructor.getByLabel('Class password').fill('kepnertregoe');
     await instructor.getByRole('button', { name: 'Start class' }).click();
     await expect(instructor.locator('#instructorClassDashboard')).toBeVisible();
 
@@ -466,6 +469,13 @@ test('Instructor share link opens normal Student admission with fragment-only hu
     expect(shareUrl).not.toContain('workspace=');
 
     await student.goto(shareUrl);
+    await expect(student.locator('#experienceRoleGate')).toBeVisible();
+    await expect(student.locator('body')).toHaveAttribute('data-experience-role', 'unselected');
+    await expect(student.locator('#startupJoinIntentNotice')).toContainText(joinCode);
+    await expect(student.locator('[data-experience-role-choice="student"]')).toHaveClass(/is-recommended/);
+
+    await student.getByRole('button', { name: /Join a class/ }).click();
+
     await expect(student.locator('body')).toHaveAttribute('data-experience-role', 'student');
     await expect(student.locator('#studentClassEntryShell')).toBeVisible();
     await expect(student.getByLabel('Class code')).toHaveValue(joinCode);

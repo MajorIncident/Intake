@@ -43,7 +43,6 @@ Class
   title
   instructor capability hash
   human Student join code
-  legacy Student join capability hash
   status / expiry / retention metadata
 
   -> Classroom Participant [0..n]
@@ -58,7 +57,6 @@ Class
        kind: individual | group
        display label
        existing collaboration workspace reference
-       legacy assignment capability hash
 
        -> existing collaboration snapshot / revision / presence
 
@@ -83,18 +81,20 @@ The **Classroom Workspace** references the existing collaboration workspace rath
 
 ## Experience role lifecycle
 
-Slice #289 implements the role foundation with:
+Slice #289 established the role foundation and #330 now owns startup intent:
 
-- canonical `standalone`, `student`, and `instructor` roles in `src/experienceRoles.js`;
-- a versioned local-only `kt-experience-role-v1` preference owned by `src/experienceRoleController.js`;
-- a required first-run chooser for a genuinely new browser;
-- silent Standalone migration when an existing `kt-intake-full-v2` snapshot or existing `?workspace=` collaboration URL is present;
-- **View → Experience** as the durable route back to role selection;
-- declarative `data-experience-surface` projection rather than Intake-mode conditionals.
+- canonical `standalone`, `student`, and `instructor` roles live in `src/experienceRoles.js`;
+- a versioned local-only `kt-experience-role-v1` last-choice preference is owned by `src/experienceRoleController.js`;
+- `src/startupExperienceHub.js` independently detects substantive saved Intake, current Student resume, and current Instructor resume and renders explicit Continue cards;
+- ordinary launch remains unselected until the user chooses Continue / Work independently / Join a class / Run a class;
+- a safe `#join=<human-code>` fragment highlights Join but does not bypass admission;
+- only an explicit `?workspace=` collaboration capability routes directly to Standalone;
+- **View → Experience** reopens the same hub without destroying current Intake/Classroom state;
+- declarative `data-experience-surface` projection remains independent from Intake mode.
 
-Returning users resume the stored role. **Start Fresh** deliberately clears Intake state without clearing the role preference.
+**Start Fresh** clears Intake state without clearing the last-choice role preference, but that preference no longer auto-routes a later launch.
 
-The local experience preference is **not authentication or authorization**. Student class admission and Instructor privileges remain future server-enforced capabilities (#291 onward). Role/session preferences must never alter Intake serialization.
+The local experience preference and startup hub are **not authentication or authorization**. Student class admission and Instructor privileges remain server-enforced capabilities. Resume cards may display only non-secret local context and role/session navigation must never alter Intake serialization.
 
 ### Standalone
 
@@ -103,7 +103,7 @@ Standalone is the compatibility anchor.
 - no account required;
 - local Intake continues to boot from existing storage;
 - Templates available;
-- Case Studies absent from the normal resource UI;
+- Case Studies absent from the normal resource UI, except the TEMPORARY Standalone allowlist (`scripts/standalone-public-case-studies.mjs`), which Work independently applies from the public manifest behind the mode password;
 - optional existing secret-link collaboration remains available;
 - classroom APIs are not required for boot or editing.
 
@@ -124,7 +124,7 @@ On assignment revision change, the client leaves/discards old collaboration auth
 
 A pre-class local snapshot remains separately recoverable under `kt-classroom-student-local-recovery-v1`. Terminal invalid/expired class-session access clears Classroom credentials and restores local recovery where appropriate.
 
-The #292 **class join capability + assignment capability** flow remains available only as explicit legacy/recovery compatibility. No classroom metadata or capability belongs in the Intake snapshot.
+The original #292 two-code flow (class join capability + assignment capability) was removed by #328; one-code admission is the only Student path. No classroom metadata or capability belongs in the Intake snapshot.
 
 ### Instructor
 
@@ -160,8 +160,7 @@ Primary #312 credential chain:
 - **Student workspace capability** — assignment-specific `classroom-student` editable alias into exactly one collaboration workspace; revoked/rotated on reassignment or unassign.
 - **Case Study unlock password** — instructional progression control only; never server authentication.
 
-Legacy compatibility chain:
-- **Student class join capability + assignment capability** still authorize the older two-code admission endpoint and mint a per-participant editable workspace capability.
+Retired by #328: the former two-code chain (Student class join capability + assignment capability, `POST /api/classes/join`, `classroom_memberships`). It must not be reintroduced; Instructor recovery belongs to Administration / Maintenance.
 
 The Student class-session capability is never accepted by collaboration edit, Instructor observer, or Instructor coaching endpoints. The human join code is never accepted outside admission. Cross-class assignment attempts fail generically.
 
@@ -185,7 +184,7 @@ The server, not the browser, owns live assignment.
 
 The Student own-status endpoint has no roster/workspace enumeration. Display name remains presentation metadata, not identity.
 
-The legacy #291/#292 assignment-capability semantics remain supported behind the explicit two-code recovery path. Resume/recovery keys for both models stay outside `kt-intake-full-v2`, file export, templates, and summaries.
+The #291/#292 assignment-capability semantics were removed by #328. Student resume/recovery keys stay outside `kt-intake-full-v2`, file export, templates, and summaries.
 
 ## Instructor observation
 
@@ -239,7 +238,7 @@ The existing `templateKind` distinction remains useful.
 
 Implemented state (#295):
 
-- `src/templates.manifest.js` is the public browser manifest and contains Standard Templates only.
+- `src/templates.manifest.js` is the public browser manifest and contains Standard Templates only, plus the TEMPORARY Standalone Case Study allowlist (see `templates/AGENTS.md`).
 - `api/protected-case-studies.manifest.js` is server-only generated content containing protected Case Study metadata + full payloads.
 - All authored JSON remains under `templates/` for maintainers and is validated by `npm run build:templates`, but `.vercelignore` excludes `templates/*.json` from deployment so raw authoring files cannot be fetched as static assets.
 - Student and Instructor clients receive protected catalog metadata only after Classroom authorization. Full Case Study state is fetched on demand with an authenticated POST and then projected through the same `MODE_RULES` path used by public Templates.
@@ -253,14 +252,15 @@ Implemented state (#295):
 
 Continue the existing Neon/Vercel approach unless evidence justifies a platform migration.
 
-The Classroom persistence model is additive:
+The Classroom persistence model uses:
 
 - `collaboration_workspace_capabilities` — explicitly editable aliases into existing collaboration workspaces;
-- `classroom_classes` — class metadata/retention, Instructor capability hash, legacy Student-join hash, and #312 human join code;
-- `classroom_workspaces` — individual/group workspace metadata plus legacy assignment capability hashes;
-- `classroom_memberships` — legacy two-code participant-to-workspace compatibility;
-- `classroom_participants` — #312 live participant identity, optional current assignment, `assignment_revision`, Student class-session capability hash, and current workspace-access capability hash;
+- `classroom_classes` — class metadata/retention, Instructor capability hash, human Student join code, join-enable state, and expiry/revocation;
+- `classroom_workspaces` — individual/group workspace metadata linked to existing collaboration workspaces;
+- `classroom_participants` — live participant identity, optional current assignment, `assignment_revision`, Student class-session capability hash, and current workspace-access capability hash;
 - `classroom_coaching_feedback` — separate class/workspace/target coaching channel.
+
+#328 removes the pre-production Student join-token hash, workspace assignment-claim hash, and `classroom_memberships` table. Existing pre-production databases drop those obsolete structures during idempotent schema initialization.
 
 Protected Case Study delivery (#295) adds no public/browser data table and remains server-gated. #313 Tranche 3 now adds exercise orchestration persistence separately from Intake snapshots and participant authorization:
 
@@ -300,12 +300,12 @@ The repository is still pre-production and has no external production users to m
 
 The approved target architecture is defined in `docs/preproduction-hardening.md` and issues #328–#330:
 
-- #328 removes the legacy Student two-code Classroom path, the normal-product Instructor access-code recovery form, and compatibility-only old save/local formats after an explicit inventory;
-- #329 adds separately authorized Administration / Maintenance inventory, recovery, and preview-first stale-data cleanup;
+- #328 is the compatibility reset: one-code Student admission/class-session authority is the only Classroom Student model; public Instructor bearer-code recovery is removed; only the current Intake save schema is accepted;
+- #329 implements separately authorized Administration / Maintenance inventory, Instructor recovery, and signed preview-first stale-data cleanup; the detailed runtime contract is `docs/admin-maintenance.md`, and Admin is not an experience role;
 - #330 replaces implicit role restoration with explicit Continue / Work independently / Join a class / Run a class startup choices;
 - #316/#317 resume only after that hardening sequence.
 
-Until #328 merges, sections above that describe legacy two-code fields/routes remain accurate descriptions of the **current runtime**, not endorsements of the future contract. Do not prematurely remove authorization checks or schema fields outside the #328 implementation.
+#328 is merged and published: obsolete access/schema/save compatibility is removed rather than hidden. Future work must not recreate it as a recovery mechanism; Instructor recovery belongs to the separate #329 Admin boundary.
 
 ## Migration philosophy
 
