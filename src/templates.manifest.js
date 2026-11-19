@@ -2765,9 +2765,9 @@ const manifest = [
         "now": "Temporary red/pink fluid or marks on exposed skin during flight."
       },
       "impact": {
-        "now": "Crew reports describe an unexplained condition; operational and medical impact are not quantified (NMD).",
-        "future": "NMD — do not infer an impact or mitigation before further investigation.",
-        "time": "NMD — no verified response deadline in the learner case."
+        "now": "HISTORICAL CASE: Eastern flight attendants reported temporary red/pink fluid or markings on exposed skin in flight. Crew discomfort, the true substance and any adverse medical effect were initially unresolved. The available case provides no verified injury count, flight interruption, passenger impact or severity classification (NMD).",
+        "future": "ILLUSTRATIVE OPERATIONAL CONCERN, not a reported outcome: if an unidentified substance remains on cabin-crew skin, continued exposure reports and unnecessary disruption are possible. Medical and cabin-safety implications require qualified review; do not assert injury, aircraft unserviceability or passenger exposure without evidence.",
+        "time": "On affected flights, symptoms began within approximately 30 minutes after takeoff and were short-lived. A300/new demonstration-vest preparation occurred before January 1980 operations; the newspaper-style report is from early March 1980. Exact first incident, decision deadline and closure timestamps: NMD."
       },
       "ops": {
         "bridgeOpenedUtc": "",
@@ -2776,16 +2776,16 @@ const manifest = [
         "semOpsName": "",
         "severity": "",
         "detectMonitoring": false,
-        "detectUserReport": false,
+        "detectUserReport": true,
         "detectAutomation": false,
         "detectOther": false,
         "evScreenshot": false,
         "evLogs": false,
         "evMetrics": false,
         "evRepro": false,
-        "evOther": false,
-        "containStatus": "assessing",
-        "containDesc": "",
+        "evOther": true,
+        "containStatus": "stabilized",
+        "containDesc": "HISTORICAL POST-EXERCISE RESULT: case resolution reports that the red-sweat reports stopped after Eastern removed the new demonstration life vests. This is not evidence of a formal major-incident declaration, bridge or medical outcome. NMD: who directed removal, exact date and independent monitoring duration.",
         "commCadence": "",
         "commLog": [],
         "commNextDueIso": "",
@@ -2994,12 +2994,406 @@ const manifest = [
       ],
       "likelyCauseId": "cause-red-sweat-demonstration-vest-ink",
       "steps": {
-        "items": [],
+        "items": [
+          {
+            "id": "1",
+            "label": "Pre-analysis completed",
+            "checked": false
+          },
+          {
+            "id": "2",
+            "label": "Incident Commander assigned",
+            "checked": false
+          },
+          {
+            "id": "4",
+            "label": "Problem statement created",
+            "checked": false
+          },
+          {
+            "id": "5",
+            "label": "Bridge options considered",
+            "checked": false
+          },
+          {
+            "id": "6",
+            "label": "Bridges opened and responders invited",
+            "checked": false
+          },
+          {
+            "id": "7",
+            "label": "Bridge etiquette, roles, and guidelines outlined",
+            "checked": false
+          },
+          {
+            "id": "8",
+            "label": "Current actions documented (Who/What/When)",
+            "checked": false
+          },
+          {
+            "id": "9",
+            "label": "Quick spec answers captured",
+            "checked": false
+          },
+          {
+            "id": "10",
+            "label": "Last changes, monitoring, and dependencies investigated",
+            "checked": false
+          },
+          {
+            "id": "11",
+            "label": "Attendees optimized",
+            "checked": false
+          },
+          {
+            "id": "12",
+            "label": "Possible causes developed",
+            "checked": false
+          },
+          {
+            "id": "13",
+            "label": "Testing actions documented (Who/What/When)",
+            "checked": false
+          },
+          {
+            "id": "14",
+            "label": "Micro-experiments/tests conducted",
+            "checked": false
+          },
+          {
+            "id": "15",
+            "label": "Containment options identified",
+            "checked": false
+          },
+          {
+            "id": "16",
+            "label": "Comms written, reviewed, and sent",
+            "checked": false
+          },
+          {
+            "id": "17",
+            "label": "Attendees optimized for next action",
+            "checked": false
+          },
+          {
+            "id": "18",
+            "label": "Possible causes evaluated and distinctions identified",
+            "checked": false
+          },
+          {
+            "id": "19",
+            "label": "Most probable cause identified",
+            "checked": false
+          },
+          {
+            "id": "20",
+            "label": "Restoration/rollback/workaround selected",
+            "checked": false
+          },
+          {
+            "id": "21",
+            "label": "Attendees optimized for decision",
+            "checked": false
+          },
+          {
+            "id": "22",
+            "label": "Verification and risk plan created",
+            "checked": false
+          },
+          {
+            "id": "23",
+            "label": "Restoration actions documented (Who/What/When)",
+            "checked": false
+          },
+          {
+            "id": "24",
+            "label": "Service validated internally and externally",
+            "checked": false
+          },
+          {
+            "id": "25",
+            "label": "Restoration comms sent",
+            "checked": false
+          },
+          {
+            "id": "26",
+            "label": "Handover template prepared (PIR/problem)",
+            "checked": false
+          },
+          {
+            "id": "27",
+            "label": "Downstream issues from fix assessed",
+            "checked": false
+          },
+          {
+            "id": "28",
+            "label": "Participants released and bridge closed",
+            "checked": false
+          }
+        ],
         "drawerOpen": false
       },
       "actions": {
-        "analysisId": "",
-        "items": []
+        "analysisId": "red-sweat-pa-exemplar",
+        "items": [
+          {
+            "id": "red-sweat-verify-crew-exposure",
+            "analysisId": "red-sweat-pa-exemplar",
+            "createdAt": "",
+            "createdBy": "",
+            "summary": "Compare life-vest demonstration exposure by crew role and flight",
+            "detail": "Proposed confirmation of the remaining WHAT/WHERE assumptions: compare which working attendants and lead attendants actually handled the new demonstration vests; then map affected A300 and other Eastern flights against routes, DC9 comparisons and the demonstration-vest inventory. Preserve both IS and close IS NOT facts.",
+            "owner": {
+              "name": "Cabin Safety / Flight Operations SME (illustrative)",
+              "category": "Teaching role (not a historical person)",
+              "subOwner": "Cabin Safety / Flight Operations SME (illustrative)",
+              "notes": "Proposed role for a modern training exercise. No named historical owner is documented.",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "Cabin Safety / Flight Operations SME (illustrative)",
+            "status": "Planned",
+            "priority": "High",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [],
+            "risk": {
+              "level": "Medium",
+              "impactIfFails": "Exposure mismatch could leave alternative mechanisms untested.",
+              "prevent": "Use a standardized role/aircraft/route inventory.",
+              "ifHappens": "Reopen the PA specification and candidate testing where exceptions are found."
+            },
+            "changeControl": {
+              "required": false,
+              "rollbackPlan": ""
+            },
+            "verification": {
+              "required": true,
+              "result": "Role, aircraft and route records discriminate whether vest handlers uniquely match affected flights and crews, including close unaffected comparisons."
+            },
+            "links": {},
+            "auditTrail": [],
+            "notes": "PROPOSED/ILLUSTRATIVE ACTION ONLY; not a documented historical assignment or completed field test. Historical facts and proposed confirmation steps must remain distinct."
+          },
+          {
+            "id": "red-sweat-material-check",
+            "analysisId": "red-sweat-pa-exemplar",
+            "createdAt": "",
+            "createdBy": "",
+            "summary": "Inspect demonstration-vest red printing for transferable pigment",
+            "detail": "Proposed observation / safe experiment (not reported as performed historically): examine suspect and control demonstration vests for flaking red print; document contact transfer to an inert material under controlled conditions, using authorized technical and safety personnel. No human exposure experiment.",
+            "owner": {
+              "name": "Cabin Equipment / Materials Specialist (illustrative)",
+              "category": "Teaching role (not a historical person)",
+              "subOwner": "Cabin Equipment / Materials Specialist (illustrative)",
+              "notes": "Proposed role for a modern training exercise. No named historical owner is documented.",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "Cabin Equipment / Materials Specialist (illustrative)",
+            "status": "Planned",
+            "priority": "High",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [
+              "red-sweat-verify-crew-exposure"
+            ],
+            "risk": {
+              "level": "Medium",
+              "impactIfFails": "An unsafe or contaminated specimen could create misleading or hazardous conclusions.",
+              "prevent": "Use authorized handling, documented controls and no human testing.",
+              "ifHappens": "Stop tests and refer specimens to qualified laboratory staff."
+            },
+            "changeControl": {
+              "required": false,
+              "rollbackPlan": ""
+            },
+            "verification": {
+              "required": true,
+              "result": "Controlled observation shows red pigment flaking from the suspect life vest, transfer on contact and compatibility with the reported visible spots; clean controls do not show equivalent transfer."
+            },
+            "links": {},
+            "auditTrail": [],
+            "notes": "PROPOSED/ILLUSTRATIVE ACTION ONLY; not a documented historical assignment or completed field test. Historical facts and proposed confirmation steps must remain distinct."
+          },
+          {
+            "id": "red-sweat-safe-equipment-replacement",
+            "analysisId": "red-sweat-pa-exemplar",
+            "createdAt": "",
+            "createdBy": "",
+            "summary": "Replace or quarantine suspect demonstration vests without reducing safety readiness",
+            "detail": "HISTORICAL OUTCOME: the participant case's later reveal says reports ceased after removal of new demonstration life vests. PROPOSED MODERN EXECUTION: use approved substitute demonstration equipment, preserve passenger-safety briefing capability, isolate only the suspect lot where feasible and document the change.",
+            "owner": {
+              "name": "Cabin Safety / Authorized Fleet Operations (illustrative)",
+              "category": "Teaching role (not a historical person)",
+              "subOwner": "Cabin Safety / Authorized Fleet Operations (illustrative)",
+              "notes": "Proposed role for a modern training exercise. No named historical owner is documented.",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "Cabin Safety / Authorized Fleet Operations (illustrative)",
+            "status": "Planned",
+            "priority": "High",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [
+              "red-sweat-material-check"
+            ],
+            "risk": {
+              "level": "High",
+              "impactIfFails": "Removing safety equipment without approved replacement could compromise required passenger safety demonstrations.",
+              "prevent": "Authorize compliant substitutes and flight-operation checks before implementing.",
+              "ifHappens": "Stop the change, restore compliant demonstration capability and pursue controlled inspection before further use."
+            },
+            "changeControl": {
+              "required": true,
+              "rollbackPlan": "Restore compliant approved equipment and pause any unsafe substitution; escalation authority remains with operator's safety-management process."
+            },
+            "verification": {
+              "required": true,
+              "result": "Safety demonstrations continue with approved equipment; red-sweat case reports stop on matched follow-up flights without additional unexplained safety incidents. Historical source reports cessation but not the exact monitoring protocol."
+            },
+            "links": {},
+            "auditTrail": [],
+            "notes": "PROPOSED/ILLUSTRATIVE ACTION ONLY; not a documented historical assignment or completed field test. Historical facts and proposed confirmation steps must remain distinct."
+          },
+          {
+            "id": "red-sweat-recurrence-monitor",
+            "analysisId": "red-sweat-pa-exemplar",
+            "createdAt": "",
+            "createdBy": "",
+            "summary": "Monitor recurrence by crew, route, aircraft and material lot",
+            "detail": "Proposed confirmation step after any approved corrective action: compare symptom reports across similar over-water flights, working/lead attendant roles and equipped/non-equipped aircraft. Record new cases and non-cases with denominators. Do not equate temporary silence with conclusive proof without adequate exposure and time coverage.",
+            "owner": {
+              "name": "Quality Assurance / Crew Health Coordinator (illustrative)",
+              "category": "Teaching role (not a historical person)",
+              "subOwner": "Quality Assurance / Crew Health Coordinator (illustrative)",
+              "notes": "Proposed role for a modern training exercise. No named historical owner is documented.",
+              "lastAssignedBy": "",
+              "lastAssignedAt": "",
+              "source": "Manual"
+            },
+            "role": "Quality Assurance / Crew Health Coordinator (illustrative)",
+            "status": "Planned",
+            "priority": "Med",
+            "dueAt": "",
+            "startedAt": "",
+            "completedAt": "",
+            "dependencies": [
+              "red-sweat-safe-equipment-replacement"
+            ],
+            "risk": {
+              "level": "Medium",
+              "impactIfFails": "Early closure could hide recurrence or unidentified second exposure.",
+              "prevent": "Predefine comparison flights, reporting period and contact inventory.",
+              "ifHappens": "Reopen the cause evaluation if symptoms recur or unaffected comparators begin reporting."
+            },
+            "changeControl": {
+              "required": false,
+              "rollbackPlan": ""
+            },
+            "verification": {
+              "required": true,
+              "result": "An adequate representative observation period shows no further reported red/pink spotting with suspect vests removed, while approved demonstrations remain available; review exceptions rather than assuming universal resolution."
+            },
+            "links": {},
+            "auditTrail": [],
+            "notes": "PROPOSED/ILLUSTRATIVE ACTION ONLY; not a documented historical assignment or completed field test. Historical facts and proposed confirmation steps must remain distinct."
+          }
+        ]
+      },
+      "appearance": {
+        "theme": "light"
+      },
+      "decisionAnalysis": {
+        "decision": "ILLUSTRATIVE EXERCISE: how should an operator safely isolate the most probable pigment source while maintaining mandatory life-vest safety demonstrations?",
+        "options": "A. Inspect new demonstration vests and substitute approved clean demo equipment one controlled change at a time; monitor matched flight reports.\nB. Continue the same vests while investigating cabin air and cleaning agents (less diagnostic focus on crew handling).\nC. Replace multiple new cabin products simultaneously (fast broad intervention but cause confirmation becomes ambiguous).\nThe historical case does not document a formal Decision Analysis or authorized alternative scoring.",
+        "selectedOption": "Illustrative recommendation: A — approved substitution and targeted investigation; historical reveal reports vest removal ended the complaints.",
+        "ownerRole": "Cabin Safety / Authorized Flight Operations (illustrative role)",
+        "delegatedOwner": "",
+        "rationale": "The role-specific contact pattern, over-water demonstrations, aircraft distribution and early-flight onset make vest pigment transfer the most defensible verification priority; this does not substitute for evidence from actual crew-activity and fleet inventories. An approved replacement preserves safety-critical demonstration capability and allows a more discriminating cause test than changing all cabin materials. Decision criteria include safety, reversibility, causal clarity and operational practicality. The case does not supply MUST/WANT scoring or real decision authority.",
+        "timestamp": ""
+      },
+      "potentialProblemAnalysis": {
+        "owner": {
+          "name": "Cabin Safety / Quality Lead (illustrative)",
+          "category": "Teaching role (not a historical person)",
+          "subOwner": "Risk and change-control reviewer",
+          "notes": "Proposed role for a modern training exercise. No named historical owner is documented.",
+          "lastAssignedBy": "",
+          "lastAssignedAt": "",
+          "source": "Manual"
+        },
+        "risk": {
+          "level": "Medium",
+          "impactIfFails": "ILLUSTRATIVE IF/THEN: IF suspect demonstration vests are removed without an approved substitute, THEN flight crews may lack required safety-demonstration equipment. IF several materials are changed at once, THEN a disappearance of symptoms does not uniquely confirm the true cause. Historical consequences of a poorly executed fix are NMD.",
+          "prevent": "Verify approved alternative demonstration equipment and operator authorization before removal; isolate one suspected variable at a time; preserve samples and a matched-flight case log; brief all affected crew roles. The 'Medium' risk rating is an exercise judgment, not a measured historical value.",
+          "ifHappens": "If the safety-demonstration replacement fails, stop the substitution and restore compliant equipment before flight. If red spotting recurs, return to the IS / IS NOT specification, check the affected lot and retest surviving causes rather than asserting resolution."
+        },
+        "changeControl": {
+          "required": true,
+          "rollbackPlan": "ILLUSTRATIVE: authorized aviation-safety owner verifies replacement readiness; preserve traceable suspect specimens, approved replacement stock and a reversion plan. No specific historical rollback procedure is in the source."
+        },
+        "verification": {
+          "required": true,
+          "result": "Approved safety demonstration remains effective, and follow-up flights with the suspect vests removed have no further red/pink spotting reports in matched crew/route/aircraft comparisons. Verify actual contact-transfer mechanism independently where practical; historical report states cessation after removal but lacks monitoring details."
+        }
+      },
+      "handover": {
+        "current-state": [
+          "HISTORICAL CASE RESOLUTION: the post-exercise reveal attributes red/pink spotting to flaking red ink from new demonstration life vests handled by flight attendants.",
+          "After those demonstration vests were removed, reports reportedly stopped; the case is not evidence of a live managed incident, formal closure or safety certification."
+        ],
+        "what-changed": [
+          "New life-vest demonstration equipment and associated crew training preceded A300 operations in early January 1980.",
+          "Many affected Eastern A300 flights served over-water routes; other new materials were candidates but the filter full implementation came after onset.",
+          "Historical corrective change: removal of demonstration vests (exact date NMD)."
+        ],
+        "remaining-risks": [
+          "NMD: exact medical impact, fleet-wide exposure denominators, first symptom date, effect on lead attendants, and formal safety/approval records.",
+          "Illustrative response risk: never remove mandatory safety-demonstration capability without approved substitution; do not mistake nonrecurrence after multiple simultaneous changes for isolated confirmation."
+        ],
+        "must-watch-metrics": [
+          "Count of new crew spotting reports per flight and crew role, aircraft type, route and safety-demonstration equipment lot.",
+          "Timing of spotting from takeoff and last equipment contact; document both affected and close unaffected crew.",
+          "Suspect-to-control pigment transfer and duration of symptom-free matched flights following a single controlled corrective change."
+        ],
+        "whats-next": [
+          "Teaching debrief: connect each IS/IS NOT comparison to its factual Distinctions and dated Changes, then test all mechanisms destructively.",
+          "If adapting to a modern operation: authorize equipment checks, verify vest handling by role, conduct qualified non-human material inspection, ensure compliant substitutes, and monitor recurrence.",
+          "Do not treat these recommended actions as historical execution records; only vest removal and cessation are documented as the outcome."
+        ]
+      },
+      "notesWorkspace": {
+        "open": false,
+        "notes": [
+          {
+            "id": "red-sweat-source-boundary",
+            "text": "SOURCE / ROLE BOUNDARY. Participant starting evidence: PSDM participant workbook Red Sweat Mystery exercise (PDF pp. 80–83); official case-specific instructor notes: PSDM Instructor Reference Version H, printed pp. 331–338; separate participant post-exercise reveal (PDF pp. 130–131). This is a paraphrased course exemplar, not the full copyrighted handout or a real incident-management log."
+          },
+          {
+            "id": "red-sweat-exemplar-logic",
+            "text": "MOST PROBABLE CAUSE vs TRUE CAUSE. Working flight attendants handle new demonstration life vests, red ink flakes onto exposed skin, and subsequent perspiration spreads it. Lead attendants' handling/nonhandling is a necessary comparison to verify; do not elevate that role assumption to a historical fact. The later official reveal identifies flaking red ink and cessation after vest removal as historical confirmation. The workbook's proposed experiments are examples, not documented field tests."
+          },
+          {
+            "id": "red-sweat-missing-data",
+            "text": "NMD = no meaningful data in the supplied case. Do not fabricate severity, named incident commander, bridge activation, response cadence, actual patient harm, quantitative case counts, exact occurrence/closure dates, measured air quality, or experimental results. False IS NOTs in earlier template drafts were cleared; a non-occurrence needs a close, factual comparator."
+          },
+          {
+            "id": "red-sweat-modern-operations",
+            "text": "MAJOR INCIDENT FIELDS ARE AN ILLUSTRATIVE ADAPTATION: handover, decisions, PPA risk and corrective actions demonstrate what a full Intake source could contain if this happened today. They are not evidence that Eastern Airlines ran this ITIL-style incident process in 1980. Owner names are generic proposed roles, and blank date/time fields signify no verified timestamp."
+          },
+          {
+            "id": "red-sweat-case-teaching",
+            "text": "CASE QUALITY: Spec IS / IS NOT first; find actual factual Distinctions (demonstration role/over-water route/early-flight lifecycle), date Changes (new vest demonstration equipment before January 1980 operations, filters too late), state testable complete mechanisms, identify assumptions rather than convert them to Y, and confirm through safe evidence/observation/experiment or single-change fix-and-monitor."
+          }
+        ]
       }
     }
   }
