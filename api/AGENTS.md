@@ -94,6 +94,10 @@ Instructor observation for #293 must **not** be inserted as a workspace alias. `
 
 ## Protected Case Study delivery
 
+The authorized Instructor catalog may return all **participant** `participantCase.sections` (including the later, self-study `reveal:true` record); the authorized Student catalog filters `reveal:true` sections server-side. Both catalog paths **always omit** Full `state`/causes and all `participantCase` for `simulation` cases; the staged Student exercise API owns authorized evidence release. This filter is deliberately server-enforced, not just CSS hiding. An Instructor catalog does not confer copyright permission to copy official figures; no image bytes are served by this tranche.
+
+
+
 - `api/protected-case-studies.manifest.js` is server-only generated content. Never import it from browser runtime modules.
 - Instructor `/api/classes/case-studies` access is scoped by `getClassByInstructor()`.
 - Student `/api/classes/case-studies/student` access is scoped by `getStudentContext()` using the already-issued classroom workspace capability; do not accept a Student workspace selector or Standalone collaboration capability as a substitute.
