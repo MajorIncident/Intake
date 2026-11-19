@@ -106,6 +106,46 @@ test('Work independently drawer offers Templates and the temporary Case Studies,
 });
 
 
+test('Cases menu opens the grouped Case Library and shows learner-safe in-app evidence', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop Cases menu; mobile case reader has the same responsive drawer.');
+  const pageErrors = watchPageErrors(page);
+  const classroomRequests = [];
+  page.on('request', request => {
+    if (new URL(request.url()).pathname.startsWith('/api/classes')) classroomRequests.push(request.url());
+  });
+  await startFresh(page);
+  await enterStandalone(page);
+
+  await page.getByRole('button', { name: 'Cases' }).click();
+  await page.getByRole('menuitem', { name: /Open Case Library/ }).click();
+  const drawer = page.locator('#templatesDrawer');
+  await expect(drawer).toBeVisible();
+  await expect(drawer.locator('#templatesDrawerTitle')).toHaveText('Case Library');
+  await expect(page.locator('#caseLibraryTools')).toBeVisible();
+  await expect(page.locator('#caseLibraryReader')).toBeVisible();
+  await expect(page.locator('#caseLibraryFilters [data-case-group="psdm"]')).toBeVisible();
+  await expect(drawer.locator('[data-template-id="red-sweat-mystery"]')).toBeVisible();
+
+  await drawer.locator('[data-template-id="red-sweat-mystery"]').click();
+  await expect(page.locator('#caseLibraryReaderSections')).toContainText('Eastern Airlines');
+  await expect(page.locator('#caseLibraryReaderSections')).toContainText('30 minutes');
+  await expect(page.locator('#caseLibraryReaderSections')).not.toContainText('red ink');
+  await expect(page.locator('#templatesModeGroup [data-mode="intake"]')).toHaveAttribute('aria-pressed', 'true');
+
+  await page.locator('#caseLibrarySearch').fill('Tamworth');
+  await expect(drawer.locator('[data-template-id]')).toHaveCount(1);
+  await drawer.locator('[data-template-id="tamworth-petrochemical"]').click();
+  await expect(page.locator('#caseLibraryReaderSections')).toContainText('sheet film');
+
+  await page.locator('#caseLibraryFilters [data-case-group="ats"]').click();
+  await expect(drawer.locator('[data-template-id]')).toHaveCount(0);
+  await page.locator('#caseLibrarySearch').fill('');
+  await expect(drawer.locator('[data-template-id="mrs-walthers-sugar-donuts"]')).toBeVisible();
+  await expectNoBlockingA11yViolations(page);
+  expect(classroomRequests).toEqual([]);
+  expect(pageErrors).toEqual([]);
+});
+
 test('Standalone file export/import round trip restores Intake data and workflow mode', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop File menu journey; mobile primary interaction is covered separately.');
   const pageErrors = watchPageErrors(page);
