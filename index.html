@@ -236,18 +236,22 @@ Anchors present:
               <p class="templates-type-hint" id="templatesTypeHint" aria-live="polite"></p>
               <!-- [feature:case-library-reader] start -->
               <section class="case-library__reader" id="caseLibraryReader" aria-labelledby="caseLibraryReaderTitle" data-persistence="local-only" data-summary="exclude" hidden>
-                <p class="case-library__eyebrow">Participant case · Read here</p>
-                <h3 id="caseLibraryReaderTitle">Case briefing</h3>
+                <p class="case-library__eyebrow">Step 1 · Read the participant case</p>
+                <h3 id="caseLibraryReaderTitle" tabindex="-1">Case briefing</h3>
                 <div class="case-library__sections" id="caseLibraryReaderSections"></div>
+                <div class="case-library__reader-actions">
+                  <button type="button" class="btn" id="caseLibraryContinueBtn" aria-controls="templatesModeSection" aria-expanded="false" data-persistence="local-only" data-summary="exclude" hidden>Continue to analysis options</button>
+                </div>
               </section>
               <!-- [feature:case-library-reader] end -->
 
             </section>
             <section class="templates-section" id="templatesModeSection">
               <div class="templates-section__header">
-                <h3>Mode</h3>
-                <p>Decide how much detail to apply from the chosen template.</p>
+                <h3 id="templatesModeTitle">Mode</h3>
+                <p id="templatesModeHelp">Decide how much detail to apply from the chosen template.</p>
               </div>
+              <button type="button" class="case-library__back" id="caseLibraryBackToReadingBtn" aria-controls="caseLibraryReader" data-persistence="local-only" data-summary="exclude" hidden>Back to participant reading</button>
               <div class="templates-modes" id="templatesModeGroup" role="group" aria-label="Template modes">
                 <button type="button" class="templates-mode is-active" data-mode="full" aria-pressed="true">Full</button>
                 <button type="button" class="templates-mode" data-mode="rapid" aria-pressed="false">Rapid</button>
