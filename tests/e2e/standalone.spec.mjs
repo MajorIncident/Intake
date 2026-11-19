@@ -123,6 +123,9 @@ test('Cases menu opens the grouped Case Library and shows learner-safe in-app ev
   await expect(drawer.locator('#templatesDrawerTitle')).toHaveText('Case Library');
   await expect(page.locator('#caseLibraryTools')).toBeVisible();
   await expect(page.locator('#caseLibraryReader')).toBeVisible();
+  await expect(page.locator('#templatesModeSection')).toBeHidden();
+  await expect(page.locator('#templatesAuthSection')).toBeHidden();
+  await expect(page.locator('#templatesDrawerFooter')).toBeHidden();
   await expect(page.locator('#caseLibraryFilters [data-case-group="psdm"]')).toBeVisible();
   await expect(drawer.locator('[data-template-id="red-sweat-mystery"]')).toBeVisible();
 
@@ -131,6 +134,12 @@ test('Cases menu opens the grouped Case Library and shows learner-safe in-app ev
   await expect(page.locator('#caseLibraryReaderSections')).toContainText('30 minutes');
   await expect(page.locator('#caseLibraryReaderSections')).not.toContainText('red ink');
   await expect(page.locator('#templatesModeGroup [data-mode="intake"]')).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#caseLibraryContinueBtn').click();
+  await expect(page.locator('#templatesModeSection')).toBeVisible();
+  await expect(page.locator('#templatesAuthSection')).toBeVisible();
+  await expect(page.locator('#templatesDrawerFooter')).toBeVisible();
+  await page.locator('#caseLibraryBackToReadingBtn').click();
+  await expect(page.locator('#templatesModeSection')).toBeHidden();
 
   await page.locator('#caseLibrarySearch').fill('Tamworth');
   await expect(drawer.locator('[data-template-id]')).toHaveCount(1);
@@ -141,6 +150,14 @@ test('Cases menu opens the grouped Case Library and shows learner-safe in-app ev
   await expect(drawer.locator('[data-template-id]')).toHaveCount(0);
   await page.locator('#caseLibrarySearch').fill('');
   await expect(drawer.locator('[data-template-id="mrs-walthers-sugar-donuts"]')).toBeVisible();
+  await drawer.locator('[data-template-id="mrs-walthers-sugar-donuts"]').click();
+  const laterProblem = page.locator('#caseLibraryReaderSections details.case-library__reveal');
+  await expect(laterProblem).not.toHaveAttribute('open', '');
+  await laterProblem.locator('summary').click();
+  await expect(laterProblem).toHaveAttribute('open', '');
+  await expect(laterProblem).toContainText('25%');
+  await expect(laterProblem).toContainText('1,500');
+  await expect(laterProblem).not.toContainText('missing edger');
   await expectNoBlockingA11yViolations(page);
   expect(classroomRequests).toEqual([]);
   expect(pageErrors).toEqual([]);
