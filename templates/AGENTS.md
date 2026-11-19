@@ -33,6 +33,14 @@ Applies to all authored JSON files inside `templates/`.
 
 ## Case Library participant reading fields
 
+The participant text is the **first step** when a Case Study is selected in the dedicated Case Library. `participantCase.sections[]` supplies plain-text source-grounded orientation/facts/questions; the learner may explicitly choose **Continue to analysis options** afterward, and `Full` is the completed worked exemplar, not the initial handout.
+
+For cases whose official participant packet is staged (e.g., Mrs. Walther's Square Donuts), a later participant handout may carry `reveal: true` on its section. This denotes a **self-study disclosure cue only**: show the later handout in a closed native `details` element in Work independently. It does not grant authority or implement a Classroom stage. The authenticated Classroom Student GET catalog **omits** all `reveal: true` sections; Instructor GET may include them. For a production staged Classroom exercise, the existing `simulation` and authenticated stage release API remains authoritative and the general catalog omits **all** participant content. The Square Donuts factory orientation and later `The Problem` page are **one case**, not two; do not publish its actual cause in the initial reading.
+
+The browser's temporary public Standalone allowlist already includes the Full saved case material, so these reader steps/passwords are pedagogy, not confidentiality. Do not add original official PDFs/scans/figures to the public bundle without approved distribution rights. The `mim` Paytrix record is **Intake-native, not an official PSDM/ATS case**. Companion non-canon index: [KT repository MIM companion](https://github.com/MajorIncident/kt-application-coach/blob/main/docs/INTAKE_MIM_CASE_LIBRARY.md) (PR #575 until merged).
+
+## Security boundary
+
 Case Studies may add top-level `libraryGroup` (one of `psdm | ats | legacy | mim`) and `participantCase: {title, sections: [{heading, body}]}`. These are **metadata/learner-readable, not full Intake state**, and are validated by `scripts/build-templates-manifest.mjs`. Never add either to a Standard Template.
 
 `participantCase` is a concise, faithful **participant-stage** reading copy using plain text only, without cause/solution spoilers or protected instructor exhibits. Respect staged roles and initial stopping points; Square Donuts, for example, begins with factory orientation rather than the later problem reveal. The authorized GET catalog may return this briefing only for **non-staged** cases; `simulation` cases must receive text and figures through authorized released-content APIs. Public Standalone exposes only existing allowlisted copies (and Full remains downloadable there). Original KT images/pages require reviewed distribution rights and protected asset delivery before adding figures; text-only sections are the baseline. New source group entries belong in `docs/case-library-inventory.md` and tracked issue #353.
