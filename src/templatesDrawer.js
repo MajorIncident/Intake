@@ -595,9 +595,15 @@ function handleTemplateClick(event) {
     return;
   }
   selectedTemplateId = id;
-  if (caseLibraryView) selectedModeId = TEMPLATE_MODE_IDS.INTAKE;
+  if (caseLibraryView) {
+    selectedModeId = TEMPLATE_MODE_IDS.INTAKE;
+    caseLibraryWorking = false;
+  }
   updateTemplateSelection();
   refreshTemplateDetails();
+  // A case is selected before its analysis can be loaded. Move screen-reader
+  // and keyboard focus to the in-page document rather than the mode controls.
+  if (caseLibraryView) caseLibraryReaderTitle?.focus();
   updateApplyButtonState();
 }
 
@@ -655,7 +661,7 @@ function validatePassword() {
 }
 
 async function applySelectedTemplate() {
-  if (!templatesDrawerReady || !selectedTemplateId) {
+  if (!templatesDrawerReady || !selectedTemplateId || (caseLibraryView && !caseLibraryWorking)) {
     return;
   }
   const templateMeta = getSelectedTemplateMeta();
@@ -812,11 +818,11 @@ function refreshResourcePresentation() {
   });
   if (templatesDrawerTitle) templatesDrawerTitle.textContent = caseLibraryView ? 'Case Library' : policy.drawerTitle;
   if (templatesDrawerSubtitle) templatesDrawerSubtitle.textContent = caseLibraryView
-    ? 'Explore available cases by source, read the participant briefing here, then select the appropriate working stage.'
+    ? 'Choose a case, read the participant material here, then continue to analysis. Full is the completed reference solution.'
     : policy.drawerSubtitle;
-  if (templatesResourceHeading) templatesResourceHeading.textContent = caseLibraryView ? 'Available Case Studies' : policy.resourceHeading;
+  if (templatesResourceHeading) templatesResourceHeading.textContent = caseLibraryView ? 'Choose a case' : policy.resourceHeading;
   if (templatesResourceHelp) templatesResourceHelp.textContent = caseLibraryView
-    ? 'Only cases available to your current experience are listed. Staged classroom information is released separately.'
+    ? 'Selecting a case opens its participant reading below. Classroom stage material is released by the instructor.'
     : policy.resourceHelp;
   if (caseLibraryTools) caseLibraryTools.hidden = !caseLibraryView;
   if (caseLibraryFilters) {
@@ -825,12 +831,13 @@ function refreshResourcePresentation() {
     });
   }
   if (templatesTeachingNotice) templatesTeachingNotice.hidden = !policy.teachingOnly;
-  if (templatesDrawerFooter) templatesDrawerFooter.hidden = !policy.canApply;
+  if (templatesDrawerFooter) templatesDrawerFooter.hidden = !policy.canApply || (caseLibraryView && !caseLibraryWorking);
   if (templatesSaveBtn) templatesSaveBtn.hidden = caseLibraryView || !policy.canSaveCurrent;
 
   renderTemplatesList();
   updatePasswordRequirement();
   updateModeLockState();
+  syncCaseLibraryStep();
 }
 
 function wireDrawerInternalEvents() {
@@ -841,6 +848,8 @@ function wireDrawerInternalEvents() {
   if (caseLibrarySearch) {
     caseLibrarySearch.addEventListener('input', () => {
       caseLibraryQuery = caseLibrarySearch.value;
+      caseLibraryWorking = false;
+      selectedModeId = TEMPLATE_MODE_IDS.INTAKE;
       renderTemplatesList();
     });
   }
@@ -851,7 +860,29 @@ function wireDrawerInternalEvents() {
       const group = button.dataset.caseGroup;
       if (group !== 'all' && !CASE_LIBRARY_GROUPS.some(item => item.id === group)) return;
       caseLibraryGroup = group;
+      caseLibraryWorking = false;
+      selectedModeId = TEMPLATE_MODE_IDS.INTAKE;
       refreshResourcePresentation();
+    });
+  }
+  if (caseLibraryContinueBtn) {
+    caseLibraryContinueBtn.addEventListener('click', () => {
+      if (!caseLibraryView || !selectedTemplateId || !getResourcePolicy().canApply) return;
+      caseLibraryWorking = true;
+      updatePasswordRequirement();
+      updateModeLockState();
+      syncCaseLibraryStep();
+      const activeMode = templatesModeGroup?.querySelector('.templates-mode[aria-pressed="true"]');
+      activeMode?.focus();
+    });
+  }
+  if (caseLibraryBackToReadingBtn) {
+    caseLibraryBackToReadingBtn.addEventListener('click', () => {
+      caseLibraryWorking = false;
+      updatePasswordRequirement();
+      updateModeLockState();
+      syncCaseLibraryStep();
+      caseLibraryReaderTitle?.focus();
     });
   }
   if (templatesModeGroup) {
@@ -920,6 +951,10 @@ export function initTemplatesDrawer({ protectedCaseStudies = null } = {}) {
   caseLibraryReader = document.getElementById('caseLibraryReader');
   caseLibraryReaderTitle = document.getElementById('caseLibraryReaderTitle');
   caseLibraryReaderSections = document.getElementById('caseLibraryReaderSections');
+  caseLibraryContinueBtn = document.getElementById('caseLibraryContinueBtn');
+  caseLibraryBackToReadingBtn = document.getElementById('caseLibraryBackToReadingBtn');
+  templatesModeTitle = document.getElementById('templatesModeTitle');
+  templatesModeHelp = document.getElementById('templatesModeHelp');
 
   templatesDrawerReady = Boolean(
     templatesDrawer
@@ -955,6 +990,7 @@ export function openTemplatesDrawer() {
   if (!templatesDrawerReady) return;
   if (!templatesDrawerOpen) rememberReturnFocus();
   caseLibraryView = false;
+  caseLibraryWorking = false;
   refreshResourcePresentation();
   setTemplatesDrawer(true);
 }
@@ -968,6 +1004,7 @@ export function openCaseLibrary() {
   if (!templatesDrawerReady) return;
   if (!templatesDrawerOpen) rememberReturnFocus();
   caseLibraryView = true;
+  caseLibraryWorking = false;
   caseLibraryGroup = 'all';
   caseLibraryQuery = '';
   selectedModeId = TEMPLATE_MODE_IDS.INTAKE;
