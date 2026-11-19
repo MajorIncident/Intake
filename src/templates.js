@@ -173,6 +173,20 @@ function projectState(fullState, modeId) {
     steps: rule.includeSteps ? clone(fullState.steps) : clone(DEFAULT_STEPS_STATE),
     actions: rule.includeActions ? clone(fullState.actions) : clone(DEFAULT_ACTIONS_STATE)
   };
+  // Case Studies are authored as complete source/exemplar snapshots. Preserve
+  // supported Major Incident fields in Full, then clear later-step exemplar
+  // fields in introductory template projections (classroom authorization is
+  // enforced separately by the staged-exercise server).
+  if (Object.prototype.hasOwnProperty.call(fullState, 'appearance')) {
+    projected.appearance = clone(fullState.appearance);
+  }
+  for (const field of ['handover', 'decisionAnalysis', 'potentialProblemAnalysis', 'notesWorkspace']) {
+    if (Object.prototype.hasOwnProperty.call(fullState, field)) {
+      projected[field] = modeId === TEMPLATE_MODE_IDS.FULL
+        ? clone(fullState[field])
+        : (field === 'notesWorkspace' ? { notes: [], open: false } : {});
+    }
+  }
   if (!rule.includeTable) {
     projected.ops.tableFocusMode = BASE_OPS.tableFocusMode;
   }
