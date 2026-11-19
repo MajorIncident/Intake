@@ -52,7 +52,11 @@ function sanitizeCatalog(records) {
           title: record.participantCase.title,
           sections: record.participantCase.sections.filter(section =>
             section && typeof section.heading === 'string' && typeof section.body === 'string'
-          ).map(section => ({ heading: section.heading, body: section.body }))
+          ).map(section => ({
+            heading: section.heading,
+            body: section.body,
+            ...(section.reveal === true ? { reveal: true } : {})
+          }))
         }
         : null
     }));
