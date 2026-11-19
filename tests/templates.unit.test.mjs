@@ -275,3 +275,49 @@ test('projectTemplateState applies canonical mode rules to authorized external p
     null
   );
 });
+
+
+test('complete MIM case snapshots survive Full projection without answer leakage into earlier case views', () => {
+  const state = buildState({
+    actions: {
+      analysisId: 'historic-exemplar',
+      items: [{ id: 'replace-vest', summary: 'Remove suspect vest print' }]
+    }
+  });
+  state.meta.intakeMode = 'general';
+  state.ops.containStatus = 'stabilized';
+  state.ops.containDesc = 'History: ink source eliminated';
+  state.ops.commLog = [{ type: 'internal', message: 'Historical resolution' }];
+  state.appearance = { theme: 'light' };
+  state.handover = { 'current-state': ['Historical cause confirmed'] };
+  state.decisionAnalysis = { decision: 'Choose compliant equipment substitution' };
+  state.potentialProblemAnalysis = { risk: { level: 'Medium', impactIfFails: 'Safety briefing could fail' } };
+  state.notesWorkspace = { open: false, notes: [{ id: 'teaching', text: 'Solution: pigment transfer' }] };
+
+  const modes = Object.values(TEMPLATE_MODE_IDS);
+  const full = projectTemplateState(state, TEMPLATE_MODE_IDS.FULL, modes, TEMPLATE_KINDS.CASE_STUDY);
+  assert.ok(full);
+  assert.deepEqual(full.actions, state.actions);
+  assert.deepEqual(full.handover, state.handover);
+  assert.deepEqual(full.decisionAnalysis, state.decisionAnalysis);
+  assert.deepEqual(full.potentialProblemAnalysis, state.potentialProblemAnalysis);
+  assert.deepEqual(full.notesWorkspace, state.notesWorkspace);
+  assert.deepEqual(full.appearance, state.appearance);
+  assert.equal(full.meta.intakeMode, 'general', 'display mode is independent of complete MIM payload');
+
+  for (const mode of [TEMPLATE_MODE_IDS.INTAKE, TEMPLATE_MODE_IDS.IS_IS_NOT, TEMPLATE_MODE_IDS.DC]) {
+    const projected = projectTemplateState(state, mode, modes, TEMPLATE_KINDS.CASE_STUDY);
+    assert.ok(projected);
+    assert.deepEqual(projected.actions, { analysisId: '', items: [] }, 'no answer actions in early Case Study mode');
+    assert.deepEqual(projected.handover, {});
+    assert.deepEqual(projected.decisionAnalysis, {});
+    assert.deepEqual(projected.potentialProblemAnalysis, {});
+    assert.deepEqual(projected.notesWorkspace, { notes: [], open: false });
+    assert.equal(projected.ops.containDesc, '');
+    assert.equal(projected.ops.containStatus, 'assessing');
+    assert.deepEqual(projected.ops.commLog, []);
+  }
+  // Standard Templates intentionally retain their existing actions behavior.
+  const standard = projectTemplateState(state, TEMPLATE_MODE_IDS.INTAKE, modes, TEMPLATE_KINDS.STANDARD);
+  assert.deepEqual(standard.actions, state.actions);
+});

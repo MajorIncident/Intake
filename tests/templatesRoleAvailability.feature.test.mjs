@@ -130,7 +130,8 @@ test('drawer projects normal resources across Standalone, Student, and Instructo
 
 for (const [caseId, expectedOneLine] of [
   ['microcomputer-cabinets', 'Cabinets are being rejected'],
-  ['paytrix', null]
+  ['paytrix', null],
+  ['red-sweat-mystery', 'Eastern Airlines flight attendants have red sweat.']
 ]) {
   test(`Work independently applies the ${caseId} Case Study from the public copy behind the mode password`, async () => {
     applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
@@ -160,6 +161,14 @@ for (const [caseId, expectedOneLine] of [
       await new Promise(resolve => setImmediate(resolve));
       assert.ok(lastAppliedState, `${caseId} applied`);
       if (expectedOneLine) assert.equal(lastAppliedState.pre.oneLine, expectedOneLine);
+      if (caseId === 'red-sweat-mystery') {
+        assert.equal(lastAppliedState.meta.intakeMode, 'general');
+        assert.equal(lastAppliedState.causes.length, 4);
+        assert.equal(lastAppliedState.actions.items.length, 4);
+        assert.ok(lastAppliedState.handover['must-watch-metrics'].length > 0);
+        assert.ok(lastAppliedState.decisionAnalysis.decision.includes('ILLUSTRATIVE EXERCISE'));
+        assert.ok(lastAppliedState.potentialProblemAnalysis.risk.impactIfFails.includes('ILLUSTRATIVE'));
+      }
       assert.equal(providerCalls, 0, 'Standalone never calls the classroom provider');
     } finally {
       protectedProvider.getPayload = originalGetPayload;
@@ -183,4 +192,29 @@ test('authorized Case Study payload is fetched only when Student applies it', as
   await new Promise(resolve => setImmediate(resolve));
 
   assert.equal(lastAppliedState?.pre?.oneLine, 'Protected Case Study applied');
+});
+
+
+test('complete Case Study keeps the selected MIM workflow lens rather than forcing General', async () => {
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
+  const originalCollectAppState = globalThis.__appStateMocks.collectAppState;
+  globalThis.__appStateMocks.collectAppState = () => ({ meta: { intakeMode: 'majorIncident' } });
+  try {
+    lastAppliedState = null;
+    const redSweat = dom.window.document.querySelector('#templatesList [data-template-id="red-sweat-mystery"]');
+    assert.ok(redSweat);
+    redSweat.click();
+    dom.window.document.querySelector('#templatesModeGroup [data-mode="full"]').click();
+    const minutes = String(new Date().getMinutes()).padStart(2, '0');
+    dom.window.document.getElementById('templatesPassword').value = `full${minutes}`;
+    dom.window.document.getElementById('templatesApplyBtn').click();
+    await new Promise(resolve => setImmediate(resolve));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.ok(lastAppliedState);
+    assert.equal(lastAppliedState.meta.intakeMode, 'majorIncident');
+    assert.equal(lastAppliedState.actions.items.length, 4);
+    assert.ok(lastAppliedState.potentialProblemAnalysis.risk.impactIfFails);
+  } finally {
+    globalThis.__appStateMocks.collectAppState = originalCollectAppState;
+  }
 });
