@@ -319,6 +319,8 @@ export function listTemplateModes() {
  * @param {import('./storage.js').SerializedAppState} fullState Full authorized state.
  * @param {keyof typeof MODE_RULES|string} modeId Requested presentation mode.
  * @param {string[]} [supportedModes] Modes authorized by the resource metadata.
+ * @param {string} [templateKind] Resource kind. Protected Case Studies use
+ *   case-study so earlier teaching views omit all answer-key actions.
  * @returns {import('./storage.js').SerializedAppState|null} Projected payload or null.
  */
 export function projectTemplateState(fullState, modeId, supportedModes = Array.from(MODE_INDEX.keys()), templateKind = TEMPLATE_KINDS.STANDARD) {
