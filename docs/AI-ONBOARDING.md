@@ -2,7 +2,7 @@
 
 This guide describes the current modular architecture so a fresh AI coding session can confidently extend, test, and maintain KT Intake. Do not assume a previous chat's branch, PR, deployment, or repository state; follow the Cold Start Protocol in the root `AGENTS.md` first.
 
-For any work in the Standalone / Student / Instructor program (#288), also read `docs/classroom-architecture.md`, `docs/classroom-roadmap.md`, and `docs/classroom-workstream.md` before editing. For class/API authorization work, also read `docs/classroom-api.md` and `api/AGENTS.md`. Those files are the durable source for program invariants, dependency order, capability boundaries, and the exact continuation point.
+Start from `STATUS.md` (current state) and `docs/playbooks/` (task checklists). For any work in the Standalone / Student / Instructor program (#288), also read `docs/playbooks/classroom-change.md` and `docs/classroom-architecture.md` before editing. For class/API authorization work, also read `docs/classroom-api.md` and `api/AGENTS.md`. Contracts are the durable source for invariants and capability boundaries; `STATUS.md` is the only source for the continuation point.
 
 ## Entry Point & Boot Sequence
 1. `index.html` renders the full layout and loads the ES module entry via `<script type="module" src="main.js"></script>`.
@@ -40,7 +40,7 @@ For any work in the Standalone / Student / Instructor program (#288), also read 
 | `src/toast.js` | `showToast()` for lightweight notifications reused by comms and bootstrapping.
 | `api/_workspace.js` | Existing collaboration persistence/handlers plus explicitly edit-capable workspace aliases. Only `classroom-student` aliases may resolve through legacy read/write collaboration endpoints. |
 | `api/_admin.js`, `api/admin.js` | Server-only Admin authorization, lifecycle inventory, signed purge previews, class revoke, Instructor authority rotation, and guarded purge. Requires `INTAKE_ADMIN_TOKEN`; read `docs/admin-maintenance.md`. |
-| `api/_classroom.js` | Class/live-participant schema and capabilities, one-code admission, own-status/current-access exchange, Instructor assign/reassign/unassign, class-scoped observation, legacy admission compatibility, and separate coaching APIs. |
+| `api/_classroom.js` | Class/live-participant schema and capabilities, one-code admission, own-status/current-access exchange, Instructor assign/reassign/unassign, class-scoped observation, and separate coaching APIs. |
 | `api/_protectedCaseStudies.js` | Server-only protected Case Study catalog/payload delivery. Instructor access is class-scoped; Student access resolves only the currently active Classroom workspace authority. #313 staged release must extend this boundary rather than shipping unreleased case content to the browser. |
 
 ## Working Agreement for AI Agents

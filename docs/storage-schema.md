@@ -101,7 +101,7 @@ _No registered migrations. States start at the base schema._
 
 The storage schema documentation doubles as the contract for curated resource payloads. Resources are authored as JSON files under `templates/`, then `npm run build:templates` validates all of them and generates two separate delivery boundaries:
 
-- `src/templates.manifest.js` — public browser manifest containing Standard Templates only;
+- `src/templates.manifest.js` — public browser manifest containing Standard Templates only, plus the TEMPORARY Standalone Case Study allowlist in `scripts/standalone-public-case-studies.mjs`;
 - `api/protected-case-studies.manifest.js` — server-only Case Study metadata and full payloads.
 
 Authored `templates/*.json` files are build-time source and are excluded from Vercel deployment. The public drawer runtime never imports the server-only Case Study manifest.

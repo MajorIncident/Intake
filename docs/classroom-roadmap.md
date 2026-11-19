@@ -35,7 +35,7 @@ Deliver:
 
 - this architecture document;
 - this roadmap;
-- workstream status/handoff document;
+- workstream status/handoff document (now `STATUS.md`; the original ledger is archived in `docs/archive/classroom-workstream-ledger.md`);
 - classroom rules in root `AGENTS.md`;
 - PR template support for program/stack/handoff metadata;
 - repository doctor protection for the durable classroom docs.
@@ -193,7 +193,7 @@ Validation evidence:
 ## Slice 8 — Browser/E2E and required CI
 
 **Issue:** #296, using #279  
-**Implementation:** draft PR #308 on `feature/classroom-browser-e2e`
+**Implementation:** PR #308 (merged)
 
 Implemented browser foundation / critical paths:
 
@@ -256,7 +256,7 @@ Merged PR #334 as `ad7b9835adf3fd5338658f29b634e18b13b2def5` replaces implicit r
 
 **#316 — Protected staged case assets and rich Student case rendering**
 
-**ACTIVE NEXT SLICE.** Pre-production hardening #328–#330 is complete. Add server-gated protected assets plus accessible table/image/document-page rendering without weakening progressive disclosure or the minimal public-static boundary.
+Ordered after the pre-production hardening sequence #328–#330 (complete). Add server-gated protected assets plus accessible table/image/document-page rendering without weakening progressive disclosure or the minimal public-static boundary.
 
 **#317 — Author and validate the first production staged KT Case Study**
 
@@ -278,7 +278,7 @@ PRODUCTION SIMULATION ENABLEMENT
   #317  first production staged KT Case Study
 ```
 
-**Current product decision:** #328–#330 are complete and production-published. **#316 Protected staged case assets and rich Student case rendering is now the active next slice**, followed by #317 first production staged KT Case Study.
+**Ordering decision:** #328–#330 are complete and production-published. #316 precedes #317. For what is active right now (including Classroom pilot blockers that come before #316), see `STATUS.md`.
 
 ## Stacked PR rules
 
@@ -304,7 +304,7 @@ At minimum, inspect and update where relevant:
 - `docs/architecture-overview.md`;
 - `docs/classroom-architecture.md`;
 - `docs/classroom-roadmap.md`;
-- `docs/classroom-workstream.md`;
+- `STATUS.md`;
 - `docs/REPOSITORY-OPERATIONS.md`;
 - `docs/AI-ONBOARDING.md`;
 - `SECURITY.md`;

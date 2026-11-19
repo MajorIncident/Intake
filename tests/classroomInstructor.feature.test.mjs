@@ -96,7 +96,8 @@ function setup(fetchImpl, {
   onClassConnected = () => {},
   onClassDisconnected = () => {},
   mobile = false,
-  savedSession = true
+  savedSession = true,
+  confirmImpl = undefined
 } = {}) {
   dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
   if (mobile) {
@@ -161,6 +162,7 @@ function setup(fetchImpl, {
     onObservationEnd,
     onClassConnected,
     onClassDisconnected,
+    ...(confirmImpl ? { confirmImpl } : {}),
     setTimeoutImpl: fn => {
       calls.timers.push(fn);
       return calls.timers.length;
@@ -425,7 +427,9 @@ test('Instructor starts a live class, creates a team, and assigns a waiting Stud
     return response(404, {});
   }, { savedSession: false });
 
-  assert.equal(await env.controller.startClass('Live PSDM Class'), true);
+  assert.equal(await env.controller.startClass('Live PSDM Class', ' kepnertregoe '), true);
+  const classCreateRequest = requests.find(([url, options]) => url === '/api/classes' && options.method === 'POST');
+  assert.deepEqual(JSON.parse(classCreateRequest[1].body), { title: 'Live PSDM Class', classPassword: 'kepnertregoe' });
   assert.equal(dom.window.document.getElementById('instructorClassTitle').textContent, 'Live PSDM Class');
   assert.equal(dom.window.document.getElementById('instructorJoinCode').textContent, 'K7FM-P4Q2');
   assert.equal(dom.window.document.getElementById('instructorParticipantSummary').textContent, '1 student · 1 waiting');
@@ -434,6 +438,7 @@ test('Instructor starts a live class, creates a team, and assigns a waiting Stud
   assert.equal(stored.instructorToken, TOKEN);
   assert.equal(stored.joinCode, 'K7FM-P4Q2');
   assert.equal(JSON.stringify(stored).includes('studentJoinToken'), false);
+  assert.equal(JSON.stringify(stored).toLowerCase().includes('kepnertregoe'), false, 'class password is never persisted');
 
   assert.equal(await env.controller.createWorkspace('group', 'Team Alpha'), true);
   assert.equal(dom.window.document.querySelectorAll('.instructor-workspace-item').length, 1);
@@ -712,4 +717,79 @@ test('Instructor observer keeps debrief comparison controls interactive while In
   assert.equal(refresh.hasAttribute('data-instructor-readonly-control'), false);
 
   env.controller.destroy();
+});
+
+test('Start class requires the class password and explains a rejected one', async () => {
+  const requests = [];
+  const env = setup(async (url, options = {}) => {
+    requests.push([url, options]);
+    if (url === '/api/classes' && options.method === 'POST') {
+      return response(403, { error: 'The class password is incorrect.', code: 'class-password-invalid' });
+    }
+    return response(404, {});
+  }, { savedSession: false });
+
+  assert.equal(await env.controller.startClass('Live PSDM Class', ''), false);
+  assert.equal(requests.length, 0, 'no request without a password');
+  assert.match(dom.window.document.getElementById('instructorClassError').textContent, /class password/i);
+
+  assert.equal(await env.controller.startClass('Live PSDM Class', 'guess'), false);
+  assert.match(dom.window.document.getElementById('instructorClassError').textContent, /not correct/);
+  assert.equal(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY), null);
+});
+
+test('Leave class asks first, explains the class keeps running, and keeps the session when cancelled', async () => {
+  const prompts = [];
+  let answer = false;
+  const env = setup(async url => {
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  }, { confirmImpl: message => { prompts.push(message); return answer; } });
+  await settle();
+
+  assert.equal(env.controller.requestLeaveClass(), false);
+  assert.notEqual(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY), null, 'cancel keeps the Instructor credential');
+  assert.match(prompts[0], /keeps running/);
+  assert.match(prompts[0], /administrator/);
+  assert.match(prompts[0], /End class/);
+
+  answer = true;
+  dom.window.document.getElementById('instructorClassLeaveBtn').click();
+  assert.equal(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY), null);
+  assert.equal(prompts.length, 2);
+});
+
+test('End class revokes the class on the server for everyone before clearing this device', async () => {
+  const requests = [];
+  let answer = false;
+  let deleteStatus = 500;
+  const env = setup(async (url, options = {}) => {
+    requests.push([url, options]);
+    if (url === '/api/classes' && options.method === 'DELETE') {
+      return response(deleteStatus, deleteStatus === 200 ? { revoked: true, classId: 'class-1' } : { error: 'Unable to access class.' });
+    }
+    if (url === '/api/classes/workspaces') return response(200, rosterBody());
+    if (url === '/api/classes/participants') return response(200, participantBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  }, { confirmImpl: message => { assert.match(message, /for everyone/); return answer; } });
+  await settle();
+
+  assert.equal(await env.controller.endClass(), false);
+  assert.equal(requests.some(([url, options]) => url === '/api/classes' && options.method === 'DELETE'), false, 'no request without confirmation');
+
+  answer = true;
+  assert.equal(await env.controller.endClass(), false, 'server failure keeps the class and the credential');
+  assert.notEqual(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY), null);
+  assert.match(dom.window.document.getElementById('instructorClassError').textContent, /Unable to access class|Could not end/);
+
+  deleteStatus = 200;
+  assert.equal(await env.controller.endClass(), true);
+  const deleteRequest = requests.filter(([url, options]) => url === '/api/classes' && options.method === 'DELETE').at(-1);
+  assert.equal(deleteRequest[1].headers.Authorization, 'Bearer ' + TOKEN);
+  assert.equal(dom.window.localStorage.getItem(INSTRUCTOR_SESSION_STORAGE_KEY), null);
+  assert.equal(dom.window.document.getElementById('oneLine').value, 'Local before observation');
+  assert.match(env.calls.toasts.at(-1), /Ended/);
 });

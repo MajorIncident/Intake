@@ -26,7 +26,7 @@ Authored JSON is build-time source, not a production static asset.
 
 `npm run build:templates` validates **all** authored JSON and generates two explicit boundaries:
 
-- `src/templates.manifest.js` — public browser manifest containing Standard Templates only;
+- `src/templates.manifest.js` — public browser manifest containing Standard Templates only, plus the temporary Standalone allowlist below;
 - `api/protected-case-studies.manifest.js` — server-only Case Study metadata + payloads.
 
 Never copy a Case Study into `src/templates.manifest.js`, `src/`, `main.js`, `components/`, or another browser-delivered file. Never import the server-only manifest from browser code.
@@ -34,13 +34,23 @@ Never copy a Case Study into `src/templates.manifest.js`, `src/`, `main.js`, `co
 `.vercelignore` excludes `templates/*.json` from deployment, and production uses the committed generated manifests. `npm run verify:protected-cases` checks that authored JSON stays excluded and protected Case Study IDs/names do not leak into public browser runtime assets.
 
 Role policy remains separate from confidentiality:
-- Standalone: public Standard Templates only;
+- Standalone: public Standard Templates only, plus the temporary Standalone allowlist below;
 - Student: public Standard Templates plus authorized protected Case Studies;
 - Instructor: authorized protected Case Studies as teaching resources.
 
 The rotating Case Study mode password is pedagogy only. Authorization comes from the active classroom capability.
 
 
+
+## TEMPORARY: Case Studies in Work independently
+
+Approved by the product owner on 2026-11-19 until the Student/Instructor experiences fully replace self-study.
+
+- `scripts/standalone-public-case-studies.mjs` lists the Case Study IDs that are **also** published to the public manifest (currently Microcomputer Cabinets, Paytrix, Mrs Walthers Sugar Donuts, Tamworth Petrochemical).
+- Work independently lists them and applies the public copy behind the per-minute mode password (`<mode><minute>`, e.g. `full07`) — the pre-#299 behaviour. Connected Students/Instructors still receive them through the server-gated Classroom API.
+- Consequence: those cases and their answers are downloadable from the deployed site. The mode password is pedagogy, not protection.
+- Guards: only listed IDs may appear in the public manifest or `dist/`; a Case Study with a staged `simulation` can never be listed; `simulation` is never copied publicly.
+- **To end the transition:** empty the list, run `npm run build:templates`, commit both manifests, and run `npm run quality`. Standalone automatically returns to Templates only.
 
 ## Optional staged simulation definition (#313)
 
