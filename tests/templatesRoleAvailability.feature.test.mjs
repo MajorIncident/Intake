@@ -193,3 +193,28 @@ test('authorized Case Study payload is fetched only when Student applies it', as
 
   assert.equal(lastAppliedState?.pre?.oneLine, 'Protected Case Study applied');
 });
+
+
+test('complete Case Study keeps the selected MIM workflow lens rather than forcing General', async () => {
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
+  const originalCollectAppState = globalThis.__appStateMocks.collectAppState;
+  globalThis.__appStateMocks.collectAppState = () => ({ meta: { intakeMode: 'majorIncident' } });
+  try {
+    lastAppliedState = null;
+    const redSweat = dom.window.document.querySelector('#templatesList [data-template-id="red-sweat-mystery"]');
+    assert.ok(redSweat);
+    redSweat.click();
+    dom.window.document.querySelector('#templatesModeGroup [data-mode="full"]').click();
+    const minutes = String(new Date().getMinutes()).padStart(2, '0');
+    dom.window.document.getElementById('templatesPassword').value = `full${minutes}`;
+    dom.window.document.getElementById('templatesApplyBtn').click();
+    await new Promise(resolve => setImmediate(resolve));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.ok(lastAppliedState);
+    assert.equal(lastAppliedState.meta.intakeMode, 'majorIncident');
+    assert.equal(lastAppliedState.actions.items.length, 4);
+    assert.ok(lastAppliedState.potentialProblemAnalysis.risk.impactIfFails);
+  } finally {
+    globalThis.__appStateMocks.collectAppState = originalCollectAppState;
+  }
+});
