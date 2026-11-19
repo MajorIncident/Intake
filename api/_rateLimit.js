@@ -24,7 +24,8 @@ export const DEFAULT_CLASS_CREATION_PASSWORD = 'kepnertregoe';
 export const RATE_LIMIT_POLICIES = Object.freeze({
   'class-create': Object.freeze({ windowSeconds: 3600, limit: 20 }),
   'class-admit': Object.freeze({ windowSeconds: 600, limit: 150 }),
-  'workspace-create': Object.freeze({ windowSeconds: 3600, limit: 60 })
+  'workspace-create': Object.freeze({ windowSeconds: 3600, limit: 60 }),
+  'instructor-transfer': Object.freeze({ windowSeconds: 3600, limit: 20 })
 });
 
 /**

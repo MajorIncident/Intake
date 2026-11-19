@@ -32,6 +32,10 @@
       "destination": "/api/classroom?__classroomRoute=student-access"
     },
     {
+      "source": "/api/classes/transfer",
+      "destination": "/api/classroom?__classroomRoute=transfer"
+    },
+    {
       "source": "/api/classes/workspaces",
       "destination": "/api/classroom?__classroomRoute=workspaces"
     },

@@ -22,6 +22,7 @@ import {
   classStudentCoachingHandler,
   classStudentHandler,
   classWorkspacesHandler,
+  classInstructorTransferHandler,
   resetClassroomRepositoryForTesting
 } from '../api/_classroom.js';
 import { createClassroomStudentWritePolicy } from '../api/_classroomWritePolicy.js';
@@ -224,4 +225,57 @@ test('real SQL: a frozen staged debrief rejects Student writes with 423 and leav
     body: { snapshot: { ...before.body.snapshot, pre: { oneLine: 'written after unfreeze' } }, revision: before.body.revision }
   });
   assert.equal(allowed.statusCode, 200, JSON.stringify(allowed.body));
+});
+
+test('real SQL (#342): long team names, rename, guarded removal, and one-time Instructor device transfer', async () => {
+  const created = await call(classHandler(), { method: 'POST', body: { title: 'Controls class', classPassword: 'kepnertregoe' } });
+  const instructor = created.body.instructorToken;
+  const workspaces = classWorkspacesHandler();
+
+  const longName = 'L'.repeat(100);
+  const longTeam = await call(workspaces, { method: 'POST', token: instructor, body: { kind: 'group', label: longName, snapshot: {} } });
+  assert.equal(longTeam.statusCode, 201, 'a 100-character team name no longer overflows team_name VARCHAR(80)');
+  assert.equal(longTeam.body.workspace.label, longName);
+
+  const renamed = await call(workspaces, { method: 'PATCH', token: instructor, body: { workspaceId: longTeam.body.workspace.id, label: 'Team Red' } });
+  assert.equal(renamed.statusCode, 200, JSON.stringify(renamed.body));
+  const [teamRow] = await sql`SELECT cw.label, w.team_name FROM classroom_workspaces cw JOIN collaboration_workspaces w ON w.id = cw.workspace_id WHERE cw.public_id = ${longTeam.body.workspace.id}::uuid`;
+  assert.deepEqual([teamRow.label, teamRow.team_name], ['Team Red', 'Team Red']);
+
+  const admitted = await call(classAdmitHandler(), { method: 'POST', body: { joinCode: created.body.joinCode, participantId: '55555555-5555-4555-8555-555555555555', displayName: 'Dee' } });
+  const participants = classParticipantsHandler();
+  await call(participants, { method: 'PATCH', token: instructor, body: { participantId: '55555555-5555-4555-8555-555555555555', workspaceId: longTeam.body.workspace.id } });
+  const access = await call(classStudentAccessHandler(), { method: 'POST', token: admitted.body.studentSessionToken });
+
+  const occupied = await call(workspaces, { method: 'DELETE', token: instructor, body: { workspaceId: longTeam.body.workspace.id } });
+  assert.equal(occupied.statusCode, 409);
+  assert.equal(occupied.body.code, 'workspace-occupied');
+
+  await call(participants, { method: 'PATCH', token: instructor, body: { participantId: '55555555-5555-4555-8555-555555555555', workspaceId: null } });
+  const removed = await call(workspaces, { method: 'DELETE', token: instructor, body: { workspaceId: longTeam.body.workspace.id } });
+  assert.equal(removed.statusCode, 200, JSON.stringify(removed.body));
+  const listed = await call(workspaces, { method: 'GET', token: instructor });
+  assert.equal(listed.body.workspaces.some(item => item.id === longTeam.body.workspace.id), false);
+  const session = workspaceHandler({ getWritePolicy: createClassroomStudentWritePolicy() });
+  const stale = await call(session, { method: 'GET', token: access.body.workspaceToken });
+  assert.equal(stale.statusCode, 404, 'removed team is no longer reachable');
+
+  const transfer = await call(classHandler(), { method: 'PATCH', token: instructor, body: { action: 'create-transfer' } });
+  assert.equal(transfer.statusCode, 200, JSON.stringify(transfer.body));
+  assert.match(transfer.body.transferCode, /^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+  const [stored] = await sql`SELECT instructor_transfer_hash FROM classroom_classes WHERE public_id = ${created.body.class.id}::uuid`;
+  assert.notEqual(stored.instructor_transfer_hash, transfer.body.transferCode.replace(/-/g, ''), 'only a hash is stored');
+
+  const redeem = classInstructorTransferHandler();
+  const moved = await call(redeem, { method: 'POST', body: { transferCode: transfer.body.transferCode.toLowerCase() } });
+  assert.equal(moved.statusCode, 200, JSON.stringify(moved.body));
+  assert.equal(moved.body.class.id, created.body.class.id);
+  assert.equal(moved.body.joinCode, created.body.joinCode);
+  assert.equal((await call(classHandler(), { method: 'GET', token: instructor })).statusCode, 404, 'old device retired');
+  assert.equal((await call(classHandler(), { method: 'GET', token: moved.body.instructorToken })).statusCode, 200);
+  assert.equal((await call(redeem, { method: 'POST', body: { transferCode: transfer.body.transferCode } })).statusCode, 404, 'single use');
+
+  const second = await call(classHandler(), { method: 'PATCH', token: moved.body.instructorToken, body: { action: 'create-transfer' } });
+  await sql`UPDATE classroom_classes SET instructor_transfer_expires_at = NOW() - INTERVAL '1 second' WHERE public_id = ${created.body.class.id}::uuid`;
+  assert.equal((await call(redeem, { method: 'POST', body: { transferCode: second.body.transferCode } })).statusCode, 404, 'expired code fails');
 });

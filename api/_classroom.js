@@ -6,7 +6,7 @@
  * collaboration workspace engine; they never duplicate snapshot/revision state.
  */
 
-import { randomInt, randomUUID } from 'node:crypto';
+import { createHash, randomInt, randomUUID } from 'node:crypto';
 import { applySchema, createSql, memoizeUntilFailure } from './_db.js';
 import { checkRateLimit, classCreationPasswordMatches, sendRateLimited } from './_rateLimit.js';
 import {
@@ -16,6 +16,7 @@ import {
   hashWorkspaceToken,
   normalizeCollaborationName,
   parseAuthorizationToken,
+  TEAM_NAME_MAX_LENGTH,
   validateParticipantId,
   validateSnapshot,
   validateToken
@@ -43,8 +44,8 @@ const CLASSROOM_STUDENT_CAPABILITY_KIND = 'classroom-student';
  */
 export const CLASSROOM_SCHEMA = Object.freeze({
   component: 'classroom',
-  version: 1,
-  fingerprint: 'f3e0f669f03df0dd8316cb2f1951d5fda3ec959771cb4f7009f3934b63b71642',
+  version: 2,
+  fingerprint: 'cb184cf52fb4f4c16821936c34b8f539120cafd6ee7c02f97bbea520d891878b',
   steps: Object.freeze([
   sql => sql`CREATE TABLE IF NOT EXISTS classroom_classes (
     id BIGSERIAL PRIMARY KEY,
@@ -208,7 +209,15 @@ export const CLASSROOM_SCHEMA = Object.freeze({
       ON DELETE CASCADE
   )`,
   sql => sql`CREATE INDEX IF NOT EXISTS classroom_exercise_checkpoints_class_idx
-    ON classroom_exercise_checkpoints (class_id, exercise_id, stage_id)`
+    ON classroom_exercise_checkpoints (class_id, exercise_id, stage_id)`,
+  // v2 (#342): one-time Instructor device-transfer code (hash + short expiry).
+  sql => sql`ALTER TABLE classroom_classes
+    ADD COLUMN IF NOT EXISTS instructor_transfer_hash CHAR(64)`,
+  sql => sql`ALTER TABLE classroom_classes
+    ADD COLUMN IF NOT EXISTS instructor_transfer_expires_at TIMESTAMPTZ`,
+  sql => sql`CREATE UNIQUE INDEX IF NOT EXISTS classroom_classes_instructor_transfer_idx
+    ON classroom_classes (instructor_transfer_hash)
+    WHERE instructor_transfer_hash IS NOT NULL`
   ])
 });
 
@@ -305,6 +314,59 @@ export function generateClassJoinCode() {
     code += CLASS_JOIN_CODE_ALPHABET[randomInt(CLASS_JOIN_CODE_ALPHABET.length)];
   }
   return code;
+}
+
+export const INSTRUCTOR_TRANSFER_CODE_LENGTH = 12;
+export const INSTRUCTOR_TRANSFER_TTL_SECONDS = 600;
+
+/**
+ * Generate a one-time Instructor device-transfer code (60 bits, unambiguous alphabet).
+ *
+ * @returns {string} Normalized 12-character code.
+ */
+export function generateInstructorTransferCode() {
+  let code = '';
+  for (let index = 0; index < INSTRUCTOR_TRANSFER_CODE_LENGTH; index += 1) {
+    code += CLASS_JOIN_CODE_ALPHABET[randomInt(CLASS_JOIN_CODE_ALPHABET.length)];
+  }
+  return code;
+}
+
+/**
+ * Normalize a typed transfer code: uppercase, separators removed, alphabet-checked.
+ *
+ * @param {unknown} value Candidate code.
+ * @returns {string|null} Normalized code or null.
+ */
+export function normalizeInstructorTransferCode(value) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.toUpperCase().replace(/[\s-]+/gu, '');
+  if (normalized.length !== INSTRUCTOR_TRANSFER_CODE_LENGTH) return null;
+  for (const character of normalized) {
+    if (!CLASS_JOIN_CODE_ALPHABET.includes(character)) return null;
+  }
+  return normalized;
+}
+
+/**
+ * Format a transfer code for display as XXXX-XXXX-XXXX.
+ *
+ * @param {string} code Normalized code.
+ * @returns {string} Display code.
+ */
+export function formatInstructorTransferCode(code) {
+  return code.match(/.{1,4}/gu).join('-');
+}
+
+/**
+ * Hash a transfer code for storage. Codes are random, short-lived, single-use
+ * secrets (not passwords), so a namespaced SHA-256 is sufficient.
+ *
+ * @param {string} code Normalized code.
+ * @returns {string} 64-character hex hash.
+ */
+export function hashInstructorTransferCode(code) {
+  return createHash('sha256').update(`intake-instructor-transfer:${code}`).digest('hex');
 }
 
 /**
@@ -1540,6 +1602,93 @@ async function initializeClassroomRepository() {
       return rows[0] || null;
     },
 
+    async createInstructorTransfer(instructorHash, { transferHash, ttlSeconds }) {
+      const rows = await sql`UPDATE classroom_classes
+        SET instructor_transfer_hash = ${transferHash},
+            instructor_transfer_expires_at = NOW() + ${ttlSeconds}::integer * INTERVAL '1 second',
+            updated_at = NOW()
+        WHERE instructor_token_hash = ${instructorHash}
+          AND revoked_at IS NULL
+          AND expires_at > NOW()
+        RETURNING public_id AS id, title, instructor_transfer_expires_at AS "transferExpiresAt"`;
+      return rows[0] || null;
+    },
+
+    async redeemInstructorTransfer({ transferHash, nextInstructorHash }) {
+      // Single statement: the code is consumed, the previous Instructor
+      // credential stops working, and the new one is installed atomically.
+      const rows = await sql`UPDATE classroom_classes
+        SET instructor_token_hash = ${nextInstructorHash},
+            instructor_transfer_hash = NULL,
+            instructor_transfer_expires_at = NULL,
+            updated_at = NOW()
+        WHERE instructor_transfer_hash = ${transferHash}
+          AND instructor_transfer_expires_at > NOW()
+          AND revoked_at IS NULL
+          AND expires_at > NOW()
+        RETURNING public_id AS id, title, student_join_code AS "joinCode",
+          joins_enabled AS "joinsEnabled", expires_at AS "expiresAt"`;
+      return rows[0] || null;
+    },
+
+    async renameWorkspace(instructorHash, { workspacePublicId, label }) {
+      const classroom = await classByInstructor(instructorHash);
+      if (!classroom) return null;
+      const rows = await sql`UPDATE classroom_workspaces
+        SET label = ${label}, updated_at = NOW()
+        WHERE class_id = ${classroom.internal_id}
+          AND public_id = ${workspacePublicId}::uuid
+          AND revoked_at IS NULL
+        RETURNING workspace_id AS "internalId", public_id AS id, workspace_kind AS kind, label`;
+      const workspace = rows[0];
+      if (!workspace) return null;
+      await sql`UPDATE collaboration_workspaces
+        SET team_name = ${label.slice(0, TEAM_NAME_MAX_LENGTH)}
+        WHERE id = ${workspace.internalId}`;
+      return {
+        classroom,
+        workspace: { id: workspace.id, kind: workspace.kind, label: workspace.label }
+      };
+    },
+
+    async removeWorkspace(instructorHash, { workspacePublicId }) {
+      const classroom = await classByInstructor(instructorHash);
+      if (!classroom) return null;
+      // Refuse atomically while any live Student is assigned, so an assignment
+      // racing the removal cannot leave a Student on a removed workspace.
+      const rows = await sql`UPDATE classroom_workspaces cw
+        SET revoked_at = NOW(), updated_at = NOW()
+        WHERE cw.class_id = ${classroom.internal_id}
+          AND cw.public_id = ${workspacePublicId}::uuid
+          AND cw.revoked_at IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM classroom_participants p
+            WHERE p.class_id = cw.class_id
+              AND p.workspace_id = cw.workspace_id
+              AND p.revoked_at IS NULL
+          )
+        RETURNING cw.workspace_id AS "internalId", cw.public_id AS id, cw.workspace_kind AS kind, cw.label`;
+      const removed = rows[0];
+      if (!removed) {
+        const existing = await sql`SELECT 1 FROM classroom_workspaces
+          WHERE class_id = ${classroom.internal_id}
+            AND public_id = ${workspacePublicId}::uuid
+            AND revoked_at IS NULL`;
+        return existing[0] ? { status: 'occupied', classroom } : null;
+      }
+      await sql`UPDATE collaboration_workspaces
+        SET expires_at = NOW(), updated_at = NOW()
+        WHERE id = ${removed.internalId}`;
+      await sql`UPDATE collaboration_workspace_capabilities
+        SET revoked_at = NOW()
+        WHERE workspace_id = ${removed.internalId} AND revoked_at IS NULL`;
+      return {
+        status: 'removed',
+        classroom,
+        workspace: { id: removed.id, kind: removed.kind, label: removed.label }
+      };
+    },
+
     async revokeClass(instructorHash) {
       const rows = await sql`UPDATE classroom_classes
         SET revoked_at = NOW(), joins_enabled = FALSE, updated_at = NOW()
@@ -1876,7 +2025,8 @@ export function classHandler({
   tokenFactory = generateWorkspaceToken,
   joinCodeFactory = generateClassJoinCode,
   idFactory = randomUUID,
-  rateLimiter = undefined
+  rateLimiter = undefined,
+  transferCodeFactory = generateInstructorTransferCode
 } = {}) {
   return async (req, res) => {
     if (!['POST', 'GET', 'PATCH', 'DELETE'].includes(req.method)) {
@@ -1946,6 +2096,19 @@ export function classHandler({
           ? send(res, 200, { class: classroom, instructorToken })
           : send(res, 404, { error: 'Class not found.' });
       }
+      if (action === 'create-transfer') {
+        const transferCode = transferCodeFactory();
+        const created = await repository.createInstructorTransfer(instructorHash, {
+          transferHash: hashInstructorTransferCode(transferCode),
+          ttlSeconds: INSTRUCTOR_TRANSFER_TTL_SECONDS
+        });
+        return created
+          ? send(res, 200, {
+              transferCode: formatInstructorTransferCode(transferCode),
+              expiresAt: created.transferExpiresAt
+            })
+          : send(res, 404, { error: 'Class not found.' });
+      }
       if (action === 'set-joins') {
         if (typeof req.body?.enabled !== 'boolean') {
           return send(res, 400, { error: 'Invalid join setting.' });
@@ -1963,6 +2126,57 @@ export function classHandler({
 }
 
 /**
+ * Create the Instructor device-transfer redemption handler.
+ *
+ * POST exchanges a one-time transfer code (minted by the currently authorized
+ * Instructor device via PATCH /api/classes `create-transfer`) for a fresh
+ * Instructor capability. The code is single-use and expires after
+ * INSTRUCTOR_TRANSFER_TTL_SECONDS; redeeming it rotates the Instructor
+ * credential, so the previous device stops managing the class. Unknown,
+ * expired, or used codes fail identically, and attempts are rate-limited.
+ *
+ * @param {object} [dependencies] - Injectable dependencies.
+ * @returns {Function} Vercel handler.
+ */
+export function classInstructorTransferHandler({
+  getRepository = getClassroomRepository,
+  tokenFactory = generateWorkspaceToken,
+  rateLimiter = undefined
+} = {}) {
+  return async (req, res) => {
+    if (req.method !== 'POST') return methodNotAllowed(res, 'POST');
+    const limited = await checkRateLimit(req, 'instructor-transfer', rateLimiter);
+    if (!limited.allowed) return sendRateLimited(res, limited.retryAfterSeconds);
+    const transferCode = normalizeInstructorTransferCode(req.body?.transferCode);
+    if (!transferCode) {
+      return send(res, 400, { error: 'Enter the 12-character transfer code.' });
+    }
+    try {
+      const repository = await getRepository();
+      const instructorToken = tokenFactory();
+      const classroom = await repository.redeemInstructorTransfer({
+        transferHash: hashInstructorTransferCode(transferCode),
+        nextInstructorHash: hashWorkspaceToken(instructorToken)
+      });
+      if (!classroom) {
+        return send(res, 404, {
+          error: 'That transfer code is not valid. Codes work once and expire after 10 minutes.',
+          code: 'transfer-invalid'
+        });
+      }
+      const { joinCode, ...publicClass } = classroom;
+      return send(res, 200, {
+        class: publicClass,
+        instructorToken,
+        joinCode: joinCode ? formatClassJoinCode(joinCode) : null
+      });
+    } catch {
+      return send(res, 500, { error: 'Unable to transfer the class.' });
+    }
+  };
+}
+
+/**
  * Create the instructor-only classroom workspace handler.
  *
  * @param {object} [dependencies] - Injectable dependencies.
@@ -1975,8 +2189,8 @@ export function classWorkspacesHandler({
   idFactory = randomUUID
 } = {}) {
   return async (req, res) => {
-    if (!['GET', 'POST'].includes(req.method)) {
-      return methodNotAllowed(res, 'GET, POST');
+    if (!['GET', 'POST', 'PATCH', 'DELETE'].includes(req.method)) {
+      return methodNotAllowed(res, 'GET, POST, PATCH, DELETE');
     }
     const authorization = requireBearer(req);
     if (!authorization.ok) {
@@ -1993,6 +2207,43 @@ export function classWorkspacesHandler({
         return result
           ? send(res, 200, { class: result.classroom, workspaces: result.workspaces })
           : send(res, 404, { error: 'Class not found.' });
+      }
+
+      if (req.method === 'PATCH') {
+        const workspacePublicId = req.body?.workspaceId;
+        const label = normalizeClassroomLabel(req.body?.label, CLASS_WORKSPACE_LABEL_MAX_LENGTH);
+        if (!validateClassroomId(workspacePublicId) || !label) {
+          return send(res, 400, { error: 'Invalid workspace rename.' });
+        }
+        const workspaceRepository = await getWorkspaceRepo();
+        const result = await repository.renameWorkspace(instructorHash, {
+          workspacePublicId,
+          label,
+          workspaceRepository
+        });
+        return result
+          ? send(res, 200, { workspace: result.workspace })
+          : send(res, 404, { error: 'Workspace not found.' });
+      }
+
+      if (req.method === 'DELETE') {
+        const workspacePublicId = req.body?.workspaceId;
+        if (!validateClassroomId(workspacePublicId)) {
+          return send(res, 400, { error: 'Invalid workspace.' });
+        }
+        const workspaceRepository = await getWorkspaceRepo();
+        const result = await repository.removeWorkspace(instructorHash, {
+          workspacePublicId,
+          workspaceRepository
+        });
+        if (!result) return send(res, 404, { error: 'Workspace not found.' });
+        if (result.status === 'occupied') {
+          return send(res, 409, {
+            error: 'Move or unassign the Students in this workspace before removing it.',
+            code: 'workspace-occupied'
+          });
+        }
+        return send(res, 200, { removed: true, workspace: result.workspace });
       }
 
       const kind = normalizeClassroomWorkspaceKind(req.body?.kind);
@@ -2016,7 +2267,8 @@ export function classWorkspacesHandler({
         hashWorkspaceToken(workspaceToken),
         snapshot,
         classroom.expiresAt,
-        label
+        // collaboration team_name is VARCHAR(80); the classroom label may be longer.
+        label.slice(0, TEAM_NAME_MAX_LENGTH)
       );
       const result = await repository.addWorkspace(instructorHash, {
         publicId: idFactory(),
