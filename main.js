@@ -10,7 +10,8 @@ import { initCommsDrawer, toggleCommsDrawer, closeCommsDrawer } from './src/comm
 import {
   initTemplatesDrawer,
   toggleTemplatesDrawer,
-  closeTemplatesDrawer
+  closeTemplatesDrawer,
+  openCaseLibrary
 } from './src/templatesDrawer.js';
 import {
   configureKT,
@@ -398,6 +399,9 @@ function wireTemplatesEvents() {
   const templatesSaveBtn = $('#templatesSaveBtn');
   document.querySelectorAll('[data-open-templates-drawer]').forEach(launcher => {
     on(launcher, 'click', toggleTemplatesDrawer);
+  });
+  document.querySelectorAll('[data-open-case-library]').forEach(launcher => {
+    on(launcher, 'click', openCaseLibrary);
   });
   on(templatesCloseBtn, 'click', closeTemplatesDrawer);
   on(templatesBackdrop, 'click', closeTemplatesDrawer);
