@@ -4,7 +4,7 @@ This is the **single live status document** for KT Intake. Other docs describe c
 
 Update it at every durable checkpoint and before handoff — see [`docs/playbooks/status-update.md`](docs/playbooks/status-update.md). Always re-verify against GitHub (main HEAD, open PRs/issues) before trusting it.
 
-_Last updated: 2026-11-19 (#343 in draft PR, branch `claude/intake-repo-audit-qii780`, based on `main` at `9d7a200`)._
+_Last updated: 2026-11-19 (#343 in draft PR #357, branch `claude/intake-repo-audit-qii780`, based on `main` at `9d7a200`)._
 
 ## Product context
 
@@ -20,7 +20,7 @@ The **repository audit follow-through** merged via PR #344 (`41f002e`), followed
 
 - done: documentation consolidation (this file, playbooks, verbatim archive, drift guards); EULA data-usage wording; versioned advisory-locked schema; retry-safe repository init; real-Postgres (PGlite) tests; class-creation password; rate limits;
 - **fixed production bugs found by the real-SQL tests**: Instructor team assignment and Student "Mark Ready" both failed in Postgres because of untyped SQL parameters (they had only ever run against in-memory fakes);
-- next: confirm the `main` deployment is READY and run the real-class smoke test (#340); #342 merged (PR #352, `9d7a200`); #343 is in a draft PR.
+- next: confirm the `main` deployment is READY and run the real-class smoke test (#340); #342 merged (PR #352, `9d7a200`); #343 is in draft PR #357.
 
 ## Temporary product decisions
 
@@ -37,7 +37,7 @@ Worked one at a time, in order:
 1. **Environment** (human action, #340): Vercel Production needs `DATABASE_URL` (or `POSTGRES_URL` / `NEON_DATABASE_URL`) and a valid 43-character `INTAKE_ADMIN_TOKEN`; then a real multi-device smoke test (see `docs/playbooks/release-and-verify.md`).
 2. ~~**Instructor "Leave class" orphans the class** (#341)~~ — **done (#344)**: Leave asks for confirmation and explains the class keeps running; new **End class** confirms, revokes the class server-side for everyone, then clears the device.
 3. ~~**Instructor class controls** (#342)~~ — **done (PR #352, `9d7a200`)**: pause/allow joins, rename and guarded remove of teams, "Give each waiting Student their own workspace", one-time device-transfer code. Remaining: smoke-test steps 8a–8c after deploy.
-4. **Instructor Case Study assignment** (#343) — **implemented in draft PR** (server `caf856d`, client `5c3a50e`, e2e `22e60f8`): **Case Study for workspaces** loads a protected Case Study into all or one workspace from a chosen starting point (server-projected, written as a collaboration revision; no Student password). Untouched workspaces load directly; Student work is replaced only after the Instructor confirms the exact revision. Staged Case Studies and running exercises are refused. The panel shows the live mode password. Classroom schema v3. Remaining: review/merge, then smoke-test step 8d.
+4. **Instructor Case Study assignment** (#343) — **implemented in draft PR #357** (server `caf856d`, client `5c3a50e`, e2e `22e60f8`): **Case Study for workspaces** loads a protected Case Study into all or one workspace from a chosen starting point (server-projected, written as a collaboration revision; no Student password). Untouched workspaces load directly; Student work is replaced only after the Instructor confirms the exact revision. Staged Case Studies and running exercises are refused. The panel shows the live mode password. Classroom schema v3. Remaining: review/merge, then smoke-test step 8d.
 5. **Staged exercises unusable in production** — no authored Case Study has a `simulation`; requires #316 then #317.
 6. **Load/pilot readiness** — capacity check per `docs/operations-capacity.md`.
 
@@ -48,14 +48,14 @@ Worked one at a time, in order:
 | #316 Protected staged assets + rich Student rendering | Open, next Classroom feature after pilot blockers 2–4 | Draft PR #336 holds only a contract document (classroom-protected-assets.md on that branch) |
 | #317 First production staged KT Case Study | Open, blocked by #316 | Needs authoritative source material |
 | #340 Pilot blocker 1: environment + real smoke test | Open | Human action |
-| #343 Pilot blocker 4: Instructor Case Study assignment | In review | Draft PR (see Open pull requests) |
+| #343 Pilot blocker 4: Instructor Case Study assignment | In review | Draft PR #357 |
 | #348 Existing Case Study completeness audit | Open | Follow-up quality backlog; apply new KT authoring playbook before case changes |
 
 ## Open pull requests
 
 | PR | Status |
 | --- | --- |
-| #343 Instructor Case Study assignment (branch `claude/intake-repo-audit-qii780`) | Draft; local quality 448 tests + browser 30 passed / 12 intentional skips |
+| #357 #343 Instructor Case Study assignment | Draft; local quality 448 tests + browser 30 passed / 12 intentional skips |
 | #336 Add protected staged asset delivery | Draft; was stacked on #335 (merged) — retarget/refresh against `main` before continuing |
 | #281 eslint 10, #280 jsdom 30, #310 eslint-plugin-jsdoc 65 | Major bumps — do together in one tooling PR (see lint risk below) |
 
