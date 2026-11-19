@@ -6,6 +6,7 @@
 import { promises as fs } from 'node:fs';
 
 import { PROTECTED_CASE_STUDY_MANIFEST } from '../api/protected-case-studies.manifest.js';
+import { STANDALONE_PUBLIC_CASE_STUDY_IDS } from './standalone-public-case-studies.mjs';
 
 const root = new URL('../', import.meta.url);
 const publicManifestUrl = new URL('../src/templates.manifest.js', import.meta.url);
@@ -101,12 +102,27 @@ async function main() {
     content: await read(url)
   })));
 
+  // TEMPORARY Standalone transition (scripts/standalone-public-case-studies.mjs):
+  // allowlisted cases may appear in the generated public manifest only — never
+  // in hand-written browser source — and never with a staged simulation.
+  const publicAllowlist = new Set(STANDALONE_PUBLIC_CASE_STUDY_IDS);
+  const publicManifestPathname = publicManifestUrl.pathname;
+  if (/"simulation"\s*:/u.test(publicManifest)) {
+    throw new Error('Public manifest must never contain a staged Case Study simulation definition.');
+  }
   for (const caseStudy of PROTECTED_CASE_STUDY_MANIFEST) {
+    const publiclyAllowed = publicAllowlist.has(caseStudy.id);
+    if (publiclyAllowed && caseStudy.simulation) {
+      throw new Error(`Staged Case Study ${caseStudy.id} cannot be published to Standalone.`);
+    }
     for (const protectedText of [caseStudy.id, caseStudy.name]) {
-      if (publicManifest.includes(protectedText)) {
+      if (!publiclyAllowed && publicManifest.includes(protectedText)) {
         throw new Error(`Protected Case Study text leaked into public manifest: ${protectedText}`);
       }
-      const runtimeLeak = browserSources.find(file => file.content.includes(protectedText));
+      const runtimeLeak = browserSources.find(file => (
+        file.content.includes(protectedText)
+        && !(publiclyAllowed && file.path === publicManifestPathname)
+      ));
       if (runtimeLeak) {
         throw new Error(`Protected Case Study text leaked into browser runtime ${runtimeLeak.path}: ${protectedText}`);
       }
@@ -125,6 +141,9 @@ async function main() {
   console.log(
     `[verify:protected-cases] Protected ${PROTECTED_CASE_STUDY_MANIFEST.length} Case Study payload(s); `
     + 'public manifest/runtime and Vercel deployment boundary verified.'
+    + (publicAllowlist.size
+      ? ` TEMPORARY: ${publicAllowlist.size} Case Study payload(s) are intentionally public for Standalone (scripts/standalone-public-case-studies.mjs).`
+      : '')
   );
 }
 

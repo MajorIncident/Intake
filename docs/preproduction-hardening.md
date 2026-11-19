@@ -31,7 +31,7 @@ PRODUCTION SIMULATION ENABLEMENT
   #317  first production staged KT Case Study
 ```
 
-#328 and #329 are complete and published. #329 merged via PR #333 as `b04684f2432aa474cb84874aa26aa08a5f4c5ab7`; its canonical runtime contract is `docs/admin-maintenance.md`. **#330 is active on draft PR #334** and now integrates the proven Admin entry.
+#328–#330 are complete and published. #329 merged via PR #333 as `b04684f2432aa474cb84874aa26aa08a5f4c5ab7`; its canonical runtime contract is `docs/admin-maintenance.md`. #330 merged via PR #334 as `ad7b9835adf3fd5338658f29b634e18b13b2def5`; the exact merged `main` deployment reached Vercel production **READY**. Current active work is tracked only in `STATUS.md`.
 
 ## End-state access model
 
@@ -155,7 +155,7 @@ Do **not** add autonomous scheduled deletion in the first Admin slice. Prove the
 
 ## Startup experience hub
 
-**Implementation status:** active in #330 / draft PR #334 on `feature/startup-experience-hub`.
+**Implementation status:** complete in #330 / merged PR #334 as `ad7b9835adf3fd5338658f29b634e18b13b2def5`; production deployment verified **READY**.
 
 Ordinary app launch should no longer silently resume a role solely because `kt-experience-role-v1` exists.
 
@@ -227,6 +227,6 @@ Before implementing any of #328–#330:
 
 1. refresh `main`, issue/PR state, and open dependency work;
 2. read root/scoped `AGENTS.md`;
-3. read this file plus `docs/classroom-architecture.md`, `docs/classroom-api.md`, `docs/classroom-roadmap.md`, and `docs/classroom-workstream.md`;
+3. read this file plus `docs/classroom-architecture.md`, `docs/classroom-api.md`, `docs/classroom-roadmap.md`, and `STATUS.md`;
 4. treat #328 as the prerequisite unless repository state proves it is already merged;
 5. keep work in small durable checkpoints and use the documented slow-gate handoff protocol.

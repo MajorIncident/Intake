@@ -9,6 +9,7 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 import { getClassroomRepository } from './_classroom.js';
+import { createSql, memoizeUntilFailure } from './_db.js';
 import {
   generateWorkspaceToken,
   getWorkspaceRepository,
@@ -25,9 +26,6 @@ export const ADMIN_MAX_IDLE_DAYS = 3650;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PREVIEW_VERSION = 1;
 
-function connectionString() {
-  return process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.NEON_DATABASE_URL || '';
-}
 
 function configuredAdminToken() {
   return process.env[ADMIN_TOKEN_ENV] || '';
@@ -341,7 +339,12 @@ function plansMatch(payload, currentPlan) {
   return currentPlan.items.every(item => expected.get(item.id) === item.fingerprint);
 }
 
-let adminRepositoryPromise;
+const memoizedAdminRepository = memoizeUntilFailure(initializeAdminRepository);
+
+/** Clears the memoized repository (tests only). @returns {void} */
+export function resetAdminRepositoryForTesting() {
+  memoizedAdminRepository.reset();
+}
 
 /**
  * Initialize the Admin repository after the current Classroom/collaboration schema.
@@ -349,19 +352,14 @@ let adminRepositoryPromise;
  * @returns {Promise<object>} Admin repository.
  */
 export async function getAdminRepository() {
-  if (!adminRepositoryPromise) adminRepositoryPromise = initializeAdminRepository();
-  return adminRepositoryPromise;
+  return memoizedAdminRepository();
 }
 
 async function initializeAdminRepository() {
-  const connection = connectionString();
-  if (!connection) throw new Error('Database is not configured');
-
   await getWorkspaceRepository();
   await getClassroomRepository();
 
-  const { neon } = await import('@neondatabase/serverless');
-  const sql = neon(connection);
+  const sql = await createSql();
 
   async function listInventory(nowMs = Date.now()) {
     const [classRows, workspaceRows] = await Promise.all([

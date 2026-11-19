@@ -931,11 +931,28 @@ async function handleClassroomApi(request, response, url) {
   }
 
   if (url.pathname === '/api/classes') {
+    if (request.method === 'DELETE') {
+      // Mirrors api/_classroom.js DELETE: Instructor ends (revokes) the live class.
+      const instructorToken = bearerToken(request);
+      if (instructorToken === LIVE_INSTRUCTOR_TOKEN && liveClassState) {
+        const classId = liveClassState.id;
+        liveClassState = null;
+        sendJson(response, 200, { revoked: true, classId });
+        return true;
+      }
+      sendJson(response, 404, { error: 'Class not found.' });
+      return true;
+    }
     if (request.method !== 'POST') {
       sendJson(response, 405, { error: 'Method not allowed.' });
       return true;
     }
     const body = await readJson(request).catch(() => null);
+    // Mirrors api/_rateLimit.js: the default class-creation password, trimmed and case-insensitive.
+    if (typeof body?.classPassword !== 'string' || body.classPassword.trim().toLowerCase() !== 'kepnertregoe') {
+      sendJson(response, 403, { error: 'The class password is incorrect.', code: 'class-password-invalid' });
+      return true;
+    }
     const title = typeof body?.title === 'string' ? body.title.trim() : '';
     if (!title) {
       sendJson(response, 400, { error: 'Invalid class title.' });

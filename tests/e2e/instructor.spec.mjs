@@ -87,6 +87,7 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.getByRole('heading', { name: 'Run a class' })).toBeVisible();
 
   await page.getByLabel('Class title').fill('Browser Live PSDM');
+  await page.getByLabel('Class password').fill('kepnertregoe');
   await page.getByRole('button', { name: 'Start class' }).click();
 
   await expect(page.locator('#instructorClassDashboard')).toBeVisible();
@@ -254,6 +255,20 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.getByRole('button', { name: 'Complete exercise' })).toBeHidden();
 
   await expectNoBlockingA11yViolations(page);
+
+  // End class asks for confirmation, revokes the class on the server, and clears this device.
+  const dialogMessages = [];
+  page.once('dialog', dialog => { dialogMessages.push(dialog.message()); void dialog.dismiss(); });
+  await page.getByRole('button', { name: 'End class' }).click();
+  await expect(page.locator('#instructorClassDashboard')).toBeVisible();
+  expect(classroomRequests.some(request => request.method === 'DELETE' && request.pathname === '/api/classes')).toBe(false);
+
+  page.once('dialog', dialog => { dialogMessages.push(dialog.message()); void dialog.accept(); });
+  await page.getByRole('button', { name: 'End class' }).click();
+  await expect(page.locator('#instructorClassStartForm')).toBeVisible();
+  expect(dialogMessages.every(message => message.includes('for everyone'))).toBe(true);
+  expect(classroomRequests.some(request => request.method === 'DELETE' && request.pathname === '/api/classes')).toBe(true);
+  expect(await page.evaluate(() => localStorage.getItem('kt-classroom-instructor-session-v1'))).toBeNull();
   expect(pageErrors).toEqual([]);
 });
 

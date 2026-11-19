@@ -13,6 +13,7 @@ import {
   normalizeStagedSimulation,
   validateSimulationForResource
 } from './staged-simulation-schema.mjs';
+import { STANDALONE_PUBLIC_CASE_STUDY_IDS } from './standalone-public-case-studies.mjs';
 
 const templatesDir = new URL('../templates/', import.meta.url);
 const publicManifestPath = new URL('../src/templates.manifest.js', import.meta.url);
@@ -213,6 +214,27 @@ function createManifestSource(manifest, { exportName, boundary }) {
   return `${banner}\n\nfunction deepFreeze(value) {\n  if (Array.isArray(value)) {\n    value.forEach(deepFreeze);\n  } else if (value && typeof value === 'object') {\n    Object.values(value).forEach(deepFreeze);\n  }\n  return Object.freeze(value);\n}\n\nconst manifest = ${serialized};\n\nexport const ${exportName} = deepFreeze(manifest);\n`;
 }
 
+/**
+ * Selects the Case Studies temporarily published for Standalone, without the
+ * server-only `simulation` field, and refuses unknown or staged cases.
+ * @param {Array<object>} caseStudies - Validated protected Case Study records.
+ * @returns {Array<object>} Public copies in allowlist order.
+ */
+function selectStandalonePublicCaseStudies(caseStudies) {
+  const byId = new Map(caseStudies.map(caseStudy => [caseStudy.id, caseStudy]));
+  return STANDALONE_PUBLIC_CASE_STUDY_IDS.map(id => {
+    const caseStudy = byId.get(id);
+    if (!caseStudy) {
+      throw new Error(`Standalone public Case Study allowlist names an unknown Case Study: ${id}`);
+    }
+    if (caseStudy.simulation) {
+      throw new Error(`Staged Case Study ${id} cannot be published to Standalone; it would bypass staged release.`);
+    }
+    const { simulation: _serverOnly, ...publicCopy } = caseStudy;
+    return publicCopy;
+  });
+}
+
 async function main() {
   let entries = [];
   try {
@@ -233,12 +255,17 @@ async function main() {
     templates.push(template);
   }
 
-  const publicTemplates = templates.filter(template => template.templateKind === TEMPLATE_KINDS.STANDARD);
   const protectedCaseStudies = templates.filter(template => template.templateKind === TEMPLATE_KINDS.CASE_STUDY);
+  const publicCaseStudies = selectStandalonePublicCaseStudies(protectedCaseStudies);
+  const publicTemplates = templates
+    .filter(template => template.templateKind === TEMPLATE_KINDS.STANDARD)
+    .concat(publicCaseStudies);
 
   const publicOutput = createManifestSource(publicTemplates, {
     exportName: 'TEMPLATE_MANIFEST',
-    boundary: 'PUBLIC CLIENT MANIFEST: Standard Templates only. Protected Case Studies must never be added here.'
+    boundary: publicCaseStudies.length
+      ? 'PUBLIC CLIENT MANIFEST: Standard Templates plus the TEMPORARY Standalone Case Study allowlist in scripts/standalone-public-case-studies.mjs. Anything here is publicly downloadable.'
+      : 'PUBLIC CLIENT MANIFEST: Standard Templates only. Protected Case Studies must never be added here.'
   });
   const protectedOutput = createManifestSource(protectedCaseStudies, {
     exportName: 'PROTECTED_CASE_STUDY_MANIFEST',
@@ -251,7 +278,7 @@ async function main() {
   ]);
 
   console.log(
-    `Wrote ${publicTemplates.length} public template(s) to ${fileURLToPath(publicManifestPath)} `
+    `Wrote ${publicTemplates.length} public template(s) (${publicCaseStudies.length} temporary Standalone Case Studies) to ${fileURLToPath(publicManifestPath)} `
     + `and ${protectedCaseStudies.length} protected Case Study record(s) to ${fileURLToPath(protectedManifestPath)}.`
   );
 }
