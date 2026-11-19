@@ -2744,13 +2744,13 @@ const manifest = [
     "id": "red-sweat-mystery",
     "name": "Red Sweat Mystery",
     "description": "Eastern flight attendants report unexplained red/pink spotting; learner-safe PA practice.",
-    "templateKind": "case-study",
     "supportedModes": [
       "intake",
       "is-is-not",
       "dc",
       "full"
     ],
+    "templateKind": "case-study",
     "state": {
       "meta": {
         "version": 3,
