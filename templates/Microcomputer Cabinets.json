@@ -436,15 +436,31 @@
   },
   "libraryGroup": "psdm",
   "participantCase": {
-    "title": "Microcomputer Cabinets — participant briefing",
+    "title": "Microcomputer Cabinets — participant case",
     "sections": [
       {
-        "heading": "The problem",
-        "body": "Final Inspection is periodically rejecting microcomputer cabinets because of gaps in the painted finish. The affected object in the case is the 1025 cabinet. The expected finish is flat and even."
+        "heading": "The production setting",
+        "body": "The plant makes three related microcomputer products: 1025, 1035 and 1045. Model 1025 is manufactured on Line 1; models 1035 and 1045 are made on Line 2. Each line washes the cabinets, applies electrostatic paint, dries the coating, assembles the units and sends them to Final Inspection. The finished cabinets should have a flat, continuous paint finish."
       },
       {
-        "heading": "Your investigation",
-        "body": "Develop a precise Problem Statement and factual comparisons with other cabinet models, production conditions and time periods. Trace the paint process and test the mechanisms that could produce paint gaps. The reported reject rate has created rework pressure."
+        "heading": "How the lines operate",
+        "body": "Line 1 and Line 2 use separate wash tanks supplied from a common central solution source. The wash solution is routinely changed every 30 minutes. After washing, the cabinets go to electrostatic painting and drying. The two manufacturing lines use broadly similar operations, so differences in product, handling, wash conditions and throughput can be investigated."
+      },
+      {
+        "heading": "What Final Inspection is seeing",
+        "body": "Inspectors are finding random gaps in paint coverage on model 1025 cabinets. The normal reject rate for this model has been approximately 0.15%, but the current rate is above 6% and rising. The gaps mean cabinets must be reworked and some deliveries are delayed; the reported consequence is not an increase in scrap."
+      },
+      {
+        "heading": "Production pattern",
+        "body": "The factory is partway through a six-week peak production period. Output has been rising from week to week. The 1025 model is produced at a higher rate than either 1035 or 1045, and Line 1 throughput continues to increase. The reject rates for models 1035 and 1045 remain within their usual range."
+      },
+      {
+        "heading": "A past episode",
+        "body": "During the prior year's peak period, a similar appearance on 1025 cabinets was traced to silicone hand cream. This history is available to the investigators, but a cause that explained an earlier episode still has to be tested against the facts of the current problem."
+      },
+      {
+        "heading": "Your assignment",
+        "body": "Determine what is different about the affected cabinets and their production conditions. Develop a cause-unknown Problem Statement, factual IS and IS NOT comparisons, Distinctions and Changes, candidate mechanisms and checks that could confirm or eliminate them. The participant case does not report a verified current cause."
       }
     ]
   }
