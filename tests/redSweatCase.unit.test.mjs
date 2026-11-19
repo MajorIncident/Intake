@@ -43,8 +43,9 @@ test('learner-facing case brief contains factual evidence but not the resolved m
   assert.match(state.pre.proof, /LEARNER CASE BRIEF/);
   assert.match(state.pre.proof, /30 minutes after takeoff/i);
   assert.doesNotMatch(state.pre.proof, /flak(?:e|ing)|red ink|removing the vests stopped/i);
-  assert.equal(state.actions.items.length, 0, 'action records would leak into all presentation modes');
-  assert.equal(state.steps.items.length, 0);
+  assert.equal(state.actions.items.length, 4, 'complete authored source includes the illustrative implementation actions');
+  assert.ok(state.steps.items.length >= 20, 'full Major Incident checklist is represented');
+  assert.equal(state.meta.intakeMode, 'general', 'case remains ready for General display while retaining hidden MIM fields');
 });
 
 test('Intake and IS/IS NOT projections do not expose worked reasoning', () => {
@@ -58,7 +59,11 @@ test('Intake and IS/IS NOT projections do not expose worked reasoning', () => {
   assert.equal(intake.likelyCauseId, null);
   assert.equal(spec.causes.length, 0);
   assert.equal(spec.likelyCauseId, null);
-  assert.equal(spec.actions.items.length, 0);
+  assert.equal(spec.actions.items.length, 0, 'no case answer actions in the IS / IS NOT projection');
+  assert.equal(intake.actions.items.length, 0, 'no case answer actions in Intake');
+  assert.equal(intake.ops.containDesc, '', 'historical containment answer must not leak into Intake');
+  assert.equal(spec.ops.containDesc, '', 'historical containment answer must not leak into IS / IS NOT');
+  assert.equal(intake.notesWorkspace.notes.length, 0, 'instructor/answer notes must not leak into the starter');
   assert.ok(findQuestion(spec, 'what-object').is);
   assert.ok(findQuestion(spec, 'where-location').no);
   for (const row of spec.table) {
@@ -72,6 +77,8 @@ test('D&C view reveals source-scoped distinctions and dated changes, but no caus
   assert.ok(dc);
   assert.equal(dc.causes.length, 0);
   assert.equal(dc.likelyCauseId, null);
+  assert.equal(dc.actions.items.length, 0, 'D&C must not reveal answer-key actions');
+  assert.equal(dc.decisionAnalysis.decision, undefined, 'D&C does not include final decision exemplar');
   assert.match(findQuestion(dc, 'what-object').di, /vests/i);
   assert.match(findQuestion(dc, 'what-object').ch, /early January 1980/i);
   assert.match(findQuestion(dc, 'where-location').di, /over water/i);
@@ -90,6 +97,20 @@ test('Full view includes causes, test verdicts, assumptions, elimination and con
   assert.equal(full.meta.intakeMode, 'general');
   assert.equal(full.causes.length, 4);
   assert.equal(full.likelyCauseId, VEST_CAUSE_ID);
+  assert.ok(full.steps.items.length >= 20, 'Full retains the canonical Major Incident checklist');
+  assert.equal(full.actions.items.length, 4, 'Full includes illustrative verification and corrective actions');
+  assert.ok(full.actions.items.every(item => item.status === 'Planned'), 'do not invent performed historical action status');
+  assert.ok(full.actions.items.every(item => item.notes.includes('not a documented historical')), 'proposed actions are explicitly distinguished');
+  assert.match(full.ops.containDesc, /HISTORICAL POST-EXERCISE RESULT/);
+  assert.match(full.decisionAnalysis.decision, /ILLUSTRATIVE EXERCISE/);
+  assert.match(full.decisionAnalysis.options, /A\\. Inspect/);
+  assert.equal(full.decisionAnalysis.timestamp, '', 'no fabricated historical decision timestamp');
+  assert.match(full.potentialProblemAnalysis.risk.impactIfFails, /ILLUSTRATIVE IF\\/THEN/);
+  assert.equal(full.potentialProblemAnalysis.changeControl.required, true);
+  assert.equal(full.potentialProblemAnalysis.verification.required, true);
+  assert.ok(full.handover['remaining-risks'].length > 0);
+  assert.ok(full.handover['must-watch-metrics'].length > 0);
+  assert.ok(full.notesWorkspace.notes.length >= 4);
   const vested = full.causes.find(c => c.id === VEST_CAUSE_ID);
   const filter = full.causes.find(c => c.id === FILTER_CAUSE_ID);
   assert.ok(vested);
@@ -130,4 +151,27 @@ test('unsubstantiated NMD comparisons are not passed off as factual IS NOT pairs
   for (const id of unknownIds) {
     assert.equal(findQuestion(full, id).no, '', `${id}: unknown is not a factual IS NOT`);
   }
+});
+
+test('Full case covers all supported MIM exemplar buckets while refusing unknown historical identities', () => {
+  const source = TEMPLATE_MANIFEST.find(entry => entry.id === CASE_ID).state;
+  const full = getTemplatePayload(CASE_ID, TEMPLATE_MODE_IDS.FULL);
+  const expected = [
+    'meta', 'pre', 'impact', 'ops', 'table', 'causes',
+    'likelyCauseId', 'steps', 'actions', 'handover',
+    'decisionAnalysis', 'potentialProblemAnalysis', 'notesWorkspace'
+  ];
+  for (const key of expected) {
+    assert.ok(Object.prototype.hasOwnProperty.call(full, key), `missing full exemplar bucket ${key}`);
+    assert.deepEqual(full[key], source[key], `template projection lost source content from ${key}`);
+  }
+  assert.equal(full.ops.icName, '');
+  assert.equal(full.ops.bcName, '');
+  assert.equal(full.ops.bridgeOpenedUtc, '');
+  assert.equal(full.ops.severity, '');
+  assert.equal(full.ops.commNextDueIso, '');
+  assert.equal(full.decisionAnalysis.delegatedOwner, '');
+  assert.equal(full.decisionAnalysis.timestamp, '');
+  assert.ok(full.ops.detectUserReport, 'reported symptoms are the evidence source');
+  assert.ok(full.ops.evOther, 'participant case dossier is the exhibit');
 });
