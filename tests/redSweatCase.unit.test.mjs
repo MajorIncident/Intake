@@ -38,7 +38,7 @@ test('official problem statement and participant evidence exclude the resolution
   assert.match(pre.proof, /DC9/i);
   assert.match(pre.proof, /30 minutes after takeoff/i);
   assert.doesNotMatch(pre.proof, /flak(?:e|ing)|red ink|reports stopped|true cause/i);
-  assert.match(pre.now, /red\\/pink/i);
+  assert.match(pre.now, /red.pink/i);
 });
 
 test('Impact fields answer present consequence, future consequence, and resolution timeframe', () => {
@@ -136,7 +136,7 @@ test('complete Full source gives official removal outcome without invented incid
   assert.equal(full.steps.items.length, 0);
 
   const serialized = JSON.stringify(full);
-  assert.doesNotMatch(serialized, /HISTORICAL CASE|ILLUSTRATIVE|PROPOSED\\/ILLUSTRATIVE|UNCONFIRMED learner/i);
+  assert.doesNotMatch(serialized, /HISTORICAL CASE|ILLUSTRATIVE|UNCONFIRMED learner/i);
 });
 
 test('unknown IS NOT comparators remain blank rather than invented', () => {
