@@ -14,7 +14,7 @@ export function response() {
     setHeader(key, value) { this.headers[key] = value; },
     status(code) { this.statusCode = code; return this; },
     json(body) { this.body = body; return this; },
-    end() { return this; }
+    end(body) { if (body !== undefined) this.body = body; return this; }
   };
 }
 

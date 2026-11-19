@@ -26,6 +26,10 @@ import {
   studentCaseStudiesHandler
 } from './_protectedCaseStudies.js';
 import {
+  classInstructorExerciseAssetHandler,
+  classStudentExerciseAssetHandler
+} from './_classroomExerciseAssets.js';
+import {
   classExerciseCheckpointHandler,
   classExerciseHandler,
   classStudentExerciseHandler,
@@ -51,8 +55,10 @@ export const CLASSROOM_ROUTE_IDS = Object.freeze([
   'case-studies-student',
   'exercise',
   'exercise-checkpoint',
+  'exercise-asset',
   'exercise-student',
-  'exercise-student-ready'
+  'exercise-student-ready',
+  'exercise-student-asset'
 ]);
 
 function defaultHandlers() {
@@ -73,8 +79,10 @@ function defaultHandlers() {
     'case-studies-student': studentCaseStudiesHandler(),
     exercise: classExerciseHandler(),
     'exercise-checkpoint': classExerciseCheckpointHandler(),
+    'exercise-asset': classInstructorExerciseAssetHandler(),
     'exercise-student': classStudentExerciseHandler(),
-    'exercise-student-ready': classStudentExerciseReadyHandler()
+    'exercise-student-ready': classStudentExerciseReadyHandler(),
+    'exercise-student-asset': classStudentExerciseAssetHandler()
   };
 }
 

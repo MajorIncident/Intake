@@ -2,3 +2,6 @@
 # Generated Standard Templates are committed under src/; protected Case Studies
 # are committed only into the server-side api manifest.
 templates/*.json
+# Protected staged-asset sources (#316): the bytes are embedded only in the
+# server-only api/_protected-assets.manifest.js.
+templates/assets/
