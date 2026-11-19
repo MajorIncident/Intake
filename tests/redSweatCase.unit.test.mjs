@@ -30,6 +30,17 @@ test('case is included in both catalogs without conflicting copies', () => {
   assert.equal(authored.simulation, undefined);
 });
 
+test('source grouping and inline briefing are learner-safe and agree in public/protected manifests', () => {
+  const source = TEMPLATE_MANIFEST.find(item => item.id === CASE_ID);
+  const protectedCopy = PROTECTED_CASE_STUDY_MANIFEST.find(item => item.id === CASE_ID);
+  assert.equal(source.libraryGroup, 'psdm');
+  assert.deepEqual(protectedCopy.participantCase, source.participantCase);
+  assert.ok(source.participantCase.sections.length >= 3);
+  const participant = JSON.stringify(source.participantCase);
+  assert.match(participant, /Eastern Airlines/i);
+  assert.doesNotMatch(participant, /red ink|flaking|True Cause|removed the vests/i);
+});
+
 test('official problem statement and participant evidence exclude the resolution', () => {
   const { pre } = authored.state;
   assert.equal(pre.oneLine, 'Flight Attendants have red sweat.');
