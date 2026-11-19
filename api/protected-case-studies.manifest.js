@@ -25,6 +25,20 @@ const manifest = [
       "full"
     ],
     "templateKind": "case-study",
+    "libraryGroup": "psdm",
+    "participantCase": {
+      "title": "Microcomputer Cabinets — participant briefing",
+      "sections": [
+        {
+          "heading": "The problem",
+          "body": "Final Inspection is periodically rejecting microcomputer cabinets because of gaps in the painted finish. The affected object in the case is the 1025 cabinet. The expected finish is flat and even."
+        },
+        {
+          "heading": "Your investigation",
+          "body": "Develop a precise Problem Statement and factual comparisons with other cabinet models, production conditions and time periods. Trace the paint process and test the mechanisms that could produce paint gaps. The reported reject rate has created rework pressure."
+        }
+      ]
+    },
     "state": {
       "meta": {
         "version": 3,
@@ -462,6 +476,24 @@ const manifest = [
       "full"
     ],
     "templateKind": "case-study",
+    "libraryGroup": "mim",
+    "participantCase": {
+      "title": "Paytrix — incident brief",
+      "sections": [
+        {
+          "heading": "Incident context",
+          "body": "The North America East authorization service is showing sustained elevated p95 latency. Datadog monitoring, automated incident alerts and merchant reports indicate a deviation affecting authorization performance."
+        },
+        {
+          "heading": "Observed impact",
+          "body": "Merchant transactions are delayed or timing out. Amazon reports elevated retries and Delta kiosks cannot consistently process payments. The incident team has monitoring evidence and stakeholder reports to compare against the baseline."
+        },
+        {
+          "heading": "Your task",
+          "body": "Establish current impact, likely future impact and the decision timeframe. Use evidence to specify the deviation and test possible causes before selecting safe containment and verification steps."
+        }
+      ]
+    },
     "state": {
       "meta": {
         "version": 3,
@@ -1270,6 +1302,28 @@ const manifest = [
       "full"
     ],
     "templateKind": "case-study",
+    "libraryGroup": "psdm",
+    "participantCase": {
+      "title": "Red Sweat Mystery — participant briefing",
+      "sections": [
+        {
+          "heading": "The report",
+          "body": "Eastern Airlines flight attendants have reported brief episodes of red or pink staining on exposed skin while in flight. The marks appear on the face, hands or neck. The reports do not establish a loss of ability to perform cabin duties."
+        },
+        {
+          "heading": "Initial comparisons",
+          "body": "The reported episodes involve working flight attendants, but not lead flight attendants, pilots or passengers. Most reported flights use Eastern A300 aircraft; a few involve other Eastern aircraft. No cases have been reported on Eastern DC9 flights or at other airlines."
+        },
+        {
+          "heading": "Timing and context",
+          "body": "The staining first appears within roughly 30 minutes after takeoff and is short-lived. Some A300 routes operate over water. Various cabin and safety materials changed around the introduction of these aircraft."
+        },
+        {
+          "heading": "Your task",
+          "body": "State the object and deviation; obtain a precise WHAT, WHERE, WHEN and EXTENT specification. Compare affected and unaffected groups, identify Distinctions and dated Changes, then generate and test Possible Causes. Do not assume any one newly introduced material caused the staining."
+        }
+      ]
+    },
     "state": {
       "meta": {
         "version": 3,
@@ -1635,6 +1689,20 @@ const manifest = [
       "full"
     ],
     "templateKind": "case-study",
+    "libraryGroup": "ats",
+    "participantCase": {
+      "title": "Mrs. Walther's Square Donuts — initial orientation",
+      "sections": [
+        {
+          "heading": "Explore the operation",
+          "body": "You are investigating the donut production operation at Mrs. Walther's factory. Begin by understanding the process and observing how donuts move through the plant, from preparation to quality control."
+        },
+        {
+          "heading": "Discovery exercise",
+          "body": "This is a discovery exercise: notice how you gather information, observe defects and decide where to look. The specific production problem is supplied at a later stage by your instructor. Do not assume a particular defect or cause before it is introduced."
+        }
+      ]
+    },
     "state": {
       "meta": {
         "version": 3,
@@ -2240,6 +2308,20 @@ const manifest = [
       "full"
     ],
     "templateKind": "case-study",
+    "libraryGroup": "psdm",
+    "participantCase": {
+      "title": "Tamworth — participant briefing",
+      "sections": [
+        {
+          "heading": "The customer report",
+          "body": "Tamworth customers report an even, faint fog across photographs made from its sheet film. The company has reproduced the effect using X-rays. The deviation is film fogging, not merely the existence of complaints."
+        },
+        {
+          "heading": "Your investigation",
+          "body": "Identify exactly which film, distribution circumstances and conditions are affected. Develop close factual IS NOT comparisons and test possible explanations of the fogging. Keep the cause unknown until the evidence supports it."
+        }
+      ]
+    },
     "state": {
       "meta": {
         "version": 3,
