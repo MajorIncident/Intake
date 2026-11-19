@@ -710,6 +710,34 @@ Anchors present:
           <span class="instructor-bulk-individual__status" id="instructorIndividualWorkspacesStatus" role="status" aria-live="polite"></span>
         </div>
 
+        <!-- [feature:instructor-case-assignment] start -->
+        <section class="instructor-case-assignment" id="instructorCaseAssignment" aria-labelledby="instructorCaseAssignmentTitle" data-persistence="local-only" data-summary="exclude">
+          <strong id="instructorCaseAssignmentTitle">Case Study for workspaces</strong>
+          <p class="instructor-case-assignment__help" id="instructorCaseAssignmentHelp">Loads a Case Study into workspaces so Students start from it, with no password. Workspaces where Students have already worked are only replaced after you confirm.</p>
+          <form class="instructor-case-assignment__form" id="instructorCaseAssignmentForm" autocomplete="off" aria-describedby="instructorCaseAssignmentHelp">
+            <div class="instructor-case-assignment__field" data-persistence="local-only" data-summary="exclude">
+              <label for="instructorCaseAssignmentCase" data-persistence="local-only" data-summary="exclude">Case Study</label>
+              <select id="instructorCaseAssignmentCase" data-persistence="local-only" data-summary="exclude" disabled>
+                <option value="" data-persistence="local-only" data-summary="exclude">Select a Case Study</option>
+              </select>
+            </div>
+            <div class="instructor-case-assignment__field" data-persistence="local-only" data-summary="exclude">
+              <label for="instructorCaseAssignmentMode" data-persistence="local-only" data-summary="exclude">Start from</label>
+              <select id="instructorCaseAssignmentMode" data-persistence="local-only" data-summary="exclude" disabled></select>
+            </div>
+            <div class="instructor-case-assignment__field" data-persistence="local-only" data-summary="exclude">
+              <label for="instructorCaseAssignmentTarget" data-persistence="local-only" data-summary="exclude">Load into</label>
+              <select id="instructorCaseAssignmentTarget" data-persistence="local-only" data-summary="exclude" disabled>
+                <option value="all" data-persistence="local-only" data-summary="exclude">All workspaces</option>
+              </select>
+            </div>
+            <button type="submit" class="btn-secondary" id="instructorCaseAssignmentBtn" data-persistence="local-only" data-summary="exclude" disabled>Load Case Study</button>
+          </form>
+          <p class="instructor-case-assignment__password" id="instructorCaseAssignmentPassword" hidden>If Students open it themselves from Templates &amp; Case Studies, the <span id="instructorCaseAssignmentPasswordMode">Intake</span> password right now is <code id="instructorCaseAssignmentPasswordValue"></code>. It changes every minute.</p>
+          <span class="instructor-case-assignment__status" id="instructorCaseAssignmentStatus" role="status" aria-live="polite"></span>
+        </section>
+        <!-- [feature:instructor-case-assignment] end -->
+
         <div class="instructor-participant-heading">
           <strong>Students</strong>
           <span>Assign with the selector; Waiting leaves the student unassigned.</span>

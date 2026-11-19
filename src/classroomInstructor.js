@@ -12,6 +12,7 @@ import { getActiveExperienceRole } from './experienceRoleController.js';
 import { EXPERIENCE_ROLE_IDS } from './experienceRoles.js';
 import { buildClassroomJoinUrl } from './classroomJoinLink.js';
 import { renderClassroomJoinQr } from './classroomJoinQr.js';
+import { TEMPLATE_MODES } from './templateModes.js';
 
 export const INSTRUCTOR_SESSION_STORAGE_KEY = 'kt-classroom-instructor-session-v1';
 export const INSTRUCTOR_SESSION_VERSION = 1;
@@ -121,6 +122,7 @@ export function createInstructorClassroomController({
   onObservationEnd = () => {},
   onClassConnected = () => {},
   onClassDisconnected = () => {},
+  onRoster = () => {},
   onResumeUnavailable = () => {},
   confirmImpl = message => (typeof windowRef?.confirm === 'function' ? windowRef.confirm(message) === true : false),
   setTimeoutImpl = globalThis.setTimeout?.bind(globalThis),
@@ -445,6 +447,13 @@ export function createInstructorClassroomController({
           : 'No one active';
       meta.textContent = `${activityText} · ${activity.total} member${activity.total === 1 ? '' : 's'}`;
       button.append(top, meta);
+      if (workspace.caseStudy && typeof workspace.caseStudy.name === 'string') {
+        const loadedCase = documentRef.createElement('span');
+        loadedCase.className = 'instructor-workspace-item__case';
+        const modeName = TEMPLATE_MODES.find(mode => mode.id === workspace.caseStudy.mode)?.name;
+        loadedCase.textContent = `Case Study: ${workspace.caseStudy.name}${modeName ? ` · ${modeName}` : ''}`;
+        button.append(loadedCase);
+      }
       button.addEventListener('click', () => { void selectWorkspace(workspace.id); });
       list.append(button);
     });
@@ -766,6 +775,7 @@ export function createInstructorClassroomController({
     }
     workspaces = workspaceBody.workspaces.filter(validWorkspace);
     participants = participantBody.participants.filter(validParticipant);
+    try { onRoster(workspaces.map(workspace => ({ ...workspace }))); } catch {}
     return true;
   };
 

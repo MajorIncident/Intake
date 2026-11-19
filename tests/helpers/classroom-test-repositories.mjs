@@ -172,7 +172,7 @@ export function createWorkspaceRepository() {
  * @param {Function|null} [options.observeWorkspaceById=null] Optional collaboration snapshot reader for aggregate debrief parity.
  * @returns {object} Repository.
  */
-export function createClassroomRepository({ observeWorkspaceById = null } = {}) {
+export function createClassroomRepository({ observeWorkspaceById = null, workspaceRepository: linkedWorkspaces = null } = {}) {
   let nextInternalId = 1;
   let nextExerciseInternalId = 1;
   let releaseSequence = 0;
@@ -186,6 +186,16 @@ export function createClassroomRepository({ observeWorkspaceById = null } = {}) 
   const exerciseCheckpoints = new Map();
 
   const activeByInstructor = hash => classes.find(item => item.instructorHash === hash && !item.revoked) || null;
+  const caseView = workspace => {
+    const revision = linkedWorkspaces?.workspaces?.get(workspace.workspaceId)?.revision ?? 1;
+    return {
+      revision,
+      hasWork: revision !== (workspace.caseSeededRevision ?? 1),
+      caseStudy: workspace.caseStudyId
+        ? { id: workspace.caseStudyId, name: workspace.caseStudyName, mode: workspace.caseStudyMode, assignedAt: workspace.caseAssignedAt }
+        : null
+    };
+  };
   const activeByJoinCode = joinCode => classes.find(item => (
     item.studentJoinCode === joinCode && item.joinsEnabled && !item.revoked
   )) || null;
@@ -1150,9 +1160,44 @@ export function createClassroomRepository({ observeWorkspaceById = null } = {}) 
               )).length,
             activeParticipantCount: 0,
             editingParticipantCount: 0,
-            lastSeenAt: null
+            lastSeenAt: null,
+            ...caseView(workspace)
           }))
       };
+    },
+    async loadCaseStudyIntoWorkspace(instructorHash, {
+      workspacePublicId,
+      caseStudyId,
+      caseStudyName,
+      mode,
+      snapshot,
+      expectedRevision = null
+    }) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      const workspace = workspaces.find(candidate => (
+        candidate.classInternalId === item.internalId && candidate.id === workspacePublicId && !candidate.revoked
+      ));
+      const collaboration = workspace ? linkedWorkspaces?.workspaces?.get(workspace.workspaceId) : null;
+      if (!collaboration) return null;
+      const view = { id: workspace.id, kind: workspace.kind, label: workspace.label };
+      const required = expectedRevision ?? (workspace.caseSeededRevision ?? 1);
+      if (collaboration.revision !== required) {
+        return { status: expectedRevision === null ? 'has-work' : 'changed', revision: collaboration.revision, workspace: view };
+      }
+      const next = cloneValue(snapshot);
+      const lens = collaboration.snapshot?.meta?.intakeMode;
+      if (typeof lens === 'string' && next.meta && typeof next.meta === 'object') next.meta.intakeMode = lens;
+      collaboration.snapshot = next;
+      collaboration.revision += 1;
+      Object.assign(workspace, {
+        caseStudyId,
+        caseStudyName,
+        caseStudyMode: mode,
+        caseSeededRevision: collaboration.revision,
+        caseAssignedAt: new Date(0).toISOString()
+      });
+      return { status: 'loaded', revision: collaboration.revision, workspace: view };
     },
     async listWorkspaceSnapshotsForInstructor(instructorHash) {
       const item = activeByInstructor(instructorHash);

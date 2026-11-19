@@ -104,6 +104,8 @@ Requires the Instructor capability.
 
 Returns workspace metadata only for the represented class. It never returns Student workspace capabilities, assignment hashes, or another class's records.
 
+Since #343 each workspace also carries its collaboration `revision`, `hasWork` (the revision has moved past the revision the last Case Study load produced, or past 1 when nothing was loaded — i.e. Students have saved work), and `caseStudy` (`{ id, name, mode, assignedAt }` of the last Instructor load, or `null`).
+
 ### `POST /api/classes/workspaces`
 
 Requires the Instructor capability.
@@ -249,6 +251,30 @@ Returns the metadata-only protected catalog.
 ### `POST /api/classes/case-studies/student`
 
 Uses the same Student membership authorization and accepts `caseStudyId` in the JSON body. On success it returns the full protected record for client-side projection through the canonical mode rules.
+
+### `POST /api/classes/case-studies/assign` (#343)
+
+Requires the Instructor class capability. Loads a protected Case Study into class workspaces so Students start from it without opening the drawer or knowing the mode password. Body:
+
+- `caseStudyId`;
+- `mode` — the starting point (`intake`, `is-is-not`, `dc`, `full`), one of the Case Study's `supportedModes`;
+- `targets` — `"all"` (every live workspace in the class) or `[{ workspaceId }]` (up to 60);
+- `replaceExisting` (optional, default false) — when true, every target must be `{ workspaceId, expectedRevision }` and `"all"` is rejected.
+
+The server projects the protected source through the canonical mode rules (`projectTemplateState`, Case Study kind: earlier starting points omit causes, actions, and the historical resolution) and writes it as the next collaboration revision of each workspace in one statement. The workspace's current `meta.intakeMode` lens is kept, as the drawer does. Students receive it on their next poll like any teammate's save; a Student with an unsaved local edit gets the usual collaboration conflict and recovery copy.
+
+Each target reports one result `{ workspaceId, label, status, revision }`:
+
+| `status` | Meaning |
+| --- | --- |
+| `loaded` | Written; `revision` is the new revision. |
+| `has-work` | Not written because Students have saved work (`revision` ≠ last-load baseline). Resend with `replaceExisting: true` and this `revision` only after the Instructor confirms. |
+| `changed` | `replaceExisting` was sent but the workspace moved past the confirmed `expectedRevision`; nothing was written. |
+| `not-found` | Not a live workspace of this class (another class's workspace is indistinguishable from a missing one). |
+
+Refusals: **409** `{ code: "staged-exercise-only" }` when the Case Study has a staged `simulation` or this class has (or had) a staged exercise for it — the same anti-bypass rule as the Student payload endpoint; **409** `{ code: "exercise-active" }` while any staged exercise in the class is not completed; **409** `{ code: "no-workspaces" }` for `"all"` with no workspaces; 400 for an unsupported mode or malformed targets; 404 for an unknown Case Study or class.
+
+The loaded Case Study ID, name, mode, timestamp, and resulting revision are recorded on `classroom_workspaces` (classroom schema v3). This is Classroom metadata, never Intake state.
 
 All protected Case Study responses use `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
 
@@ -438,6 +464,7 @@ No classroom credential is stored in browser Intake state.
 - Protected Case Study catalogs/payloads require Instructor-class or Student-membership authorization and are never returned to Standalone.
 - Protected Case Study IDs/names/payloads must be absent from public browser assets; authored `templates/*.json` files must remain excluded from Vercel deployment.
 - Protected Case Study selection uses authenticated POST bodies rather than query strings.
+- An Instructor Case Study load never replaces Student work without an explicit `replaceExisting` naming the exact revision the Instructor confirmed, and never bypasses staged-exercise delivery.
 
 ## Tests and cold restart
 

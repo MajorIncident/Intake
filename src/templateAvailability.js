@@ -68,7 +68,7 @@ const POLICIES = Object.freeze({
     drawerTitle: 'Teaching Case Studies',
     drawerSubtitle: 'Review the Case Studies available for classroom assignment.',
     resourceHeading: 'Case Studies',
-    resourceHelp: 'These are teaching resources. Class assignment controls arrive with the classroom workspace layer.',
+    resourceHelp: 'These are teaching resources. To give one to Students, use Case Study for workspaces in Live class management.',
     standardSubtitle: '',
     caseStudySubtitle: 'Teaching cases prepared for guided classroom work.',
     canApply: false,

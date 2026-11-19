@@ -65,6 +65,7 @@ import { initInstructorClassroom } from './src/classroomInstructor.js';
 import { initClassroomCoaching } from './src/classroomCoaching.js';
 import { initClassroomDebriefComparison } from './src/classroomDebriefComparison.js';
 import { initClassroomCaseStudies } from './src/classroomCaseStudies.js';
+import { initInstructorCaseAssignment } from './src/classroomCaseAssignment.js';
 import { initInstructorExerciseConsole } from './src/classroomExerciseInstructor.js';
 import { initStudentExerciseReference } from './src/classroomExerciseStudent.js';
 import { initAdminMaintenance } from './src/adminMaintenance.js';
@@ -77,6 +78,7 @@ let instructorClassroomController = null;
 let classroomCoachingController = null;
 let classroomDebriefComparisonController = null;
 let classroomCaseStudiesController = null;
+let instructorCaseAssignmentController = null;
 let instructorExerciseConsoleController = null;
 let studentExerciseReferenceController = null;
 let startupExperienceHubController = null;
@@ -87,6 +89,8 @@ export function destroyCollaboration() {
   studentExerciseReferenceController = null;
   instructorExerciseConsoleController?.destroy?.();
   instructorExerciseConsoleController = null;
+  instructorCaseAssignmentController?.destroy?.();
+  instructorCaseAssignmentController = null;
   classroomCaseStudiesController?.destroy?.();
   classroomCaseStudiesController = null;
   classroomDebriefComparisonController?.destroy?.();
@@ -226,6 +230,12 @@ function boot() {
   initPreface({ onSave: saveAppState });
   initCommsDrawer();
   classroomCaseStudiesController = initClassroomCaseStudies({ windowRef: window });
+  instructorCaseAssignmentController = initInstructorCaseAssignment({
+    documentRef: document,
+    windowRef: window,
+    getCatalog: () => classroomCaseStudiesController?.getCatalog?.() || [],
+    onLoaded: () => { void instructorClassroomController?.refreshRoster?.(); }
+  });
   instructorExerciseConsoleController = initInstructorExerciseConsole({
     documentRef: document,
     onSelectWorkspace: workspaceId => instructorClassroomController?.selectWorkspace?.(workspaceId),
@@ -305,13 +315,16 @@ function boot() {
     toast: showToast,
     onObservation: context => classroomCoachingController?.showInstructorWorkspace?.(context),
     onObservationEnd: () => classroomCoachingController?.hideInstructorWorkspace?.(),
+    onRoster: workspaces => instructorCaseAssignmentController?.setWorkspaces?.(workspaces),
     onClassConnected: token => {
       void classroomCaseStudiesController?.connectInstructor?.(token);
+      instructorCaseAssignmentController?.connectInstructor?.(token);
       void instructorExerciseConsoleController?.connectInstructor?.(token);
       classroomDebriefComparisonController?.connectInstructor?.(token);
     },
     onClassDisconnected: () => {
       classroomCaseStudiesController?.disconnect?.();
+      instructorCaseAssignmentController?.disconnect?.();
       instructorExerciseConsoleController?.disconnect?.();
       classroomDebriefComparisonController?.disconnect?.();
     },

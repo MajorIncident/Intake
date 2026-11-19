@@ -97,7 +97,8 @@ function setup(fetchImpl, {
   onClassDisconnected = () => {},
   mobile = false,
   savedSession = true,
-  confirmImpl = undefined
+  confirmImpl = undefined,
+  onRoster = () => {}
 } = {}) {
   dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
   if (mobile) {
@@ -162,6 +163,7 @@ function setup(fetchImpl, {
     onObservationEnd,
     onClassConnected,
     onClassDisconnected,
+    onRoster,
     ...(confirmImpl ? { confirmImpl } : {}),
     setTimeoutImpl: fn => {
       calls.timers.push(fn);
@@ -981,4 +983,31 @@ test('Move to another device shows a one-time code, and another device continues
   assert.equal(stored.instructorToken, NEW_TOKEN);
   assert.equal(stored.class.id, 'class-1');
   assert.equal(dom.window.document.getElementById('instructorClassDashboard').hidden, false);
+});
+
+test('roster shows the Case Study loaded into each workspace and feeds the assignment panel (#343)', async () => {
+  const rosters = [];
+  setup(async url => {
+    if (url === '/api/classes/workspaces') {
+      const body = rosterBody();
+      body.workspaces[1] = {
+        ...body.workspaces[1],
+        revision: 3,
+        hasWork: true,
+        caseStudy: { id: 'paytrix', name: 'Paytrix', mode: 'is-is-not', assignedAt: '2026-10-01T00:00:00Z' }
+      };
+      return response(200, body);
+    }
+    if (url === '/api/classes/participants') return response(200, participantBody());
+    if (url.includes(W1)) return response(200, observeBody(W1, 'First'));
+    return response(404, {});
+  }, { onRoster: list => rosters.push(list) });
+
+  await settle();
+
+  const items = [...dom.window.document.querySelectorAll('.instructor-workspace-item')];
+  assert.equal(items[0].querySelector('.instructor-workspace-item__case'), null, 'nothing loaded yet');
+  assert.equal(items[1].querySelector('.instructor-workspace-item__case').textContent, 'Case Study: Paytrix · IS / IS NOT');
+  assert.ok(rosters.length >= 1);
+  assert.deepEqual(rosters.at(-1).map(item => [item.id, item.label, item.kind]), [[W1, 'Alex', 'individual'], [W2, 'Team Beta', 'group']]);
 });
