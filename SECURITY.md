@@ -54,6 +54,8 @@ Class creation is gated by a shared class-creation password (default documented 
 
 Database schema changes are applied once per schema version inside a single advisory-locked transaction (`api/_db.js`). Never run destructive DDL outside that versioned path.
 
+Instructor device transfer (#342): only the currently authorized Instructor device can create a transfer code. Codes are 60-bit random values from the unambiguous join-code alphabet, stored only as a hash, single-use, valid for 10 minutes, and redeemed through a rate-limited endpoint; redemption atomically rotates the Instructor credential so the previous device stops working. Codes must never be logged, persisted in the browser, or placed in URLs. Workspace removal is refused while Students are assigned and revokes the workspace's edit capabilities.
+
 ## Supported code
 
 Security fixes target the current `main` branch. Dependency Review, CodeQL, Dependabot, repository quality checks, and GitHub branch rules are intended to prevent known regressions from entering `main`.

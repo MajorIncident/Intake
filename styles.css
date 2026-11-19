@@ -3457,6 +3457,21 @@ body.dialog-open{overflow:hidden;}
 .instructor-observation-notice__meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:7px;color:var(--muted);font-size:11px;}
 .instructor-observation-notice__meta span{padding:4px 7px;border:1px solid var(--line);border-radius:999px;background:var(--panel);}
 .instructor-observation-live-btn{margin-top:9px;padding:6px 9px;font-size:10px;}
+/* #342 Instructor class controls */
+.instructor-joins-status{margin:8px 0 0;font-size:12px;color:var(--muted);}
+.instructor-transfer-panel{display:grid;gap:8px;width:min(100%,420px);margin-top:12px;padding:12px 16px;border:1px solid var(--line);border-radius:12px;background:var(--panel-muted);}
+.instructor-transfer-panel p,.instructor-transfer-panel small{margin:0;color:var(--muted);}
+.instructor-transfer-panel__code{font-size:20px;font-weight:700;letter-spacing:.08em;color:var(--ink-strong);}
+.instructor-transfer-entry{margin-top:16px;}
+.instructor-transfer-entry summary{cursor:pointer;color:var(--accent-text);font-weight:600;}
+.instructor-transfer-entry form{margin-top:12px;}
+.instructor-bulk-individual{display:grid;gap:4px;margin-bottom:16px;}
+.instructor-bulk-individual small,.instructor-bulk-individual__status{font-size:12px;color:var(--muted);}
+.instructor-workspace-manage{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.instructor-workspace-manage .btn-secondary,.instructor-workspace-rename .btn-secondary{padding:6px 10px;font-size:12px;}
+.instructor-workspace-rename{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;}
+.instructor-workspace-rename label{width:100%;font-size:12px;color:var(--muted);}
+.instructor-workspace-rename input{flex:1 1 160px;min-width:0;}
 .instructor-observation-participants{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;max-width:55%;margin:0;padding:0;list-style:none;}
 .instructor-observation-person{padding:5px 8px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font-size:11px;}
 .instructor-observation-person--muted{color:var(--muted);}
@@ -3517,6 +3532,8 @@ body[data-experience-role="instructor"].instructor-class-connected.instructor-ra
 .instructor-exercise-console__setup small{display:block;margin-top:5px;color:var(--muted);font-size:9px;line-height:1.4;}
 .instructor-exercise-console__lifecycle{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;}
 .instructor-exercise-console__lifecycle .btn{background:var(--accent-text);border-color:var(--accent-text);}
+/* Start class: white on --accent (#007aff) is 4.01:1; use the existing darker accent like other primary classroom buttons. */
+#instructorClassStartBtn{background:var(--accent-text);border-color:var(--accent-text);}
 .instructor-exercise-console__lifecycle small{flex-basis:100%;color:var(--muted);font-size:9px;line-height:1.4;}
 .instructor-exercise-console__stage{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:11px;background:var(--panel-muted);}
 .instructor-exercise-console__stage-heading{display:flex;flex-direction:column;gap:2px;}

@@ -16,6 +16,7 @@ const EXPECTED_CLASSROOM_REWRITES = Object.freeze({
   '/api/classes/participants': 'participants',
   '/api/classes/student': 'student',
   '/api/classes/student/access': 'student-access',
+  '/api/classes/transfer': 'transfer',
   '/api/classes/workspaces': 'workspaces',
   '/api/classes/observe': 'observe',
   '/api/classes/debrief': 'debrief',

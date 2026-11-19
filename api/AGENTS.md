@@ -12,7 +12,8 @@ These rules apply to all server-only modules below `api/`.
 - Keep the conservative deployable-function count at or below 12 and preserve `npm run verify:vercel-functions` in both `quality` and the Vercel build command.
 - Schema changes must remain additive/idempotent and be documented in the README plus the owning architecture document.
 - Validate method, authorization, identifiers, names, and payload size before expensive or mutating work.
-- Unauthenticated creation/admission endpoints must call `checkRateLimit()` from `api/_rateLimit.js` before mutating anything. `POST /api/classes` must also enforce `classCreationPasswordMatches()`.
+- Unauthenticated creation/admission endpoints must call `checkRateLimit()` from `api/_rateLimit.js` before mutating anything. `POST /api/classes` must also enforce `classCreationPasswordMatches()`. `POST /api/classes/transfer` is rate-limited and must stay single-use, short-lived, and atomic (consume code + rotate Instructor hash in one statement).
+- Never remove a classroom workspace that still has a live assigned participant; keep that guard inside the removing `UPDATE`.
 - Schema lives in versioned `*_SCHEMA` step lists applied by `applySchema()` in `api/_db.js`. Append idempotent steps only, bump the version, and update the fingerprint (the schema test prints it). Never add raw DDL to a repository initializer.
 - Interpolated SQL parameters whose type Postgres cannot infer (only used in `IS NULL`, `CASE ... THEN $n`, etc.) must carry an explicit cast. Real-Postgres tests (`tests/*.pglite.test.mjs`) catch these; extend them when you add SQL.
 - Responses containing capabilities or private Intake data use `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.

@@ -36,6 +36,9 @@ Use the production URL, one Instructor device and at least two Student devices (
 6. Move a Student A → B: they land on Team B's work, not their own.
 7. Unassign: the Student returns to Waiting.
 8. Reload every device: each resumes from its **Continue** card.
+8a. Instructor: **Pause new joins**, confirm a new Student cannot join, then **Allow new joins**. Rename a team; remove an empty team.
+8b. With two Students Waiting, **Give each waiting Student their own workspace** — each lands in a workspace named after them.
+8c. **Move to another device**: enter the code on a second Instructor device under **Run a class → Continue a class from another device**; within a few seconds the first device reports it no longer manages the class.
 9. Admin: open Administration / Maintenance with the admin token and confirm the class is listed.
 
 Record the result (pass/fail per step, devices, date) in `STATUS.md`.

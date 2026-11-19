@@ -1043,6 +1043,67 @@ export function createClassroomRepository({ observeWorkspaceById = null } = {}) 
       item.joinsEnabled = enabled;
       return publicClass(item);
     },
+    async createInstructorTransfer(instructorHash, { transferHash, ttlSeconds }) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      item.transferHash = transferHash;
+      item.transferExpiresAtMs = Date.now() + ttlSeconds * 1000;
+      return { id: item.id, title: item.title, transferExpiresAt: new Date(item.transferExpiresAtMs).toISOString() };
+    },
+    async redeemInstructorTransfer({ transferHash, nextInstructorHash }) {
+      const item = classes.find(candidate => (
+        !candidate.revoked
+        && candidate.transferHash === transferHash
+        && candidate.transferExpiresAtMs > Date.now()
+      ));
+      if (!item) return null;
+      item.instructorHash = nextInstructorHash;
+      item.transferHash = null;
+      item.transferExpiresAtMs = 0;
+      const { internal_id: _internal, ...visible } = publicClass(item);
+      return visible;
+    },
+    async renameWorkspace(instructorHash, { workspacePublicId, label, workspaceRepository }) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      const workspace = workspaces.find(candidate => (
+        candidate.classInternalId === item.internalId && candidate.id === workspacePublicId && !candidate.revoked
+      ));
+      if (!workspace) return null;
+      workspace.label = label;
+      const collaboration = workspaceRepository?.workspaces?.get(workspace.workspaceId);
+      if (collaboration) {
+        collaboration.teamName = label.slice(0, 80);
+        collaboration.team_name = collaboration.teamName;
+      }
+      return { classroom: publicClass(item), workspace: { id: workspace.id, kind: workspace.kind, label } };
+    },
+    async removeWorkspace(instructorHash, { workspacePublicId, workspaceRepository }) {
+      const item = activeByInstructor(instructorHash);
+      if (!item) return null;
+      const workspace = workspaces.find(candidate => (
+        candidate.classInternalId === item.internalId && candidate.id === workspacePublicId && !candidate.revoked
+      ));
+      if (!workspace) return null;
+      const occupied = [...participants.values()].some(participant => (
+        participant.classInternalId === item.internalId
+        && participant.workspaceId === workspace.workspaceId
+        && !participant.revoked
+      ));
+      if (occupied) return { status: 'occupied', classroom: publicClass(item) };
+      workspace.revoked = true;
+      if (workspaceRepository) {
+        workspaceRepository.workspaces?.delete(workspace.workspaceId);
+        for (const alias of workspaceRepository.aliasByHash?.values?.() || []) {
+          if (alias.workspaceId === workspace.workspaceId) alias.revoked = true;
+        }
+      }
+      return {
+        status: 'removed',
+        classroom: publicClass(item),
+        workspace: { id: workspace.id, kind: workspace.kind, label: workspace.label }
+      };
+    },
     async revokeClass(instructorHash) {
       const item = activeByInstructor(instructorHash);
       if (!item) return null;

@@ -160,7 +160,7 @@ Primary #312 credential chain:
 - **Student workspace capability** — assignment-specific `classroom-student` editable alias into exactly one collaboration workspace; revoked/rotated on reassignment or unassign.
 - **Case Study unlock password** — instructional progression control only; never server authentication.
 
-Retired by #328: the former two-code chain (Student class join capability + assignment capability, `POST /api/classes/join`, `classroom_memberships`). It must not be reintroduced; Instructor recovery belongs to Administration / Maintenance.
+Retired by #328: the former two-code chain (Student class join capability + assignment capability, `POST /api/classes/join`, `classroom_memberships`). It must not be reintroduced; Instructor recovery belongs to Administration / Maintenance. The one-time Instructor device-transfer code (#342) is a different mechanism: minted only by the currently authorized device, single-use, short-lived, and it rotates the credential (see `docs/classroom-api.md`).
 
 The Student class-session capability is never accepted by collaboration edit, Instructor observer, or Instructor coaching endpoints. The human join code is never accepted outside admission. Cross-class assignment attempts fail generically.
 

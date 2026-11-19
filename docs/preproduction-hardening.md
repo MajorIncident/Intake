@@ -59,6 +59,8 @@ The normal Instructor lifecycle is:
 
 If an Instructor loses local resume authority, recovery is an explicit Administration/Maintenance function. The server may rotate/reissue current Instructor authority; it must never recover a historical raw bearer value from its hash.
 
+Moving a class to another device while the current device still works is a separate, self-service path (#342): the authorized device mints a one-time transfer code (single use, 10-minute expiry, stored hashed, redemption rate-limited) and redeeming it rotates the Instructor credential. That is consistent with this end state — it is not a reusable access code and cannot recover a lost device. Contract: `docs/classroom-api.md` (Instructor device transfer).
+
 ### Standalone collaboration
 
 Standalone/ad-hoc collaboration remains a current product feature, not a compatibility shim. It keeps its existing explicit shared-workspace capability model unless a future product decision changes it.

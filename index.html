@@ -563,6 +563,20 @@ Anchors present:
         </div>
       </form>
 
+      <details class="instructor-transfer-entry" id="instructorTransferEntry" data-persistence="local-only" data-summary="exclude">
+        <summary data-persistence="local-only" data-summary="exclude">Continue a class from another device</summary>
+        <form class="instructor-class-form" id="instructorTransferForm" autocomplete="off">
+          <div class="field" data-persistence="local-only" data-summary="exclude">
+            <label for="instructorTransferCodeInput" data-persistence="local-only" data-summary="exclude">Transfer code</label>
+            <input id="instructorTransferCodeInput" name="instructorTransferCodeInput" type="text" inputmode="text" maxlength="20" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD-EFGH-JKLM" data-persistence="local-only" data-summary="exclude" />
+            <small>On the device that is running the class, choose <strong>Move to another device</strong>. The code works once and expires after 10 minutes; that device then stops managing the class.</small>
+          </div>
+          <div class="experience-shell__actions">
+            <button type="submit" class="btn-secondary" id="instructorTransferRedeemBtn" data-persistence="local-only" data-summary="exclude">Continue class here</button>
+          </div>
+        </form>
+      </details>
+
       <p class="student-class-form__error" id="instructorClassError" role="alert" aria-live="polite" hidden></p>
 
       <section class="student-class-resume" id="instructorClassResumePanel" aria-live="polite" hidden>
@@ -588,6 +602,19 @@ Anchors present:
             <button type="button" class="btn-secondary" id="instructorCopyJoinCodeBtn" data-persistence="local-only" data-summary="exclude">Copy code</button>
             <button type="button" class="btn-secondary" id="instructorShareClassBtn" data-persistence="local-only" data-summary="exclude">Share class</button>
             <button type="button" class="btn-secondary" id="instructorShowJoinQrBtn" aria-controls="instructorJoinQrPanel" aria-expanded="false" data-persistence="local-only" data-summary="exclude">Show QR</button>
+            <button type="button" class="btn-secondary" id="instructorJoinsToggleBtn" aria-describedby="instructorJoinsStatus" data-persistence="local-only" data-summary="exclude">Pause new joins</button>
+          </div>
+          <p class="instructor-joins-status" id="instructorJoinsStatus" role="status" aria-live="polite">New Students can join with this code.</p>
+          <div class="instructor-transfer-panel" id="instructorTransferPanel" role="region" aria-labelledby="instructorTransferPanelTitle" data-persistence="local-only" data-summary="exclude" hidden>
+            <strong id="instructorTransferPanelTitle">Move this class to another device</strong>
+            <p>On the other device choose <strong>Run a class → Continue a class from another device</strong> and enter:</p>
+            <code class="instructor-transfer-panel__code" id="instructorTransferCode">—</code>
+            <small id="instructorTransferExpiry">Works once.</small>
+            <small>When the code is used, this device stops managing the class. Students are not affected.</small>
+            <div class="experience-shell__actions">
+              <button type="button" class="btn-secondary" id="instructorTransferCopyBtn" data-persistence="local-only" data-summary="exclude">Copy code</button>
+              <button type="button" class="btn-secondary" id="instructorTransferCloseBtn" data-persistence="local-only" data-summary="exclude">Done</button>
+            </div>
           </div>
           <div class="instructor-join-qr" id="instructorJoinQrPanel" data-persistence="local-only" data-summary="exclude" hidden>
             <svg id="instructorJoinQrSvg" class="instructor-join-qr__image" focusable="false" aria-label="Scan to join this class"></svg>
@@ -604,6 +631,7 @@ Anchors present:
           <button type="button" class="btn-secondary" id="instructorTeachingResourcesBtn" data-open-templates-drawer aria-haspopup="dialog" aria-controls="templatesDrawer" aria-expanded="false" data-persistence="local-only" data-summary="exclude">
             <span data-template-resource-launcher-label>Teaching Case Studies</span>
           </button>
+          <button type="button" class="btn-secondary" id="instructorMoveDeviceBtn" aria-controls="instructorTransferPanel" aria-expanded="false" data-persistence="local-only" data-summary="exclude">Move to another device</button>
           <button type="button" class="btn-secondary" id="instructorClassLeaveBtn" data-persistence="local-only" data-summary="exclude">Leave class</button>
           <button type="button" class="btn-secondary instructor-dashboard__end" id="instructorClassEndBtn" data-persistence="local-only" data-summary="exclude">End class</button>
         </div>
@@ -712,6 +740,12 @@ Anchors present:
           </select>
           <button type="submit" class="btn-secondary" id="instructorWorkspaceCreateBtn" data-persistence="local-only" data-summary="exclude">Create workspace</button>
         </form>
+
+        <div class="instructor-bulk-individual" data-persistence="local-only" data-summary="exclude">
+          <button type="button" class="btn-secondary" id="instructorIndividualWorkspacesBtn" aria-describedby="instructorIndividualWorkspacesHelp" data-persistence="local-only" data-summary="exclude">Give each waiting Student their own workspace</button>
+          <small id="instructorIndividualWorkspacesHelp">Creates an individual workspace named after each Waiting Student and assigns them. Safe to run again for late arrivals.</small>
+          <span class="instructor-bulk-individual__status" id="instructorIndividualWorkspacesStatus" role="status" aria-live="polite"></span>
+        </div>
 
         <div class="instructor-participant-heading">
           <strong>Students</strong>
@@ -826,6 +860,16 @@ Anchors present:
           <span id="instructorObserverStatus" role="status" aria-live="polite">Connecting read-only view…</span>
         </div>
         <button type="button" class="btn-secondary instructor-observation-live-btn" id="instructorObservationLiveBtn" data-persistence="local-only" data-summary="exclude" hidden>View current live Intake</button>
+        <div class="instructor-workspace-manage" id="instructorWorkspaceManage" data-persistence="local-only" data-summary="exclude">
+          <button type="button" class="btn-secondary" id="instructorWorkspaceRenameBtn" aria-controls="instructorWorkspaceRenameForm" aria-expanded="false" data-persistence="local-only" data-summary="exclude">Rename</button>
+          <button type="button" class="btn-secondary instructor-dashboard__end" id="instructorWorkspaceRemoveBtn" data-persistence="local-only" data-summary="exclude">Remove</button>
+        </div>
+        <form class="instructor-workspace-rename" id="instructorWorkspaceRenameForm" autocomplete="off" hidden>
+          <label for="instructorWorkspaceRenameInput" data-persistence="local-only" data-summary="exclude">New workspace name</label>
+          <input id="instructorWorkspaceRenameInput" type="text" maxlength="80" data-persistence="local-only" data-summary="exclude" />
+          <button type="submit" class="btn-secondary" id="instructorWorkspaceRenameSaveBtn" data-persistence="local-only" data-summary="exclude">Save name</button>
+          <button type="button" class="btn-secondary" id="instructorWorkspaceRenameCancelBtn" data-persistence="local-only" data-summary="exclude">Cancel</button>
+        </form>
       </div>
       <ul class="instructor-observation-participants" id="instructorObservationParticipants" aria-label="Recent student activity"></ul>
     </section>
