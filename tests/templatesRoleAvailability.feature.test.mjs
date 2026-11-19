@@ -130,7 +130,8 @@ test('drawer projects normal resources across Standalone, Student, and Instructo
 
 for (const [caseId, expectedOneLine] of [
   ['microcomputer-cabinets', 'Cabinets are being rejected'],
-  ['paytrix', null]
+  ['paytrix', null],
+  ['red-sweat-mystery', 'Eastern Airlines flight attendants have red sweat.']
 ]) {
   test(`Work independently applies the ${caseId} Case Study from the public copy behind the mode password`, async () => {
     applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
@@ -160,6 +161,14 @@ for (const [caseId, expectedOneLine] of [
       await new Promise(resolve => setImmediate(resolve));
       assert.ok(lastAppliedState, `${caseId} applied`);
       if (expectedOneLine) assert.equal(lastAppliedState.pre.oneLine, expectedOneLine);
+      if (caseId === 'red-sweat-mystery') {
+        assert.equal(lastAppliedState.meta.intakeMode, 'general');
+        assert.equal(lastAppliedState.causes.length, 4);
+        assert.equal(lastAppliedState.actions.items.length, 4);
+        assert.ok(lastAppliedState.handover['must-watch-metrics'].length > 0);
+        assert.ok(lastAppliedState.decisionAnalysis.decision.includes('ILLUSTRATIVE EXERCISE'));
+        assert.ok(lastAppliedState.potentialProblemAnalysis.risk.impactIfFails.includes('ILLUSTRATIVE'));
+      }
       assert.equal(providerCalls, 0, 'Standalone never calls the classroom provider');
     } finally {
       protectedProvider.getPayload = originalGetPayload;
