@@ -567,5 +567,19 @@
         }
       ]
     }
+  },
+  "libraryGroup": "psdm",
+  "participantCase": {
+    "title": "Tamworth — participant briefing",
+    "sections": [
+      {
+        "heading": "The customer report",
+        "body": "Tamworth customers report an even, faint fog across photographs made from its sheet film. The company has reproduced the effect using X-rays. The deviation is film fogging, not merely the existence of complaints."
+      },
+      {
+        "heading": "Your investigation",
+        "body": "Identify exactly which film, distribution circumstances and conditions are affected. Develop close factual IS NOT comparisons and test possible explanations of the fogging. Keep the cause unknown until the evidence supports it."
+      }
+    ]
   }
 }
