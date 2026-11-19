@@ -4,7 +4,7 @@ This is the **single live status document** for KT Intake. Other docs describe c
 
 Update it at every durable checkpoint and before handoff — see [`docs/playbooks/status-update.md`](docs/playbooks/status-update.md). Always re-verify against GitHub (main HEAD, open PRs/issues) before trusting it.
 
-_Last updated: 2026-11-19 (Red Sweat KT solution correction PR #349, branch `fix/red-sweat-official-kt-solution-impact-20261119`, base `main` at `60ad2e3`)._
+_Last updated: 2026-11-19 (Issue #350 / PR #351 documentation branch `docs/350-kt-case-authoring-playbook`, based on `main` at `ce3dd06`)._
 
 ## Product context
 
@@ -26,15 +26,14 @@ The **repository audit follow-through** merged via PR #344 (`41f002e`), followed
 
 - **Case Studies are back in Work independently** (approved 2026-11-19, until the classroom experiences fully replace self-study). Microcomputer Cabinets, Paytrix, Mrs Walthers Sugar Donuts, Tamworth Petrochemical, and Red Sweat Mystery are published in the public manifest and applied behind the per-minute mode password, as before #299. They are downloadable from the deployed site. Switch: `scripts/standalone-public-case-studies.mjs`; removal steps in `templates/AGENTS.md`.
 
-## Red Sweat Mystery official KT answer correction (PR #349)
+## KT official-case authoring workflow (Issue #350 / PR #351)
 
-- PR #346 (starter case) and PR #347 (worked content/full MIM fields) are **merged**, with production READY at `60ad2e3`. User review identified a content error: #347 overfilled case fields with fictional modern incident-management actions and repetitive HISTORICAL/ILLUSTRATIVE qualifications instead of prioritizing the official KT solution. The Impact answers also confused incident impact/timeframe with PA symptoms and onset.
-- Active PR #349 / branch `fix/red-sweat-official-kt-solution-impact-20261119` corrects `templates/red-sweat-mystery.json`: official Problem Statement "Flight Attendants have red sweat."; factual starter evidence, WHERE over-water life-vest distinction, January life-vest Change, testable Possible Causes, and the official confirmed red-ink-flaking True Cause with reports stopping after the vests were removed. Dated experimental air-filter rollout is rejected because it followed the deviation.
-- Impact is correctly allocated: **now** = affected flight attendants and currently reported functional impact (no unsupported inability); **future** = recurrence risk on subsequent flights; **time** = next affected flight / no specified resolution deadline. The within-30-minutes-after-takeoff fact remains PA WHEN.
-- Removed four proposed invented action records, fabricated DA/PPA decision/risk content, 27 unchecked operational steps, long debrief disclaimers and redundant risk/handover prose. Kept one reported corrective action, Full-answer confirmation, source-based KT notes, empty inapplicable MIM fields and the full persisted-source shape. General/Major Incident display and Classroom stage release are unchanged.
-- Generator manifests and regression/feature tests updated. Source policy in `templates/AGENTS.md` and README now prioritizes official case solutions first and KT reasoning second. Follow-up issue #348 remains open for the other Case Studies.
-- Required checks: GitHub CI `npm run quality`, `npm run test:browser`, template-manifest check and security scans on **PR #349 exact head**. Manual browser apply/smoke in General and Major Incident has not been performed. Merge/deploy only after review and green gates; then verify Vercel production READY SHA.
-- Existing standalone self-study publication remains public; no change to access/distribution policy.
+- **Accepted source precedent:** Red Sweat Mystery official-solution correction [#349](https://github.com/MajorIncident/Intake/pull/349) is **merged** at `ce3dd06` on `main` (2026-11-19); its exact production deployment state has not been rechecked in this documentation slice. The earlier #346/#347 content mistakes are retained as anti-patterns.
+- **Current documentation work:** [Issue #350](https://github.com/MajorIncident/Intake/issues/350), [PR #351](https://github.com/MajorIncident/Intake/pull/351), branch `docs/350-kt-case-authoring-playbook` based on `main` `ce3dd06`. New `docs/case-study-authoring.md` and `docs/playbooks/author-kt-case-study.md`; discovery links in root/template `AGENTS.md`, playbook index and README.
+- **Companion KT-repository work:** [KT issue #563](https://github.com/MajorIncident/kt-application-coach/issues/563), [KT PR #564](https://github.com/MajorIncident/kt-application-coach/pull/564). They document invoking/installing the canonical Skill and the official case-source side; Intake owns JSON field mapping and CI.
+- **Product-owner authoring decisions codified:** official KT case answer first; use the installed Skill or request installation, fetch case authority/participant/instructor evidence, map current/future/deadline Impact correctly, keep symptom onset in KT WHEN, write factual paired IS/IS NOT/D&C, test mechanisms and confirm the True Cause. **Full = final solution.** Use the complete MIM state surface where relevant but do not fabricate operations, DA/PPA, task registers or repeated provenance caveats. Classroom already owns stage release; public Standalone full-answer rights remain separately governed.
+- **Scope:** docs only; no authored Case Study payload, generated manifest, server, database, skill source or release changes. Documentation and path checks committed; canonical `npm run quality` + `npm run test:browser` and PR policy checks must be verified on exact head in GitHub CI. Do not claim production acceptance or a new Skill release from these PRs.
+- **Next:** verify exact-head CI and repo-hygiene guards for Intake #351 and KT #564; reconcile any doc links/check failures; obtain owner approval/merge decisions, update status at merge, and leave both docs as the cold-start route for future official KT case requests.
 
 ## Pilot blockers (Student / Instructor modes for a real class)
 
@@ -56,13 +55,14 @@ Worked one at a time, in order:
 | #340 Pilot blocker 1: environment + real smoke test | Open | Human action |
 | #342 Pilot blocker 3: Instructor class controls | Open, next code blocker | Includes one-workspace-per-Student |
 | #343 Pilot blocker 4: Instructor Case Study assignment | Open | |
-| #348 Existing Case Study completeness audit | Open | Follow-up after #347; source-grounded, no invented historical data |
+| #348 Existing Case Study completeness audit | Open | Follow-up quality backlog; apply new KT authoring playbook before case changes |
+| #350 KT-to-Intake case-writing playbook | Open | Documentation PR #351; companion KT repo #563 / #564 |
 
 ## Open pull requests
 
 | PR | Status |
 | --- | --- |
-| #349 Red Sweat official solution and impact-field correction | Open; source/test/docs changes committed, CI and review pending |
+| #351 Official KT-to-Intake Case Study authoring documentation | Open; docs-only branch, exact-head CI/owner review required |
 | #336 Add protected staged asset delivery | Draft; was stacked on #335 (merged) — retarget/refresh against `main` before continuing |
 | #281 eslint 10, #280 jsdom 30, #310 eslint-plugin-jsdoc 65 | Major bumps — do together in one tooling PR (see lint risk below) |
 
