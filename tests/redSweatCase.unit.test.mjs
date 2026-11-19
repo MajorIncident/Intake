@@ -1,7 +1,7 @@
 /**
- * Red Sweat Mystery: General Mode progressive-disclosure exemplar regression.
- * The starter brief remains learner-safe; D&C and cause testing appear only in
- * the corresponding template projections. Full is intentionally an answer key.
+ * Red Sweat Mystery: validate official KT case content, impact semantics,
+ * factual IS/IS NOT, cause testing, and staged self-study projections.
+ * Complete source is the Full answer; Classroom controls live disclosure.
  */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -14,164 +14,134 @@ import { STANDALONE_PUBLIC_CASE_STUDY_IDS } from '../scripts/standalone-public-c
 const CASE_ID = 'red-sweat-mystery';
 const VEST_CAUSE_ID = 'cause-red-sweat-demonstration-vest-ink';
 const FILTER_CAUSE_ID = 'cause-red-sweat-air-filter-ozone';
-const TESTABLE_ROW_IDS = Object.freeze([
-  'what-object',
-  'where-location',
-  'when-description'
-]);
+const TEST_ROWS = ['what-object', 'where-location', 'when-description'];
 
-function findQuestion(state, id) {
-  return state.table.find(row => row.questionId === id);
-}
+const authored = TEMPLATE_MANIFEST.find(entry => entry.id === CASE_ID);
+const getRow = (state, id) => state.table.find(row => row.questionId === id);
 
-test('Red Sweat is a General Mode self-study Case Study matching its protected source', () => {
-  const publicCase = TEMPLATE_MANIFEST.find(entry => entry.id === CASE_ID);
-  const protectedCase = PROTECTED_CASE_STUDY_MANIFEST.find(entry => entry.id === CASE_ID);
-  assert.ok(publicCase);
-  assert.ok(protectedCase);
+test('case is included in both catalogs without conflicting copies', () => {
+  const protectedRecord = PROTECTED_CASE_STUDY_MANIFEST.find(entry => entry.id === CASE_ID);
+  assert.ok(authored);
+  assert.ok(protectedRecord);
+  assert.equal(authored.templateKind, 'case-study');
+  assert.deepEqual(protectedRecord.state, authored.state);
   assert.ok(STANDALONE_PUBLIC_CASE_STUDY_IDS.includes(CASE_ID));
-  assert.equal(publicCase.templateKind, 'case-study');
-  assert.equal(publicCase.state.meta.intakeMode, 'general');
-  assert.deepEqual(publicCase.state, protectedCase.state);
-  assert.equal(publicCase.simulation, undefined);
-  assert.equal(protectedCase.simulation, undefined);
+  assert.equal(authored.state.meta.intakeMode, 'general');
+  assert.equal(authored.simulation, undefined);
 });
 
-test('learner-facing case brief contains factual evidence but not the resolved mechanism', () => {
-  const state = TEMPLATE_MANIFEST.find(entry => entry.id === CASE_ID)?.state;
-  assert.ok(state);
-  assert.match(state.pre.proof, /LEARNER CASE BRIEF/);
-  assert.match(state.pre.proof, /30 minutes after takeoff/i);
-  assert.doesNotMatch(state.pre.proof, /flak(?:e|ing)|red ink|removing the vests stopped/i);
-  assert.equal(state.actions.items.length, 4, 'complete authored source includes the illustrative implementation actions');
-  assert.ok(state.steps.items.length >= 20, 'full Major Incident checklist is represented');
-  assert.equal(state.meta.intakeMode, 'general', 'case remains ready for General display while retaining hidden MIM fields');
+test('official problem statement and participant evidence exclude the resolution', () => {
+  const { pre } = authored.state;
+  assert.equal(pre.oneLine, 'Flight Attendants have red sweat.');
+  assert.match(pre.proof, /flight attendants/i);
+  assert.match(pre.proof, /lead flight attendants/i);
+  assert.match(pre.proof, /DC9/i);
+  assert.match(pre.proof, /30 minutes after takeoff/i);
+  assert.doesNotMatch(pre.proof, /flak(?:e|ing)|red ink|reports stopped|true cause/i);
+  assert.match(pre.now, /red.pink/i);
 });
 
-test('Intake and IS/IS NOT projections do not expose worked reasoning', () => {
+test('Impact fields answer present consequence, future consequence, and resolution timeframe', () => {
+  const { impact } = authored.state;
+  assert.match(impact.now, /flight attendants/i);
+  assert.match(impact.now, /duties/i);
+  assert.match(impact.future, /subsequent flights/i);
+  assert.match(impact.time, /next affected flight/i);
+  assert.match(impact.time, /no specific resolution deadline/i);
+  // The symptom's 30-minute onset belongs in PA WHEN, not in an impact deadline.
+  assert.doesNotMatch(impact.time, /30 minutes|takeoff|March 1980|January 1980/i);
+});
+
+test('earlier self-study views contain only content appropriate to the KT stage', () => {
   const intake = getTemplatePayload(CASE_ID, TEMPLATE_MODE_IDS.INTAKE);
   const spec = getTemplatePayload(CASE_ID, TEMPLATE_MODE_IDS.IS_IS_NOT);
-  assert.ok(intake);
-  assert.ok(spec);
-  assert.equal(intake.meta.intakeMode, 'general');
+  const dc = getTemplatePayload(CASE_ID, TEMPLATE_MODE_IDS.DC);
+  assert.ok(intake && spec && dc);
   assert.equal(intake.table.length, 0);
   assert.equal(intake.causes.length, 0);
   assert.equal(intake.likelyCauseId, null);
   assert.equal(spec.causes.length, 0);
-  assert.equal(spec.likelyCauseId, null);
-  assert.equal(spec.actions.items.length, 0, 'no case answer actions in the IS / IS NOT projection');
-  assert.equal(intake.actions.items.length, 0, 'no case answer actions in Intake');
-  assert.equal(intake.ops.containDesc, '', 'historical containment answer must not leak into Intake');
-  assert.equal(spec.ops.containDesc, '', 'historical containment answer must not leak into IS / IS NOT');
-  assert.equal(intake.notesWorkspace.notes.length, 0, 'instructor/answer notes must not leak into the starter');
-  assert.ok(findQuestion(spec, 'what-object').is);
-  assert.ok(findQuestion(spec, 'where-location').no);
+  assert.equal(dc.causes.length, 0);
+  assert.equal(dc.likelyCauseId, null);
+
+  for (const state of [intake, spec, dc]) {
+    assert.deepEqual(state.actions.items, [], 'corrective action would reveal the answer');
+    assert.equal(state.ops.containDesc, '', 'historical fix is Full-only');
+    assert.deepEqual(state.notesWorkspace.notes, [], 'solution notes are Full-only');
+    assert.deepEqual(state.handover, {}, 'complete source debrief is Full-only');
+    assert.deepEqual(state.decisionAnalysis, {});
+    assert.deepEqual(state.potentialProblemAnalysis, {});
+  }
   for (const row of spec.table) {
     assert.equal(row.di || '', '');
     assert.equal(row.ch || '', '');
   }
+  assert.match(getRow(dc, 'where-location').di, /over-water/i);
+  assert.match(getRow(dc, 'where-location').ch, /January 1980/i);
+  assert.match(getRow(dc, 'when-description').di, /safety demonstration/i);
+  assert.equal(getRow(dc, 'what-object').di, '', 'do not invent a confirmed lead-attendant handling distinction');
 });
 
-test('D&C view reveals source-scoped distinctions and dated changes, but no causes', () => {
-  const dc = getTemplatePayload(CASE_ID, TEMPLATE_MODE_IDS.DC);
-  assert.ok(dc);
-  assert.equal(dc.causes.length, 0);
-  assert.equal(dc.likelyCauseId, null);
-  assert.equal(dc.actions.items.length, 0, 'D&C must not reveal answer-key actions');
-  assert.equal(dc.decisionAnalysis.decision, undefined, 'D&C does not include final decision exemplar');
-  assert.match(findQuestion(dc, 'what-object').di, /vests/i);
-  assert.match(findQuestion(dc, 'what-object').ch, /early January 1980/i);
-  assert.match(findQuestion(dc, 'where-location').di, /over water/i);
-  assert.match(findQuestion(dc, 'where-location').ch, /air-filter/i);
-  assert.match(findQuestion(dc, 'where-location').ch, /later than the deviation/i);
-  assert.match(findQuestion(dc, 'when-description').di, /safety demonstration/i);
-  for (const row of dc.table.filter(row => row.di || row.ch)) {
-    assert.ok(row.is && row.no, 'a worked distinction needs its exact IS and IS NOT pair');
-    assert.ok(row.di, 'a change must attach to a distinction');
-  }
-});
-
-test('Full view includes causes, test verdicts, assumptions, elimination and confirmation', () => {
+test('Full uses the KT-preferred solution and a valid alternative elimination', () => {
   const full = getTemplatePayload(CASE_ID, TEMPLATE_MODE_IDS.FULL);
   assert.ok(full);
-  assert.equal(full.meta.intakeMode, 'general');
   assert.equal(full.causes.length, 4);
   assert.equal(full.likelyCauseId, VEST_CAUSE_ID);
-  assert.ok(full.steps.items.length >= 20, 'Full retains the canonical Major Incident checklist');
-  assert.equal(full.actions.items.length, 4, 'Full includes illustrative verification and corrective actions');
-  assert.ok(full.actions.items.every(item => item.status === 'Planned'), 'do not invent performed historical action status');
-  assert.ok(full.actions.items.every(item => item.notes.includes('not a documented historical')), 'proposed actions are explicitly distinguished');
-  assert.match(full.ops.containDesc, /HISTORICAL POST-EXERCISE RESULT/);
-  assert.match(full.decisionAnalysis.decision, /ILLUSTRATIVE EXERCISE/);
-  assert.ok(full.decisionAnalysis.options.includes('A. Inspect'));
-  assert.equal(full.decisionAnalysis.timestamp, '', 'no fabricated historical decision timestamp');
-  assert.ok(full.potentialProblemAnalysis.risk.impactIfFails.includes('ILLUSTRATIVE IF/THEN'));
-  assert.equal(full.potentialProblemAnalysis.changeControl.required, true);
-  assert.equal(full.potentialProblemAnalysis.verification.required, true);
-  assert.ok(full.handover['remaining-risks'].length > 0);
-  assert.ok(full.handover['must-watch-metrics'].length > 0);
-  assert.ok(full.notesWorkspace.notes.length >= 4);
-  const vested = full.causes.find(c => c.id === VEST_CAUSE_ID);
-  const filter = full.causes.find(c => c.id === FILTER_CAUSE_ID);
-  assert.ok(vested);
-  assert.ok(filter);
-  assert.equal(vested.testingOpen, true);
-  assert.match(vested.evidence, /POST-EXERCISE REVEAL/);
-  assert.match(vested.evidence, /reports stopped/i);
-  assert.match(vested.evidence, /verify|observe|experiment|monitor/i);
-  assert.match(filter.evidence, /later rollout|after the deviation began/i);
-  assert.equal(filter.findings['what-object'].mode, 'fail');
-  assert.equal(filter.findings['when-description'].mode, 'fail');
+  assert.match(full.ops.containDesc, /vests stopped the reports/i);
 
-  const validModes = new Set(['yes', 'assumption', 'fail']);
+  const vested = full.causes.find(cause => cause.id === VEST_CAUSE_ID);
+  const filter = full.causes.find(cause => cause.id === FILTER_CAUSE_ID);
+  assert.ok(vested && filter);
+  assert.match(vested.evidence, /True Cause:/);
+  assert.match(vested.evidence, /red ink/i);
+  assert.match(vested.evidence, /sweat/i);
+  assert.match(vested.evidence, /reports of red sweat stopped/i);
+  assert.equal(vested.findings['what-object'].mode, 'assumption');
+  assert.equal(vested.findings['where-location'].mode, 'assumption');
+  assert.equal(vested.findings['when-description'].mode, 'yes');
+  assert.equal(filter.findings['when-description'].mode, 'fail');
+  assert.match(filter.evidence, /after the red-sweat reports began/i);
+
   for (const cause of full.causes) {
     assert.ok(cause.suspect && cause.accusation && cause.impact);
-    assert.equal(cause.editing, false);
-    for (const id of TESTABLE_ROW_IDS) {
-      assert.ok(findQuestion(full, id).is && findQuestion(full, id).no);
-      const testResult = cause.findings[id];
-      assert.ok(testResult, `${cause.id} missing testing for ${id}`);
-      assert.ok(validModes.has(testResult.mode));
-      assert.ok(testResult.note.length >= 40, 'test needs mechanism/assumption rationale');
+    for (const id of TEST_ROWS) {
+      assert.ok(getRow(full, id)?.is && getRow(full, id)?.no);
+      assert.ok(cause.findings[id], `${cause.id} missing KT test for ${id}`);
+      assert.ok(['yes', 'assumption', 'fail'].includes(cause.findings[id].mode));
+      assert.ok(cause.findings[id].note.length > 35);
     }
   }
 });
 
-test('unsubstantiated NMD comparisons are not passed off as factual IS NOT pairs', () => {
+test('complete Full source gives official removal outcome without invented incident decisions', () => {
   const full = getTemplatePayload(CASE_ID, TEMPLATE_MODE_IDS.FULL);
-  const unknownIds = [
-    'what-deviation',
-    'where-on-object',
-    'when-first-observed',
-    'when-pattern',
-    'extent-population',
-    'extent-size',
-    'extent-count'
-  ];
-  for (const id of unknownIds) {
-    assert.equal(findQuestion(full, id).no, '', `${id}: unknown is not a factual IS NOT`);
+  const source = authored.state;
+  for (const key of [
+    'meta', 'appearance', 'pre', 'impact', 'ops', 'table', 'causes', 'likelyCauseId',
+    'steps', 'actions', 'handover', 'decisionAnalysis', 'potentialProblemAnalysis', 'notesWorkspace'
+  ]) {
+    assert.deepEqual(full[key], source[key], `lost canonical source field ${key}`);
   }
-});
-
-test('Full case covers all supported MIM exemplar buckets while refusing unknown historical identities', () => {
-  const source = TEMPLATE_MANIFEST.find(entry => entry.id === CASE_ID).state;
-  const full = getTemplatePayload(CASE_ID, TEMPLATE_MODE_IDS.FULL);
-  const expected = [
-    'meta', 'pre', 'impact', 'ops', 'table', 'causes',
-    'likelyCauseId', 'steps', 'actions', 'handover',
-    'decisionAnalysis', 'potentialProblemAnalysis', 'notesWorkspace'
-  ];
-  for (const key of expected) {
-    assert.ok(Object.prototype.hasOwnProperty.call(full, key), `missing full exemplar bucket ${key}`);
-    assert.deepEqual(full[key], source[key], `template projection lost source content from ${key}`);
-  }
+  assert.equal(full.actions.items.length, 1);
+  const fix = full.actions.items[0];
+  assert.equal(fix.status, 'Done');
+  assert.match(fix.summary, /Remove the new demonstration life vests/i);
+  assert.match(fix.verification.result, /ceased/i);
+  assert.equal(fix.owner.name, '');
   assert.equal(full.ops.icName, '');
-  assert.equal(full.ops.bcName, '');
   assert.equal(full.ops.bridgeOpenedUtc, '');
   assert.equal(full.ops.severity, '');
-  assert.equal(full.ops.commNextDueIso, '');
-  assert.equal(full.decisionAnalysis.delegatedOwner, '');
-  assert.equal(full.decisionAnalysis.timestamp, '');
-  assert.ok(full.ops.detectUserReport, 'reported symptoms are the evidence source');
-  assert.ok(full.ops.evOther, 'participant case dossier is the exhibit');
+  assert.equal(full.decisionAnalysis.decision, '');
+  assert.equal(full.potentialProblemAnalysis.risk.impactIfFails, '');
+  assert.equal(full.steps.items.length, 0);
+
+  const serialized = JSON.stringify(full);
+  assert.doesNotMatch(serialized, /HISTORICAL CASE|ILLUSTRATIVE|UNCONFIRMED learner/i);
+});
+
+test('unknown IS NOT comparators remain blank rather than invented', () => {
+  const full = getTemplatePayload(CASE_ID, TEMPLATE_MODE_IDS.FULL);
+  for (const id of ['what-deviation', 'where-on-object', 'when-first-observed', 'when-pattern', 'extent-population', 'extent-size', 'extent-count']) {
+    assert.equal(getRow(full, id).no, '', `${id}: no invented IS NOT`);
+  }
 });

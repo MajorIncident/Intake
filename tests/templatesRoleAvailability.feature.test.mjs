@@ -131,7 +131,7 @@ test('drawer projects normal resources across Standalone, Student, and Instructo
 for (const [caseId, expectedOneLine] of [
   ['microcomputer-cabinets', 'Cabinets are being rejected'],
   ['paytrix', null],
-  ['red-sweat-mystery', 'Eastern Airlines flight attendants have red sweat.']
+  ['red-sweat-mystery', 'Flight Attendants have red sweat.']
 ]) {
   test(`Work independently applies the ${caseId} Case Study from the public copy behind the mode password`, async () => {
     applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
@@ -164,10 +164,10 @@ for (const [caseId, expectedOneLine] of [
       if (caseId === 'red-sweat-mystery') {
         assert.equal(lastAppliedState.meta.intakeMode, 'general');
         assert.equal(lastAppliedState.causes.length, 4);
-        assert.equal(lastAppliedState.actions.items.length, 4);
-        assert.ok(lastAppliedState.handover['must-watch-metrics'].length > 0);
-        assert.ok(lastAppliedState.decisionAnalysis.decision.includes('ILLUSTRATIVE EXERCISE'));
-        assert.ok(lastAppliedState.potentialProblemAnalysis.risk.impactIfFails.includes('ILLUSTRATIVE'));
+        assert.equal(lastAppliedState.actions.items.length, 1);
+        assert.ok(lastAppliedState.handover['current-state'].length > 0);
+        assert.equal(lastAppliedState.decisionAnalysis.decision, '');
+        assert.equal(lastAppliedState.potentialProblemAnalysis.risk.impactIfFails, '');
       }
       assert.equal(providerCalls, 0, 'Standalone never calls the classroom provider');
     } finally {
@@ -212,8 +212,8 @@ test('complete Case Study keeps the selected MIM workflow lens rather than forci
     await new Promise(resolve => setImmediate(resolve));
     assert.ok(lastAppliedState);
     assert.equal(lastAppliedState.meta.intakeMode, 'majorIncident');
-    assert.equal(lastAppliedState.actions.items.length, 4);
-    assert.ok(lastAppliedState.potentialProblemAnalysis.risk.impactIfFails);
+    assert.equal(lastAppliedState.actions.items.length, 1);
+    assert.match(lastAppliedState.ops.containDesc, /vests stopped the reports/);
   } finally {
     globalThis.__appStateMocks.collectAppState = originalCollectAppState;
   }
