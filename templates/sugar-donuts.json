@@ -604,15 +604,32 @@
   },
   "libraryGroup": "ats",
   "participantCase": {
-    "title": "Mrs. Walther's Square Donuts — initial orientation",
+    "title": "Mrs. Walther's Square Donuts — participant case",
     "sections": [
       {
-        "heading": "Explore the operation",
-        "body": "You are investigating the donut production operation at Mrs. Walther's factory. Begin by understanding the process and observing how donuts move through the plant, from preparation to quality control."
+        "heading": "Part 1 — meet the factory",
+        "body": "Mrs. Walther's factory produces more than a quarter-million square donuts each day. You are asked to understand how its equipment works and how a troubleshooter could investigate defects or disruptions. This is a discovery exercise: your approach, observations and questions matter as much as whether you reach a cause."
       },
       {
-        "heading": "Discovery exercise",
-        "body": "This is a discovery exercise: notice how you gather information, observe defects and decide where to look. The specific production problem is supplied at a later stage by your instructor. Do not assume a particular defect or cause before it is introduced."
+        "heading": "The production process",
+        "body": "Dough travels through equipment for forming and proofing, moves through cutters and edge controls, and eventually passes through cooking, finishing and Quality Control. The factory has different product lines, including a sugar-donut line. Understanding where each operation occurs helps you decide which people, equipment and product to observe."
+      },
+      {
+        "heading": "Equipment you can investigate",
+        "body": "The participant orientation includes a process-flow diagram, an equipment-layout illustration and cutter maintenance information. The edgers regulate dough-strip width because the cutter has no outer blades. Cutter-blade movement, proofing conditions, air pressure, center blowing and cooling/cleaning air can all influence the final donut's shape or appearance."
+      },
+      {
+        "heading": "Operational constraints",
+        "body": "Shutting the line down can waste substantial product. Some inspections near the hot-oil system are intrusive or hazardous. Consider which observations and questions can discriminate first, before requesting costly, disruptive or unsafe interventions. Use the participant question sheet to record what you need to find out."
+      },
+      {
+        "heading": "Part 2 — The Problem (later participant handout)",
+        "body": "You are the second-shift troubleshooter responsible for equipment problems. Earlier trouble with the sugaring equipment has been resolved, and the new sugaring system has been running normally. Just over an hour ago, the hot-oil donut-turner chain broke. The dough strip was diverted, and the donuts already in the oil were advanced manually. The chain was replaced within about five minutes, with approximately 1,500 donuts lost. After the restart, Quality Control reports that roughly 25% of sugar donuts are being rejected. Some rejects have round edges; the worst have a round edge and spikes of dough on two edges. Determine what to do next. You may submit written questions to the Program Leader, and you should separate genuinely different observed defects before assuming they share one cause.",
+        "reveal": true
+      },
+      {
+        "heading": "Working guidance",
+        "body": "When the problem stage is released, begin with the reported product and what it is doing differently, then decide where to inspect or what to ask. This participant handout gives the problem and process context; it does not disclose the confirmed explanation. The worked solution remains in the completed Intake case."
       }
     ]
   }
