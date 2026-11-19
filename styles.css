@@ -1030,6 +1030,25 @@ body.templates-drawer-open{overflow:hidden;}
 .templates-group__title{margin:0; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:#5c6c92; font-weight:700;}
 .templates-group__subtitle{margin:0; color:var(--muted); font-size:12px;}
 .templates-type-hint{margin:12px 0 0; color:var(--muted); font-size:12px;}
+/* [feature:case-library] Inline, role-aware reading inside the existing drawer. */
+.templates-drawer.is-case-library{width:min(720px,100vw);}
+.case-library__tools{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+.case-library__tools[hidden],.case-library__reader[hidden]{display:none;}
+.case-library__tools label{font-size:13px;font-weight:700;color:var(--ink-strong);}
+.case-library__tools input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);font:inherit;}
+.case-library__tools input:focus-visible,.case-library__filters button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px;}
+.case-library__filters{display:flex;flex-wrap:wrap;gap:8px;}
+.case-library__filters button{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--control-bg);color:var(--control-ink);cursor:pointer;font-size:12px;font-weight:650;}
+.case-library__filters button[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--panel));color:var(--ink-strong);}
+.case-library__count{margin:0;color:var(--muted);font-size:12px;}
+.case-library__reader{padding:18px 20px;border:1px solid var(--line);border-radius:16px;background:var(--panel);margin-top:18px;}
+.case-library__eyebrow{margin:0 0 8px;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+.case-library__reader h3{margin:0 0 14px;color:var(--ink-strong);font-size:17px;line-height:1.4;}
+.case-library__sections{display:flex;flex-direction:column;gap:16px;}
+.case-library__reader-section{padding-top:12px;border-top:1px solid var(--line);}
+.case-library__reader-section h4{margin:0 0 6px;font-size:14px;color:var(--ink-strong);}
+.case-library__reader-section p,.case-library__sections>p{margin:0;font-size:14px;line-height:1.7;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;}
+
 .templates-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
 .templates-list__item{
   width:100%; text-align:left; border:1px solid #dfe3f2; border-radius:14px;
