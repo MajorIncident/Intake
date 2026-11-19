@@ -283,8 +283,10 @@ export function listTemplates() {
     name: template.name,
     description: template.description,
     templateKind: template.templateKind,
-    libraryGroup: template.libraryGroup,
-    participantCase: template.participantCase ? clone(template.participantCase) : null
+    ...(template.templateKind === TEMPLATE_KINDS.CASE_STUDY ? {
+      libraryGroup: template.libraryGroup,
+      participantCase: template.participantCase ? clone(template.participantCase) : null
+    } : {})
   }));
 }
 
@@ -306,8 +308,10 @@ export function getTemplateMetadata(templateId) {
     name: template.name,
     description: template.description,
     templateKind: template.templateKind,
-    libraryGroup: template.libraryGroup,
-    participantCase: template.participantCase ? clone(template.participantCase) : null
+    ...(template.templateKind === TEMPLATE_KINDS.CASE_STUDY ? {
+      libraryGroup: template.libraryGroup,
+      participantCase: template.participantCase ? clone(template.participantCase) : null
+    } : {})
   };
 }
 
