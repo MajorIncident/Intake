@@ -95,6 +95,7 @@ test('live class integrates Instructor roster, team sync, isolation, coaching, r
     await startFresh(instructor);
     await instructor.getByRole('button', { name: /Run a class/ }).click();
     await instructor.getByLabel('Class title').fill('Integrated Browser Classroom');
+    await instructor.getByLabel('Class password').fill('kepnertregoe');
     await instructor.getByRole('button', { name: 'Start class' }).click();
 
     await expect(instructor.locator('#instructorClassDashboard')).toBeVisible();
@@ -329,6 +330,7 @@ test('Instructor compares immutable debrief checkpoint with current live Intake'
     await startFresh(instructor);
     await instructor.getByRole('button', { name: /Run a class/ }).click();
     await instructor.getByLabel('Class title').fill('Integrated Browser Classroom');
+    await instructor.getByLabel('Class password').fill('kepnertregoe');
     await instructor.getByRole('button', { name: 'Start class' }).click();
     await expect(instructor.locator('#instructorClassDashboard')).toBeVisible();
 
@@ -440,6 +442,7 @@ test('Instructor share link opens normal Student admission with fragment-only hu
     await startFresh(instructor);
     await instructor.getByRole('button', { name: /Run a class/ }).click();
     await instructor.getByLabel('Class title').fill('Integrated Browser Classroom');
+    await instructor.getByLabel('Class password').fill('kepnertregoe');
     await instructor.getByRole('button', { name: 'Start class' }).click();
     await expect(instructor.locator('#instructorClassDashboard')).toBeVisible();
 

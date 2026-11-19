@@ -1,6 +1,6 @@
 # Testing Guidelines
 
-This project relies on automated tests to keep the zero-backend KT Intake experience stable. Every feature pull request must either add new coverage or update existing tests so that the newly introduced behaviour is verified. Use the guidance below to decide which style of test to add and how to structure the files inside `tests/`.
+This project relies on automated tests to keep KT Intake stable — the local-first Standalone experience as well as the server-backed collaboration and Classroom features. Every feature pull request must either add new coverage or update existing tests so that the newly introduced behaviour is verified. Use the guidance below to decide which style of test to add and how to structure the files inside `tests/`.
 
 ## Selecting the right test type
 - **Unit tests**: Create or update a unit test when the behaviour can be validated by calling exported helpers without touching the DOM. Examples include state migrations, data formatters, pure reducers, and summary generators. Keep these tests fast, deterministic, and isolated from browser globals.
@@ -27,10 +27,18 @@ The browser fixture is shared by fully-parallel specs, so stateful test identiti
 
 - Give stateful Classroom assignment/workspace capabilities a namespace unique to the spec/project.
 - If a test can mutate server fixture state and CI retries are enabled, include `testInfo.retry` (or an equivalent deterministic retry marker) in its fixture capability.
-- Preserve semantic token distinctions used by the fixture (Instructor vs class join vs assignment vs Student workspace).
+- Preserve semantic token distinctions used by the fixture (Instructor capability vs human join code vs Student class session vs assignment-specific Student workspace).
 - Do not weaken authorization in the fixture merely to make a browser journey convenient.
 - Multi-context collaboration tests should create separate browser contexts to prove independent local storage/profile identity.
 - Prefer asserting semantic state (`hidden` / `aria-hidden` / `inert`, persisted data, HTTP method/status) over assumptions about off-canvas CSS visibility.
+
+## Real-Postgres tests (`*.pglite.test.mjs`)
+
+Server code in `api/` talks to Neon through tagged-template SQL. In-memory repositories (`tests/helpers/classroom-test-repositories.mjs`) and the browser fixture (`scripts/serve-browser-tests.mjs`) model that behaviour but never execute the SQL. Files named `*.pglite.test.mjs` run the **real repository SQL** against PGlite, an in-process WASM Postgres, through `tests/helpers/pglite-sql.mjs` and `setSqlFactoryForTesting()` from `api/_db.js`. They need no Docker, network, or credentials and run in the normal `npm test`.
+
+- Add or extend a PGlite test whenever you add or change SQL. These tests found two production bugs (untyped parameters in assignment and readiness writes) that the fakes could not.
+- Prefer running the same contract against both backends, as `tests/classroom-exercise-repository.unit.test.mjs` does, so fakes cannot drift from production.
+- Assert on meaning, not representation: real rows return `Date` objects and string `BIGINT` IDs.
 
 ## Working with `collectAppState()` and `applyAppState()`
 The application exposes snapshot helpers that make DOM integration tests reliable:
@@ -54,7 +62,7 @@ Follow these practices when using the helpers:
   - `*.unit.test.mjs` for pure helper coverage.
   - `*.dom.test.mjs` for DOM-centric integration flows.
   - `*.feature.test.mjs` when validating a user-visible feature end-to-end.
-- Mirror the module names you are exercising so that `migrateAppState` continues to live in `tests/migrateAppState.test.mjs`, while a DOM test for the preface module might live in `tests/preface.dom.test.mjs`.
+- Mirror the module names you are exercising so that `migrateAppState` continues to live in `tests/migrateAppState.test.mjs`, while feature coverage for `src/preface.js` lives in `tests/preface.feature.test.mjs`.
 - Use the provided template (`tests/template.feature.test.mjs`) as a starting point for new files so imports, teardown helpers, and naming stay consistent.
 
 ## Custom Node test loader & module stubs

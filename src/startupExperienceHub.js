@@ -379,7 +379,7 @@ function chooseNewInstructor() {
   if (stored) {
     const proceed = isInstructorSessionExpired(stored)
       || confirmReplace(
-        `Run a different class? This device will stop automatically resuming “${stored.class.title}”. Administration / Maintenance can reissue Instructor access later if needed.`
+        `Run a different class? “${stored.class.title}” keeps running for its Students, but this device will no longer be able to manage it — getting it back requires an administrator. To close it for everyone, choose Continue and use End class first.`
       );
     if (!proceed) return true;
     clearInstructorSession(storageRef);

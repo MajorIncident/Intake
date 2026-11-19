@@ -164,7 +164,7 @@ test('class creation returns Instructor authority once and a human Student join 
   });
 
   const res = response();
-  await handler({ method: 'POST', body: { title: '  Fall   Workshop ' } }, res);
+  await handler({ method: 'POST', body: { title: '  Fall   Workshop ', classPassword: ' KepnerTregoe ' } }, res);
 
   assert.equal(res.statusCode, 201);
   assert.equal(res.body.class.title, 'Fall Workshop');
