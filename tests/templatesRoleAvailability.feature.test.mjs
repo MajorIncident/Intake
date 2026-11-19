@@ -228,6 +228,9 @@ test('Case Library is a dedicated accessible view with source groups, search and
   assert.equal(doc.getElementById('caseLibraryTools').hidden, false);
   assert.equal(doc.getElementById('caseLibraryReader').hidden, false);
   assert.equal(doc.getElementById('templatesSaveBtn').hidden, true);
+  assert.equal(doc.getElementById('templatesModeSection').hidden, true, 'reader must come before working modes');
+  assert.equal(doc.getElementById('templatesAuthSection').hidden, true);
+  assert.equal(doc.getElementById('templatesDrawerFooter').hidden, true);
   assert.deepEqual([...new Set(resourceKinds())], ['case-study']);
   const redSweat = doc.querySelector('#templatesList [data-template-id="red-sweat-mystery"]');
   assert.ok(redSweat);
@@ -237,6 +240,16 @@ test('Case Library is a dedicated accessible view with source groups, search and
   assert.match(reader.textContent, /30 minutes/);
   assert.doesNotMatch(reader.textContent, /red ink|true cause|flak(?:e|ing)/i);
   assert.equal(doc.querySelector('#templatesModeGroup [data-mode="intake"]').getAttribute('aria-pressed'), 'true');
+  const continueBtn = doc.getElementById('caseLibraryContinueBtn');
+  assert.equal(continueBtn.hidden, false);
+  continueBtn.click();
+  assert.equal(doc.getElementById('templatesModeSection').hidden, false, 'modes follow an explicit Continue action');
+  assert.equal(doc.getElementById('templatesAuthSection').hidden, false);
+  assert.equal(doc.getElementById('templatesDrawerFooter').hidden, false);
+  assert.match(doc.getElementById('templatesModeHelp').textContent, /Full loads the completed reference solution/);
+  doc.getElementById('caseLibraryBackToReadingBtn').click();
+  assert.equal(doc.getElementById('templatesModeSection').hidden, true);
+  assert.equal(doc.getElementById('caseLibraryReader').hidden, false);
 
   const search = doc.getElementById('caseLibrarySearch');
   search.value = 'red sweat';
@@ -267,7 +280,28 @@ test('Case Library does not expose Full state for connected Student metadata', (
   const protectedButton = doc.querySelector('#templatesList [data-template-id="authorized-case"]');
   assert.ok(protectedButton);
   protectedButton.click();
+  assert.equal(doc.getElementById('templatesModeSection').hidden, true);
   assert.match(doc.getElementById('caseLibraryReaderSections').textContent, /not yet prepared/i);
   assert.doesNotMatch(doc.getElementById('caseLibraryReaderSections').textContent, /Protected Case Study applied/i);
   closeTemplatesDrawer({ skipFocus: true });
 });
+
+test('Square Donuts includes the later participant problem as a closed self-study reveal, not a solution', () => {
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
+  openCaseLibrary();
+  const doc = dom.window.document;
+  doc.querySelector('#templatesList [data-template-id="mrs-walthers-sugar-donuts"]').click();
+  const reader = doc.getElementById('caseLibraryReaderSections');
+  const reveal = reader.querySelector('details.case-library__reveal');
+  assert.ok(reveal, 'the later problem must be represented in the same case');
+  assert.equal(reveal.open, false, 'initial orientation appears before the optional problem handout');
+  assert.match(reveal.querySelector('summary').textContent, /The Problem/);
+  assert.match(reveal.querySelector('p').textContent, /25%/);
+  assert.match(reveal.querySelector('p').textContent, /1,500/);
+  assert.doesNotMatch(reveal.querySelector('p').textContent, /missing edger|true cause|confirmed cause/i);
+  assert.equal(doc.getElementById('templatesModeSection').hidden, true);
+  reveal.open = true;
+  assert.equal(reveal.open, true, 'the user can disclose the later self-study problem without opening a PDF');
+  closeTemplatesDrawer({ skipFocus: true });
+});
+
