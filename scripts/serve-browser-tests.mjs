@@ -29,6 +29,10 @@ const INSTRUCTOR_WORKSPACE_IDS = Object.freeze({
   GROUP: '22222222-2222-4222-8222-222222222222'
 });
 const LIVE_INSTRUCTOR_TOKEN = `${'i'.repeat(42)}s`;
+// #342 device transfer: redeeming the live class transfer code issues this
+// token and retires LIVE_INSTRUCTOR_TOKEN, mirroring the production rotation.
+const LIVE_MOVED_INSTRUCTOR_TOKEN = `${'i'.repeat(42)}m`;
+const LIVE_TRANSFER_CODE = 'TRNS-FR2C-ODE9';
 const LIVE_JOIN_CODE = 'K7FM-P4Q2';
 const LIVE_WORKSPACE_IDS = Object.freeze([
   '66666666-6666-4666-8666-666666666666',
@@ -222,6 +226,10 @@ function browserStudentExercisePayload(session) {
 }
 
 let liveClassState = null;
+let liveJoinsEnabled = true;
+let liveTransferPending = false;
+let liveInstructorRetired = false;
+const removedLiveWorkspaceIds = new Set();
 let liveInstructorWorkspaces = [];
 let liveInstructorParticipants = [];
 const liveInstructorWorkspaceStates = new Map();
@@ -389,12 +397,23 @@ function instructorClass() {
 }
 
 function liveInstructorClass() {
-  return liveClassState || {
-    id: 'browser-live-class',
-    title: 'Browser Live Classroom',
-    joinCode: 'K7FMP4Q2',
-    expiresAt: CLASSROOM_EXPIRY
+  return {
+    ...(liveClassState || {
+      id: 'browser-live-class',
+      title: 'Browser Live Classroom',
+      joinCode: 'K7FMP4Q2',
+      expiresAt: CLASSROOM_EXPIRY
+    }),
+    joinsEnabled: liveJoinsEnabled
   };
+}
+
+function liveInstructorToken(token) {
+  return liveInstructorRetired ? token === LIVE_MOVED_INSTRUCTOR_TOKEN : token === LIVE_INSTRUCTOR_TOKEN;
+}
+
+function retiredInstructorToken(token) {
+  return liveInstructorRetired && token === LIVE_INSTRUCTOR_TOKEN;
 }
 
 function integratedInstructorClass() {
@@ -416,7 +435,7 @@ function managedInstructorFixture(token) {
       workspaceIds: INTEGRATED_WORKSPACE_IDS
     };
   }
-  if (token === LIVE_INSTRUCTOR_TOKEN) {
+  if (liveInstructorToken(token)) {
     return {
       classContext: liveInstructorClass(),
       workspaces: liveInstructorWorkspaces,
@@ -934,13 +953,34 @@ async function handleClassroomApi(request, response, url) {
     if (request.method === 'DELETE') {
       // Mirrors api/_classroom.js DELETE: Instructor ends (revokes) the live class.
       const instructorToken = bearerToken(request);
-      if (instructorToken === LIVE_INSTRUCTOR_TOKEN && liveClassState) {
+      if (liveInstructorToken(instructorToken) && liveClassState) {
         const classId = liveClassState.id;
         liveClassState = null;
         sendJson(response, 200, { revoked: true, classId });
         return true;
       }
       sendJson(response, 404, { error: 'Class not found.' });
+      return true;
+    }
+    if (request.method === 'PATCH') {
+      // Mirrors api/_classroom.js set-joins / create-transfer for the live class.
+      const instructorToken = bearerToken(request);
+      const body = await readJson(request).catch(() => null);
+      if (!liveInstructorToken(instructorToken) || !liveClassState) {
+        sendJson(response, 404, { error: 'Class not found.' });
+        return true;
+      }
+      if (body?.action === 'set-joins' && typeof body.enabled === 'boolean') {
+        liveJoinsEnabled = body.enabled;
+        sendJson(response, 200, { class: liveInstructorClass() });
+        return true;
+      }
+      if (body?.action === 'create-transfer') {
+        liveTransferPending = true;
+        sendJson(response, 200, { transferCode: LIVE_TRANSFER_CODE, expiresAt: '2099-12-31T23:59:00.000Z' });
+        return true;
+      }
+      sendJson(response, 400, { error: 'Invalid class action.' });
       return true;
     }
     if (request.method !== 'POST') {
@@ -987,6 +1027,10 @@ async function handleClassroomApi(request, response, url) {
     };
     liveInstructorWorkspaces = [];
     liveInstructorWorkspaceStates.clear();
+    liveJoinsEnabled = true;
+    liveTransferPending = false;
+    liveInstructorRetired = false;
+    removedLiveWorkspaceIds.clear();
     classroomExercises.delete(LIVE_INSTRUCTOR_TOKEN);
     classroomExerciseReleases.delete(LIVE_INSTRUCTOR_TOKEN);
     classroomExerciseCheckpoints.delete(LIVE_INSTRUCTOR_TOKEN);
@@ -1358,10 +1402,39 @@ async function handleClassroomApi(request, response, url) {
     return true;
   }
 
+  if (url.pathname === '/api/classes/transfer') {
+    if (request.method !== 'POST') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const body = await readJson(request).catch(() => null);
+    const code = typeof body?.transferCode === 'string' ? body.transferCode.toUpperCase().replace(/[\s-]+/gu, '') : '';
+    if (code.length !== 12) {
+      sendJson(response, 400, { error: 'Enter the 12-character transfer code.' });
+      return true;
+    }
+    if (!liveTransferPending || code !== LIVE_TRANSFER_CODE.replace(/-/gu, '') || !liveClassState) {
+      sendJson(response, 404, { error: 'That transfer code is not valid. Codes work once and expire after 10 minutes.', code: 'transfer-invalid' });
+      return true;
+    }
+    liveTransferPending = false;
+    liveInstructorRetired = true;
+    for (const map of [classroomExercises, classroomExerciseReleases, classroomExerciseCheckpoints]) {
+      if (map.has(LIVE_INSTRUCTOR_TOKEN)) map.set(LIVE_MOVED_INSTRUCTOR_TOKEN, map.get(LIVE_INSTRUCTOR_TOKEN));
+    }
+    const { joinCode, ...publicClass } = liveInstructorClass();
+    sendJson(response, 200, { class: publicClass, instructorToken: LIVE_MOVED_INSTRUCTOR_TOKEN, joinCode: LIVE_JOIN_CODE || joinCode });
+    return true;
+  }
+
   if (url.pathname === '/api/classes/workspaces') {
     const instructorToken = bearerToken(request);
     if (!activeInstructorCapability(instructorToken)) {
       sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
+      return true;
+    }
+    if (retiredInstructorToken(instructorToken)) {
+      sendJson(response, 404, { error: 'Class not found.' });
       return true;
     }
 
@@ -1380,7 +1453,9 @@ async function handleClassroomApi(request, response, url) {
         sendJson(response, 400, { error: 'Invalid workspace request.' });
         return true;
       }
-      const id = managedFixture.workspaceIds[managedFixture.workspaces.length];
+      const id = managedFixture.workspaceIds.find(candidate => (
+        !managedFixture.workspaces.some(item => item.id === candidate) && !removedLiveWorkspaceIds.has(candidate)
+      ));
       if (!id) {
         sendJson(response, 409, { error: 'Browser fixture workspace limit reached.' });
         return true;
@@ -1408,6 +1483,40 @@ async function handleClassroomApi(request, response, url) {
       return true;
     }
 
+    if ((request.method === 'PATCH' || request.method === 'DELETE') && managedFixture) {
+      // Mirrors api/_classroom.js rename / guarded remove.
+      const body = await readJson(request).catch(() => null);
+      const workspace = managedFixture.workspaces.find(item => item.id === body?.workspaceId);
+      if (!workspace) {
+        sendJson(response, 404, { error: 'Workspace not found.' });
+        return true;
+      }
+      if (request.method === 'PATCH') {
+        const label = typeof body?.label === 'string' ? body.label.trim().replace(/\s+/gu, ' ') : '';
+        if (!label) {
+          sendJson(response, 400, { error: 'Invalid workspace rename.' });
+          return true;
+        }
+        workspace.label = label;
+        const state = managedFixture.workspaceStates.get(workspace.id);
+        if (state) state.teamName = label.slice(0, 80);
+        managedFixture.participants.forEach(participant => {
+          if (participant.assignment?.id === workspace.id) participant.assignment.label = label;
+        });
+        sendJson(response, 200, { workspace: { id: workspace.id, kind: workspace.kind, label } });
+        return true;
+      }
+      if (managedFixture.participants.some(participant => participant.assignment?.id === workspace.id)) {
+        sendJson(response, 409, { error: 'Move or unassign the Students in this workspace before removing it.', code: 'workspace-occupied' });
+        return true;
+      }
+      managedFixture.workspaces.splice(managedFixture.workspaces.indexOf(workspace), 1);
+      managedFixture.workspaceStates.delete(workspace.id);
+      removedLiveWorkspaceIds.add(workspace.id);
+      sendJson(response, 200, { removed: true, workspace: { id: workspace.id, kind: workspace.kind, label: workspace.label } });
+      return true;
+    }
+
     sendJson(response, 405, { error: 'Method not allowed.' });
     return true;
   }
@@ -1416,6 +1525,10 @@ async function handleClassroomApi(request, response, url) {
     const instructorToken = bearerToken(request);
     if (!activeInstructorCapability(instructorToken)) {
       sendJson(response, 401, { error: 'Missing or invalid instructor authorization.' });
+      return true;
+    }
+    if (retiredInstructorToken(instructorToken)) {
+      sendJson(response, 404, { error: 'Class not found.' });
       return true;
     }
 

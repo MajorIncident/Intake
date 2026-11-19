@@ -64,7 +64,7 @@ async function resumeFixtureInstructor(page, instructorToken) {
   await expect(page.locator('#instructorClassDashboard')).toBeVisible();
 }
 
-test('Instructor starts a live class, creates a team, assigns a waiting Student, and resumes it', async ({ page }, testInfo) => {
+test('Instructor starts a live class, creates a team, assigns a waiting Student, and resumes it', async ({ page, browser }, testInfo) => {
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop live-management journey; responsive Instructor observer remains covered on mobile.');
   const pageErrors = watchPageErrors(page);
   const classroomRequests = [];
@@ -256,20 +256,84 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
 
   await expectNoBlockingA11yViolations(page);
 
-  // End class asks for confirmation, revokes the class on the server, and clears this device.
-  const dialogMessages = [];
-  page.once('dialog', dialog => { dialogMessages.push(dialog.message()); void dialog.dismiss(); });
-  await page.getByRole('button', { name: 'End class' }).click();
-  await expect(page.locator('#instructorClassDashboard')).toBeVisible();
-  expect(classroomRequests.some(request => request.method === 'DELETE' && request.pathname === '/api/classes')).toBe(false);
+  // #342 joins on/off.
+  await page.getByRole('button', { name: 'Pause new joins' }).click();
+  await expect(page.locator('#instructorJoinsStatus')).toContainText('paused');
+  await page.getByRole('button', { name: 'Allow new joins' }).click();
+  await expect(page.locator('#instructorJoinsStatus')).toContainText('can join');
 
-  page.once('dialog', dialog => { dialogMessages.push(dialog.message()); void dialog.accept(); });
-  await page.getByRole('button', { name: 'End class' }).click();
-  await expect(page.locator('#instructorClassStartForm')).toBeVisible();
-  expect(dialogMessages.every(message => message.includes('for everyone'))).toBe(true);
-  expect(classroomRequests.some(request => request.method === 'DELETE' && request.pathname === '/api/classes')).toBe(true);
+  // #342 rename the observed team.
+  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Alpha');
+  await page.locator('#instructorWorkspaceRenameBtn').click();
+  await page.getByLabel('New workspace name').fill('Team Red');
+  await page.getByRole('button', { name: 'Save name' }).click();
+  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Red');
+  await expect(page.locator('.instructor-workspace-item').filter({ hasText: 'Team Red' })).toHaveCount(1);
+
+  // #342 a team with a Student cannot be removed; an empty one can.
+  await page.locator('#instructorWorkspaceRemoveBtn').click();
+  await expect(page.locator('#instructorClassError')).toContainText('Move or unassign');
+  await page.getByLabel('Workspace name', { exact: true }).fill('Spare team');
+  await page.getByRole('button', { name: 'Create workspace' }).click();
+  await page.locator('.instructor-workspace-item').filter({ hasText: 'Spare team' }).click();
+  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Spare team');
+  page.once('dialog', dialog => { void dialog.accept(); });
+  await page.locator('#instructorWorkspaceRemoveBtn').click();
+  await expect(page.locator('.instructor-workspace-item').filter({ hasText: 'Spare team' })).toHaveCount(0);
+  expect(classroomRequests.some(request => request.method === 'DELETE' && request.pathname === '/api/classes/workspaces')).toBe(true);
+
+  // #342 one workspace per Student.
+  await page.getByLabel('Assignment for Waiting Student').selectOption('');
+  await expect(page.locator('#instructorParticipantSummary')).toHaveText('1 student · 1 waiting');
+  await page.getByRole('button', { name: 'Give each waiting Student their own workspace' }).click();
+  await expect(page.locator('#instructorIndividualWorkspacesStatus')).toHaveText('1 Student now has their own workspace.');
+  await expect(page.locator('#instructorParticipantSummary')).toHaveText('1 student · 0 waiting');
+  await expect(page.locator('.instructor-workspace-item').filter({ hasText: 'Waiting Student' })).toHaveCount(1);
+  await expectNoBlockingA11yViolations(page);
+
+  // #342 move the class to another device with a one-time code.
+  await page.getByRole('button', { name: 'Move to another device' }).click();
+  await expect(page.locator('#instructorTransferCode')).toHaveText('TRNS-FR2C-ODE9');
+  await expectNoBlockingA11yViolations(page);
+
+  const deviceB = await browser.newContext();
+  const pageB = await deviceB.newPage();
+  const pageBErrors = watchPageErrors(pageB);
+  const deviceBRequests = [];
+  pageB.on('request', request => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith('/api/classes')) deviceBRequests.push({ method: request.method(), pathname: url.pathname });
+  });
+  await startFresh(pageB);
+  await pageB.getByRole('button', { name: /Run a class/ }).click();
+  await pageB.locator('#instructorTransferEntry summary').click();
+  await expectNoBlockingA11yViolations(pageB);
+  await pageB.getByLabel('Transfer code').fill('trns fr2c ode9');
+  await pageB.getByRole('button', { name: 'Continue class here' }).click();
+  await expect(pageB.locator('#instructorClassDashboard')).toBeVisible();
+  await expect(pageB.locator('#instructorClassTitle')).toHaveText('Browser Live PSDM');
+  await expect(pageB.locator('#instructorJoinCode')).toHaveText('K7FM-P4Q2');
+
+  // The original device loses management on its next roster poll.
+  await expect(page.locator('#instructorClassError')).toContainText('no longer managed from this device', { timeout: 15000 });
   expect(await page.evaluate(() => localStorage.getItem('kt-classroom-instructor-session-v1'))).toBeNull();
+
+  // End class (on the device that now manages the class) asks for confirmation, revokes it, and clears that device.
+  const dialogMessages = [];
+  pageB.once('dialog', dialog => { dialogMessages.push(dialog.message()); void dialog.dismiss(); });
+  await pageB.getByRole('button', { name: 'End class' }).click();
+  await expect(pageB.locator('#instructorClassDashboard')).toBeVisible();
+  expect(deviceBRequests.some(request => request.method === 'DELETE' && request.pathname === '/api/classes')).toBe(false);
+
+  pageB.once('dialog', dialog => { dialogMessages.push(dialog.message()); void dialog.accept(); });
+  await pageB.getByRole('button', { name: 'End class' }).click();
+  await expect(pageB.locator('#instructorClassStartForm')).toBeVisible();
+  expect(dialogMessages.every(message => message.includes('for everyone'))).toBe(true);
+  expect(deviceBRequests.some(request => request.method === 'DELETE' && request.pathname === '/api/classes')).toBe(true);
+  expect(await pageB.evaluate(() => localStorage.getItem('kt-classroom-instructor-session-v1'))).toBeNull();
+  expect(pageBErrors).toEqual([]);
   expect(pageErrors).toEqual([]);
+  await deviceB.close();
 });
 
 test('mobile Instructor can open and run the staged exercise console accessibly', async ({ page }, testInfo) => {
