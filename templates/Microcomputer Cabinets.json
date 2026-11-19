@@ -433,5 +433,19 @@
         }
       ]
     }
+  },
+  "libraryGroup": "psdm",
+  "participantCase": {
+    "title": "Microcomputer Cabinets — participant briefing",
+    "sections": [
+      {
+        "heading": "The problem",
+        "body": "Final Inspection is periodically rejecting microcomputer cabinets because of gaps in the painted finish. The affected object in the case is the 1025 cabinet. The expected finish is flat and even."
+      },
+      {
+        "heading": "Your investigation",
+        "body": "Develop a precise Problem Statement and factual comparisons with other cabinet models, production conditions and time periods. Trace the paint process and test the mechanisms that could produce paint gaps. The reported reject rate has created rework pressure."
+      }
+    ]
   }
 }
