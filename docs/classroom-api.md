@@ -61,6 +61,7 @@ Class expiry uses `CLASS_EXPIRY_DAYS` when set to a positive integer, otherwise 
 | `POST /api/classes` | `class-create` | 20 per hour per address (wrong-password attempts count) |
 | `POST /api/classes/admit` | `class-admit` | 150 per 10 minutes per address — sized so a whole class (≈22 Students plus re-joins) behind one school address is never blocked |
 | `POST /api/workspaces` | `workspace-create` | 60 per hour per address |
+| `POST /api/classes/transfer` | `instructor-transfer` | 20 per hour per address |
 
 Rate limiting is best-effort: if the limiter cannot reach the database the request continues (it would then fail on its own database work). The class password is always enforced.
 
@@ -77,9 +78,19 @@ Requires the Instructor capability.
 Supported actions:
 
 - `rotate-instructor`
-- `set-joins` with a boolean `enabled`
+- `set-joins` with a boolean `enabled` — pauses or resumes new Student admission; Students already in the class are unaffected
+- `create-transfer` — issues a one-time Instructor device-transfer code (see below)
 
 Instructor rotation replaces the stored hash and returns only the newly generated raw Instructor capability.
+
+### Instructor device transfer (#342)
+
+Moves a running class to another Instructor device without an administrator.
+
+1. On the device that currently manages the class, `PATCH /api/classes` `{ "action": "create-transfer" }` (Instructor capability) returns `{ transferCode: "XXXX-XXXX-XXXX", expiresAt }`. The code is 12 characters from the unambiguous join-code alphabet (60 bits), stored only as a namespaced SHA-256 hash in `classroom_classes.instructor_transfer_hash`, valid for 10 minutes. Creating another code replaces the previous one. No credential is returned.
+2. On the new device, `POST /api/classes/transfer` `{ "transferCode": "..." }` (no bearer; rate-limited, see above). One atomic `UPDATE` consumes the code and installs a fresh Instructor capability hash, so the previous device's capability stops working immediately. The response is `{ class, instructorToken, joinCode }`. Unknown, used, or expired codes all return **404** `{ code: "transfer-invalid" }`; malformed codes return 400.
+
+This is **not** the reusable "Instructor access code" form removed by #328: a code can only be minted by the device that is already authorized, works once, and expires quickly. It does not help recover a lost device — that remains an Administration / Maintenance action (`rotate-instructor` in `docs/admin-maintenance.md`).
 
 ### `DELETE /api/classes`
 
@@ -106,6 +117,16 @@ Request fields:
 The underlying collaboration workspace receives the class's exact absolute expiry, so classroom data cannot outlive the class.
 
 The response returns public workspace metadata only. The randomly generated primary collaboration capability used to create the underlying row is intentionally not returned.
+
+The classroom `label` may be up to 120 characters; the underlying collaboration `team_name` (shown to Students) is truncated to 80.
+
+### `PATCH /api/classes/workspaces`
+
+Requires the Instructor capability. Body: `workspaceId` (public UUID) and `label`. Renames the classroom workspace and the collaboration team name. Another class's workspace returns 404.
+
+### `DELETE /api/classes/workspaces`
+
+Requires the Instructor capability. Body: `workspaceId`. Removes an **empty** workspace: while any live Student is assigned it returns **409** `{ code: "workspace-occupied" }` — the check is part of the same `UPDATE`, so a racing assignment cannot leave a Student on a removed workspace. Removal revokes the classroom workspace, expires its collaboration workspace, and revokes every edit capability for it. Rows remain until Administration purges the class; historical debrief checkpoints for it stay viewable.
 
 ### Student client consumption
 
@@ -396,7 +417,8 @@ No classroom credential is stored in browser Intake state.
 | --- | --- | --- |
 | Disable joins | Stops | Remains valid until assignment/class authority changes |
 | Reassign / unassign Student | Admission unaffected | Previous assignment capability is revoked before assignment changes |
-| Rotate Instructor | Unchanged | Remains valid |
+| Rotate Instructor (Admin) or redeem a device-transfer code | Unchanged | Remains valid; the previous Instructor capability stops working |
+| Remove an empty workspace | Unchanged | Its edit capabilities are revoked (no Student can be assigned to it) |
 | Revoke class | Stops | Invalidated by class/workspace revocation |
 
 ## Security invariants
