@@ -804,5 +804,23 @@
         }
       ]
     }
+  },
+  "libraryGroup": "mim",
+  "participantCase": {
+    "title": "Paytrix — incident brief",
+    "sections": [
+      {
+        "heading": "Incident context",
+        "body": "The North America East authorization service is showing sustained elevated p95 latency. Datadog monitoring, automated incident alerts and merchant reports indicate a deviation affecting authorization performance."
+      },
+      {
+        "heading": "Observed impact",
+        "body": "Merchant transactions are delayed or timing out. Amazon reports elevated retries and Delta kiosks cannot consistently process payments. The incident team has monitoring evidence and stakeholder reports to compare against the baseline."
+      },
+      {
+        "heading": "Your task",
+        "body": "Establish current impact, likely future impact and the decision timeframe. Use evidence to specify the deviation and test possible causes before selecting safe containment and verification steps."
+      }
+    ]
   }
 }
