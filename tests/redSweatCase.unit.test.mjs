@@ -28,7 +28,7 @@ test('Red Sweat Mystery prefills facts without revealing the true cause or a wor
   const state = TEMPLATE_MANIFEST.find(entry => entry.id === CASE_ID)?.state;
   assert.ok(state);
   assert.match(state.pre.proof, /LEARNER CASE BRIEF/);
-  assert.match(state.pre.proof, /first 30 minutes/i);
+  assert.match(state.pre.proof, /30 minutes after takeoff/i);
   assert.equal(state.causes.length, 0);
   assert.equal(state.likelyCauseId, null);
   assert.equal(state.actions.items.length, 0);
