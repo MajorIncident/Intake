@@ -388,6 +388,8 @@ While a class has an active staged exercise for Case Study X:
 
 Do not rely on the Student drawer hiding the full-case Apply button. The server must close the full-payload bypass for the active staged case.
 
+The Instructor Case Study load (`POST /api/classes/case-studies/assign`, #343) follows the same rule: it refuses (409 `staged-exercise-only`) any Case Study with a `simulation` or with a staged exercise in this class, and refuses every load (409 `exercise-active`) while a staged exercise in the class is not completed, so a load can neither leak complete state nor overwrite workspaces mid-exercise.
+
 A completed exercise still does not imply automatic exemplar release.
 
 ## Server-enforced edit freeze

@@ -39,6 +39,7 @@ Use the production URL, one Instructor device and at least two Student devices (
 8a. Instructor: **Pause new joins**, confirm a new Student cannot join, then **Allow new joins**. Rename a team; remove an empty team.
 8b. With two Students Waiting, **Give each waiting Student their own workspace** — each lands in a workspace named after them.
 8c. **Move to another device**: enter the code on a second Instructor device under **Run a class → Continue a class from another device**; within a few seconds the first device reports it no longer manages the class.
+8d. Instructor: under **Case Study for workspaces**, load a Case Study into **All workspaces** starting from **Intake**; each Student sees it within a few seconds without a password, and the roster shows the Case Study. Have a Student type, load again, and confirm the prompt names that team; **Cancel** keeps their work.
 9. Admin: open Administration / Maintenance with the admin token and confirm the class is listed.
 
 Record the result (pass/fail per step, devices, date) in `STATUS.md`.

@@ -56,6 +56,8 @@ Database schema changes are applied once per schema version inside a single advi
 
 Instructor device transfer (#342): only the currently authorized Instructor device can create a transfer code. Codes are 60-bit random values from the unambiguous join-code alphabet, stored only as a hash, single-use, valid for 10 minutes, and redeemed through a rate-limited endpoint; redemption atomically rotates the Instructor credential so the previous device stops working. Codes must never be logged, persisted in the browser, or placed in URLs. Workspace removal is refused while Students are assigned and revokes the workspace's edit capabilities.
 
+Instructor Case Study loads (#343): only the class Instructor capability can load a protected Case Study into that class's workspaces. The server projects it for the chosen starting point, so earlier starting points never send causes, actions, or the historical resolution to Students. Staged Case Studies and running exercises are refused. A load replaces Student work only with an explicit confirmation carrying the exact collaboration revision the Instructor saw.
+
 ## Supported code
 
 Security fixes target the current `main` branch. Dependency Review, CodeQL, Dependabot, repository quality checks, and GitHub branch rules are intended to prevent known regressions from entering `main`.
