@@ -58,16 +58,16 @@
       {
         "questionId": "what-object",
         "q": "WHAT — Which specific people have the reported deviation?",
-        "is": "Flight attendants on affected Eastern Airlines flights.",
+        "is": "Working Eastern Airlines flight attendants on affected flights.",
         "no": "Lead flight attendants, pilots and passengers are not reported affected.",
-        "di": "",
-        "ch": ""
+        "di": "Working attendants conduct cabin safety demonstrations and physically handle demonstration life vests; pilots and passengers do not. Whether unaffected lead attendants handled the same equipment is NMD and must be checked.",
+        "ch": "New demonstration life vests introduced for A300 crews, with training before January 1980 flights (early January 1980; exact date NMD)."
       },
       {
         "questionId": "what-deviation",
         "q": "WHAT — What deviation is observed?",
         "is": "Temporary red/pink fluid or spotting resembling reddish sweat.",
-        "no": "NMD — close comparisons with other skin changes are not documented.",
+        "no": "",
         "di": "",
         "ch": ""
       },
@@ -78,16 +78,16 @@
       {
         "questionId": "where-location",
         "q": "WHERE — On which aircraft, carrier or routes is the deviation reported?",
-        "is": "Most reports involve Eastern A300 flights; a few involve other Eastern aircraft. A300s frequently served over-water routes.",
-        "no": "No reported cases on Eastern DC9 aircraft or at other airlines. Specific route-by-route comparisons: NMD.",
-        "di": "",
-        "ch": ""
+        "is": "Most reports are on Eastern A300 flights; a few involve other Eastern aircraft.",
+        "no": "No reported cases on Eastern DC9 aircraft or other airlines; exact route-by-route comparison NMD.",
+        "di": "Many Eastern A300s replaced older aircraft on routes involving travel over water, where water-evacuation life-vest demonstrations are used. This is a useful route/equipment difference to check against each affected and unaffected flight, not proof by itself.",
+        "ch": "New life-vest demonstration equipment entered A300 service in early January 1980. New cleaning products, coatings and cart-rack plastics are additional candidate A300 Changes (dates NMD). Experimental air-filter cartridges were still being tested and entered full service later than the deviation; the date does not fit the onset."
       },
       {
         "questionId": "where-on-object",
         "q": "WHERE — Where on the affected people is the deviation seen?",
         "is": "Exposed skin, including face, hands and neck.",
-        "no": "NMD — other body sites are not established as factual IS NOTs.",
+        "no": "",
         "di": "",
         "ch": ""
       },
@@ -99,7 +99,7 @@
         "questionId": "when-first-observed",
         "q": "WHEN — When was the deviation first observed?",
         "is": "The case was reported in early March 1980; the first occurrence date is NMD.",
-        "no": "NMD — do not treat the report publication date as the first occurrence.",
+        "no": "",
         "di": "",
         "ch": ""
       },
@@ -107,17 +107,17 @@
         "questionId": "when-pattern",
         "q": "WHEN — What pattern has been observed since the first occurrence?",
         "is": "Several reported episodes; symptoms described as short-lived.",
-        "no": "NMD — frequency and unaffected intervals are not established.",
+        "no": "",
         "di": "",
         "ch": ""
       },
       {
         "questionId": "when-description",
         "q": "WHEN — When in the flight lifecycle does the deviation appear?",
-        "is": "Within approximately the first 30 minutes after takeoff on affected flights.",
-        "no": "NMD — onset before takeoff or in later flight phases is not explicitly ruled out.",
-        "di": "",
-        "ch": ""
+        "is": "Reported onset is invariably within approximately the first 30 minutes after takeoff on affected flights.",
+        "no": "No reported first-onset episodes beyond approximately 30 minutes after takeoff.",
+        "di": "The predeparture safety demonstration is a concentrated equipment-handling opportunity before the early-flight symptom window; comparable later-flight activity does not involve that same initial demonstration. Match demonstration timing to each affected episode.",
+        "ch": "The departure demonstration was a repeating activity; the relevant dated Change is the replacement/introduction of demonstration life vests in early January 1980, not a new change at the 30-minute mark."
       },
       {
         "band": "EXTENT",
@@ -127,7 +127,7 @@
         "questionId": "extent-population",
         "q": "EXTENT — How many people or flights are affected?",
         "is": "Most reported cases involve A300 operations; total affected people and flights: NMD.",
-        "no": "NMD — no denominator or quantified unaffected population.",
+        "no": "",
         "di": "",
         "ch": ""
       },
@@ -135,7 +135,7 @@
         "questionId": "extent-size",
         "q": "EXTENT — How much red/pink fluid or spotting is present in one occurrence?",
         "is": "Reported red/pink spotting or fluid; quantitative amount: NMD.",
-        "no": "NMD — no factual small/large close comparison.",
+        "no": "",
         "di": "",
         "ch": ""
       },
@@ -143,13 +143,114 @@
         "questionId": "extent-count",
         "q": "EXTENT — How many occurrences per affected person?",
         "is": "NMD — occurrences per person not supplied.",
-        "no": "NMD — no established count-based IS NOT.",
+        "no": "",
         "di": "",
         "ch": ""
       }
     ],
-    "causes": [],
-    "likelyCauseId": null,
+    "causes": [
+      {
+        "id": "cause-red-sweat-demonstration-vest-ink",
+        "suspect": "New demonstration life vests",
+        "accusation": "Shed flaking red ink while handled during the safety demonstration",
+        "impact": "Red pigment transfers to working attendants' exposed skin and perspiration spreads it into apparently red sweat shortly after takeoff",
+        "summaryText": "Newly introduced demonstration life vests shed red ink on handlers; perspiration smears the transferred pigment into the reported red/pink spots. This is the historical confirmed cause from the separate post-exercise reveal.",
+        "confidence": "high",
+        "evidence": "POST-EXERCISE REVEAL / historical case outcome (not starting evidence): Flaking red ink from new demonstration vests transferred during over-water safety demonstrations; perspiration spread the pigment. Reports stopped after the demonstration vests were removed. For teaching, distinguish the Most Probable Cause from confirmed True Cause. Confirmation options: verify which crews/aircraft handled the new vests; observe transfer during a controlled demonstration; conduct a safe materials-transfer experiment; or replace/remove the defective demonstration equipment and monitor for nonrecurrence. Only the historical removal/outcome is reported, not any live testing by this workbook.",
+        "findings": {
+          "what-object": {
+            "mode": "assumption",
+            "note": "Working attendants' vest handling explains their exposure, unlike pilots/passengers. Check whether the unaffected lead attendants did not handle these same demonstration vests; that role-level comparison is not fully documented in the learner facts."
+          },
+          "where-location": {
+            "mode": "assumption",
+            "note": "Over-water A300 safety demonstrations give a specific path for vest contact and the A300 concentration; verify vest distribution on the few affected other Eastern aircraft and the unaffected DC9/other-carrier flights. Aircraft type itself is not a cause."
+          },
+          "when-description": {
+            "mode": "yes",
+            "note": "Vest contact occurs at the departure demonstration, then perspiration can smear deposited ink soon after takeoff; this fits the first-30-minute onset rather than requiring a later in-flight exposure. The separate historical reveal confirms the red-ink transfer mechanism."
+          }
+        },
+        "editing": false,
+        "testingOpen": true
+      },
+      {
+        "id": "cause-red-sweat-cleaning-residue",
+        "suspect": "A300 cabin cleaning products",
+        "accusation": "Left red-tinted residue on crew-contacted surfaces",
+        "impact": "The residue transfers to working attendants' exposed skin and becomes visible as perspiration spreads it",
+        "summaryText": "A newly used A300 cleaner might deposit transferable red residue on surfaces handled by cabin crew, becoming visible with perspiration.",
+        "confidence": "low",
+        "evidence": "UNCONFIRMED learner alternative. No evidence in the available participant dossier establishes that a cleaning product contains red pigment, affects only demonstrators, or was used on all affected aircraft. Compare actual products, dates, surfaces and affected/unaffected flights before treating this as causal.",
+        "findings": {
+          "what-object": {
+            "mode": "assumption",
+            "note": "Requires working attendants, but not pilots, passengers or lead attendants, to contact the residue-bearing surfaces. The role/exposure split has not been established."
+          },
+          "where-location": {
+            "mode": "assumption",
+            "note": "A300-specific cleaner might explain many A300 reports, but needs evidence that the affected non-A300 Eastern flights also used it and the DC9/other-carrier comparison flights did not."
+          },
+          "when-description": {
+            "mode": "assumption",
+            "note": "Requires contact shortly before takeoff and red residue that becomes visible rapidly with sweat; neither the contact timing nor red-staining chemistry has been demonstrated."
+          }
+        },
+        "editing": false,
+        "testingOpen": false
+      },
+      {
+        "id": "cause-red-sweat-cart-plastic",
+        "suspect": "New A300 service-cart or rack plastics",
+        "accusation": "Released transferable colored residue when cabin crew handled service equipment",
+        "impact": "Color transfers to exposed skin during preparation and becomes visible as the crew perspire",
+        "summaryText": "New cart/rack plastics might transfer colored material to attendants handling equipment and appear as red spotting after departure.",
+        "confidence": "low",
+        "evidence": "UNCONFIRMED learner alternative. An A300 equipment difference could generate a hypothesis, but the material must actually shed red pigment, and the hypothesis must still fit other Eastern aircraft, unaffected lead attendants, and onset timing.",
+        "findings": {
+          "what-object": {
+            "mode": "assumption",
+            "note": "Assumes only affected working attendants handled the residue-bearing carts/racks and unaffected lead attendants did not; verify actual handling roles."
+          },
+          "where-location": {
+            "mode": "assumption",
+            "note": "Needs evidence of the same plastic on a few affected non-A300 flights but absence on Eastern DC9 and unaffected carriers; no such fleet inventory is supplied."
+          },
+          "when-description": {
+            "mode": "assumption",
+            "note": "Requires handling the cart/rack before or immediately after takeoff rather than later during cabin service, plus evidence of red pigment transfer."
+          }
+        },
+        "editing": false,
+        "testingOpen": false
+      },
+      {
+        "id": "cause-red-sweat-air-filter-ozone",
+        "suspect": "Experimental A300 air-filter cartridges",
+        "accusation": "Failed to screen ozone, producing an airborne skin reaction",
+        "impact": "Cabin-air exposure would supposedly cause red/pink skin moisture during flight",
+        "summaryText": "An experimental air-filter change might alter cabin air and cause a skin reaction, but this explanation conflicts with crew specificity and with the dated filter rollout.",
+        "confidence": "low",
+        "evidence": "REJECTED by destructive testing and timing. Instructor guidance says the cartridges were still being tested and were not fully implemented until after the deviation began. A later rollout cannot explain the earlier reports, regardless of whether ozone could produce this visible effect.",
+        "findings": {
+          "what-object": {
+            "mode": "fail",
+            "note": "A shared cabin-air exposure would not naturally explain why affected working attendants develop red spots while nearby pilots, lead attendants and passengers do not. There is no supported role-specific ozone mechanism."
+          },
+          "where-location": {
+            "mode": "assumption",
+            "note": "Assumes the trial cartridges are unique to affected A300s and also somehow account for the few affected non-A300 Eastern aircraft; verify installations rather than equating 'A300' with a causal filter."
+          },
+          "when-description": {
+            "mode": "fail",
+            "note": "Cabin air would remain present beyond the first 30 minutes, while the deviation is reported only at early onset. More decisively, the filter implementation occurred after the problem started, so the dated Change cannot be causal."
+          }
+        },
+        "editing": false,
+        "testingOpen": false
+      }
+    ],
+    "likelyCauseId": "cause-red-sweat-demonstration-vest-ink",
     "steps": {
       "items": [],
       "drawerOpen": false
