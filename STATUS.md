@@ -9,14 +9,14 @@ _Last updated: 2026-11-18 (audit/hardening branch `claude/intake-repo-audit-qii7
 ## Product context
 
 - Typical class: about **22 Students** in about **5 teams**. Individual (one workspace per Student) work must remain a first-class option.
-- The repository is **private** (changed 2026-11-18). Protected Case Study source is therefore no longer published on GitHub; the deployed-site boundary (`dist/` allowlist, server-only manifest) still applies.
+- The repository is **public again** (2026-11-19) so CodeQL and Dependency Review can run while the audit work merges; the owner plans to make it private later with proper access. While public, the authored Case Study source in `templates/*.json` is readable on GitHub.
 - Pre-production: no external production users; breaking cleanup is allowed when documented.
 
 ## Current phase
 
 The secure Classroom foundation (#288–#296), live-class management (#312), staged-simulation engine (#313), universal targets (#318), debrief comparison (#319), join/mobile polish (#320), compatibility reset (#328), Administration/Maintenance (#329), and the startup hub (#330) are **merged and published**.
 
-Active work: **repository audit follow-through** on `claude/intake-repo-audit-qii780` (not yet merged to `main`):
+Active work: **repository audit follow-through** on `claude/intake-repo-audit-qii780` (PR to `main` open; merging once required checks pass):
 
 - done: documentation consolidation (this file, playbooks, verbatim archive, drift guards); EULA data-usage wording; versioned advisory-locked schema; retry-safe repository init; real-Postgres (PGlite) tests; class-creation password; rate limits;
 - **fixed production bugs found by the real-SQL tests**: Instructor team assignment and Student "Mark Ready" both failed in Postgres because of untyped SQL parameters (they had only ever run against in-memory fakes);
@@ -53,12 +53,12 @@ Worked one at a time, in order:
 | PR | Status |
 | --- | --- |
 | #336 Add protected staged asset delivery | Draft; was stacked on #335 (merged) — retarget/refresh against `main` before continuing |
-| #337 / #309 / #311 Dependabot minor updates | #337 auto-merges when CI passes; #309 and #311 then need "Update branch" + merge one at a time (main requires up-to-date branches) |
+| #337 / #309 / #311 / #338 / #339 Dependabot minor and security updates | Merge one at a time after the audit PR (main requires up-to-date branches) |
 | #281 eslint 10, #280 jsdom 30, #310 eslint-plugin-jsdoc 65 | Major bumps — do together in one tooling PR (see lint risk below) |
 
 ## Pending human / environment actions
 
-- **Merges to `main` are blocked (since the repo became private, 2026-11-18):** CodeQL and Dependency Review now fail with "not supported on this repository … GitHub Advanced Security" and appear to be required checks. Decide one of: enable GitHub Code Security / Advanced Security for the private repo; or remove those two from the `main` ruleset and replace them with free equivalents (e.g. `npm audit --omit=dev --audit-level=high` in CI). Until then #309/#311/#337 and this branch cannot merge.
+- **Before making the repo private again:** decide how CodeQL and Dependency Review will run. On a private repo without GitHub Code Security they fail with "not supported … GitHub Advanced Security" and block every merge (observed 2026-11-18). Options: enable GitHub Code Security, or remove those two from the `main` required checks and replace them with free equivalents (e.g. `npm audit --omit=dev --audit-level=high` in CI).
 
 - Configure Vercel env vars listed under blocker 1. Optional: `INTAKE_CLASS_CREATION_PASSWORD` (default `kepnertregoe`).
 - Enable GitHub "Automatically delete head branches" and prune the ~100 stale `codex/*` branches (verify each has no open PR first).
