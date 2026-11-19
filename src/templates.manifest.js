@@ -2784,7 +2784,7 @@ const manifest = [
         "evMetrics": false,
         "evRepro": false,
         "evOther": true,
-        "containStatus": "stabilized",
+        "containStatus": "",
         "containDesc": "Removing the new demonstration life vests stopped the reports of red sweat.",
         "commCadence": "",
         "commLog": [],
@@ -2898,7 +2898,7 @@ const manifest = [
           "impact": "Ink transfers to exposed skin; perspiration smears it, making sweat appear red",
           "summaryText": "Flaking red ink from the new demonstration vests transferred during safety demonstrations and was spread by perspiration.",
           "confidence": "high",
-          "evidence": "True Cause: The new life vests used in cabin safety demonstrations shed red ink onto the flight attendants. Sweat spread the pigment. Reports of red sweat stopped when the vests were removed.",
+          "evidence": "True Cause: The new life vests used in cabin safety demonstrations shed red ink onto the flight attendants. Sweat spread the pigment. Reports of red sweat stopped when the vests were removed. Confirmation options: verify handling roles, observe ink transfer, test the vest material, or remove the vests and monitor.",
           "findings": {
             "what-object": {
               "mode": "assumption",
