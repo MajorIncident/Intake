@@ -163,6 +163,54 @@ test('Cases menu opens the grouped Case Library and shows learner-safe in-app ev
   expect(pageErrors).toEqual([]);
 });
 
+test('Case Library renders original process schematics accessibly without image requests', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === 'chromium-mobile', 'Mobile Cases launcher is tested through the separate navigation experience.');
+  const errors = watchPageErrors(page);
+  const assetRequests = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (/\.(?:png|jpe?g|webp|svg|pdf)$/i.test(url.pathname) || url.pathname.includes('/assets/')) {
+      assetRequests.push(request.url());
+    }
+  });
+  await startFresh(page);
+  await enterStandalone(page);
+  await page.getByRole('button', { name: 'Cases' }).click();
+  await page.getByRole('menuitem', { name: /Open Case Library/ }).click();
+  const drawer = page.locator('#templatesDrawer');
+  await drawer.locator('[data-template-id="microcomputer-cabinets"]').click();
+
+  const figure = page.locator('#caseLibraryReaderSections figure.case-library__diagram');
+  await expect(figure).toBeVisible();
+  await expect(figure.locator('figcaption')).toContainText('Two parallel factory flows');
+  await expect(figure.locator('ol')).toHaveCount(2);
+  await expect(figure.locator('ol').first().locator('li')).toHaveCount(5);
+  await expect(figure.locator('ol').last().locator('li')).toHaveCount(5);
+  await expect(figure).not.toContainText('ineffective');
+  await expect(page.locator('#templatesModeSection')).toBeHidden();
+
+  await drawer.locator('[data-template-id="tamworth-petrochemical"]').click();
+  await expect(figure.locator('ol')).toHaveCount(3);
+  await expect(figure).toContainText('Interleaf paper');
+  await expect(figure).not.toContainText('chemical contaminants');
+  await expect(figure.locator('img, iframe, a, script')).toHaveCount(0);
+
+  await drawer.locator('[data-template-id="red-sweat-mystery"]').click();
+  await expect(figure.locator('ol')).toHaveCount(3);
+  await expect(figure).toContainText('Lead flight attendants');
+  await expect(figure).not.toContainText('red ink');
+  await drawer.locator('[data-template-id="paytrix"]').click();
+  await expect(figure.locator('ol')).toHaveCount(2);
+  await expect(figure).toContainText('AuthService');
+  await expect(figure).toContainText('500–700 ms');
+  await expect(figure).not.toContainText('adaptive risk scoring');
+  await expect(figure.locator('img, iframe, a, script')).toHaveCount(0);
+
+  await expectNoBlockingA11yViolations(page);
+  expect(assetRequests).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test('Standalone file export/import round trip restores Intake data and workflow mode', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === 'chromium-mobile', 'Desktop File menu journey; mobile primary interaction is covered separately.');
   const pageErrors = watchPageErrors(page);

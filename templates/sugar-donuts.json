@@ -612,7 +612,24 @@
       },
       {
         "heading": "The production process",
-        "body": "Dough travels through equipment for forming and proofing, moves through cutters and edge controls, and eventually passes through cooking, finishing and Quality Control. The factory has different product lines, including a sugar-donut line. Understanding where each operation occurs helps you decide which people, equipment and product to observe."
+        "body": "Dough travels through equipment for forming and proofing, moves through cutters and edge controls, and eventually passes through cooking, finishing and Quality Control. The factory has different product lines, including a sugar-donut line. Understanding where each operation occurs helps you decide which people, equipment and product to observe.",
+        "diagram": {
+          "kind": "flow",
+          "caption": "Simplified orientation of the sugar-donut production path, from dough through Quality Control. This drawing is new, not an original workbook exhibit.",
+          "lanes": [
+            {
+              "label": "Sugar-donut line",
+              "steps": [
+                "Dough strip",
+                "Proofing and edge control",
+                "Cutting",
+                "Hot-oil cooking",
+                "Sugaring",
+                "Quality Control"
+              ]
+            }
+          ]
+        }
       },
       {
         "heading": "Equipment you can investigate",

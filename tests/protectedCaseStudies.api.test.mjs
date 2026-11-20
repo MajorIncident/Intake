@@ -249,3 +249,43 @@ test('Protected Case Study handlers reject unauthenticated and unsupported metho
   assert.equal(write.statusCode, 405);
   assert.equal(write.headers.Allow, 'GET, POST');
 });
+
+test('authorized Student catalog sends only source-safe diagram primitives, never remote assets or Full', async () => {
+  const { classrooms } = await setupClassroom();
+  const manifest = [{
+    ...CASES[0],
+    participantCase: {
+      title: 'Original flow',
+      sections: [{
+        heading: 'How the lines operate',
+        body: 'Separate wash tanks with shared supply.',
+        url: 'https://attacker.invalid/full-case',
+        diagram: {
+          kind: 'flow',
+          caption: 'Original author-drawn comparison',
+          path: 'templates/assets/source-figure.png',
+          lanes: [
+            { label: 'Line 1', steps: ['Wash', 'Paint', 'Inspect'], rawUrl: 'https://attacker.invalid/picture' }
+          ]
+        }
+      }]
+    }
+  }];
+  const handler = studentCaseStudiesHandler({
+    getRepository: async () => classrooms,
+    manifest
+  });
+  const res = response();
+  await handler(request('GET', STUDENT), res);
+  assert.equal(res.statusCode, 200);
+  const returned = res.body.caseStudies[0];
+  assert.equal('state' in returned, false);
+  assert.deepEqual(returned.participantCase.sections[0].diagram, {
+    kind: 'flow',
+    caption: 'Original author-drawn comparison',
+    lanes: [{ label: 'Line 1', steps: ['Wash', 'Paint', 'Inspect'] }]
+  });
+  assert.equal(JSON.stringify(returned).includes('attacker.invalid'), false);
+  assert.equal(JSON.stringify(returned).includes('templates/assets'), false);
+  assert.equal(JSON.stringify(returned).includes('answer-key-content'), false);
+});

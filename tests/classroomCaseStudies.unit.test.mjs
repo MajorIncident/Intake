@@ -120,7 +120,16 @@ test('student catalog exposes only sanitized authorized participant reading and 
         state: { secret: 'Never expose this' },
         participantCase: {
           title: 'Case for students',
-          sections: [{ heading: 'Facts', body: 'A measured deviation.' }]
+          sections: [{
+            heading: 'Facts',
+            body: 'A measured deviation.',
+            diagram: {
+              kind: 'flow',
+              caption: 'Original participant illustration',
+              sourceUrl: 'https://attacker.invalid/private',
+              lanes: [{ label: 'Line 1', steps: ['Wash', 'Paint', 'Inspect'], url: 'https://attacker.invalid/asset' }]
+            }
+          }]
         }
       }]
     })
@@ -129,10 +138,42 @@ test('student catalog exposes only sanitized authorized participant reading and 
   const records = controller.getCatalog();
   assert.equal(records[0].libraryGroup, 'ats');
   assert.equal(records[0].participantCase.sections[0].body, 'A measured deviation.');
+  const diagram = records[0].participantCase.sections[0].diagram;
+  assert.equal(diagram.kind, 'flow');
+  assert.deepEqual(diagram.lanes[0].steps, ['Wash', 'Paint', 'Inspect']);
+  assert.equal(JSON.stringify(diagram).includes('attacker.invalid'), false, 'unknown URL fields must not survive sanitization');
   assert.equal('state' in records[0], false);
   records[0].participantCase.sections[0].body = 'tampered';
+  diagram.lanes[0].steps[0] = 'tampered';
   assert.equal(controller.getCatalog()[0].participantCase.sections[0].body, 'A measured deviation.');
+  assert.equal(controller.getCatalog()[0].participantCase.sections[0].diagram.lanes[0].steps[0], 'Wash');
   controller.disconnect();
   assert.deepEqual(controller.getCatalog(), []);
 });
 
+
+test('malformed participant flow diagrams fail closed but preserve safe text', async () => {
+  const controller = createClassroomCaseStudiesController({
+    fetchImpl: async () => response(200, {
+      caseStudies: [{
+        id: 'bad-diagram',
+        name: 'Case',
+        description: 'Only the case text should survive',
+        templateKind: 'case-study',
+        supportedModes: ['intake'],
+        participantCase: {
+          title: 'Case',
+          sections: [{ heading: 'Facts', body: 'Read this text.', diagram: {
+            kind: 'flow',
+            caption: 'Untrusted',
+            lanes: [{ label: 'Line 1', steps: ['Only one step'] }]
+          } }]
+        }
+      }]
+    })
+  });
+  assert.equal(await controller.connectStudent(STUDENT), true);
+  const section = controller.getCatalog()[0].participantCase.sections[0];
+  assert.equal(section.body, 'Read this text.');
+  assert.equal('diagram' in section, false);
+});

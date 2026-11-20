@@ -101,6 +101,8 @@ The authorized Instructor catalog may return all **participant** `participantCas
 
 
 
+The optional learner `diagram` projection is a bound, source-safe text-only `kind: flow` schematic (`caption`, `lanes[].label`, `lanes[].steps`). Project only those known primitives from a validated source and filter the enclosing `reveal:true` section before serializing; never pass through remote `url`, file paths, HTML or image bytes. #316 staged source image/document asset authorization remains a **separate server route** with its own session and cumulative release enforcement.
+
 - `api/protected-case-studies.manifest.js` is server-only generated content. Never import it from browser runtime modules.
 - Instructor `/api/classes/case-studies` access is scoped by `getClassByInstructor()`.
 - Student `/api/classes/case-studies/student` access is scoped by `getStudentContext()` using the already-issued classroom workspace capability; do not accept a Student workspace selector or Standalone collaboration capability as a substitute.

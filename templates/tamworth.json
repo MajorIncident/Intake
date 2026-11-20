@@ -586,7 +586,37 @@
       },
       {
         "heading": "Film formats and packaging",
-        "body": "The film formats have different handling and packaging arrangements. Sheet film is separated using interleaf paper, unlike the roll and film-pack formats. Tamworth has also introduced a newer zip-top package. Packaging changes and supplier changes are among several events that investigators have been asked to consider, but their significance is not yet established."
+        "body": "The film formats have different handling and packaging arrangements. Sheet film is separated using interleaf paper, unlike the roll and film-pack formats. Tamworth has also introduced a newer zip-top package. Packaging changes and supplier changes are among several events that investigators have been asked to consider, but their significance is not yet established.",
+        "diagram": {
+          "kind": "flow",
+          "caption": "Format comparison based on the participant material. Follow the three products to see which handles sheet-separating paper.",
+          "lanes": [
+            {
+              "label": "Sheet film",
+              "steps": [
+                "Hi-Grade 202 sheet film",
+                "Interleaf paper between sheets",
+                "Boxed film supplied to dealers"
+              ]
+            },
+            {
+              "label": "Roll film",
+              "steps": [
+                "Hi-Grade 202 roll film",
+                "Film on rolls",
+                "Supplied to dealers"
+              ]
+            },
+            {
+              "label": "Film-pack",
+              "steps": [
+                "Hi-Grade 202 film-pack",
+                "Film-pack format",
+                "Supplied to dealers"
+              ]
+            }
+          ]
+        }
       },
       {
         "heading": "Manufacturing and supplier history",

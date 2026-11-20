@@ -25,6 +25,28 @@ function validCapability(value) {
   return typeof value === 'string' && CAPABILITY_PATTERN.test(value.trim());
 }
 
+/**
+ * Accept only accessible participant-authored schematic text. This is not an
+ * asset URL or a Classroom release decision. Unknown network fields are lost.
+ * @param {unknown} input - Untrusted catalog section diagram.
+ * @returns {object|null} A safe immutable-by-value diagram or null.
+ */
+function sanitizeReaderDiagram(input) {
+  const short = value => typeof value === 'string' && value.trim() && value.length <= 120;
+  if (!input || typeof input !== 'object' || Array.isArray(input)
+    || input.kind !== 'flow'
+    || typeof input.caption !== 'string' || !input.caption.trim() || input.caption.length > 250
+    || !Array.isArray(input.lanes) || input.lanes.length < 1 || input.lanes.length > 4) return null;
+  const lanes = [];
+  for (const lane of input.lanes) {
+    if (!lane || typeof lane !== 'object' || Array.isArray(lane) || !short(lane.label)
+      || !Array.isArray(lane.steps) || lane.steps.length < 2 || lane.steps.length > 7
+      || !lane.steps.every(short)) return null;
+    lanes.push({ label: lane.label, steps: [...lane.steps] });
+  }
+  return { kind: 'flow', caption: input.caption, lanes };
+}
+
 function sanitizeCatalog(records) {
   if (!Array.isArray(records)) return [];
   return records
@@ -55,7 +77,10 @@ function sanitizeCatalog(records) {
           ).map(section => ({
             heading: section.heading,
             body: section.body,
-            ...(section.reveal === true ? { reveal: true } : {})
+            ...(section.reveal === true ? { reveal: true } : {}),
+            ...(sanitizeReaderDiagram(section.diagram)
+              ? { diagram: sanitizeReaderDiagram(section.diagram) }
+              : {})
           }))
         }
         : null

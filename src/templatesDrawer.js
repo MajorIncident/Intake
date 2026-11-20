@@ -331,6 +331,39 @@ function updateModeLockState() {
   updateApplyButtonState();
 }
 
+/**
+ * Render an original participant-source schematic as semantic text lists.
+ * No copied source images, remote URLs, HTML insertion or browser asset fetch.
+ * @param {object} diagram - Validated optional flow map.
+ * @returns {HTMLElement|null} Accessible figure or null when unavailable.
+ */
+function renderParticipantDiagram(diagram) {
+  if (diagram?.kind !== 'flow' || !Array.isArray(diagram.lanes) || !diagram.lanes.length) return null;
+  const figure = document.createElement('figure');
+  figure.className = 'case-library__diagram';
+  const caption = document.createElement('figcaption');
+  caption.textContent = diagram.caption;
+  figure.appendChild(caption);
+  for (const lane of diagram.lanes) {
+    if (!lane || !Array.isArray(lane.steps) || lane.steps.length < 2) continue;
+    const group = document.createElement('div');
+    group.className = 'case-library__diagram-lane';
+    const label = document.createElement('h5');
+    label.textContent = lane.label;
+    const steps = document.createElement('ol');
+    steps.className = 'case-library__diagram-steps';
+    for (const step of lane.steps) {
+      if (typeof step !== 'string') continue;
+      const item = document.createElement('li');
+      item.textContent = step;
+      steps.appendChild(item);
+    }
+    group.append(label, steps);
+    figure.appendChild(group);
+  }
+  return figure.querySelector('li') ? figure : null;
+}
+
 function renderParticipantCase() {
   if (!caseLibraryReader || !caseLibraryReaderSections || !caseLibraryReaderTitle) return;
   caseLibraryReader.hidden = !caseLibraryView;
@@ -361,6 +394,8 @@ function renderParticipantCase() {
       const paragraph = document.createElement('p');
       paragraph.textContent = section.body;
       disclosure.append(summary, paragraph);
+      const figure = renderParticipantDiagram(section.diagram);
+      if (figure) disclosure.appendChild(figure);
       caseLibraryReaderSections.appendChild(disclosure);
       continue;
     }
@@ -371,6 +406,8 @@ function renderParticipantCase() {
     const paragraph = document.createElement('p');
     paragraph.textContent = section.body;
     block.append(heading, paragraph);
+    const figure = renderParticipantDiagram(section.diagram);
+    if (figure) block.appendChild(figure);
     caseLibraryReaderSections.appendChild(block);
   }
 }

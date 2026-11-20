@@ -4,7 +4,7 @@ This is the **single live status document** for KT Intake. Other docs describe c
 
 Update it at every durable checkpoint and before handoff — see [`docs/playbooks/status-update.md`](docs/playbooks/status-update.md). Always re-verify against GitHub (main HEAD, open PRs/issues) before trusting it.
 
-_Last updated: 2026-11-19/20 (#353 PR #354 Case Library reader-first integrated with latest main #359; exact-head CI pending; active pilot load changes preserved)._
+_Last updated: 2026-11-20 (#353 / #355 PR #360: five-case original schematics integrated into latest reader-first #354 + main; exact-head checks pending)._
 
 ## Product context
 
@@ -41,6 +41,14 @@ The **repository audit follow-through** merged via PR #344 (`41f002e`), followed
 - **KT cross-repo provenance:** [KT issue #574](https://github.com/MajorIncident/kt-application-coach/issues/574) / [PR #575](https://github.com/MajorIncident/kt-application-coach/pull/575) record Paytrix as Intake-native MIM in a non-canonical companion index. No official PSDM/ATS registry or Skill rules were changed.
 - **Cold restart:** refresh issue #353, PR #354 current head/checks and this file. Continue with docs/anchor, manifest/gate verification, UI smoke, update the PR and master issue. Explicit user merge decision required; no silent production rollout.
 
+## Case Library T2.1: original learner process schematics (#355 / PR #360)
+
+- **Branch/PR:** `feature/355-original-participant-schematics`, [PR #360](https://github.com/MajorIncident/Intake/pull/360), stacked on [reader-first PR #354](https://github.com/MajorIncident/Intake/pull/354) at `13948a5`; **neither PR is merged at this checkpoint**. Merge #354 first, then retarget/revalidate #360. Main `62cd9da` already includes protected staged asset engine #316.
+- **Implemented:** optional bounded `participantCase.sections[].diagram` `kind: flow` with caption and ordered lanes; source-backed new schematic diagrams for **all five currently authored cases**: Microcomputer Cabinets (two lines), Tamworth (three film formats), Square Donuts (sugar-donut manufacturing path), Red Sweat (factual affected/unaffected-group comparisons), and Paytrix (authorization latency evidence paths). Semantic `figure`/`figcaption`/`ol`, accessible responsive CSS, no external requests, no copied workbook art. Server and Classroom client allow-list/sanitize diagram text; staged `simulation` and `reveal:true` guards unchanged.
+- **Tests authored:** Student GET safe-primitives/no URL/answer state, client clone/malformed shape rejection, DOM case coverage without source spoilers, and Playwright/axe/no asset fetch. Both manifests edited alongside authored source; **new exact-head CI and browser gate are pending**, no deploy or original-figure rights acceptance.
+- **Still outstanding:** official source graphic rights and secure in-page original images/pages (#355), first production staged case #317, remaining 46 official source cases #356+ and source Full audit #348. Do not claim complete participant packet or commercially approved media from these five original schematic fallbacks.
+- **Cold restart:** inspect #354 / #360 refs, current main, both PR check-runs, issue #353 and #355. Fix CI if required; after #354 merge retarget #360 and re-run exact-head gates before owner merge decision.
+
 ## Pilot blockers (Student / Instructor modes for a real class)
 
 Worked one at a time, in order:
@@ -60,6 +68,7 @@ Worked one at a time, in order:
 | --- | --- | --- |
 | #317 First production staged KT Case Study | Open, blocked by #316 | Needs authoritative source material |
 | #340 Pilot blocker 1: environment + real smoke test | Open | Human action |
+| #355 Case Library rich media | Open | #316 engine merged; PR #360 supplies original learner text schematics, not licensed original figures |
 | #353 Case Library program | Open | Reader-first PR #354, original schematic child PR #360; Full cases and original exhibit rights pending |
 | #348 Existing Case Study completeness audit | Open | Follow-up quality backlog; apply new KT authoring playbook before case changes |
 
@@ -67,6 +76,7 @@ Worked one at a time, in order:
 
 | PR | Status |
 | --- | --- |
+| #360 Original participant schematics T2.1 | Stacked on #354; new exact-head checks and merge order pending |
 | #354 Case Library reader-first cases | Open, integrated 2026-11-20 main including #359; exact-head checks/owner merge decision pending |
 | #359 Pilot blocker 6 load reduction | Draft; local quality 463 tests + browser 31 passed / 13 intentional skips |
 | #336 Add protected staged asset delivery | Draft, superseded by merged PR #358 (its contract is `docs/classroom-protected-assets.md` on `main`). Owner may close it. |
