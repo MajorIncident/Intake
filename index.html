@@ -153,6 +153,17 @@ Anchors present:
           </button>
         </div>
       </div>
+      <!-- [feature:case-library] start -->
+      <div class="menu-group">
+        <button type="button" class="menu-trigger" data-menu-target="caseLibraryMenu" data-persistence="local-only" data-summary="exclude" aria-haspopup="true" aria-expanded="false">Cases</button>
+        <div class="menu-panel" id="caseLibraryMenu" role="menu" aria-label="Cases" hidden>
+          <button type="button" class="menu-item" id="caseLibraryMenuBtn" role="menuitem" aria-haspopup="dialog" aria-controls="templatesDrawer" aria-expanded="false" data-open-case-library data-persistence="local-only" data-summary="exclude">
+            <span class="menu-item__label">Open Case Library</span>
+            <span class="menu-shortcut">PSDM · ATS · Legacy · MIM</span>
+          </button>
+        </div>
+      </div>
+      <!-- [feature:case-library] end -->
       <div class="menu-group" data-experience-surface="intake-control">
         <button type="button" class="menu-trigger" data-menu-target="actionsMenu" aria-haspopup="true" aria-expanded="false">Actions</button>
         <div class="menu-panel" id="actionsMenu" role="menu" aria-label="Actions" hidden>
@@ -207,14 +218,40 @@ Anchors present:
                 <h3 id="templatesResourceHeading">Quick start templates</h3>
                 <p id="templatesResourceHelp">Select one to preview the fields it fills.</p>
               </div>
+              <!-- [feature:case-library-tools] start -->
+              <div class="case-library__tools" id="caseLibraryTools" data-persistence="local-only" data-summary="exclude" hidden>
+                <label for="caseLibrarySearch" data-persistence="local-only" data-summary="exclude">Find a case</label>
+                <input type="search" id="caseLibrarySearch" placeholder="Search available cases" autocomplete="off" data-persistence="local-only" data-summary="exclude" />
+                <div class="case-library__filters" id="caseLibraryFilters" role="group" aria-label="Case source group">
+                  <button type="button" data-case-group="all" data-persistence="local-only" data-summary="exclude" aria-pressed="true">All</button>
+                  <button type="button" data-case-group="psdm" data-persistence="local-only" data-summary="exclude" aria-pressed="false">PSDM</button>
+                  <button type="button" data-case-group="ats" data-persistence="local-only" data-summary="exclude" aria-pressed="false">ATS</button>
+                  <button type="button" data-case-group="legacy" data-persistence="local-only" data-summary="exclude" aria-pressed="false">Legacy</button>
+                  <button type="button" data-case-group="mim" data-persistence="local-only" data-summary="exclude" aria-pressed="false">MIM</button>
+                </div>
+                <p class="case-library__count" id="caseLibraryCount" role="status" aria-live="polite"></p>
+              </div>
+              <!-- [feature:case-library-tools] end -->
               <div class="templates-groups" id="templatesList" aria-label="Template and Case Study choices"></div>
               <p class="templates-type-hint" id="templatesTypeHint" aria-live="polite"></p>
+              <!-- [feature:case-library-reader] start -->
+              <section class="case-library__reader" id="caseLibraryReader" aria-labelledby="caseLibraryReaderTitle" data-persistence="local-only" data-summary="exclude" hidden>
+                <p class="case-library__eyebrow">Step 1 · Read the participant case</p>
+                <h3 id="caseLibraryReaderTitle" tabindex="-1">Case briefing</h3>
+                <div class="case-library__sections" id="caseLibraryReaderSections"></div>
+                <div class="case-library__reader-actions">
+                  <button type="button" class="btn" id="caseLibraryContinueBtn" aria-controls="templatesModeSection" aria-expanded="false" data-persistence="local-only" data-summary="exclude" hidden>Continue to analysis options</button>
+                </div>
+              </section>
+              <!-- [feature:case-library-reader] end -->
+
             </section>
             <section class="templates-section" id="templatesModeSection">
               <div class="templates-section__header">
-                <h3>Mode</h3>
-                <p>Decide how much detail to apply from the chosen template.</p>
+                <h3 id="templatesModeTitle">Mode</h3>
+                <p id="templatesModeHelp">Decide how much detail to apply from the chosen template.</p>
               </div>
+              <button type="button" class="case-library__back" id="caseLibraryBackToReadingBtn" aria-controls="caseLibraryReader" data-persistence="local-only" data-summary="exclude" hidden>Back to participant reading</button>
               <div class="templates-modes" id="templatesModeGroup" role="group" aria-label="Template modes">
                 <button type="button" class="templates-mode is-active" data-mode="full" aria-pressed="true">Full</button>
                 <button type="button" class="templates-mode" data-mode="rapid" aria-pressed="false">Rapid</button>

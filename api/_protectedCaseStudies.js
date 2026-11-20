@@ -37,13 +37,28 @@ function requireBearer(req) {
   return token || null;
 }
 
-function catalog(manifest) {
+function catalog(manifest, { includeLaterProblem = false } = {}) {
   return manifest.map(entry => ({
     id: entry.id,
     name: entry.name,
     description: entry.description,
     templateKind: entry.templateKind,
-    supportedModes: [...entry.supportedModes]
+    supportedModes: [...entry.supportedModes],
+    libraryGroup: typeof entry.libraryGroup === 'string' ? entry.libraryGroup : 'mim',
+    // A preview is exclusively learner-stage authored text, never a Full state.
+    // Staged cases receive released material through the existing exercise API.
+    ...(entry.simulation || !entry.participantCase ? {} : {
+      participantCase: {
+        title: entry.participantCase.title,
+        sections: entry.participantCase.sections
+          .filter(section => includeLaterProblem || section.reveal !== true)
+          .map(section => ({
+            heading: section.heading,
+            body: section.body,
+            ...(section.reveal === true ? { reveal: true } : {})
+          }))
+      }
+    })
   }));
 }
 
@@ -58,7 +73,8 @@ function createProtectedCaseStudyHandler({
   manifest,
   authorize,
   unauthorizedMessage,
-  blockPayload = null
+  blockPayload = null,
+  includeLaterProblem = false
 }) {
   return async (req, res) => {
     if (!['GET', 'POST'].includes(req.method)) return methodNotAllowed(res);
@@ -73,7 +89,7 @@ function createProtectedCaseStudyHandler({
       if (req.method === 'GET') {
         return send(res, 200, {
           class: context.classroom,
-          caseStudies: catalog(manifest)
+          caseStudies: catalog(manifest, { includeLaterProblem })
         });
       }
 
@@ -116,7 +132,8 @@ export function instructorCaseStudiesHandler({
       const classroom = await repository.getClassByInstructor(tokenHash);
       return classroom ? { classroom } : null;
     },
-    unauthorizedMessage: 'Class not found.'
+    unauthorizedMessage: 'Class not found.',
+    includeLaterProblem: true
   });
 }
 

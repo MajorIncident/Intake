@@ -222,6 +222,8 @@ function hydrateManifest(entries) {
     name: entry.name,
     description: entry.description,
     templateKind: normalizeTemplateKind(entry.templateKind),
+    libraryGroup: typeof entry.libraryGroup === 'string' ? entry.libraryGroup : null,
+    participantCase: entry.participantCase ? clone(entry.participantCase) : null,
     supportedModes: sanitizeSupportedModes(entry.supportedModes),
     state: normalizeManifestState(entry.state)
   }));
@@ -280,7 +282,13 @@ export function listTemplates() {
     id: template.id,
     name: template.name,
     description: template.description,
-    templateKind: template.templateKind
+    templateKind: template.templateKind,
+    ...(template.templateKind === TEMPLATE_KINDS.CASE_STUDY && template.libraryGroup
+      ? { libraryGroup: template.libraryGroup }
+      : {}),
+    ...(template.templateKind === TEMPLATE_KINDS.CASE_STUDY && template.participantCase
+      ? { participantCase: clone(template.participantCase) }
+      : {})
   }));
 }
 
@@ -301,7 +309,13 @@ export function getTemplateMetadata(templateId) {
     id: template.id,
     name: template.name,
     description: template.description,
-    templateKind: template.templateKind
+    templateKind: template.templateKind,
+    ...(template.templateKind === TEMPLATE_KINDS.CASE_STUDY && template.libraryGroup
+      ? { libraryGroup: template.libraryGroup }
+      : {}),
+    ...(template.templateKind === TEMPLATE_KINDS.CASE_STUDY && template.participantCase
+      ? { participantCase: clone(template.participantCase) }
+      : {})
   };
 }
 

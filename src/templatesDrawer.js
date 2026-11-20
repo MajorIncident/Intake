@@ -40,13 +40,23 @@ const AVAILABILITY_OPTIONS = Object.freeze({ standaloneCaseStudies: publicCaseSt
 let protectedCaseStudiesProvider = null;
 
 function getTemplateRecords() {
+  // Public allowlisted self-study cases include their completed Full source.
+  // In Classroom, catalog identity and learner preview MUST come from the
+  // authorized in-memory server catalog, not a public record with the same ID.
+  if (getActiveExperienceRole() === 'standalone') return publicTemplateRecords;
   const protectedRecords = protectedCaseStudiesProvider?.getCatalog?.() || [];
-  const seen = new Set(publicTemplateRecords.map(record => record.id));
   return [
-    ...publicTemplateRecords,
-    ...protectedRecords.filter(record => record && !seen.has(record.id))
+    ...publicTemplateRecords.filter(record => record.templateKind === TEMPLATE_KINDS.STANDARD),
+    ...protectedRecords.filter(record => record?.templateKind === TEMPLATE_KINDS.CASE_STUDY)
   ];
 }
+
+const CASE_LIBRARY_GROUPS = Object.freeze([
+  { id: 'psdm', title: 'PSDM', help: 'Problem Solving & Decision Making' },
+  { id: 'ats', title: 'ATS', help: 'Analytic Trouble Shooting' },
+  { id: 'legacy', title: 'Legacy', help: 'Earlier KT cases and The New Rational Manager' },
+  { id: 'mim', title: 'MIM', help: 'Major Incident Management cases' }
+]);
 
 const modeRecords = listTemplateModes();
 const modeIndex = new Map(modeRecords.map(mode => [mode.id, mode]));
@@ -69,7 +79,22 @@ let templatesModeSection = null;
 let templatesTeachingNotice = null;
 let templatesDrawerFooter = null;
 let templatesSaveBtn = null;
+let caseLibraryTools = null;
+let caseLibrarySearch = null;
+let caseLibraryFilters = null;
+let caseLibraryCount = null;
+let caseLibraryReader = null;
+let caseLibraryReaderTitle = null;
+let caseLibraryReaderSections = null;
+let caseLibraryContinueBtn = null;
+let caseLibraryBackToReadingBtn = null;
+let templatesModeTitle = null;
+let templatesModeHelp = null;
 let passwordErrorEl = null;
+let caseLibraryView = false;
+let caseLibraryWorking = false;
+let caseLibraryGroup = 'all';
+let caseLibraryQuery = '';
 
 let templatesDrawerOpen = false;
 let templatesDrawerReady = false;
@@ -112,8 +137,24 @@ function getAvailableTemplateRecords() {
  *
  * @returns {void}
  */
-function ensureAvailableSelection() {
+function getVisibleTemplateRecords() {
   const available = getAvailableTemplateRecords();
+  if (!caseLibraryView) return available;
+  return available.filter(template => {
+    if (template.templateKind !== TEMPLATE_KINDS.CASE_STUDY) return false;
+    const group = CASE_LIBRARY_GROUPS.some(item => item.id === template.libraryGroup)
+      ? template.libraryGroup
+      : 'mim';
+    const matchesGroup = caseLibraryGroup === 'all' || group === caseLibraryGroup;
+    const query = caseLibraryQuery.trim().toLocaleLowerCase();
+    const matchesQuery = !query
+      || `${template.name} ${template.description}`.toLocaleLowerCase().includes(query);
+    return matchesGroup && matchesQuery;
+  });
+}
+
+function ensureAvailableSelection() {
+  const available = getVisibleTemplateRecords();
   if (!available.some(template => template.id === selectedTemplateId)) {
     selectedTemplateId = available.length ? available[0].id : null;
   }
@@ -228,7 +269,7 @@ function updateApplyButtonState() {
   const canApply = template
     ? canApplyTemplateForExperience(getActiveExperienceRole(), template.templateKind, AVAILABILITY_OPTIONS)
     : false;
-  const disabled = !canApply || !selectedTemplateId || !selectedModeId;
+  const disabled = !canApply || !selectedTemplateId || !selectedModeId || (caseLibraryView && !caseLibraryWorking);
   templatesApplyBtn.disabled = disabled;
 }
 
@@ -246,12 +287,14 @@ function updateTemplateTypeHint() {
     return;
   }
   templatesTypeHint.hidden = false;
-  templatesTypeHint.textContent = '';
+  templatesTypeHint.textContent = caseLibraryView
+    ? 'Start with the participant reading. Full is the final worked answer, not the starting exercise.'
+    : '';
 }
 
 function updatePasswordRequirement() {
   const policy = getResourcePolicy();
-  const needsPassword = policy.canApply && !isStandardTemplate();
+  const needsPassword = policy.canApply && !isStandardTemplate() && (!caseLibraryView || caseLibraryWorking);
   if (templatesAuthSection) {
     templatesAuthSection.hidden = !needsPassword;
   }
@@ -267,7 +310,7 @@ function updateModeLockState() {
   const policy = getResourcePolicy();
   const lockModes = isStandardTemplate();
   if (templatesModeSection) {
-    templatesModeSection.hidden = !policy.canApply;
+    templatesModeSection.hidden = !policy.canApply || (caseLibraryView && !caseLibraryWorking);
   }
   if (lockModes) {
     selectedModeId = TEMPLATE_MODE_IDS.FULL;
@@ -288,10 +331,75 @@ function updateModeLockState() {
   updateApplyButtonState();
 }
 
+function renderParticipantCase() {
+  if (!caseLibraryReader || !caseLibraryReaderSections || !caseLibraryReaderTitle) return;
+  caseLibraryReader.hidden = !caseLibraryView;
+  caseLibraryReaderSections.replaceChildren();
+  if (!caseLibraryView) return;
+  const template = getSelectedTemplateMeta();
+  if (!template || template.templateKind !== TEMPLATE_KINDS.CASE_STUDY) {
+    caseLibraryReaderTitle.textContent = 'Choose a case';
+    return;
+  }
+  const preview = template.participantCase;
+  caseLibraryReaderTitle.textContent = preview?.title || template.name;
+  if (!preview || !Array.isArray(preview.sections) || !preview.sections.length) {
+    const message = document.createElement('p');
+    message.textContent = 'An inline participant briefing is not yet prepared for this case. In a staged class, read the material as your instructor releases it in the Student case reference.';
+    caseLibraryReaderSections.appendChild(message);
+    return;
+  }
+  for (const section of preview.sections) {
+    if (!section || typeof section.heading !== 'string' || typeof section.body !== 'string') continue;
+    if (section.reveal === true) {
+      // Self-study only: later participant handout is user-disclosed, NOT an
+      // access-control gate. Classroom GET excludes these until authored release.
+      const disclosure = document.createElement('details');
+      disclosure.className = 'case-library__reader-section case-library__reveal';
+      const summary = document.createElement('summary');
+      summary.textContent = `Show later participant handout: ${section.heading}`;
+      const paragraph = document.createElement('p');
+      paragraph.textContent = section.body;
+      disclosure.append(summary, paragraph);
+      caseLibraryReaderSections.appendChild(disclosure);
+      continue;
+    }
+    const block = document.createElement('section');
+    block.className = 'case-library__reader-section';
+    const heading = document.createElement('h4');
+    heading.textContent = section.heading;
+    const paragraph = document.createElement('p');
+    paragraph.textContent = section.body;
+    block.append(heading, paragraph);
+    caseLibraryReaderSections.appendChild(block);
+  }
+}
+
+/** Keep working options after the case reader, including in the Instructor view. */
+function syncCaseLibraryStep() {
+  const readingFirst = caseLibraryView && !caseLibraryWorking;
+  const policy = getResourcePolicy();
+  if (caseLibraryContinueBtn) {
+    caseLibraryContinueBtn.hidden = !caseLibraryView || caseLibraryWorking || !policy.canApply || !selectedTemplateId;
+    caseLibraryContinueBtn.setAttribute('aria-expanded', caseLibraryWorking ? 'true' : 'false');
+  }
+  if (caseLibraryBackToReadingBtn) caseLibraryBackToReadingBtn.hidden = !caseLibraryView || !caseLibraryWorking;
+  if (templatesModeSection) templatesModeSection.hidden = !policy.canApply || readingFirst;
+  if (templatesDrawerFooter) templatesDrawerFooter.hidden = !policy.canApply || readingFirst;
+  if (templatesModeTitle) templatesModeTitle.textContent = caseLibraryView ? 'Step 2 · Work with the case' : 'Mode';
+  if (templatesModeHelp) templatesModeHelp.textContent = caseLibraryView
+    ? 'Start from Intake and develop the answer. Full loads the completed reference solution.'
+    : 'Decide how much detail to apply from the chosen template.';
+  if (templatesApplyBtn) templatesApplyBtn.textContent = caseLibraryView ? 'Load selected view into Intake' : 'Apply resource';
+  updateApplyButtonState();
+}
+
 function refreshTemplateDetails() {
   updateTemplateTypeHint();
   updatePasswordRequirement();
   updateModeLockState();
+  renderParticipantCase();
+  syncCaseLibraryStep();
 }
 
 function updateTemplateSelection() {
@@ -385,15 +493,22 @@ function renderTemplatesList() {
   if (!templatesListEl) return;
   templatesListEl.innerHTML = '';
   const policy = getResourcePolicy();
-  const availableTemplates = getAvailableTemplateRecords();
+  const availableTemplates = getVisibleTemplateRecords();
   ensureAvailableSelection();
+  if (caseLibraryCount) {
+    caseLibraryCount.textContent = caseLibraryView
+      ? `${availableTemplates.length} case${availableTemplates.length === 1 ? '' : 's'} available in this view`
+      : '';
+  }
 
   if (!availableTemplates.length) {
     const empty = document.createElement('p');
     empty.className = 'templates-list__empty';
-    empty.textContent = policy.teachingOnly
-      ? 'No teaching Case Studies are available yet.'
-      : 'No resources are available yet.';
+    empty.textContent = caseLibraryView
+      ? 'No available cases match this group and search. Only authorized cases are listed.'
+      : policy.teachingOnly
+        ? 'No teaching Case Studies are available yet.'
+        : 'No resources are available yet.';
     templatesListEl.appendChild(empty);
     selectedTemplateId = null;
     updateApplyButtonState();
@@ -404,6 +519,19 @@ function renderTemplatesList() {
   const standardTemplates = availableTemplates.filter(template => template.templateKind === TEMPLATE_KINDS.STANDARD);
   const caseTemplates = availableTemplates.filter(template => template.templateKind === TEMPLATE_KINDS.CASE_STUDY);
   const fragment = document.createDocumentFragment();
+
+  if (caseLibraryView) {
+    for (const group of CASE_LIBRARY_GROUPS) {
+      const records = caseTemplates.filter(item => (item.libraryGroup || 'mim') === group.id);
+      const section = buildTemplatesGroup(group.title, group.help, records);
+      if (section) fragment.appendChild(section);
+    }
+    templatesListEl.appendChild(fragment);
+    updateTemplateSelection();
+    refreshTemplateDetails();
+    updateApplyButtonState();
+    return;
+  }
 
   const standardGroup = buildTemplatesGroup(
     'Templates',
@@ -464,12 +592,19 @@ function handleTemplateClick(event) {
   }
   event.preventDefault();
   const id = target.dataset.templateId;
-  if (!id || id === selectedTemplateId || !getTemplateRecords().some(template => template.id === id)) {
+  if (!id || id === selectedTemplateId || !getVisibleTemplateRecords().some(template => template.id === id)) {
     return;
   }
   selectedTemplateId = id;
+  if (caseLibraryView) {
+    selectedModeId = TEMPLATE_MODE_IDS.INTAKE;
+    caseLibraryWorking = false;
+  }
   updateTemplateSelection();
   refreshTemplateDetails();
+  // A case is selected before its analysis can be loaded. Move screen-reader
+  // and keyboard focus to the in-page document rather than the mode controls.
+  if (caseLibraryView) caseLibraryReaderTitle?.focus();
   updateApplyButtonState();
 }
 
@@ -525,7 +660,7 @@ function validatePassword() {
 }
 
 async function applySelectedTemplate() {
-  if (!templatesDrawerReady || !selectedTemplateId) {
+  if (!templatesDrawerReady || !selectedTemplateId || (caseLibraryView && !caseLibraryWorking)) {
     return;
   }
   const templateMeta = getSelectedTemplateMeta();
@@ -628,7 +763,7 @@ function setTemplatesDrawer(open, { skipFocus = false } = {}) {
     templatesBackdrop.classList.toggle('is-open', shouldOpen);
     templatesBackdrop.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
   }
-  document.querySelectorAll('[data-open-templates-drawer]').forEach(launcher => {
+  document.querySelectorAll('[data-open-templates-drawer], [data-open-case-library]').forEach(launcher => {
     launcher.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
   });
   document.body.classList.toggle('templates-drawer-open', shouldOpen);
@@ -675,27 +810,79 @@ function handleGlobalKeydown(event) {
 function refreshResourcePresentation() {
   if (!templatesDrawerReady) return;
   const policy = getResourcePolicy();
+  templatesDrawer?.classList.toggle('is-case-library', caseLibraryView);
 
   document.querySelectorAll('[data-template-resource-launcher-label]').forEach(element => {
     element.textContent = policy.launcherLabel;
   });
-  if (templatesDrawerTitle) templatesDrawerTitle.textContent = policy.drawerTitle;
-  if (templatesDrawerSubtitle) templatesDrawerSubtitle.textContent = policy.drawerSubtitle;
-  if (templatesResourceHeading) templatesResourceHeading.textContent = policy.resourceHeading;
-  if (templatesResourceHelp) templatesResourceHelp.textContent = policy.resourceHelp;
+  if (templatesDrawerTitle) templatesDrawerTitle.textContent = caseLibraryView ? 'Case Library' : policy.drawerTitle;
+  if (templatesDrawerSubtitle) templatesDrawerSubtitle.textContent = caseLibraryView
+    ? 'Choose a case, read the participant material here, then continue to analysis. Full is the completed reference solution.'
+    : policy.drawerSubtitle;
+  if (templatesResourceHeading) templatesResourceHeading.textContent = caseLibraryView ? 'Choose a case' : policy.resourceHeading;
+  if (templatesResourceHelp) templatesResourceHelp.textContent = caseLibraryView
+    ? 'Selecting a case opens its participant reading below. Classroom stage material is released by the instructor.'
+    : policy.resourceHelp;
+  if (caseLibraryTools) caseLibraryTools.hidden = !caseLibraryView;
+  if (caseLibraryFilters) {
+    caseLibraryFilters.querySelectorAll('[data-case-group]').forEach(button => {
+      button.setAttribute('aria-pressed', button.dataset.caseGroup === caseLibraryGroup ? 'true' : 'false');
+    });
+  }
   if (templatesTeachingNotice) templatesTeachingNotice.hidden = !policy.teachingOnly;
-  if (templatesDrawerFooter) templatesDrawerFooter.hidden = !policy.canApply;
-  if (templatesSaveBtn) templatesSaveBtn.hidden = !policy.canSaveCurrent;
+  if (templatesDrawerFooter) templatesDrawerFooter.hidden = !policy.canApply || (caseLibraryView && !caseLibraryWorking);
+  if (templatesSaveBtn) templatesSaveBtn.hidden = caseLibraryView || !policy.canSaveCurrent;
 
   renderTemplatesList();
   updatePasswordRequirement();
   updateModeLockState();
+  syncCaseLibraryStep();
 }
 
 function wireDrawerInternalEvents() {
   if (!templatesDrawerReady) return;
   if (templatesListEl) {
     templatesListEl.addEventListener('click', handleTemplateClick);
+  }
+  if (caseLibrarySearch) {
+    caseLibrarySearch.addEventListener('input', () => {
+      caseLibraryQuery = caseLibrarySearch.value;
+      caseLibraryWorking = false;
+      selectedModeId = TEMPLATE_MODE_IDS.INTAKE;
+      renderTemplatesList();
+    });
+  }
+  if (caseLibraryFilters) {
+    caseLibraryFilters.addEventListener('click', event => {
+      const button = event.target.closest?.('[data-case-group]');
+      if (!button || !caseLibraryFilters.contains(button)) return;
+      const group = button.dataset.caseGroup;
+      if (group !== 'all' && !CASE_LIBRARY_GROUPS.some(item => item.id === group)) return;
+      caseLibraryGroup = group;
+      caseLibraryWorking = false;
+      selectedModeId = TEMPLATE_MODE_IDS.INTAKE;
+      refreshResourcePresentation();
+    });
+  }
+  if (caseLibraryContinueBtn) {
+    caseLibraryContinueBtn.addEventListener('click', () => {
+      if (!caseLibraryView || !selectedTemplateId || !getResourcePolicy().canApply) return;
+      caseLibraryWorking = true;
+      updatePasswordRequirement();
+      updateModeLockState();
+      syncCaseLibraryStep();
+      const activeMode = templatesModeGroup?.querySelector('.templates-mode[aria-pressed="true"]');
+      activeMode?.focus();
+    });
+  }
+  if (caseLibraryBackToReadingBtn) {
+    caseLibraryBackToReadingBtn.addEventListener('click', () => {
+      caseLibraryWorking = false;
+      updatePasswordRequirement();
+      updateModeLockState();
+      syncCaseLibraryStep();
+      caseLibraryReaderTitle?.focus();
+    });
   }
   if (templatesModeGroup) {
     templatesModeGroup.addEventListener('click', handleModeClick);
@@ -756,6 +943,17 @@ export function initTemplatesDrawer({ protectedCaseStudies = null } = {}) {
   templatesTeachingNotice = document.getElementById('templatesTeachingNotice');
   templatesDrawerFooter = document.getElementById('templatesDrawerFooter');
   templatesSaveBtn = document.getElementById('templatesSaveBtn');
+  caseLibraryTools = document.getElementById('caseLibraryTools');
+  caseLibrarySearch = document.getElementById('caseLibrarySearch');
+  caseLibraryFilters = document.getElementById('caseLibraryFilters');
+  caseLibraryCount = document.getElementById('caseLibraryCount');
+  caseLibraryReader = document.getElementById('caseLibraryReader');
+  caseLibraryReaderTitle = document.getElementById('caseLibraryReaderTitle');
+  caseLibraryReaderSections = document.getElementById('caseLibraryReaderSections');
+  caseLibraryContinueBtn = document.getElementById('caseLibraryContinueBtn');
+  caseLibraryBackToReadingBtn = document.getElementById('caseLibraryBackToReadingBtn');
+  templatesModeTitle = document.getElementById('templatesModeTitle');
+  templatesModeHelp = document.getElementById('templatesModeHelp');
 
   templatesDrawerReady = Boolean(
     templatesDrawer
@@ -770,7 +968,7 @@ export function initTemplatesDrawer({ protectedCaseStudies = null } = {}) {
     return;
   }
 
-  document.querySelectorAll('[data-open-templates-drawer]').forEach(launcher => {
+  document.querySelectorAll('[data-open-templates-drawer], [data-open-case-library]').forEach(launcher => {
     launcher.setAttribute('aria-expanded', 'false');
   });
   templatesDrawer.setAttribute('aria-hidden', 'true');
@@ -789,9 +987,28 @@ export function initTemplatesDrawer({ protectedCaseStudies = null } = {}) {
  */
 export function openTemplatesDrawer() {
   if (!templatesDrawerReady) return;
-  if (!templatesDrawerOpen) {
-    rememberReturnFocus();
-  }
+  if (!templatesDrawerOpen) rememberReturnFocus();
+  caseLibraryView = false;
+  caseLibraryWorking = false;
+  refreshResourcePresentation();
+  setTemplatesDrawer(true);
+}
+
+/**
+ * Open the dedicated Case Library view in the existing accessible drawer.
+ * Case search and source filters are presentation state, not Intake data.
+ * @returns {void}
+ */
+export function openCaseLibrary() {
+  if (!templatesDrawerReady) return;
+  if (!templatesDrawerOpen) rememberReturnFocus();
+  caseLibraryView = true;
+  caseLibraryWorking = false;
+  caseLibraryGroup = 'all';
+  caseLibraryQuery = '';
+  selectedModeId = TEMPLATE_MODE_IDS.INTAKE;
+  if (caseLibrarySearch) caseLibrarySearch.value = '';
+  refreshResourcePresentation();
   setTemplatesDrawer(true);
 }
 

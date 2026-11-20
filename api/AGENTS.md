@@ -97,14 +97,19 @@ Instructor observation for #293 must **not** be inserted as a workspace alias. `
 
 ## Protected Case Study delivery
 
+The authorized Instructor catalog may return all **participant** `participantCase.sections` (including the later, self-study `reveal:true` record); the authorized Student catalog filters `reveal:true` sections server-side. Both catalog paths **always omit** Full `state`/causes and all `participantCase` for `simulation` cases; the staged Student exercise API owns authorized evidence release. This filter is deliberately server-enforced, not just CSS hiding. An Instructor catalog does not confer copyright permission to copy official figures; no image bytes are served by this tranche.
+
+
+
 - `api/protected-case-studies.manifest.js` is server-only generated content. Never import it from browser runtime modules.
 - Instructor `/api/classes/case-studies` access is scoped by `getClassByInstructor()`.
 - Student `/api/classes/case-studies/student` access is scoped by `getStudentContext()` using the already-issued classroom workspace capability; do not accept a Student workspace selector or Standalone collaboration capability as a substitute.
 - GET returns metadata catalog only. POST accepts `caseStudyId` in the JSON body and may return the full protected payload after authorization.
+- Issue #353 Case Library extends authorized GET metadata with `libraryGroup` and an optional **plain-text participantCase briefing** for non-staged resources only; it never returns `state`, `causes`, instructor notes, credential material, or a Full answer. When `simulation` exists, omit `participantCase` entirely: Student reading must use the existing released-stage API instead. Display these text fields using `textContent`, not HTML injection. Keep error responses and auth as before.
 - Protected content and identifiers must not be added to URL query strings, logs, analytics, or error telemetry.
 - Protected responses are always `no-store` / `no-referrer`.
 - The Case Study mode password is pedagogical only; server authorization must never depend on it.
-- The four authored Case Study JSON files remain repository source for maintainers but are excluded from Vercel deployment by `.vercelignore`. Production functions consume the committed server-only generated manifest.
+- The authored Case Study JSON files remain repository source for maintainers but are excluded from Vercel deployment by `.vercelignore`. Production functions consume the committed server-only generated manifest.
 
 ## Testing
 

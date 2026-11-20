@@ -23,6 +23,8 @@ Use for requests like: "Take the [official KT case] from kt-application-coach an
 10. **Remaining full fields:** `ops`, `steps`, `actions`, `handover`, DA/PPA, notes and appearance only where supported. A PA case does not need invented incident commanders, severity, made-up actions, major incident checklists, DA choices, PPA ratings or repetitive disclaimers. A blank irrelevant field is correct.
 11. Existing self-study projections are **Intake -> IS / IS NOT -> D&C -> Full (Final answer)**. Existing Classroom server-side stage release controls learner visibility; do **not** duplicate it in a new case.
 
+For Case Library work (#353), also set `libraryGroup` and the separate `participantCase` reading sections from **initial authorized learner-visible facts**, not `state` Full answers. See [the inventory](../case-library-inventory.md). Stage-released text/figures remain controlled by the existing exercise API; absence of usable image rights means use text instead of publishing scans.
+
 ## 3. Build, test, review and hand off
 
 12. Check **publication rights** before adding to `scripts/standalone-public-case-studies.mjs`. An allowlisted case's Full answer is downloadable; a per-minute password is not access control. Never commit copied official PDFs or full protected exhibits.

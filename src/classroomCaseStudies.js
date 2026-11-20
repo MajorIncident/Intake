@@ -41,7 +41,24 @@ function sanitizeCatalog(records) {
       name: record.name,
       description: record.description,
       templateKind: 'case-study',
-      supportedModes: record.supportedModes.filter(mode => typeof mode === 'string')
+      supportedModes: record.supportedModes.filter(mode => typeof mode === 'string'),
+      libraryGroup: ['psdm', 'ats', 'legacy', 'mim'].includes(record.libraryGroup)
+        ? record.libraryGroup
+        : 'mim',
+      participantCase: record.participantCase
+        && typeof record.participantCase.title === 'string'
+        && Array.isArray(record.participantCase.sections)
+        ? {
+          title: record.participantCase.title,
+          sections: record.participantCase.sections.filter(section =>
+            section && typeof section.heading === 'string' && typeof section.body === 'string'
+          ).map(section => ({
+            heading: section.heading,
+            body: section.body,
+            ...(section.reveal === true ? { reveal: true } : {})
+          }))
+        }
+        : null
     }));
 }
 
@@ -186,7 +203,7 @@ export function createClassroomCaseStudiesController({
       destroyed = true;
       clear();
     },
-    getCatalog: () => catalog.map(record => ({ ...record, supportedModes: [...record.supportedModes] })),
+    getCatalog: () => catalog.map(record => clone(record)),
     getPayload,
     getState: () => ({
       role: context?.role || null,

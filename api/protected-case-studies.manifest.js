@@ -25,6 +25,36 @@ const manifest = [
       "full"
     ],
     "templateKind": "case-study",
+    "libraryGroup": "psdm",
+    "participantCase": {
+      "title": "Microcomputer Cabinets — participant case",
+      "sections": [
+        {
+          "heading": "The production setting",
+          "body": "The plant makes three related microcomputer products: 1025, 1035 and 1045. Model 1025 is manufactured on Line 1; models 1035 and 1045 are made on Line 2. Each line washes the cabinets, applies electrostatic paint, dries the coating, assembles the units and sends them to Final Inspection. The finished cabinets should have a flat, continuous paint finish."
+        },
+        {
+          "heading": "How the lines operate",
+          "body": "Line 1 and Line 2 use separate wash tanks supplied from a common central solution source. The wash solution is routinely changed every 30 minutes. After washing, the cabinets go to electrostatic painting and drying. The two manufacturing lines use broadly similar operations, so differences in product, handling, wash conditions and throughput can be investigated."
+        },
+        {
+          "heading": "What Final Inspection is seeing",
+          "body": "Inspectors are finding random gaps in paint coverage on model 1025 cabinets. The normal reject rate for this model has been approximately 0.15%, but the current rate is above 6% and rising. The gaps mean cabinets must be reworked and some deliveries are delayed; the reported consequence is not an increase in scrap."
+        },
+        {
+          "heading": "Production pattern",
+          "body": "The factory is partway through a six-week peak production period. Output has been rising from week to week. The 1025 model is produced at a higher rate than either 1035 or 1045, and Line 1 throughput continues to increase. The reject rates for models 1035 and 1045 remain within their usual range."
+        },
+        {
+          "heading": "A past episode",
+          "body": "During the prior year's peak period, a similar appearance on 1025 cabinets was traced to silicone hand cream. This history is available to the investigators, but a cause that explained an earlier episode still has to be tested against the facts of the current problem."
+        },
+        {
+          "heading": "Your assignment",
+          "body": "Determine what is different about the affected cabinets and their production conditions. Develop a cause-unknown Problem Statement, factual IS and IS NOT comparisons, Distinctions and Changes, candidate mechanisms and checks that could confirm or eliminate them. The participant case does not report a verified current cause."
+        }
+      ]
+    },
     "state": {
       "meta": {
         "version": 3,
@@ -462,6 +492,32 @@ const manifest = [
       "full"
     ],
     "templateKind": "case-study",
+    "libraryGroup": "mim",
+    "participantCase": {
+      "title": "Paytrix — Major Incident participant brief",
+      "sections": [
+        {
+          "heading": "The incident",
+          "body": "Paytrix's AuthorizationService is experiencing sustained elevated response latency in the NA-East authorization path. The normal p95 latency is approximately 95–150 ms; current readings are approximately 500–700 ms. Normal timeout rate is below 0.3%. The service continues responding, but some transactions are delayed or time out."
+        },
+        {
+          "heading": "How the problem was detected",
+          "body": "The incident response includes Datadog metrics, an xMatters high-priority automation alert, ServiceNow incident records, merchant emails and internal Teams observations. The reported symptoms include timeouts and elevated 504 responses from MerchantGateway, particularly for affected NA-East traffic."
+        },
+        {
+          "heading": "Who is affected",
+          "body": "Amazon reports increased retry traffic of roughly 5–7%, and Delta kiosks are experiencing payment failures. The affected NA-East path creates checkout delays, abandonment risk and possible downstream load effects. Other regional authorization paths and related services form comparisons for the analysis."
+        },
+        {
+          "heading": "Time pressure",
+          "body": "The impact is already occurring. If it continues, retries may amplify load, service objectives may be missed and the disruption may spread. The incident team expects the situation could worsen within approximately five to ten minutes unless it is contained."
+        },
+        {
+          "heading": "Your incident-management task",
+          "body": "Establish the current impact, plausible future impact and decision timeframe. Identify the exact object/deviation, obtain evidence and compare affected and unaffected services. Develop and test Possible Causes while coordinating safe short-term containment, communication, decision-making and verification. This is an Intake-native MIM exercise, not an official PSDM/ATS workbook case."
+        }
+      ]
+    },
     "state": {
       "meta": {
         "version": 3,
@@ -1270,6 +1326,36 @@ const manifest = [
       "full"
     ],
     "templateKind": "case-study",
+    "libraryGroup": "psdm",
+    "participantCase": {
+      "title": "Red Sweat Mystery — participant case",
+      "sections": [
+        {
+          "heading": "An unusual report",
+          "body": "In early 1980, some Eastern Airlines flight attendants reported a red or pink fluid or stain appearing on exposed skin during flight. The appearance was described as red perspiration, especially on faces, hands and necks. It was temporary, and the available reports do not establish that affected crew members became unable to carry out cabin duties."
+        },
+        {
+          "heading": "Who is and is not reporting it",
+          "body": "The affected people are working flight attendants. Lead flight attendants, pilots and passengers on the same flights have not reported the same condition. These distinctions matter even though the same aircraft environment may be shared by several groups."
+        },
+        {
+          "heading": "Aircraft, routes and timing",
+          "body": "Most of the reports involve Eastern's Airbus A300 aircraft, with a few on other Eastern aircraft. There are no reported cases on Eastern DC9 services or on other airlines. The red or pink appearance begins within about 30 minutes after takeoff and does not persist indefinitely. Many Eastern A300 flights took over routes that previously used other aircraft, including routes over water."
+        },
+        {
+          "heading": "Possible environmental explanations",
+          "body": "Medical and environmental possibilities were considered, but the available information did not establish an explanation. Eastern had made multiple changes in equipment and cabin materials associated with its A300 operation. Investigators should not assume that every material or system change occurred at the same time or affected the same people."
+        },
+        {
+          "heading": "Additional information: equipment and materials",
+          "body": "New or different materials and practices associated with the A300 operation included cabin-cleaning products, coatings, service-cart and rack plastics, safety-equipment arrangements and an experimental air-filter cartridge. Crews were trained to demonstrate new life vests before A300 operations began in January 1980. The filter program had its own testing and rollout timing."
+        },
+        {
+          "heading": "Your investigation",
+          "body": "Use the facts to sharpen WHAT, WHERE, WHEN and EXTENT IS / IS NOT boundaries. Look for differences between affected and unaffected flights, equipment, people and activities; date any relevant Changes. Build mechanisms that explain the whole pattern and test them against close comparisons. The participant exercise stops here, before the separately published resolution."
+        }
+      ]
+    },
     "state": {
       "meta": {
         "version": 3,
@@ -1635,6 +1721,37 @@ const manifest = [
       "full"
     ],
     "templateKind": "case-study",
+    "libraryGroup": "ats",
+    "participantCase": {
+      "title": "Mrs. Walther's Square Donuts — participant case",
+      "sections": [
+        {
+          "heading": "Part 1 — meet the factory",
+          "body": "Mrs. Walther's factory produces more than a quarter-million square donuts each day. You are asked to understand how its equipment works and how a troubleshooter could investigate defects or disruptions. This is a discovery exercise: your approach, observations and questions matter as much as whether you reach a cause."
+        },
+        {
+          "heading": "The production process",
+          "body": "Dough travels through equipment for forming and proofing, moves through cutters and edge controls, and eventually passes through cooking, finishing and Quality Control. The factory has different product lines, including a sugar-donut line. Understanding where each operation occurs helps you decide which people, equipment and product to observe."
+        },
+        {
+          "heading": "Equipment you can investigate",
+          "body": "The participant orientation includes a process-flow diagram, an equipment-layout illustration and cutter maintenance information. The edgers regulate dough-strip width because the cutter has no outer blades. Cutter-blade movement, proofing conditions, air pressure, center blowing and cooling/cleaning air can all influence the final donut's shape or appearance."
+        },
+        {
+          "heading": "Operational constraints",
+          "body": "Shutting the line down can waste substantial product. Some inspections near the hot-oil system are intrusive or hazardous. Consider which observations and questions can discriminate first, before requesting costly, disruptive or unsafe interventions. Use the participant question sheet to record what you need to find out."
+        },
+        {
+          "heading": "Part 2 — The Problem (later participant handout)",
+          "body": "You are the second-shift troubleshooter responsible for equipment problems. Earlier trouble with the sugaring equipment has been resolved, and the new sugaring system has been running normally. Just over an hour ago, the hot-oil donut-turner chain broke. The dough strip was diverted, and the donuts already in the oil were advanced manually. The chain was replaced within about five minutes, with approximately 1,500 donuts lost. After the restart, Quality Control reports that roughly 25% of sugar donuts are being rejected. Some rejects have round edges; the worst have a round edge and spikes of dough on two edges. Determine what to do next. You may submit written questions to the Program Leader, and you should separate genuinely different observed defects before assuming they share one cause.",
+          "reveal": true
+        },
+        {
+          "heading": "Working guidance",
+          "body": "When the problem stage is released, begin with the reported product and what it is doing differently, then decide where to inspect or what to ask. This participant handout gives the problem and process context; it does not disclose the confirmed explanation. The worked solution remains in the completed Intake case."
+        }
+      ]
+    },
     "state": {
       "meta": {
         "version": 3,
@@ -2240,6 +2357,40 @@ const manifest = [
       "full"
     ],
     "templateKind": "case-study",
+    "libraryGroup": "psdm",
+    "participantCase": {
+      "title": "Tamworth Petrochemical — participant case",
+      "sections": [
+        {
+          "heading": "The photographic product",
+          "body": "Tamworth Petrochemical Company recently acquired Hi-Grade Photo Products. One of its products, Hi-Grade 202, is a sensitive photographic film sold as roll film, sheet film and film-pack. In ordinary use the developed image should reflect the photograph taken, without an extra uniform veil or fog."
+        },
+        {
+          "heading": "The customer problem",
+          "body": "Dealers are returning Hi-Grade 202 sheet film because photographs are fogged. The fog appears when the film is developed, rather than forming afterward. Returned boxes show the problem across the full surface of the negatives, not only at the edges or in isolated spots. The affected film is still within its 18-month shelf life."
+        },
+        {
+          "heading": "Where and when complaints are appearing",
+          "body": "The complaints have developed over roughly ten days and have begun spreading across the country. Smaller outlets with slower stock turnover are reporting the problem first. Larger outlets have not yet reported the same volume, but Tamworth expects they may be affected as their stock is sold. The issue has generated replacement costs and concern about dealer confidence."
+        },
+        {
+          "heading": "Film formats and packaging",
+          "body": "The film formats have different handling and packaging arrangements. Sheet film is separated using interleaf paper, unlike the roll and film-pack formats. Tamworth has also introduced a newer zip-top package. Packaging changes and supplier changes are among several events that investigators have been asked to consider, but their significance is not yet established."
+        },
+        {
+          "heading": "Manufacturing and supplier history",
+          "body": "Several facts have attracted attention: a fire in the emulsion department, changes to mixing personnel and training, delayed bulk-storage containers, and a different supplier for interleaf paper introduced months earlier. Each of these could prompt questions. The dates, scope, material use and ability of each proposed mechanism to explain the pattern still require testing."
+        },
+        {
+          "heading": "Competing explanations",
+          "body": "Manufacturing suspects the newer zip-top package and wants to return to an earlier version. Research has produced a similar appearance by deliberately exposing good sheet film to radiation and proposes a broader radioactivity investigation. Reproducing the appearance does not by itself establish that radiation caused the customer returns."
+        },
+        {
+          "heading": "Your assignment",
+          "body": "Specify the actual deviation and the closest unaffected film products, dealers, locations, timing and extent. Develop and destructively test complete Possible Cause mechanisms before selecting a Most Probable Cause and a proportionate confirmation approach. The participant source does not disclose the final cause."
+        }
+      ]
+    },
     "state": {
       "meta": {
         "version": 3,

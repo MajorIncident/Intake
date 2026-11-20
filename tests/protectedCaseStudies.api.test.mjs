@@ -32,6 +32,11 @@ const CASES = Object.freeze([
     description: 'Protected classroom material.',
     templateKind: 'case-study',
     supportedModes: Object.freeze(['intake', 'full']),
+    libraryGroup: 'psdm',
+    participantCase: Object.freeze({
+      title: 'Safe participant briefing',
+      sections: Object.freeze([{ heading: 'Briefing', body: 'A deviation was reported.' }])
+    }),
     state: Object.freeze({ secretEvidence: 'answer-key-content' })
   })
 ]);
@@ -110,7 +115,12 @@ test('Instructor catalog requires the represented class and omits protected payl
     name: 'Training Case',
     description: 'Protected classroom material.',
     templateKind: 'case-study',
-    supportedModes: ['intake', 'full']
+    supportedModes: ['intake', 'full'],
+    libraryGroup: 'psdm',
+    participantCase: {
+      title: 'Safe participant briefing',
+      sections: [{ heading: 'Briefing', body: 'A deviation was reported.' }]
+    }
   }]);
   assert.equal('state' in res.body.caseStudies[0], false);
 });
@@ -158,6 +168,68 @@ test('Student access is live-participant-bound and rejects Standalone collaborat
   assert.equal(payload.statusCode, 200);
   assert.equal(payload.body.workspace.id, WORKSPACE_ID);
   assert.equal(payload.body.caseStudy.state.secretEvidence, 'answer-key-content');
+});
+
+test('Student catalog omits all Full state and withholds inline previews for staged cases', async () => {
+  const { classrooms } = await setupClassroom();
+  const stagedCase = {
+    ...CASES[0],
+    id: 'staged-case',
+    simulation: { version: 1 },
+    state: { secretEvidence: 'future instructor answer' }
+  };
+  const handler = studentCaseStudiesHandler({
+    getRepository: async () => classrooms,
+    manifest: [...CASES, stagedCase]
+  });
+  const res = response();
+  await handler(request('GET', STUDENT), res);
+  assert.equal(res.statusCode, 200);
+  const ordinary = res.body.caseStudies.find(item => item.id === 'training-case');
+  const staged = res.body.caseStudies.find(item => item.id === 'staged-case');
+  assert.equal(ordinary.participantCase.sections[0].body, 'A deviation was reported.');
+  assert.equal('state' in ordinary, false);
+  assert.equal('state' in staged, false);
+  assert.equal('participantCase' in staged, false, 'staged participant content must come from released exercise stages');
+  assert.equal(JSON.stringify(res.body.caseStudies).includes('future instructor answer'), false);
+});
+
+test('Classroom Student GET hides later participant problem while Instructor GET can read it', async () => {
+  const { classrooms } = await setupClassroom();
+  const manifest = [{
+    ...CASES[0],
+    id: 'donuts-example',
+    participantCase: {
+      title: 'Square Donuts',
+      sections: [
+        { heading: 'Initial factory orientation', body: 'Learn the equipment before the problem.' },
+        { heading: 'The Problem', body: '25% reject rate after hot-oil chain repair.', reveal: true }
+      ]
+    }
+  }];
+  const studentHandler = studentCaseStudiesHandler({
+    getRepository: async () => classrooms,
+    manifest
+  });
+  const instructorHandler = instructorCaseStudiesHandler({
+    getRepository: async () => classrooms,
+    manifest
+  });
+  const student = response();
+  await studentHandler(request('GET', STUDENT), student);
+  assert.equal(student.statusCode, 200);
+  assert.equal(student.body.caseStudies[0].participantCase.sections.length, 1);
+  assert.equal(student.body.caseStudies[0].participantCase.sections[0].heading, 'Initial factory orientation');
+  assert.equal(JSON.stringify(student.body.caseStudies).includes('25% reject rate'), false);
+  assert.equal(JSON.stringify(student.body.caseStudies).includes('secretEvidence'), false);
+
+  const instructor = response();
+  await instructorHandler(request('GET', INSTRUCTOR), instructor);
+  assert.equal(instructor.statusCode, 200);
+  assert.equal(instructor.body.caseStudies[0].participantCase.sections.length, 2);
+  assert.equal(instructor.body.caseStudies[0].participantCase.sections[1].reveal, true);
+  assert.equal(instructor.body.caseStudies[0].participantCase.sections[1].body.includes('25%'), true);
+  assert.equal(JSON.stringify(instructor.body.caseStudies).includes('secretEvidence'), false);
 });
 
 test('Protected Case Study handlers reject unauthenticated and unsupported methods without caching', async () => {

@@ -804,5 +804,31 @@
         }
       ]
     }
+  },
+  "libraryGroup": "mim",
+  "participantCase": {
+    "title": "Paytrix — Major Incident participant brief",
+    "sections": [
+      {
+        "heading": "The incident",
+        "body": "Paytrix's AuthorizationService is experiencing sustained elevated response latency in the NA-East authorization path. The normal p95 latency is approximately 95–150 ms; current readings are approximately 500–700 ms. Normal timeout rate is below 0.3%. The service continues responding, but some transactions are delayed or time out."
+      },
+      {
+        "heading": "How the problem was detected",
+        "body": "The incident response includes Datadog metrics, an xMatters high-priority automation alert, ServiceNow incident records, merchant emails and internal Teams observations. The reported symptoms include timeouts and elevated 504 responses from MerchantGateway, particularly for affected NA-East traffic."
+      },
+      {
+        "heading": "Who is affected",
+        "body": "Amazon reports increased retry traffic of roughly 5–7%, and Delta kiosks are experiencing payment failures. The affected NA-East path creates checkout delays, abandonment risk and possible downstream load effects. Other regional authorization paths and related services form comparisons for the analysis."
+      },
+      {
+        "heading": "Time pressure",
+        "body": "The impact is already occurring. If it continues, retries may amplify load, service objectives may be missed and the disruption may spread. The incident team expects the situation could worsen within approximately five to ten minutes unless it is contained."
+      },
+      {
+        "heading": "Your incident-management task",
+        "body": "Establish the current impact, plausible future impact and decision timeframe. Identify the exact object/deviation, obtain evidence and compare affected and unaffected services. Develop and test Possible Causes while coordinating safe short-term containment, communication, decision-making and verification. This is an Intake-native MIM exercise, not an official PSDM/ATS workbook case."
+      }
+    ]
   }
 }

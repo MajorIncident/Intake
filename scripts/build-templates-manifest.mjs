@@ -28,6 +28,7 @@ const protectedAssetManifestPath = new URL('../api/_protected-assets.manifest.js
 
 const MODE_VALUES = Object.freeze(Object.values(TEMPLATE_MODE_IDS));
 const KIND_VALUES = Object.freeze(Object.values(TEMPLATE_KINDS));
+const LIBRARY_GROUPS = Object.freeze(['psdm', 'ats', 'legacy', 'mim']);
 
 function isRecord(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -47,6 +48,34 @@ function expectBooleanFields(target, fields, ctx, errors) {
       errors.push(`${ctx}.${field} must be a boolean`);
     }
   }
+}
+
+function validateParticipantCase(value, errors) {
+  if (value === undefined) return;
+  if (!isRecord(value) || typeof value.title !== 'string' || !value.title.trim() || value.title.length > 160) {
+    errors.push('participantCase.title must be a non-empty string (max 160 characters)');
+    return;
+  }
+  if (!Array.isArray(value.sections) || value.sections.length === 0 || value.sections.length > 20) {
+    errors.push('participantCase.sections must contain 1–20 readable sections');
+    return;
+  }
+  value.sections.forEach((section, index) => {
+    if (!isRecord(section)
+      || typeof section.heading !== 'string'
+      || !section.heading.trim()
+      || section.heading.length > 160
+      || typeof section.body !== 'string'
+      || !section.body.trim()
+      || section.body.length > 6000) {
+      errors.push(`participantCase.sections[${index}] needs heading and body plain text within limits`);
+    }
+    // A self-study reveal is a presentation cue, not Classroom access control.
+    // Classroom Students receive stage-filtered content from authenticated endpoints.
+    if (isRecord(section) && section.reveal !== undefined && typeof section.reveal !== 'boolean') {
+      errors.push(`participantCase.sections[${index}].reveal must be a boolean`);
+    }
+  });
 }
 
 function validateSerializedAppState(state) {
@@ -169,7 +198,7 @@ async function readTemplateFile(fileName) {
   if (!isRecord(data)) {
     throw new Error(`${fileName} must contain a JSON object`);
   }
-  const { id, name, description, supportedModes, templateKind, state, simulation } = data;
+  const { id, name, description, supportedModes, templateKind, state, simulation, libraryGroup, participantCase } = data;
   if (typeof id !== 'string' || !id.trim()) {
     errors.push('id must be a non-empty string');
   }
@@ -198,6 +227,14 @@ async function readTemplateFile(fileName) {
     errors.push(...targetCoverageErrors.map(message => `state target coverage invalid: ${message}`));
   }
 
+  if (templateKind === TEMPLATE_KINDS.CASE_STUDY && libraryGroup !== undefined && !LIBRARY_GROUPS.includes(libraryGroup)) {
+    errors.push(`libraryGroup must be one of: ${LIBRARY_GROUPS.join(', ')}`);
+  }
+  if (templateKind === TEMPLATE_KINDS.STANDARD && (libraryGroup !== undefined || participantCase !== undefined)) {
+    errors.push('Standard Templates cannot carry Case Library group or participant brief');
+  }
+  validateParticipantCase(participantCase, errors);
+
   const simulationErrors = validateSimulationForResource({ templateKind, simulation });
   errors.push(...simulationErrors.map(message => `simulation invalid: ${message}`));
 
@@ -210,6 +247,8 @@ async function readTemplateFile(fileName) {
     description: description.trim(),
     supportedModes: supportedModes.map(mode => mode.trim()),
     templateKind,
+    ...(libraryGroup === undefined ? {} : { libraryGroup }),
+    ...(participantCase === undefined ? {} : { participantCase }),
     state,
     ...(simulation === undefined ? {} : { simulation: normalizeStagedSimulation(simulation) })
   };

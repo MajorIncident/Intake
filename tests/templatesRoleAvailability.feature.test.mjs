@@ -12,7 +12,7 @@ import {
   persistExperienceRolePreference
 } from '../src/experienceRoleController.js';
 import { EXPERIENCE_ROLE_IDS } from '../src/experienceRoles.js';
-import { closeTemplatesDrawer, initTemplatesDrawer, openTemplatesDrawer } from '../src/templatesDrawer.js';
+import { closeTemplatesDrawer, initTemplatesDrawer, openTemplatesDrawer, openCaseLibrary } from '../src/templatesDrawer.js';
 import { getTemplatePayload, TEMPLATE_MODE_IDS } from '../src/templates.js';
 import { installJsdomGlobals, restoreJsdomGlobals } from './helpers/jsdom-globals.js';
 
@@ -218,3 +218,90 @@ test('complete Case Study keeps the selected MIM workflow lens rather than forci
     globalThis.__appStateMocks.collectAppState = originalCollectAppState;
   }
 });
+
+
+test('Case Library is a dedicated accessible view with source groups, search and inline participant reading', () => {
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
+  openCaseLibrary();
+  const doc = dom.window.document;
+  assert.equal(doc.getElementById('templatesDrawerTitle').textContent, 'Case Library');
+  assert.equal(doc.getElementById('caseLibraryTools').hidden, false);
+  assert.equal(doc.getElementById('caseLibraryReader').hidden, false);
+  assert.equal(doc.getElementById('templatesSaveBtn').hidden, true);
+  assert.equal(doc.getElementById('templatesModeSection').hidden, true, 'reader must come before working modes');
+  assert.equal(doc.getElementById('templatesAuthSection').hidden, true);
+  assert.equal(doc.getElementById('templatesDrawerFooter').hidden, true);
+  assert.deepEqual([...new Set(resourceKinds())], ['case-study']);
+  const redSweat = doc.querySelector('#templatesList [data-template-id="red-sweat-mystery"]');
+  assert.ok(redSweat);
+  redSweat.click();
+  const reader = doc.getElementById('caseLibraryReaderSections');
+  assert.match(reader.textContent, /Eastern Airlines/);
+  assert.match(reader.textContent, /30 minutes/);
+  assert.doesNotMatch(reader.textContent, /red ink|true cause|flak(?:e|ing)/i);
+  assert.equal(doc.querySelector('#templatesModeGroup [data-mode="intake"]').getAttribute('aria-pressed'), 'true');
+  const continueBtn = doc.getElementById('caseLibraryContinueBtn');
+  assert.equal(continueBtn.hidden, false);
+  continueBtn.click();
+  assert.equal(doc.getElementById('templatesModeSection').hidden, false, 'modes follow an explicit Continue action');
+  assert.equal(doc.getElementById('templatesAuthSection').hidden, false);
+  assert.equal(doc.getElementById('templatesDrawerFooter').hidden, false);
+  assert.match(doc.getElementById('templatesModeHelp').textContent, /Full loads the completed reference solution/);
+  doc.getElementById('caseLibraryBackToReadingBtn').click();
+  assert.equal(doc.getElementById('templatesModeSection').hidden, true);
+  assert.equal(doc.getElementById('caseLibraryReader').hidden, false);
+
+  const search = doc.getElementById('caseLibrarySearch');
+  search.value = 'red sweat';
+  search.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  assert.equal(doc.querySelectorAll('#templatesList [data-template-id]').length, 1);
+  const group = doc.querySelector('#caseLibraryFilters [data-case-group="ats"]');
+  group.click();
+  assert.equal(doc.querySelectorAll('#templatesList [data-template-id]').length, 0);
+  search.value = '';
+  search.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  assert.ok(doc.querySelector('#templatesList [data-template-id="mrs-walthers-sugar-donuts"]'));
+  doc.querySelector('#caseLibraryFilters [data-case-group="mim"]').click();
+  assert.ok(doc.querySelector('#templatesList [data-template-id="paytrix"]'));
+  doc.querySelector('#caseLibraryFilters [data-case-group="legacy"]').click();
+  assert.equal(doc.querySelectorAll('#templatesList [data-template-id]').length, 0);
+
+  openTemplatesDrawer();
+  assert.equal(doc.getElementById('caseLibraryTools').hidden, true);
+  assert.equal(doc.getElementById('caseLibraryReader').hidden, true);
+  assert.equal(doc.getElementById('templatesDrawerTitle').textContent, 'Templates & Case Studies');
+  closeTemplatesDrawer({ skipFocus: true });
+});
+
+test('Case Library does not expose Full state for connected Student metadata', () => {
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STUDENT);
+  openCaseLibrary();
+  const doc = dom.window.document;
+  const protectedButton = doc.querySelector('#templatesList [data-template-id="authorized-case"]');
+  assert.ok(protectedButton);
+  protectedButton.click();
+  assert.equal(doc.getElementById('templatesModeSection').hidden, true);
+  assert.match(doc.getElementById('caseLibraryReaderSections').textContent, /not yet prepared/i);
+  assert.doesNotMatch(doc.getElementById('caseLibraryReaderSections').textContent, /Protected Case Study applied/i);
+  closeTemplatesDrawer({ skipFocus: true });
+});
+
+test('Square Donuts includes the later participant problem as a closed self-study reveal, not a solution', () => {
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
+  openCaseLibrary();
+  const doc = dom.window.document;
+  doc.querySelector('#templatesList [data-template-id="mrs-walthers-sugar-donuts"]').click();
+  const reader = doc.getElementById('caseLibraryReaderSections');
+  const reveal = reader.querySelector('details.case-library__reveal');
+  assert.ok(reveal, 'the later problem must be represented in the same case');
+  assert.equal(reveal.open, false, 'initial orientation appears before the optional problem handout');
+  assert.match(reveal.querySelector('summary').textContent, /The Problem/);
+  assert.match(reveal.querySelector('p').textContent, /25%/);
+  assert.match(reveal.querySelector('p').textContent, /1,500/);
+  assert.doesNotMatch(reveal.querySelector('p').textContent, /missing edger|true cause|confirmed cause/i);
+  assert.equal(doc.getElementById('templatesModeSection').hidden, true);
+  reveal.open = true;
+  assert.equal(reveal.open, true, 'the user can disclose the later self-study problem without opening a PDF');
+  closeTemplatesDrawer({ skipFocus: true });
+});
+
