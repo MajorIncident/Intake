@@ -4,7 +4,7 @@ This is the **single live status document** for KT Intake. Other docs describe c
 
 Update it at every durable checkpoint and before handoff — see [`docs/playbooks/status-update.md`](docs/playbooks/status-update.md). Always re-verify against GitHub (main HEAD, open PRs/issues) before trusting it.
 
-_Last updated: 2026-11-20 (pilot blocker 6 in a draft PR, branch `claude/intake-repo-audit-qii780`, based on `main` at `ac2f689`)._
+_Last updated: 2026-11-20 (pilot blocker 6 in draft PR #359, branch `claude/intake-repo-audit-qii780`, based on `main` at `ac2f689`)._
 
 ## Product context
 
@@ -20,7 +20,7 @@ The **repository audit follow-through** merged via PR #344 (`41f002e`), followed
 
 - done: documentation consolidation (this file, playbooks, verbatim archive, drift guards); EULA data-usage wording; versioned advisory-locked schema; retry-safe repository init; real-Postgres (PGlite) tests; class-creation password; rate limits;
 - **fixed production bugs found by the real-SQL tests**: Instructor team assignment and Student "Mark Ready" both failed in Postgres because of untyped SQL parameters (they had only ever run against in-memory fakes);
-- next: confirm the `main` deployment is READY and run the real-class smoke test (#340); #342 merged (PR #352, `9d7a200`); #343 merged (PR #357, `9873458`); #316 merged (PR #358, `ac2f689`); blocker 6 load reduction is in a draft PR.
+- next: confirm the `main` deployment is READY and run the real-class smoke test (#340); #342 merged (PR #352, `9d7a200`); #343 merged (PR #357, `9873458`); #316 merged (PR #358, `ac2f689`); blocker 6 load reduction is in draft PR #359.
 
 ## Temporary product decisions
 
@@ -41,7 +41,7 @@ Worked one at a time, in order:
 5. **Staged exercises unusable in production** — no authored Case Study has a `simulation`; requires #316 then #317.
    - ~~#316~~ **done (PR #358, `ac2f689`)**: server-only asset registry (`templates/assets/` → `api/_protected-assets.manifest.js`), Student/Instructor asset routes authorized by the current staged release, semantic tables and protected images/document pages in the Student case reference. Contract: `docs/classroom-protected-assets.md`. The production registry is empty until #317.
    - #317 is blocked on the product owner: it needs reviewed official source material (stage boundaries, evidence pages/images) from the KT source repository and the installed KT Application Coach Skill, neither of which this agent session has.
-6. **Load/pilot readiness** — **in a draft PR**: an idle connected Student now makes **1.10 requests/s (measured; was 2.80)** via an adaptive collaboration poll (0.9 s only while someone in the workspace is active, else 3 s), 5 s presence, and 5 s Student status/coaching/exercise polls (10 s with no exercise). A 22-Student class drops from ≈ 680,000 to ≈ 270,000–490,000 invocations per 3-hour session. `tests/e2e/load-budget.spec.mjs` guards the budget. Remaining human decision: Vercel plan (see Pending human actions).
+6. **Load/pilot readiness** — **in draft PR #359**: an idle connected Student now makes **1.10 requests/s (measured; was 2.80)** via an adaptive collaboration poll (0.9 s only while someone in the workspace is active, else 3 s), 5 s presence, and 5 s Student status/coaching/exercise polls (10 s with no exercise). A 22-Student class drops from ≈ 680,000 to ≈ 270,000–490,000 invocations per 3-hour session. `tests/e2e/load-budget.spec.mjs` guards the budget. Remaining human decision: Vercel plan (see Pending human actions).
 
 ## Open issues
 
@@ -55,7 +55,7 @@ Worked one at a time, in order:
 
 | PR | Status |
 | --- | --- |
-| Pilot blocker 6 load reduction (branch `claude/intake-repo-audit-qii780`) | Draft; local quality 463 tests + browser 31 passed / 13 intentional skips |
+| #359 Pilot blocker 6 load reduction | Draft; local quality 463 tests + browser 31 passed / 13 intentional skips |
 | #336 Add protected staged asset delivery | Draft, superseded by merged PR #358 (its contract is `docs/classroom-protected-assets.md` on `main`). Owner may close it. |
 | #281 eslint 10, #280 jsdom 30, #310 eslint-plugin-jsdoc 65 | Major bumps — do together in one tooling PR (see lint risk below) |
 
