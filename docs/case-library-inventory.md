@@ -17,7 +17,7 @@ The interface uses four **library tabs**: PSDM, ATS, Legacy, and MIM. **Legacy**
 
 | # | Case | Library tab | Source family | Ref page / date | Intake authoring state | KT reference |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 01 | Distributor Complaints | PSDM | 2022 Instructor Reference | 295 | Not yet authored in Intake | [case-distributor-complaints.md](https://github.com/MajorIncident/kt-application-coach/blob/main/skill/kt-application-coach/references/case-distributor-complaints.md) |
+| 01 | Distributor Complaints | PSDM | 2022 Instructor Reference | 295 | Protected Full authored; instructor MPC unverified; PR #361 | [case-distributor-complaints.md](https://github.com/MajorIncident/kt-application-coach/blob/main/skill/kt-application-coach/references/case-distributor-complaints.md) |
 | 02 | Transposer Trouble Process Demonstration | PSDM | 2022 Instructor Reference | 317 | Not yet authored in Intake | [case-transposer-trouble.md](https://github.com/MajorIncident/kt-application-coach/blob/main/skill/kt-application-coach/references/case-transposer-trouble.md) |
 | 03 | Precision Problems | PSDM | 2022 Instructor Reference | 321 | Not yet authored in Intake | [case-precision-problems.md](https://github.com/MajorIncident/kt-application-coach/blob/main/skill/kt-application-coach/references/case-precision-problems.md) |
 | 04 | Red Sweat Mystery | PSDM | 2022 Instructor Reference | 331 | Full solution source reviewed — #349 | [case-red-sweat-mystery.md](https://github.com/MajorIncident/kt-application-coach/blob/main/skill/kt-application-coach/references/case-red-sweat-mystery.md) |
@@ -87,4 +87,6 @@ The first tranche plus reader-first follow-up on [PR #354](https://github.com/Ma
 
 The original process schematics are **new responsive HTML text figures**, not replicas of the participant book's protected diagrams. They add orientation for source-backed facts but do **not** establish complete source/visual coverage. Classroom protected image/document pages are supported by merged #316, but this fallback does not create a new asset endpoint or bypass staged release. See [#355](https://github.com/MajorIncident/Intake/issues/355).
 
-**Priority content batches:** PSDM (Distributor Complaints, Precision Problems, Data Debacle, Typhoon Compressor), then ATS (ArmorTex, Hefto Hoist, New Water Heater), then remaining source families, keeping source-defined Q/IS and discovery staging. Reconcile any date/page/fact differences from the original authorized materials before marking a case content-audited.
+**Priority content batches:** PSDM (Precision Problems, Data Debacle, Typhoon Compressor), then ATS (ArmorTex, Hefto Hoist, New Water Heater), then remaining source families, keeping source-defined Q/IS and discovery staging. Reconcile any date/page/fact differences from the original authorized materials before marking a case content-audited.
+
+**T3.1 source checkpoint:** [PR #361](https://github.com/MajorIncident/Intake/pull/361) adds the protected Distributor Complaints Full reference (7 participant sections, 4 causes, 12 paired test findings). Instructor Fractionator MPC remains to be confirmed; no executed fix or True Cause is claimed. Public Standalone stays at the original five cases. This record is not treated as merged or live until its PR is merged and production is verified.
