@@ -4,7 +4,7 @@ This is the **single live status document** for KT Intake. Other docs describe c
 
 Update it at every durable checkpoint and before handoff — see [`docs/playbooks/status-update.md`](docs/playbooks/status-update.md). Always re-verify against GitHub (main HEAD, open PRs/issues) before trusting it.
 
-_Last updated: 2026-11-19 (#353 / PR #354 reader-first five-case content, integrated #342/#343/#316 main; new exact-head CI pending)._
+_Last updated: 2026-11-19/20 (#353 PR #354 Case Library reader-first integrated with latest main #359; exact-head CI pending; active pilot load changes preserved)._
 
 ## Product context
 
@@ -20,7 +20,7 @@ The **repository audit follow-through** merged via PR #344 (`41f002e`), followed
 
 - done: documentation consolidation (this file, playbooks, verbatim archive, drift guards); EULA data-usage wording; versioned advisory-locked schema; retry-safe repository init; real-Postgres (PGlite) tests; class-creation password; rate limits;
 - **fixed production bugs found by the real-SQL tests**: Instructor team assignment and Student "Mark Ready" both failed in Postgres because of untyped SQL parameters (they had only ever run against in-memory fakes);
-- next: verify the merged `main` deployment and run the real-class smoke test (#340); #342/#343/#316 have been merged into main, but protected source assets and a real production staged case still need authoring.
+- next: confirm the `main` deployment is READY and run the real-class smoke test (#340); #342 merged (PR #352, `9d7a200`); #343 merged (PR #357, `9873458`); #316 merged (PR #358, `ac2f689`); blocker 6 load reduction is in draft PR #359.
 
 ## Temporary product decisions
 
@@ -49,33 +49,34 @@ Worked one at a time, in order:
 2. ~~**Instructor "Leave class" orphans the class** (#341)~~ — **done (#344)**: Leave asks for confirmation and explains the class keeps running; new **End class** confirms, revokes the class server-side for everyone, then clears the device.
 3. ~~**Instructor class controls** (#342)~~ — **done (PR #352, `9d7a200`)**: pause/allow joins, rename and guarded remove of teams, "Give each waiting Student their own workspace", one-time device-transfer code. Remaining: smoke-test steps 8a–8c after deploy.
 4. ~~**Instructor Case Study assignment** (#343)~~ — **done (PR #357, `9873458`)**: **Case Study for workspaces** loads a protected Case Study into all or one workspace (server-projected collaboration revision, no Student password), never replacing Student work without confirmation; live mode password shown. Classroom schema v3. Remaining: smoke-test step 8d after deploy.
-5. **Staged exercises unusable in production** — #316 engine is now merged, but no production Case Study has a reviewed `simulation` or protected source assets; [#317](https://github.com/MajorIncident/Intake/issues/317) still requires source-backed authoring/rights.
-   - #316 **merged in PR #358 (`ac2f689`)**, server `07a4313`, client `4a7c8d2`, e2e `592ae79`: server-only asset registry (`templates/assets/` → `api/_protected-assets.manifest.js`), Student/Instructor asset routes authorized by the current staged release, semantic tables and protected images/document pages in the Student case reference. Contract: `docs/classroom-protected-assets.md`. Synthetic fixtures only; the production registry is empty until #317. Remaining: protected asset/source authoring for #317 and real-class delivery tests.
-   - #317 needs reviewed official source material (participant/instructor stage boundaries, evidence pages/images) from the KT source repository, which is available to the authorized KT Application Coach reference workflow; official instructor/participant visibility and redistribution permissions must still be verified before publishing images.
-6. **Load/pilot readiness** — capacity check per `docs/operations-capacity.md`.
+5. **Staged exercises unusable in production** — no authored Case Study has a `simulation`; requires #316 then #317.
+   - ~~#316~~ **done (PR #358, `ac2f689`)**: server-only asset registry (`templates/assets/` → `api/_protected-assets.manifest.js`), Student/Instructor asset routes authorized by the current staged release, semantic tables and protected images/document pages in the Student case reference. Contract: `docs/classroom-protected-assets.md`. The production registry is empty until #317.
+   - #317 is blocked on the product owner: it needs reviewed official source material (stage boundaries, evidence pages/images) from the KT source repository and the installed KT Application Coach Skill, neither of which this agent session has.
+6. **Load/pilot readiness** — **in draft PR #359**: an idle connected Student now makes **1.10 requests/s (measured; was 2.80)** via an adaptive collaboration poll (0.9 s only while someone in the workspace is active, else 3 s), 5 s presence, and 5 s Student status/coaching/exercise polls (10 s with no exercise). A 22-Student class drops from ≈ 680,000 to ≈ 270,000–490,000 invocations per 3-hour session. `tests/e2e/load-budget.spec.mjs` guards the budget. Remaining human decision: Vercel plan (see Pending human actions).
 
 ## Open issues
 
 | Issue | Status | Notes |
 | --- | --- | --- |
-| #316 Protected staged assets + rich Student rendering | Merged in PR #358 (`ac2f689`); source assets absent | Protected asset engine exists; #317 authoring/rights remain |
-| #317 First production staged KT Case Study | Open, implementation now unblocked by #316 | Needs authorized source/stage and rights review |
+| #317 First production staged KT Case Study | Open, blocked by #316 | Needs authoritative source material |
 | #340 Pilot blocker 1: environment + real smoke test | Open | Human action |
+| #353 Case Library program | Open | Reader-first PR #354, original schematic child PR #360; Full cases and original exhibit rights pending |
 | #348 Existing Case Study completeness audit | Open | Follow-up quality backlog; apply new KT authoring playbook before case changes |
-| #353 Case Library program | Open | PR #354 expanded reader-first cases; in-page protected imagery #355; additional source cases #356 |
 
 ## Open pull requests
 
 | PR | Status |
 | --- | --- |
-| #354 Case Library T1.1 participant reader | Open; integrated current main; exact-head CI + merge decision pending |
-| #336 Superseded protected asset contract | Draft; content superseded by merged #358; close after owner review |
+| #354 Case Library reader-first cases | Open, integrated 2026-11-20 main including #359; exact-head checks/owner merge decision pending |
+| #359 Pilot blocker 6 load reduction | Draft; local quality 463 tests + browser 31 passed / 13 intentional skips |
+| #336 Add protected staged asset delivery | Draft, superseded by merged PR #358 (its contract is `docs/classroom-protected-assets.md` on `main`). Owner may close it. |
 | #281 eslint 10, #280 jsdom 30, #310 eslint-plugin-jsdoc 65 | Major bumps — do together in one tooling PR (see lint risk below) |
 
 ## Pending human / environment actions
 
 - **Before making the repo private again:** decide how CodeQL and Dependency Review will run. On a private repo without GitHub Code Security they fail with "not supported … GitHub Advanced Security" and block every merge (observed 2026-11-18). Options: enable GitHub Code Security, or remove those two from the `main` required checks and replace them with free equivalents (e.g. `npm audit --omit=dev --audit-level=high` in CI).
 
+- **Vercel plan for real classes (blocker 6):** Hobby allows 1,000,000 invocations and 4 h Active CPU per month with Fluid compute (only 100,000 invocations without it) — roughly two to three 3-hour classes, and non-commercial only. Confirm Fluid compute is enabled, decide on a paid plan for regular classes, and run the 15-minute ≥ 5-device rehearsal in `docs/operations-capacity.md` to calibrate Active CPU.
 - Configure Vercel env vars listed under blocker 1. Optional: `INTAKE_CLASS_CREATION_PASSWORD` (default `kepnertregoe`).
 - Enable GitHub "Automatically delete head branches" and prune the ~100 stale `codex/*` branches (verify each has no open PR first).
 - Create a GitHub milestone "Classroom pilot" (no API tool available to the agent).
@@ -86,7 +87,7 @@ Worked one at a time, in order:
 - **Lint is not actually enforced**: `npm run lint` runs `eslint` with no paths, which on ESLint 8 lints nothing. Linting the repo for real reports ~1,040 errors (957 missing-JSDoc). Fix together with the ESLint 10 / flat-config migration (#281) rather than piecemeal.
 - Dev-only `npm audit` findings (ajv, flatted, minimatch via ESLint 8; source-map-js fixed by #311). Production dependencies: 0 vulnerabilities.
 - Collaboration links grant equal edit access with no admin role; Classroom authorization layers over them.
-- Polling load: roughly 2.8 requests/second per connected Student — see `docs/operations-capacity.md`.
+- Polling load: about 1.1 requests/second per idle connected Student, ≈ 2 while their team is active — see `docs/operations-capacity.md`.
 - Class creation is gated by a shared password, not accounts/SSO.
 
 ## Where history lives

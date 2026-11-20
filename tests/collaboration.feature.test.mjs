@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
-import { createCollaborationController, PARTICIPANT_IDLE_DELAY_MS, POLL_DELAY_MS, PRESENCE_DELAY_MS, PROFILE_STORAGE_KEY, RECOVERY_STORAGE_KEY, SAVE_DELAY_MS, TYPING_IDLE_DELAY_MS } from '../src/collaboration.js';
+import { ACTIVE_WINDOW_MS, createCollaborationController, IDLE_POLL_DELAY_MS, PARTICIPANT_IDLE_DELAY_MS, POLL_DELAY_MS, PRESENCE_DELAY_MS, PROFILE_STORAGE_KEY, RECOVERY_STORAGE_KEY, SAVE_DELAY_MS, TYPING_IDLE_DELAY_MS } from '../src/collaboration.js';
 
 /** Creates a manually resolvable promise. @returns {object} Deferred promise. */
 function deferred() {
@@ -15,7 +15,7 @@ function reply(status, body) {
   return { ok: status >= 200 && status < 300, status, json: async () => body };
 }
 /** Builds a deterministic collaboration controller environment. @param {string} url Page URL. @returns {object} Environment. */
-function setup(url = 'https://intake.test/', initial = { local: true }, { mobile = false } = {}) {
+function setup(url = 'https://intake.test/', initial = { local: true }, { mobile = false, now = undefined } = {}) {
   const dom = new JSDOM(`<!doctype html><head><title>KT Intake</title></head><body><div id="collaborationStatus"></div><div id="collaborationSyncDetail"></div><button id="syncCollaborationBtn"></button><button id="startCollaborationBtn"></button><button id="copyCollaborationLinkBtn"></button><button id="editCollaborationNameBtn"></button><button id="editCollaborationNameBannerBtn"></button><button id="editCollaborationTeamBtn"></button><button id="editCollaborationTeamBannerBtn"></button><button id="leaveCollaborationBtn"></button><div id="collaborationConflictActions"></div><button id="loadSharedVersionBtn"></button><button id="exportRecoveryBtn"></button><section id="collaborationWorkspace" hidden><div><strong id="collaborationTeamName"></strong><span id="collaborationWorkspaceCompactSummary"></span><button id="collaborationWorkspaceToggle" aria-expanded="true"></button></div><div id="collaborationWorkspaceBody"><span id="collaborationPeopleSummary"></span><span id="collaborationPresenceStale" hidden></span><ul id="collaborationParticipants"></ul><button id="collaborationRosterToggle" hidden></button><p id="collaborationLiveRegion"></p></div></section><div id="collaborationDialogBackdrop" hidden></div><section id="collaborationDialog" hidden tabindex="-1"><h4 id="collaborationDialogTitle"></h4><p id="collaborationDialogDescription"></p><form id="collaborationDialogForm"><div id="collaborationTeamNameField" data-persistence="local-only"><input id="collaborationTeamNameInput"></div><div id="collaborationDisplayNameField" data-persistence="local-only"><input id="collaborationDisplayNameInput"></div><button id="collaborationDialogCancelBtn" type="button"></button><button id="collaborationDialogSubmitBtn" type="submit"></button></form></section><label for="field">Problem statement</label><input id="field"></body>`, { url });
   Object.defineProperty(dom.window.document, 'hidden', { configurable: true, value: false });
   Object.defineProperty(dom.window, 'matchMedia', {
@@ -39,7 +39,8 @@ function setup(url = 'https://intake.test/', initial = { local: true }, { mobile
     location: dom.window.location, history: dom.window.history, storage: dom.window.localStorage, documentRef: dom.window.document,
     windowRef: dom.window, navigatorRef: dom.window.navigator,
     setTimeoutImpl: (callback, delay) => { const timer = { callback, delay, cancelled: false }; timers.push(timer); return timer; },
-    clearTimeoutImpl: timer => { if (timer) timer.cancelled = true; }
+    clearTimeoutImpl: timer => { if (timer) timer.cancelled = true; },
+    ...(now ? { now } : {})
   });
   const runNextTimer = async () => {
     const timer = [...timers].reverse().find(candidate => !candidate.cancelled && !candidate.ran);
@@ -498,4 +499,44 @@ test('classroom attach rejects malformed workspace capabilities before network a
   assert.equal(env.requests.length, 0);
   assert.equal(env.controller.getState().token, null);
   assert.equal(env.controller.getState().sessionKind, 'local');
+});
+
+/** Latest live (not cancelled, not run) revision-poll timer. @param {object} env Environment. @returns {object|undefined} Timer. */
+function livePollTimer(env) {
+  return [...env.timers].reverse().find(timer => !timer.cancelled && !timer.ran && [POLL_DELAY_MS, IDLE_POLL_DELAY_MS].includes(timer.delay));
+}
+
+test('revision polling slows to the idle cadence when nobody is active and speeds up on activity (pilot blocker 6)', async () => {
+  let clock = 1_000_000;
+  const env = setup(`https://intake.test/?workspace=${token}`, { local: true }, { now: () => clock });
+  await join(env);
+  assert.equal(livePollTimer(env).delay, POLL_DELAY_MS, 'joining starts in the fast cadence');
+
+  clock += ACTIVE_WINDOW_MS + 1;
+  setup.handler = async () => ({ ok: true, status: 204, json: async () => null });
+  await livePollTimer(env).callback();
+  assert.equal(livePollTimer(env).delay, IDLE_POLL_DELAY_MS, 'no activity for the window: slow cadence');
+
+  env.controller.notifyLocalChange({ text: 'typing again' });
+  assert.equal(livePollTimer(env).delay, POLL_DELAY_MS, 'a local edit reschedules the pending slow poll to the fast cadence');
+  env.dom.window.close();
+});
+
+test('a teammate reported as editing keeps this browser on the fast cadence (pilot blocker 6)', async () => {
+  let clock = 2_000_000;
+  const env = setup(`https://intake.test/?workspace=${token}`, { local: true }, { now: () => clock });
+  await join(env);
+  clock += ACTIVE_WINDOW_MS + 1;
+  setup.handler = async () => ({ ok: true, status: 204, json: async () => null });
+  await livePollTimer(env).callback();
+  assert.equal(livePollTimer(env).delay, IDLE_POLL_DELAY_MS);
+
+  setup.handler = async () => reply(200, {
+    self: { id: 'me', displayName: 'Me' },
+    participants: [{ id: 'me', displayName: 'Me', activityState: 'idle' }, { id: 'mate', displayName: 'Mate', activityState: 'editing', editingField: 'field' }]
+  });
+  assert.equal(await env.controller.joinPresence('Me'), true);
+  assert.equal(livePollTimer(env).delay, POLL_DELAY_MS);
+  assert.equal(PRESENCE_DELAY_MS, 5000, 'periodic presence refresh stays well inside the 30 s server window');
+  env.dom.window.close();
 });
