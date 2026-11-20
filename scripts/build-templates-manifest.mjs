@@ -14,10 +14,17 @@ import {
   validateSimulationForResource
 } from './staged-simulation-schema.mjs';
 import { STANDALONE_PUBLIC_CASE_STUDY_IDS } from './standalone-public-case-studies.mjs';
+import {
+  validateProtectedAssetBytes,
+  validateProtectedAssetRegistry,
+  validateSimulationAssetReferences
+} from './protected-assets-schema.mjs';
 
 const templatesDir = new URL('../templates/', import.meta.url);
+const assetsDir = new URL('../templates/assets/', import.meta.url);
 const publicManifestPath = new URL('../src/templates.manifest.js', import.meta.url);
 const protectedManifestPath = new URL('../api/protected-case-studies.manifest.js', import.meta.url);
+const protectedAssetManifestPath = new URL('../api/_protected-assets.manifest.js', import.meta.url);
 
 const MODE_VALUES = Object.freeze(Object.values(TEMPLATE_MODE_IDS));
 const KIND_VALUES = Object.freeze(Object.values(TEMPLATE_KINDS));
@@ -274,6 +281,51 @@ function selectStandalonePublicCaseStudies(caseStudies) {
   });
 }
 
+/**
+ * Reads, validates, and embeds the protected staged-asset registry (#316).
+ * @param {Array<object>} caseStudies - Validated protected Case Studies (for reference checks).
+ * @returns {Promise<Array<object>>} Server-only asset manifest entries with base64 bytes.
+ */
+async function buildProtectedAssets(caseStudies) {
+  let registry;
+  try {
+    registry = JSON.parse(await fs.readFile(new URL('registry.json', assetsDir), 'utf8'));
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw new Error(`Failed to read templates/assets/registry.json: ${error.message}`);
+  }
+  const { errors, assets } = validateProtectedAssetRegistry(registry);
+  const embed = async (file, ctx) => {
+    let bytes;
+    try {
+      bytes = await fs.readFile(new URL(file, assetsDir));
+    } catch {
+      errors.push(`${ctx} file templates/assets/${file} is missing`);
+      return null;
+    }
+    const mediaType = validateProtectedAssetBytes(bytes, `${ctx} (${file})`, errors);
+    return mediaType ? { mediaType, data: bytes.toString('base64') } : null;
+  };
+  const manifest = [];
+  for (const asset of assets) {
+    if (asset.kind === 'image') {
+      const embedded = await embed(asset.file, asset.id);
+      if (embedded) manifest.push({ id: asset.id, kind: 'image', ...embedded });
+      continue;
+    }
+    const pages = [];
+    for (const page of asset.pages) {
+      const embedded = await embed(page.file, `${asset.id} page ${page.page}`);
+      if (embedded) pages.push({ page: page.page, ...embedded });
+    }
+    manifest.push({ id: asset.id, kind: 'document', pages });
+  }
+  errors.push(...validateSimulationAssetReferences(caseStudies, assets));
+  if (errors.length) {
+    throw new Error(`templates/assets/registry.json failed validation:\n- ${errors.join('\n- ')}`);
+  }
+  return manifest;
+}
+
 async function main() {
   let entries = [];
   try {
@@ -310,15 +362,22 @@ async function main() {
     exportName: 'PROTECTED_CASE_STUDY_MANIFEST',
     boundary: 'SERVER-ONLY MANIFEST: protected Case Study metadata and payloads. Never import from browser runtime modules.'
   });
+  const protectedAssets = await buildProtectedAssets(protectedCaseStudies);
+  const protectedAssetOutput = createManifestSource(protectedAssets, {
+    exportName: 'PROTECTED_ASSET_MANIFEST',
+    boundary: 'SERVER-ONLY MANIFEST: protected staged Case Study images and document pages (#316), served only through authorized Classroom routes. Never import from browser runtime modules.'
+  });
 
   await Promise.all([
     fs.writeFile(publicManifestPath, publicOutput, 'utf8'),
-    fs.writeFile(protectedManifestPath, protectedOutput, 'utf8')
+    fs.writeFile(protectedManifestPath, protectedOutput, 'utf8'),
+    fs.writeFile(protectedAssetManifestPath, protectedAssetOutput, 'utf8')
   ]);
 
   console.log(
     `Wrote ${publicTemplates.length} public template(s) (${publicCaseStudies.length} temporary Standalone Case Studies) to ${fileURLToPath(publicManifestPath)} `
-    + `and ${protectedCaseStudies.length} protected Case Study record(s) to ${fileURLToPath(protectedManifestPath)}.`
+    + `and ${protectedCaseStudies.length} protected Case Study record(s) to ${fileURLToPath(protectedManifestPath)}, `
+    + `and ${protectedAssets.length} protected asset(s) to ${fileURLToPath(protectedAssetManifestPath)}.`
   );
 }
 

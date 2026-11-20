@@ -51,6 +51,10 @@ The dedicated Cases menu opens the Case Library as a reader-first flow: choose c
 
 `classroomInstructor.js` owns the connected Instructor class rail. Its collapse/expand state is local presentation state, not Intake/session authority. Narrow screens default to the compact collapsed class header, but the class controls must remain explicitly discoverable through an accessible Open/Collapse control; do not hide the Instructor workspace surface on mobile without an equivalent launcher.
 
+`classroomCaseContent.js` (#316) is pure rendering for released staged content. It must keep building nodes with DOM APIs and `textContent`, and must never construct an asset URL: `classroomExerciseStudent.js` fetches protected images/pages with the class-session bearer and passes memory-only object URLs, which it revokes when content leaves the release or the Student disconnects.
+
+`classroomCaseAssignment.js` (#343) owns the Instructor **Case Study for workspaces** panel. It receives the Instructor capability through `connectInstructor`, the catalog through `getCatalog` / `intake:protected-case-studies-changed`, and the roster through the Instructor controller's `onRoster` callback. It never fetches or holds a protected payload (the server projects and writes it), never replaces Student work without the confirm-then-resend round trip, and persists nothing.
+
 `classroomCaseStudies.js` owns the authorized in-memory protected Case Study catalog/payload client. It receives active capabilities only through Student/Instructor lifecycle callbacks, keeps no localStorage/sessionStorage record, and clears catalog/context when the class role disconnects. Its public state must never expose a bearer capability.
 
 `templatesDrawer.js` may combine public Standard Template metadata with the current authorized in-memory Case Study catalog, but must fetch a protected payload only on demand and project it through `projectTemplateState()`. Standalone must work with no protected provider or classroom backend.

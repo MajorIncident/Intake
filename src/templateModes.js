@@ -85,3 +85,18 @@ export const MODE_RULES = Object.freeze({
     tableFields: Object.freeze({ is: true, no: true, di: true, ch: true })
   })
 });
+
+/**
+ * Builds the pedagogical Case Study mode password for a moment in time:
+ * the mode key without hyphens followed by the two-digit minute (for example
+ * `isisnot07`). It is a classroom pacing device, not authentication; the
+ * Instructor sees it in the Case Study assignment panel (#343).
+ * @param {string} modeId - Template mode identifier.
+ * @param {Date} [date] - Moment to evaluate (defaults to now).
+ * @returns {string} Password, or an empty string for an unknown mode.
+ */
+export function templateModePassword(modeId, date = new Date()) {
+  if (typeof modeId !== 'string' || !Object.prototype.hasOwnProperty.call(MODE_RULES, modeId)) return '';
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${modeId.replace(/-/g, '')}${minutes}`;
+}

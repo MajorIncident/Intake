@@ -5,6 +5,10 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+import { PROTECTED_CASE_STUDY_MANIFEST } from '../../api/protected-case-studies.manifest.js';
+
+const PAYTRIX_ONE_LINE = PROTECTED_CASE_STUDY_MANIFEST.find(entry => entry.id === 'paytrix').state.pre.oneLine;
+
 const INSTRUCTOR_SESSION_STORAGE_KEY = 'kt-classroom-instructor-session-v1';
 const FIRST_WORKSPACE_ID = '11111111-1111-4111-8111-111111111111';
 const SECOND_WORKSPACE_ID = '22222222-2222-4222-8222-222222222222';
@@ -289,6 +293,22 @@ test('Instructor starts a live class, creates a team, assigns a waiting Student,
   await expect(page.locator('#instructorIndividualWorkspacesStatus')).toHaveText('1 Student now has their own workspace.');
   await expect(page.locator('#instructorParticipantSummary')).toHaveText('1 student · 0 waiting');
   await expect(page.locator('.instructor-workspace-item').filter({ hasText: 'Waiting Student' })).toHaveCount(1);
+  await expectNoBlockingA11yViolations(page);
+
+  // #343 load a protected Case Study into every workspace from the Instructor panel.
+  await page.getByLabel('Case Study', { exact: true }).selectOption({ label: 'Paytrix' });
+  await page.getByLabel('Start from').selectOption({ label: 'IS / IS NOT' });
+  await expect(page.getByLabel('Load into')).toHaveValue('all');
+  await expect(page.locator('#instructorCaseAssignmentPasswordValue')).toHaveText(/^isisnot\d{2}$/);
+  await page.getByRole('button', { name: 'Load Case Study' }).click();
+  await expect(page.locator('#instructorCaseAssignmentStatus')).toHaveText(/^Loaded Paytrix \(IS \/ IS NOT\) into \d+ workspaces?\.$/);
+  expect(classroomRequests.some(request => request.method === 'POST' && request.pathname === '/api/classes/case-studies/assign')).toBe(true);
+  const redTeam = page.locator('.instructor-workspace-item').filter({ hasText: 'Team Red' });
+  await expect(redTeam.locator('.instructor-workspace-item__case')).toHaveText('Case Study: Paytrix · IS / IS NOT');
+  await redTeam.click();
+  await expect(page.locator('#instructorObservedWorkspace')).toHaveText('Team Red');
+  await expect(page.locator('#oneLine')).toHaveValue(PAYTRIX_ONE_LINE);
+  await expect(page.locator('#oneLine')).toHaveJSProperty('readOnly', true);
   await expectNoBlockingA11yViolations(page);
 
   // #342 move the class to another device with a one-time code.

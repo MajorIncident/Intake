@@ -23,11 +23,14 @@ const EXPECTED_CLASSROOM_REWRITES = Object.freeze({
   '/api/classes/coaching': 'coaching',
   '/api/classes/coaching/student': 'coaching-student',
   '/api/classes/case-studies': 'case-studies',
+  '/api/classes/case-studies/assign': 'case-studies-assign',
   '/api/classes/case-studies/student': 'case-studies-student',
   '/api/classes/exercise': 'exercise',
   '/api/classes/exercise/checkpoint': 'exercise-checkpoint',
+  '/api/classes/exercise/asset': 'exercise-asset',
   '/api/classes/exercise/student': 'exercise-student',
-  '/api/classes/exercise/student/ready': 'exercise-student-ready'
+  '/api/classes/exercise/student/ready': 'exercise-student-ready',
+  '/api/classes/exercise/student/asset': 'exercise-student-asset'
 });
 
 test('Vercel preserves every Classroom public URL through the consolidated function', async () => {

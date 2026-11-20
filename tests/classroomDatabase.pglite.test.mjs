@@ -26,6 +26,9 @@ import {
   resetClassroomRepositoryForTesting
 } from '../api/_classroom.js';
 import { createClassroomStudentWritePolicy } from '../api/_classroomWritePolicy.js';
+import { instructorCaseStudyAssignHandler } from '../api/_protectedCaseStudies.js';
+import { PROTECTED_CASE_STUDY_MANIFEST } from '../api/protected-case-studies.manifest.js';
+import { projectTemplateState } from '../src/templates.js';
 import { adminHandler, resetAdminRepositoryForTesting } from '../api/_admin.js';
 import { createPgliteSql } from './helpers/pglite-sql.mjs';
 import { response } from './helpers/classroom-test-repositories.mjs';
@@ -278,4 +281,73 @@ test('real SQL (#342): long team names, rename, guarded removal, and one-time In
   const second = await call(classHandler(), { method: 'PATCH', token: moved.body.instructorToken, body: { action: 'create-transfer' } });
   await sql`UPDATE classroom_classes SET instructor_transfer_expires_at = NOW() - INTERVAL '1 second' WHERE public_id = ${created.body.class.id}::uuid`;
   assert.equal((await call(redeem, { method: 'POST', body: { transferCode: second.body.transferCode } })).statusCode, 404, 'expired code fails');
+});
+
+test('real SQL (#343): Instructor loads a protected Case Study into workspaces with collaboration revision semantics', async () => {
+  const created = await call(classHandler(), { method: 'POST', body: { title: 'Case class', classPassword: 'kepnertregoe' } });
+  const instructor = created.body.instructorToken;
+  const workspaces = classWorkspacesHandler();
+  const red = (await call(workspaces, { method: 'POST', token: instructor, body: { kind: 'group', label: 'Team Red', snapshot: {} } })).body.workspace;
+  const blue = (await call(workspaces, { method: 'POST', token: instructor, body: { kind: 'group', label: 'Team Blue', snapshot: {} } })).body.workspace;
+
+  const studentId = '66666666-6666-4666-8666-666666666666';
+  const admitted = await call(classAdmitHandler(), { method: 'POST', body: { joinCode: created.body.joinCode, participantId: studentId, displayName: 'Eve' } });
+  await call(classParticipantsHandler(), { method: 'PATCH', token: instructor, body: { participantId: studentId, workspaceId: red.id } });
+  const access = await call(classStudentAccessHandler(), { method: 'POST', token: admitted.body.studentSessionToken });
+  const session = workspaceHandler({ getWritePolicy: createClassroomStudentWritePolicy() });
+
+  const assign = instructorCaseStudyAssignHandler();
+  const paytrix = PROTECTED_CASE_STUDY_MANIFEST.find(entry => entry.id === 'paytrix');
+  assert.ok(paytrix, 'the protected manifest ships Paytrix');
+
+  const first = await call(assign, { method: 'POST', token: instructor, body: { caseStudyId: 'paytrix', mode: 'intake', targets: 'all' } });
+  assert.equal(first.statusCode, 200, JSON.stringify(first.body));
+  assert.deepEqual(first.body.results.map(result => [result.label, result.status, result.revision]), [
+    ['Team Red', 'loaded', 2],
+    ['Team Blue', 'loaded', 2]
+  ]);
+
+  const polled = await call(session, { method: 'GET', token: access.body.workspaceToken });
+  assert.equal(polled.statusCode, 200);
+  assert.equal(polled.body.revision, 2, 'Students receive the Case Study as the next collaboration revision');
+  const expected = projectTemplateState(paytrix.state, 'intake', paytrix.supportedModes, 'case-study');
+  assert.deepEqual(polled.body.snapshot.pre, expected.pre);
+  assert.deepEqual(polled.body.snapshot.causes, []);
+
+  const studentWork = { ...polled.body.snapshot, meta: { ...(polled.body.snapshot.meta || {}), intakeMode: 'majorIncident' } };
+  const saved = await call(session, { method: 'PUT', token: access.body.workspaceToken, body: { snapshot: studentWork, revision: 2 } });
+  assert.equal(saved.statusCode, 200, JSON.stringify(saved.body));
+  assert.equal(saved.body.revision, 3);
+
+  const roster = (await call(workspaces, { method: 'GET', token: instructor })).body.workspaces;
+  assert.deepEqual(roster.map(item => [item.label, item.revision, item.hasWork, item.caseStudy?.id, item.caseStudy?.mode]), [
+    ['Team Red', 3, true, 'paytrix', 'intake'],
+    ['Team Blue', 2, false, 'paytrix', 'intake']
+  ]);
+  assert.equal(roster[0].caseStudy.name, paytrix.name);
+
+  const second = await call(assign, { method: 'POST', token: instructor, body: { caseStudyId: 'paytrix', mode: 'is-is-not', targets: 'all' } });
+  assert.deepEqual(second.body.results.map(result => [result.label, result.status, result.revision]), [
+    ['Team Red', 'has-work', 3],
+    ['Team Blue', 'loaded', 3]
+  ]);
+
+  const stale = await call(assign, { method: 'POST', token: instructor, body: { caseStudyId: 'paytrix', mode: 'is-is-not', targets: [{ workspaceId: red.id, expectedRevision: 2 }], replaceExisting: true } });
+  assert.deepEqual(stale.body.results.map(result => result.status), ['changed']);
+
+  const replaced = await call(assign, { method: 'POST', token: instructor, body: { caseStudyId: 'paytrix', mode: 'is-is-not', targets: [{ workspaceId: red.id, expectedRevision: 3 }], replaceExisting: true } });
+  assert.deepEqual(replaced.body.results.map(result => [result.status, result.revision]), [['loaded', 4]]);
+  const [row] = await sql`SELECT w.revision, w.snapshot_json #>> '{meta,intakeMode}' AS lens, cw.case_study_mode, cw.case_seeded_revision
+    FROM classroom_workspaces cw JOIN collaboration_workspaces w ON w.id = cw.workspace_id
+    WHERE cw.public_id = ${red.id}::uuid`;
+  assert.deepEqual([row.revision, row.lens, row.case_study_mode, row.case_seeded_revision], [4, 'majorIncident', 'is-is-not', 4]);
+
+  const lateSave = await call(session, { method: 'PUT', token: access.body.workspaceToken, body: { snapshot: studentWork, revision: 3 } });
+  assert.equal(lateSave.statusCode, 409, 'a Student save based on the old revision conflicts instead of overwriting the load');
+
+  const other = await call(classHandler(), { method: 'POST', body: { title: 'Other class', classPassword: 'kepnertregoe' } });
+  const crossClass = await call(assign, { method: 'POST', token: other.body.instructorToken, body: { caseStudyId: 'paytrix', mode: 'full', targets: [{ workspaceId: blue.id }] } });
+  assert.deepEqual(crossClass.body.results.map(result => result.status), ['not-found']);
+  const [blueRow] = await sql`SELECT w.revision FROM classroom_workspaces cw JOIN collaboration_workspaces w ON w.id = cw.workspace_id WHERE cw.public_id = ${blue.id}::uuid`;
+  assert.equal(blueRow.revision, 3);
 });

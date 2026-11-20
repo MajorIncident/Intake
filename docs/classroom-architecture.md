@@ -255,7 +255,8 @@ Implemented state (#295):
 - `src/classroomCaseStudies.js` keeps authorized catalog/context in memory only and clears it when Classroom context disconnects.
 - Standalone has no protected provider context and can operate with the Classroom backend unavailable.
 - The rotating Case Study password remains pedagogy only; the Classroom capability is the confidentiality boundary.
-- Instructor class capability currently authorizes the class teaching catalog. There is no separate case-assignment table yet; a future case-level assignment model can narrow teaching availability without changing the public/private bundle boundary.
+- Instructor class capability currently authorizes the class teaching catalog. A future case-level catalog restriction can narrow teaching availability without changing the public/private bundle boundary.
+- Since #343 the Instructor can **load** a Case Study into class workspaces (`src/classroomCaseAssignment.js` → `POST /api/classes/case-studies/assign`). The server projects the protected source through `MODE_RULES` and writes it as a normal collaboration revision, so Students never fetch the payload or need the mode password. Untouched workspaces load directly; Student work is replaced only after the Instructor confirms the exact revision shown. The last load per workspace (Case Study, mode, resulting revision) is Classroom metadata on `classroom_workspaces`, never Intake state.
 - Once an authorized Student applies a Case Study, the projected content becomes that Student/team Intake and follows normal Intake/collaboration persistence. The boundary prevents unauthorized source retrieval; it is not DRM against an authorized learner.
 
 ## Server persistence
@@ -342,5 +343,5 @@ For pre-production hardening, prefer **simplification over indefinite compatibil
 - Pre-production compatibility reset: #328
 - Admin / Maintenance lifecycle: #329
 - Startup experience hub: #330
-- Deferred rich staged assets: #316
+- Protected rich staged assets: #316 (`docs/classroom-protected-assets.md`)
 - Deferred first production staged case: #317

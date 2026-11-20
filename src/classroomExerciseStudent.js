@@ -8,9 +8,17 @@
  *   the complete protected Case Study payload and never persists exercise state.
  */
 
+import {
+  caseContentAssetKey,
+  renderCaseContentBlock,
+  sanitizeCaseContentBlock
+} from './classroomCaseContent.js';
+
 export const STUDENT_EXERCISE_ENDPOINT = '/api/classes/exercise/student';
 export const STUDENT_EXERCISE_READY_ENDPOINT = '/api/classes/exercise/student/ready';
+export const STUDENT_EXERCISE_ASSET_ENDPOINT = '/api/classes/exercise/student/asset';
 export const STUDENT_EXERCISE_POLL_MS = 2500;
+const ASSET_RETRY_LIMIT = 3;
 
 const CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
@@ -45,21 +53,13 @@ function sanitizeStage(value) {
 function sanitizeReleasedContent(value) {
   if (!value || typeof value !== 'object') return null;
   const stageId = typeof value.stageId === 'string' ? value.stageId.trim() : '';
-  const content = value.content;
-  if (!stageId || !content || typeof content !== 'object') return null;
-  const id = typeof content.id === 'string' ? content.id.trim() : '';
-  const title = typeof content.title === 'string' ? content.title.trim() : '';
-  if (!id || !title) return null;
+  const content = sanitizeCaseContentBlock(value.content);
+  if (!stageId || !content) return null;
   return {
     stageId,
     releaseType: value.releaseType === 'optional' ? 'optional' : 'initial',
     releasedAt: typeof value.releasedAt === 'string' ? value.releasedAt : null,
-    content: {
-      id,
-      kind: typeof content.kind === 'string' ? content.kind : '',
-      title,
-      body: typeof content.body === 'string' ? content.body : ''
-    }
+    content
   };
 }
 
@@ -133,7 +133,9 @@ export function createStudentExerciseReferenceController({
   setTimeoutImpl = globalThis.setTimeout?.bind(globalThis),
   clearTimeoutImpl = globalThis.clearTimeout?.bind(globalThis),
   AbortControllerImpl = globalThis.AbortController,
-  pollMs = STUDENT_EXERCISE_POLL_MS
+  pollMs = STUDENT_EXERCISE_POLL_MS,
+  createObjectURL = blob => windowRef?.URL?.createObjectURL?.(blob) || null,
+  revokeObjectURL = url => windowRef?.URL?.revokeObjectURL?.(url)
 } = {}) {
   let capability = '';
   let exercise = null;
@@ -149,6 +151,10 @@ export function createStudentExerciseReferenceController({
   let timer = null;
   let abortController = null;
   const readonlyRecords = new Map();
+  // #316 protected images/pages: key -> { status, url, attempts }. Object URLs
+  // live only in memory and are revoked when no longer released or on disconnect.
+  const assets = new Map();
+  let contentSignature = '';
   const mobileQuery = windowRef?.matchMedia?.('(max-width: 700px)') || null;
   let expanded = !mobileQuery?.matches;
   let expansionTouched = false;
@@ -285,6 +291,17 @@ export function createStudentExerciseReferenceController({
   const renderContent = () => {
     const list = element('studentCaseReferenceContent');
     if (!list) return;
+    const signature = JSON.stringify([
+      exercise?.status || '',
+      (exercise?.releasedContent || []).map(item => {
+        const key = caseContentAssetKey(item.content);
+        return [item.content.id, key ? assets.get(key)?.status || 'loading' : ''];
+      })
+    ]);
+    // Rebuild only when something visible changed, so polling never resets
+    // table scroll position or reloads images.
+    if (signature === contentSignature && list.childElementCount > 0) return;
+    contentSignature = signature;
     list.replaceChildren();
     if (!exercise?.releasedContent?.length) {
       const empty = documentRef.createElement('p');
@@ -297,16 +314,72 @@ export function createStudentExerciseReferenceController({
     }
 
     exercise.releasedContent.forEach(item => {
-      const article = documentRef.createElement('article');
-      article.className = 'student-case-reference__item';
-      article.setAttribute('data-persistence', 'local-only');
-      article.setAttribute('data-summary', 'exclude');
-      const title = documentRef.createElement('strong');
-      title.textContent = item.content.title;
-      const body = documentRef.createElement('p');
-      body.textContent = item.content.body;
-      article.append(title, body);
-      list.append(article);
+      const key = caseContentAssetKey(item.content);
+      list.append(renderCaseContentBlock(documentRef, item.content, { asset: key ? assets.get(key) || null : null }));
+    });
+  };
+
+  const releaseAsset = key => {
+    const entry = assets.get(key);
+    if (entry?.url) {
+      try { revokeObjectURL(entry.url); } catch {}
+    }
+    assets.delete(key);
+  };
+
+  const clearAssets = () => {
+    [...assets.keys()].forEach(releaseAsset);
+    contentSignature = '';
+  };
+
+  async function loadAsset(key, block, requestEpoch) {
+    const localCapability = capability;
+    const previous = assets.get(key);
+    assets.set(key, { status: 'loading', url: null, attempts: (previous?.attempts || 0) + 1 });
+    const params = new URLSearchParams({ assetId: block.assetId });
+    if (block.kind === 'document-page') params.set('page', String(block.page));
+    try {
+      const response = await fetchImpl(`${STUDENT_EXERCISE_ASSET_ENDPOINT}?${params}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${localCapability}` }
+      });
+      if (!response.ok) throw new Error('asset unavailable');
+      const blob = await response.blob();
+      const url = createObjectURL(blob);
+      if (destroyed || requestEpoch !== epoch || capability !== localCapability || !assets.has(key)) {
+        if (url) {
+          try { revokeObjectURL(url); } catch {}
+        }
+        return;
+      }
+      if (!url) throw new Error('object URL unavailable');
+      assets.set(key, { status: 'ready', url, attempts: assets.get(key).attempts });
+    } catch {
+      if (destroyed || requestEpoch !== epoch || !assets.has(key)) return;
+      assets.set(key, { status: 'error', url: null, attempts: assets.get(key).attempts });
+    }
+    renderContent();
+  }
+
+  /**
+   * Fetch newly released protected assets, retry failed ones a few times, and
+   * revoke object URLs that are no longer part of the release.
+   * @param {number} requestEpoch - Session epoch.
+   * @returns {void}
+   */
+  const syncAssets = requestEpoch => {
+    const wanted = new Map();
+    (exercise?.releasedContent || []).forEach(item => {
+      const key = caseContentAssetKey(item.content);
+      if (key) wanted.set(key, item.content);
+    });
+    [...assets.keys()].filter(key => !wanted.has(key)).forEach(releaseAsset);
+    if (typeof fetchImpl !== 'function') return;
+    wanted.forEach((block, key) => {
+      const entry = assets.get(key);
+      if (!entry || (entry.status === 'error' && entry.attempts < ASSET_RETRY_LIMIT)) {
+        void loadAsset(key, block, requestEpoch);
+      }
     });
   };
 
@@ -438,6 +511,7 @@ export function createStudentExerciseReferenceController({
 
       applyPayload(body);
       lastError = '';
+      syncAssets(requestEpoch);
       render();
       schedule(requestEpoch);
       return true;
@@ -555,6 +629,7 @@ export function createStudentExerciseReferenceController({
     abort();
     capability = '';
     restoreReadonlyProjection();
+    clearAssets();
     clearView();
     renderExpansion();
   };
@@ -601,6 +676,7 @@ export function createStudentExerciseReferenceController({
               ...item,
               content: { ...item.content }
             })),
+            assets: Object.fromEntries([...assets].map(([key, entry]) => [key, entry.status])),
             readiness: exercise.readiness ? { ...exercise.readiness } : null
           }
         : null

@@ -8,12 +8,14 @@
  */
 
 import { createServer } from 'node:http';
+import { crc32, deflateSync } from 'node:zlib';
 import { readFile } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { TEMPLATE_MANIFEST } from '../src/templates.manifest.js';
 import { PROTECTED_CASE_STUDY_MANIFEST } from '../api/protected-case-studies.manifest.js';
+import { projectTemplateState } from '../src/templates.js';
 import { buildClassroomDebriefModel } from '../src/classroomDebriefModel.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -78,6 +80,36 @@ const BROWSER_STAGED_CASE = Object.freeze({
         kind: 'narrative',
         title: 'Second browser briefing',
         body: 'Synthetic Student-safe content authored for the second browser stage.'
+      },
+      // #316 synthetic rich content (protected assets are generated below).
+      {
+        id: 'browser-readings',
+        kind: 'table',
+        title: 'Browser line readings',
+        headers: ['Line', 'Shift', 'Reject rate'],
+        rows: [['Line A', 'Day', '2%'], ['Line B', 'Night', '9%']]
+      },
+      {
+        id: 'browser-photo',
+        kind: 'image',
+        title: 'Browser cabinet photo',
+        assetId: 'browser-cabinet-photo',
+        alt: 'Synthetic wide photo of a rejected browser cabinet.'
+      },
+      {
+        id: 'browser-report-page',
+        kind: 'document-page',
+        title: 'Browser inspection report',
+        assetId: 'browser-report',
+        page: 1,
+        alt: 'Synthetic inspection report page one.'
+      },
+      {
+        id: 'browser-site-photo',
+        kind: 'image',
+        title: 'Browser site photo',
+        assetId: 'browser-site-photo',
+        alt: 'Synthetic second-stage site photo.'
       }
     ],
     instructorContent: [
@@ -99,8 +131,8 @@ const BROWSER_STAGED_CASE = Object.freeze({
         id: 'browser-stage-1',
         title: 'Clarify the browser case',
         studentObjective: 'Capture the initial situation in Intake.',
-        initialReleaseIds: ['browser-brief-1'],
-        optionalReleaseIds: ['browser-hint-1'],
+        initialReleaseIds: ['browser-brief-1', 'browser-readings', 'browser-photo'],
+        optionalReleaseIds: ['browser-hint-1', 'browser-report-page'],
         intakeTargetIds: ['problem.one-line'],
         suggestedMinutes: 5,
         instructorContentIds: ['browser-teach-1'],
@@ -110,7 +142,7 @@ const BROWSER_STAGED_CASE = Object.freeze({
         id: 'browser-stage-2',
         title: 'Analyze the browser case',
         studentObjective: 'Use the second-stage information to refine the analysis.',
-        initialReleaseIds: ['browser-brief-2'],
+        initialReleaseIds: ['browser-brief-2', 'browser-site-photo'],
         optionalReleaseIds: [],
         intakeTargetIds: ['kt.where-location'],
         suggestedMinutes: 4,
@@ -120,6 +152,76 @@ const BROWSER_STAGED_CASE = Object.freeze({
     ]
   }
 });
+/**
+ * Encodes a solid-colour RGB PNG (synthetic protected asset bytes).
+ * @param {number} width - Pixels.
+ * @param {number} height - Pixels.
+ * @param {[number, number, number]} rgb - Colour.
+ * @returns {Buffer} PNG bytes.
+ */
+function solidPng(width, height, [red, green, blue]) {
+  const chunk = (type, data) => {
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const typed = Buffer.concat([Buffer.from(type, 'latin1'), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(typed) >>> 0);
+    return Buffer.concat([length, typed, crc]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = 8;
+  header[9] = 2;
+  const row = Buffer.alloc(1 + width * 3);
+  for (let x = 0; x < width; x += 1) row.set([red, green, blue], 1 + x * 3);
+  const pixels = Buffer.concat(Array.from({ length: height }, () => row));
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header),
+    chunk('IDAT', deflateSync(pixels)),
+    chunk('IEND', Buffer.alloc(0))
+  ]);
+}
+
+// Mirrors api/_protected-assets.manifest.js entries for the synthetic staged case.
+const BROWSER_PROTECTED_ASSETS = new Map([
+  ['browser-cabinet-photo', solidPng(1200, 360, [40, 90, 160])],
+  ['browser-report#1', solidPng(600, 780, [235, 232, 220])],
+  ['browser-site-photo', solidPng(640, 360, [90, 140, 70])]
+]);
+
+/**
+ * Mirrors api/_classroomExerciseAssets.js: serve a protected asset only when an
+ * authorized block references it, else the same 404.
+ * @param {object} url - Request URL.
+ * @param {object} response - Server response.
+ * @param {Array<object>|null} blocks - Authorized Student content blocks.
+ * @returns {void}
+ */
+function sendBrowserProtectedAsset(url, response, blocks) {
+  const assetId = url.searchParams.get('assetId') || '';
+  const pageParam = url.searchParams.get('page');
+  const page = pageParam === null ? null : Number(pageParam);
+  const referenced = (blocks || []).some(block => block.assetId === assetId && (
+    (block.kind === 'image' && page === null)
+    || (block.kind === 'document-page' && page === block.page)
+  ));
+  const bytes = referenced ? BROWSER_PROTECTED_ASSETS.get(page === null ? assetId : `${assetId}#${page}`) : null;
+  if (!bytes) {
+    sendJson(response, 404, { error: 'Asset not found.' });
+    return;
+  }
+  response.writeHead(200, {
+    'Cache-Control': 'no-store',
+    'Referrer-Policy': 'no-referrer',
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Type': 'image/png',
+    'Content-Length': String(bytes.length)
+  });
+  response.end(bytes);
+}
+
 function browserStudentReleasedContent(exercise, releases = []) {
   const stageIndex = BROWSER_STAGED_CASE.simulation.stages.findIndex(
     stage => stage.id === exercise?.currentStageId
@@ -504,12 +606,19 @@ function managedInstructorRoster(token) {
   if (!fixture) return null;
   return {
     class: fixture.classContext,
-    workspaces: fixture.workspaces.map(workspace => ({
-      ...workspace,
-      participantCount: fixture.participants.filter(participant => participant.assignment?.id === workspace.id).length,
-      activeParticipantCount: 0,
-      editingParticipantCount: 0
-    }))
+    workspaces: fixture.workspaces.map(workspace => {
+      const state = fixture.workspaceStates.get(workspace.id);
+      const revision = state?.revision ?? 1;
+      return {
+        ...workspace,
+        participantCount: fixture.participants.filter(participant => participant.assignment?.id === workspace.id).length,
+        activeParticipantCount: 0,
+        editingParticipantCount: 0,
+        revision,
+        hasWork: revision !== (state?.caseSeededRevision ?? 1),
+        caseStudy: state?.caseStudy ? structuredClone(state.caseStudy) : null
+      };
+    })
   };
 }
 
@@ -838,6 +947,26 @@ async function handleClassroomApi(request, response, url) {
       return true;
     }
     sendJson(response, 200, studentLiveStatus(session));
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/exercise/student/asset') {
+    const session = request.method === 'GET' ? studentLiveSessions.get(bearerToken(request)) : null;
+    if (!session) {
+      sendJson(response, request.method === 'GET' ? 404 : 405, { error: request.method === 'GET' ? 'Asset not found.' : 'Method not allowed.' });
+      return true;
+    }
+    const released = browserStudentExercisePayload(session).exercise?.releasedContent || [];
+    sendBrowserProtectedAsset(url, response, released.map(item => item.content));
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/exercise/asset') {
+    const instructorToken = bearerToken(request);
+    const exercise = request.method === 'GET' && activeInstructorCapability(instructorToken)
+      ? classroomExercises.get(instructorToken) || null
+      : null;
+    sendBrowserProtectedAsset(url, response, exercise && exercise.status !== 'completed' ? BROWSER_STAGED_CASE.simulation.studentContent : null);
     return true;
   }
 
@@ -1819,6 +1948,74 @@ async function handleClassroomApi(request, response, url) {
       self: requestBody,
       participants
     });
+    return true;
+  }
+
+  if (url.pathname === '/api/classes/case-studies/assign') {
+    // Mirrors api/_protectedCaseStudies.js instructorCaseStudyAssignHandler (#343).
+    if (request.method !== 'POST') {
+      sendJson(response, 405, { error: 'Method not allowed.' });
+      return true;
+    }
+    const instructorToken = bearerToken(request);
+    const fixture = activeInstructorCapability(instructorToken) && !retiredInstructorToken(instructorToken)
+      ? managedInstructorFixture(instructorToken)
+      : null;
+    if (!fixture) {
+      sendJson(response, 404, { error: 'Class not found.' });
+      return true;
+    }
+    const body = await readJson(request).catch(() => null);
+    const record = PROTECTED_CASE_STUDY_MANIFEST.find(item => item.id === body?.caseStudyId);
+    if (!record) {
+      sendJson(response, body?.caseStudyId === BROWSER_STAGED_CASE.id ? 409 : 404, body?.caseStudyId === BROWSER_STAGED_CASE.id
+        ? { error: 'This Case Study is delivered through its staged exercise, so it cannot be loaded into workspaces.', code: 'staged-exercise-only' }
+        : { error: 'Case Study not found.' });
+      return true;
+    }
+    const mode = typeof body?.mode === 'string' ? body.mode : '';
+    if (!record.supportedModes.includes(mode)) {
+      sendJson(response, 400, { error: 'Choose a starting point this Case Study supports.' });
+      return true;
+    }
+    const replaceExisting = body?.replaceExisting === true;
+    const targets = body?.targets === 'all' && !replaceExisting
+      ? fixture.workspaces.map(workspace => ({ workspaceId: workspace.id, expectedRevision: null }))
+      : Array.isArray(body?.targets) && body.targets.length > 0
+        ? body.targets.map(target => ({ workspaceId: target?.workspaceId, expectedRevision: replaceExisting ? target?.expectedRevision : null }))
+        : null;
+    if (!targets || (replaceExisting && targets.some(target => !Number.isInteger(target.expectedRevision)))) {
+      sendJson(response, 400, { error: 'Invalid workspaces.' });
+      return true;
+    }
+    const exercise = classroomExercises.get(instructorToken) || null;
+    if (exercise && exercise.status !== 'completed') {
+      sendJson(response, 409, { error: 'Complete the current staged exercise before loading a Case Study into workspaces.', code: 'exercise-active' });
+      return true;
+    }
+    if (!targets.length) {
+      sendJson(response, 409, { error: 'Create a workspace first.', code: 'no-workspaces' });
+      return true;
+    }
+    const projected = projectTemplateState(record.state, mode, record.supportedModes, 'case-study');
+    const results = targets.map(target => {
+      const workspace = fixture.workspaces.find(item => item.id === target.workspaceId);
+      const state = workspace ? fixture.workspaceStates.get(workspace.id) : null;
+      if (!state) return { workspaceId: target.workspaceId, label: null, status: 'not-found', revision: null };
+      const required = target.expectedRevision ?? (state.caseSeededRevision ?? 1);
+      if (state.revision !== required) {
+        return { workspaceId: workspace.id, label: workspace.label, status: target.expectedRevision === null ? 'has-work' : 'changed', revision: state.revision };
+      }
+      const next = structuredClone(projected);
+      const lens = state.snapshot?.meta?.intakeMode;
+      if (typeof lens === 'string' && next.meta && typeof next.meta === 'object') next.meta.intakeMode = lens;
+      state.snapshot = next;
+      state.revision += 1;
+      state.caseSeededRevision = state.revision;
+      state.caseStudy = { id: record.id, name: record.name, mode, assignedAt: new Date().toISOString() };
+      return { workspaceId: workspace.id, label: workspace.label, status: 'loaded', revision: state.revision };
+    });
+    sendJson(response, 200, { caseStudy: { id: record.id, name: record.name }, mode, results });
     return true;
   }
 

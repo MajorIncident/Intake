@@ -7,6 +7,7 @@ import { afterEach, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 
 import {
+  STUDENT_EXERCISE_ASSET_ENDPOINT,
   STUDENT_EXERCISE_ENDPOINT,
   STUDENT_EXERCISE_READY_ENDPOINT,
   createStudentExerciseReferenceController
@@ -463,5 +464,130 @@ test('paused frozen debrief remains read only and disconnect restores original c
   assert.equal(addCause.disabled, false);
   assert.equal(dom.window.document.querySelector('.wrap[data-experience-surface="intake"]').classList.contains('student-exercise-readonly'), false);
 
+  controller.destroy();
+});
+
+// #316 rich released content: semantic tables and protected images/pages.
+const RICH_CONTENT = [
+  {
+    stageId: 'stage-1',
+    releaseType: 'initial',
+    releasedAt: null,
+    content: { id: 'readings', kind: 'table', title: 'Line readings', headers: ['Line', 'Reject rate'], rows: [['A', '2%'], ['B', '<b>9%</b>']] }
+  },
+  {
+    stageId: 'stage-1',
+    releaseType: 'initial',
+    releasedAt: null,
+    content: { id: 'photo-1', kind: 'image', title: 'Cabinet photo', assetId: 'cabinet-photo', alt: 'A rejected cabinet with a cracked door.', url: 'https://leak.example/x.png' }
+  },
+  {
+    stageId: 'stage-1',
+    releaseType: 'optional',
+    releasedAt: '2026-11-19T10:00:00Z',
+    content: { id: 'report-p2', kind: 'document-page', title: 'Inspection report', assetId: 'inspection-report', page: 2, alt: 'Inspection report page 2.' }
+  }
+];
+
+function richSetup(fetchImpl) {
+  dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  const created = [];
+  const revoked = [];
+  const controller = createStudentExerciseReferenceController({
+    fetchImpl,
+    documentRef: dom.window.document,
+    windowRef: dom.window,
+    setTimeoutImpl: () => 1,
+    clearTimeoutImpl: () => {},
+    createObjectURL: blob => {
+      const url = `blob:intake.test/${created.length + 1}`;
+      created.push({ url, blob });
+      return url;
+    },
+    revokeObjectURL: url => revoked.push(url)
+  });
+  return { controller, created, revoked, document: dom.window.document };
+}
+
+async function settleAssets() {
+  for (let index = 0; index < 6; index += 1) await new Promise(resolve => setImmediate(resolve));
+}
+
+test('released tables render semantically and authored text is never parsed as HTML (#316)', async () => {
+  const { controller, document } = richSetup(async url => {
+    if (url === STUDENT_EXERCISE_ENDPOINT) return response(200, payload({ content: [RICH_CONTENT[0]] }));
+    throw new Error(`unexpected ${url}`);
+  });
+  await controller.connectStudent(TOKEN);
+
+  const region = document.querySelector('#studentCaseReferenceContent .student-case-reference__table-wrap');
+  assert.equal(region.getAttribute('role'), 'region');
+  assert.equal(region.getAttribute('aria-label'), 'Line readings');
+  assert.equal(region.tabIndex, 0, 'scrollable table is keyboard reachable');
+  const table = region.querySelector('table');
+  assert.equal(table.querySelector('caption').textContent, 'Line readings');
+  assert.deepEqual([...table.querySelectorAll('thead th')].map(cell => [cell.textContent, cell.getAttribute('scope')]), [['Line', 'col'], ['Reject rate', 'col']]);
+  assert.deepEqual([...table.querySelectorAll('tbody tr')].map(row => [...row.cells].map(cell => cell.textContent)), [['A', '2%'], ['B', '<b>9%</b>']]);
+  assert.equal(table.querySelector('b'), null);
+  controller.destroy();
+});
+
+test('released images and document pages load through the Student asset route into memory-only object URLs (#316)', async () => {
+  const requests = [];
+  let content = RICH_CONTENT.slice(0, 2);
+  const { controller, created, revoked, document } = richSetup(async (url, init) => {
+    requests.push({ url, authorization: init?.headers?.Authorization });
+    if (url === STUDENT_EXERCISE_ENDPOINT) return response(200, payload({ content }));
+    if (url.startsWith(STUDENT_EXERCISE_ASSET_ENDPOINT)) {
+      return { ok: true, status: 200, blob: async () => ({ type: 'image/png', from: url }) };
+    }
+    throw new Error(`unexpected ${url}`);
+  });
+  await controller.connectStudent(TOKEN);
+  await settleAssets();
+
+  const image = document.querySelector('.student-case-reference__figure--image img');
+  assert.equal(image.getAttribute('alt'), 'A rejected cabinet with a cracked door.');
+  assert.equal(image.getAttribute('src'), 'blob:intake.test/1');
+  assert.equal(document.querySelector('.student-case-reference__figure--image figcaption').textContent, 'Cabinet photo');
+  assert.equal(document.getElementById('studentCaseReferenceContent').innerHTML.includes('leak.example'), false, 'unapproved fields are dropped');
+  const assetRequests = requests.filter(request => request.url.startsWith(STUDENT_EXERCISE_ASSET_ENDPOINT));
+  assert.deepEqual(assetRequests.map(request => request.url), [`${STUDENT_EXERCISE_ASSET_ENDPOINT}?assetId=cabinet-photo`]);
+  assert.equal(assetRequests[0].authorization, `Bearer ${TOKEN}`, 'class-session bearer, never in the URL');
+
+  // The Instructor releases the optional page; polling picks it up, the photo is not refetched.
+  content = RICH_CONTENT;
+  await controller.refresh();
+  await settleAssets();
+  const page = document.querySelector('.student-case-reference__figure--document-page img');
+  assert.equal(page.getAttribute('alt'), 'Inspection report page 2.');
+  assert.equal(document.querySelector('.student-case-reference__figure--document-page figcaption').textContent, 'Inspection report · Page 2');
+  assert.deepEqual(
+    requests.filter(request => request.url.startsWith(STUDENT_EXERCISE_ASSET_ENDPOINT)).map(request => request.url),
+    [`${STUDENT_EXERCISE_ASSET_ENDPOINT}?assetId=cabinet-photo`, `${STUDENT_EXERCISE_ASSET_ENDPOINT}?assetId=inspection-report&page=2`]
+  );
+  assert.deepEqual(controller.getState().exercise.assets, { 'cabinet-photo': 'ready', 'inspection-report#2': 'ready' });
+
+  controller.disconnect();
+  assert.deepEqual(revoked.sort(), created.map(item => item.url).sort(), 'every object URL is revoked on disconnect');
+  controller.destroy();
+});
+
+test('a refused asset shows a non-revealing message and retries a bounded number of times (#316)', async () => {
+  let assetCalls = 0;
+  const { controller, document } = richSetup(async url => {
+    if (url === STUDENT_EXERCISE_ENDPOINT) return response(200, payload({ content: [RICH_CONTENT[1]] }));
+    assetCalls += 1;
+    return { ok: false, status: 404, blob: async () => null };
+  });
+  await controller.connectStudent(TOKEN);
+  await settleAssets();
+  assert.equal(document.querySelector('.student-case-reference__asset-status').textContent, 'This image could not be loaded. It will retry shortly.');
+  assert.equal(document.querySelector('#studentCaseReferenceContent img'), null);
+  for (let index = 0; index < 5; index += 1) {
+    await controller.refresh();
+    await settleAssets();
+  }
+  assert.equal(assetCalls, 3, 'stops after three attempts');
   controller.destroy();
 });

@@ -49,14 +49,15 @@ Case Studies may add top-level `libraryGroup` (one of `psdm | ats | legacy | mim
 
 Authored JSON is build-time source, not a production static asset.
 
-`npm run build:templates` validates **all** authored JSON and generates two explicit boundaries:
+`npm run build:templates` validates **all** authored JSON and generates three explicit boundaries:
 
 - `src/templates.manifest.js` — public browser manifest containing Standard Templates only, plus the temporary Standalone allowlist below;
-- `api/protected-case-studies.manifest.js` — server-only Case Study metadata + payloads.
+- `api/protected-case-studies.manifest.js` — server-only Case Study metadata + payloads;
+- `api/_protected-assets.manifest.js` — server-only staged images/document pages from `templates/assets/` (#316). Author them only as described in `docs/classroom-protected-assets.md`: registry entries in `templates/assets/registry.json`, PNG/JPEG/WebP only, referenced by staged `image` / `document-page` blocks.
 
 Never copy a Case Study into `src/templates.manifest.js`, `src/`, `main.js`, `components/`, or another browser-delivered file. Never import the server-only manifest from browser code.
 
-`.vercelignore` excludes `templates/*.json` from deployment, and production uses the committed generated manifests. `npm run verify:protected-cases` checks that authored JSON stays excluded and protected Case Study IDs/names do not leak into public browser runtime assets.
+`.vercelignore` excludes `templates/*.json` and `templates/assets/` from deployment, and production uses the committed generated manifests. `npm run verify:protected-cases` checks that authored JSON stays excluded and protected Case Study IDs/names do not leak into public browser runtime assets.
 
 Role policy remains separate from confidentiality:
 - Standalone: public Standard Templates only, plus the temporary Standalone allowlist below;

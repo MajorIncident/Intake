@@ -140,11 +140,13 @@ Start with a small allowlist rather than arbitrary HTML:
 - `narrative` — titled plain/rich-safe text block;
 - `image` — server-protected image/evidence reference with required alt text;
 - `table` — structured headers/rows;
-- `document-page` — future protected page/image/PDF-page reference;
+- `document-page` — protected document page (a page image) with required alt text;
 - `prompt` — Student-safe question/instruction;
 - `evidence` — discrete released fact/evidence item.
 
 Do not allow executable markup, script, inline event handlers, arbitrary remote embeds, or public asset URLs that bypass Classroom authorization.
+
+`image` and `document-page` blocks reference the server-only protected asset registry (`templates/assets/registry.json`) by `assetId`; the build fails if a reference does not resolve. Retrieval, authorization, and Student rendering are specified in `docs/classroom-protected-assets.md` (#316).
 
 ### Instructor content
 
@@ -387,6 +389,8 @@ While a class has an active staged exercise for Case Study X:
 - unrelated non-staged protected resources may retain current behavior unless a later product rule narrows them.
 
 Do not rely on the Student drawer hiding the full-case Apply button. The server must close the full-payload bypass for the active staged case.
+
+The Instructor Case Study load (`POST /api/classes/case-studies/assign`, #343) follows the same rule: it refuses (409 `staged-exercise-only`) any Case Study with a `simulation` or with a staged exercise in this class, and refuses every load (409 `exercise-active`) while a staged exercise in the class is not completed, so a load can neither leak complete state nor overwrite workspaces mid-exercise.
 
 A completed exercise still does not imply automatic exemplar release.
 

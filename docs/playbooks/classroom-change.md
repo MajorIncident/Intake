@@ -9,6 +9,7 @@
 | Startup hub / resume / roles | `docs/preproduction-hardening.md` | `src/startupExperienceHub.js`, `src/experienceRoleController.js` |
 | Coaching, targets, debrief comparison | `docs/intake-target-identity.md`, `docs/classroom-debrief-comparison.md` | `src/intakeTargets.js`, `src/classroomCoaching.js`, `src/classroomDebrief*.js` |
 | Staged exercises | `docs/classroom-staged-simulation.md` | `api/_classroomExercise.js`, `src/classroomExercise*.js` |
+| Staged images / document pages / tables | `docs/classroom-protected-assets.md` | `api/_classroomExerciseAssets.js`, `scripts/protected-assets-schema.mjs`, `src/classroomCaseContent.js` |
 | Protected Case Studies | `templates/AGENTS.md`, `docs/classroom-api.md` (#295 section) | `api/_protectedCaseStudies.js`, `src/classroomCaseStudies.js` |
 | Admin / recovery / purge | `docs/admin-maintenance.md` | `api/_admin.js`, `src/adminMaintenance.js` |
 

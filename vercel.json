@@ -60,6 +60,10 @@
       "destination": "/api/classroom?__classroomRoute=case-studies"
     },
     {
+      "source": "/api/classes/case-studies/assign",
+      "destination": "/api/classroom?__classroomRoute=case-studies-assign"
+    },
+    {
       "source": "/api/classes/case-studies/student",
       "destination": "/api/classroom?__classroomRoute=case-studies-student"
     },
@@ -72,12 +76,20 @@
       "destination": "/api/classroom?__classroomRoute=exercise-checkpoint"
     },
     {
+      "source": "/api/classes/exercise/asset",
+      "destination": "/api/classroom?__classroomRoute=exercise-asset"
+    },
+    {
       "source": "/api/classes/exercise/student",
       "destination": "/api/classroom?__classroomRoute=exercise-student"
     },
     {
       "source": "/api/classes/exercise/student/ready",
       "destination": "/api/classroom?__classroomRoute=exercise-student-ready"
+    },
+    {
+      "source": "/api/classes/exercise/student/asset",
+      "destination": "/api/classroom?__classroomRoute=exercise-student-asset"
     }
   ]
 }
