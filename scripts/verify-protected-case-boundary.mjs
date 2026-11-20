@@ -6,6 +6,7 @@
 import { promises as fs } from 'node:fs';
 
 import { PROTECTED_CASE_STUDY_MANIFEST } from '../api/protected-case-studies.manifest.js';
+import { PROTECTED_ASSET_MANIFEST } from '../api/_protected-assets.manifest.js';
 import { STANDALONE_PUBLIC_CASE_STUDY_IDS } from './standalone-public-case-studies.mjs';
 
 const root = new URL('../', import.meta.url);
@@ -45,6 +46,9 @@ async function main() {
     .filter(line => line && !line.startsWith('#'));
   if (!ignoredPatterns.includes('templates/*.json')) {
     throw new Error('Protected boundary requires .vercelignore to exclude templates/*.json from deployment.');
+  }
+  if (!ignoredPatterns.includes('templates/assets/')) {
+    throw new Error('Protected boundary requires .vercelignore to exclude templates/assets/ (protected staged-asset sources) from deployment.');
   }
 
   const vercelConfig = JSON.parse(vercelConfigRaw);
@@ -88,7 +92,14 @@ async function main() {
         `Vercel deployment source still contains authored template JSON: ${deployedAuthoredJson.join(', ')}`
       );
     }
-    console.log('[verify:protected-cases] Vercel upload contains no authored templates/*.json files.');
+    const deployedAssetSources = await fs.readdir(new URL('assets/', templatesDirUrl)).catch(error => {
+      if (error?.code === 'ENOENT') return [];
+      throw error;
+    });
+    if (deployedAssetSources.length) {
+      throw new Error(`Vercel deployment source still contains protected asset sources: templates/assets/${deployedAssetSources[0]}`);
+    }
+    console.log('[verify:protected-cases] Vercel upload contains no authored templates/*.json files or protected asset sources.');
   }
 
   const browserFiles = [
@@ -133,13 +144,20 @@ async function main() {
     if (
       file.content.includes('protected-case-studies.manifest')
       || file.content.includes('PROTECTED_CASE_STUDY_MANIFEST')
+      || file.content.includes('protected-assets.manifest')
+      || file.content.includes('PROTECTED_ASSET_MANIFEST')
     ) {
-      throw new Error(`Browser runtime must not import the server-only protected manifest: ${file.path}`);
+      throw new Error(`Browser runtime must not import a server-only protected manifest: ${file.path}`);
     }
+  }
+  for (const asset of PROTECTED_ASSET_MANIFEST) {
+    const leak = [{ path: publicManifestPathname, content: publicManifest }, ...browserSources]
+      .find(file => file.content.includes(asset.id));
+    if (leak) throw new Error(`Protected asset identifier leaked into browser runtime ${leak.path}: ${asset.id}`);
   }
 
   console.log(
-    `[verify:protected-cases] Protected ${PROTECTED_CASE_STUDY_MANIFEST.length} Case Study payload(s); `
+    `[verify:protected-cases] Protected ${PROTECTED_CASE_STUDY_MANIFEST.length} Case Study payload(s) and ${PROTECTED_ASSET_MANIFEST.length} staged asset(s); `
     + 'public manifest/runtime and Vercel deployment boundary verified.'
     + (publicAllowlist.size
       ? ` TEMPORARY: ${publicAllowlist.size} Case Study payload(s) are intentionally public for Standalone (scripts/standalone-public-case-studies.mjs).`

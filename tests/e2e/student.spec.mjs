@@ -124,6 +124,8 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
     await page.getByRole('button', { name: 'Collapse notes' }).click();
     await expect(notesWorkspace).toHaveClass(/is-collapsed/);
 
+    // #316: measure with the wide released image loaded.
+    await expect(page.getByRole('img', { name: 'Synthetic wide photo of a rejected browser cabinet.' })).toBeVisible();
     const mobileLayout = await page.evaluate(() => ({
       dockPosition: getComputedStyle(document.querySelector('.workspace-dock')).position,
       scrollWidth: document.documentElement.scrollWidth,
@@ -140,6 +142,30 @@ test('Student joins with one code, waits, resumes Team Alpha, moves to Team Beta
   await expect(page.locator('#studentCaseReferenceContent')).toContainText('Optional browser evidence');
   await expect(page.locator('#studentCaseReference')).not.toContainText('Second browser briefing');
   await expect(page.locator('#studentCaseReference')).not.toContainText('Browser facilitation note');
+
+  // #316 rich released content: semantic table, protected image via authorized fetch,
+  // and nothing unreleased in the DOM or retrievable by the Student.
+  const readings = page.getByRole('table', { name: 'Browser line readings' });
+  await expect(readings).toBeVisible();
+  await expect(readings.getByRole('columnheader')).toHaveText(['Line', 'Shift', 'Reject rate']);
+  await expect(readings.getByRole('row')).toHaveCount(3);
+  const photo = page.getByRole('img', { name: 'Synthetic wide photo of a rejected browser cabinet.' });
+  await expect(photo).toBeVisible();
+  expect(await photo.evaluate(image => image.naturalWidth)).toBe(1200);
+  expect(await photo.getAttribute('src')).toMatch(/^blob:/u);
+  await expect(page.locator('#studentCaseReference')).not.toContainText('Browser inspection report');
+  await expect(page.locator('#studentCaseReference')).not.toContainText('Browser site photo');
+  const assetRequest = (query, token = storedWaiting.studentSessionToken) => page.request.get(
+    `/api/classes/exercise/student/asset?${query}`,
+    token ? { headers: { Authorization: `Bearer ${token}` } } : {}
+  );
+  const releasedAsset = await assetRequest('assetId=browser-cabinet-photo');
+  expect(releasedAsset.status()).toBe(200);
+  expect(releasedAsset.headers()['content-type']).toBe('image/png');
+  expect(releasedAsset.headers()['cache-control']).toBe('no-store');
+  expect((await assetRequest('assetId=browser-site-photo')).status()).toBe(404);
+  expect((await assetRequest('assetId=browser-report&page=1')).status()).toBe(404);
+  expect((await assetRequest('assetId=browser-cabinet-photo', '')).status()).toBe(404);
   if (testInfo.project.name === 'chromium-mobile') {
     await expectNoBlockingA11yViolations(page);
   }

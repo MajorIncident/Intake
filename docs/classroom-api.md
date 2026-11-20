@@ -380,6 +380,10 @@ Body:
 
 When setting Ready, the server resolves the participant's current assigned workspace and records the collaboration revision observed server-side. Waiting is rejected. A reassignment race conflicts rather than attaching readiness to the old workspace.
 
+### `GET /api/classes/exercise/student/asset` and `GET /api/classes/exercise/asset` (#316)
+
+Protected staged images and document pages. Query: `assetId` and, for a document page, `page`. The Student route requires the Student class-session capability and serves only representations referenced by the cumulative release through the current stage; the Instructor route requires the class Instructor capability and serves representations referenced by the class's current exercise definition. Every other request after authentication is the same `404 { error: "Asset not found." }`. Responses carry raw image bytes with `no-store`, `no-referrer`, and `nosniff`. Full contract: `docs/classroom-protected-assets.md`.
+
 ### Protected full-payload interaction
 
 When a class has a staged exercise record for Case Study X, Student `POST /api/classes/case-studies/student` must not return X's complete protected payload. The Student must use the staged exercise endpoint instead. This block remains after exercise completion; completing a simulation is not an implicit exemplar/model-answer release. Instructor full protected access remains class-scoped and unchanged, and unrelated protected resources keep their existing behavior.

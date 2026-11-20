@@ -61,7 +61,13 @@ function requestedWorkspaceId(req) {
 }
 
 
-function stagedCaseStudy(manifest, caseStudyId) {
+/**
+ * Resolve a staged protected Case Study from the server manifest.
+ * @param {ReadonlyArray<object>} manifest - Protected manifest.
+ * @param {string} caseStudyId - Case Study ID.
+ * @returns {object|null} Staged Case Study or null.
+ */
+export function stagedCaseStudy(manifest, caseStudyId) {
   const entry = manifest.find(candidate => candidate.id === caseStudyId) || null;
   return entry?.templateKind === 'case-study' && entry.simulation ? entry : null;
 }
@@ -88,7 +94,13 @@ function instructorDefinition(caseStudy) {
   };
 }
 
-function definitionMatches(exercise, caseStudy) {
+/**
+ * Whether a persisted exercise still pins the governed staged definition.
+ * @param {object|null} exercise - Persisted exercise.
+ * @param {object|null} caseStudy - Staged Case Study.
+ * @returns {boolean} Whether version and fingerprint match.
+ */
+export function definitionMatches(exercise, caseStudy) {
   if (!exercise || !caseStudy?.simulation) return false;
   return exercise.simulationVersion === caseStudy.simulation.version
     && exercise.simulationFingerprint === fingerprintStagedSimulation(caseStudy.simulation);
@@ -103,7 +115,14 @@ function currentStage(caseStudy, exercise) {
   };
 }
 
-function releasedStudentContent(caseStudy, exercise, releases) {
+/**
+ * Cumulative Student-safe content released through the current stage.
+ * @param {object} caseStudy - Staged Case Study.
+ * @param {object} exercise - Persisted exercise.
+ * @param {Array<object>} releases - Optional release records.
+ * @returns {Array<{stageId: string, releaseType: string, releasedAt: string|null, content: object}>} Released blocks.
+ */
+export function releasedStudentContent(caseStudy, exercise, releases) {
   const { index } = currentStage(caseStudy, exercise);
   if (index < 0 || exercise.status === 'draft') return [];
 

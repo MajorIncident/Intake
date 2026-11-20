@@ -333,5 +333,5 @@ For pre-production hardening, prefer **simplification over indefinite compatibil
 - Pre-production compatibility reset: #328
 - Admin / Maintenance lifecycle: #329
 - Startup experience hub: #330
-- Deferred rich staged assets: #316
+- Protected rich staged assets: #316 (`docs/classroom-protected-assets.md`)
 - Deferred first production staged case: #317

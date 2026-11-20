@@ -10,6 +10,7 @@
 import { promises as fs } from 'node:fs';
 
 import { PROTECTED_CASE_STUDY_MANIFEST } from '../api/protected-case-studies.manifest.js';
+import { PROTECTED_ASSET_MANIFEST } from '../api/_protected-assets.manifest.js';
 import { STANDALONE_PUBLIC_CASE_STUDY_IDS } from './standalone-public-case-studies.mjs';
 
 const root = new URL('../', import.meta.url);
@@ -126,6 +127,15 @@ async function verifyOutput() {
           `Protected Case Study text leaked into public deployment output ${leaked.file}: ${protectedText}`
         );
       }
+    }
+  }
+
+  // #316: protected staged assets are served only by authorized Classroom
+  // routes; neither their IDs nor their bytes may appear in public output.
+  for (const asset of PROTECTED_ASSET_MANIFEST) {
+    const leaked = textFiles.find(item => item.content.includes(asset.id));
+    if (leaked) {
+      throw new Error(`Protected asset identifier leaked into public deployment output ${leaked.file}: ${asset.id}`);
     }
   }
 

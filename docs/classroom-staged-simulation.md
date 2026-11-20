@@ -140,11 +140,13 @@ Start with a small allowlist rather than arbitrary HTML:
 - `narrative` — titled plain/rich-safe text block;
 - `image` — server-protected image/evidence reference with required alt text;
 - `table` — structured headers/rows;
-- `document-page` — future protected page/image/PDF-page reference;
+- `document-page` — protected document page (a page image) with required alt text;
 - `prompt` — Student-safe question/instruction;
 - `evidence` — discrete released fact/evidence item.
 
 Do not allow executable markup, script, inline event handlers, arbitrary remote embeds, or public asset URLs that bypass Classroom authorization.
+
+`image` and `document-page` blocks reference the server-only protected asset registry (`templates/assets/registry.json`) by `assetId`; the build fails if a reference does not resolve. Retrieval, authorization, and Student rendering are specified in `docs/classroom-protected-assets.md` (#316).
 
 ### Instructor content
 
