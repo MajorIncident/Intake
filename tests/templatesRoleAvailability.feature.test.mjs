@@ -305,3 +305,52 @@ test('Square Donuts includes the later participant problem as a closed self-stud
   closeTemplatesDrawer({ skipFocus: true });
 });
 
+
+test('Case Library shows original, accessible process flows without images or case answer spoilers', () => {
+  applyExperienceRole(EXPERIENCE_ROLE_IDS.STANDALONE);
+  openCaseLibrary();
+  const doc = dom.window.document;
+  const list = doc.getElementById('templatesList');
+  const reader = doc.getElementById('caseLibraryReaderSections');
+
+  list.querySelector('[data-template-id="microcomputer-cabinets"]').click();
+  const flow = reader.querySelector('figure.case-library__diagram');
+  assert.ok(flow);
+  assert.match(flow.querySelector('figcaption').textContent, /two parallel factory flows/i);
+  assert.equal(flow.querySelectorAll('.case-library__diagram-lane').length, 2);
+  assert.deepEqual(
+    [...flow.querySelectorAll('.case-library__diagram-steps')].map(node => node.children.length),
+    [5, 5]
+  );
+  assert.equal(flow.querySelectorAll('img,iframe,a,script').length, 0);
+  assert.doesNotMatch(flow.textContent, /ineffective|true cause|missing edger/i);
+
+  list.querySelector('[data-template-id="tamworth-petrochemical"]').click();
+  const formats = reader.querySelector('figure.case-library__diagram');
+  assert.equal(formats.querySelectorAll('.case-library__diagram-lane').length, 3);
+  assert.match(formats.textContent, /Interleaf paper/);
+  assert.doesNotMatch(formats.textContent, /chemical contaminants/i);
+
+  list.querySelector('[data-template-id="mrs-walthers-sugar-donuts"]').click();
+  const donutFlow = reader.querySelector('figure.case-library__diagram');
+  assert.equal(donutFlow.querySelectorAll('.case-library__diagram-steps li').length, 6);
+  assert.match(donutFlow.textContent, /Quality Control/);
+  assert.equal(reader.querySelector('details.case-library__reveal').open, false);
+  assert.equal(reader.querySelectorAll('img,iframe,a,script').length, 0);
+
+  list.querySelector('[data-template-id="red-sweat-mystery"]').click();
+  const flightComparisons = reader.querySelector('figure.case-library__diagram');
+  assert.equal(flightComparisons.querySelectorAll('.case-library__diagram-lane').length, 3);
+  assert.match(flightComparisons.textContent, /Lead flight attendants/);
+  assert.doesNotMatch(flightComparisons.textContent, /red ink|flaking|True Cause/i);
+
+  list.querySelector('[data-template-id="paytrix"]').click();
+  const authorizationPath = reader.querySelector('figure.case-library__diagram');
+  assert.equal(authorizationPath.querySelectorAll('.case-library__diagram-lane').length, 2);
+  assert.match(authorizationPath.textContent, /AuthService.*NA-East/);
+  assert.match(authorizationPath.textContent, /500.*700 ms/);
+  assert.doesNotMatch(authorizationPath.textContent, /adaptive risk scoring|root cause/i);
+  assert.equal(reader.querySelectorAll('img,iframe,a,script').length, 0);
+  assert.equal(doc.getElementById('templatesModeSection').hidden, true);
+  closeTemplatesDrawer({ skipFocus: true });
+});

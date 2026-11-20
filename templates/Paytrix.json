@@ -811,7 +811,30 @@
     "sections": [
       {
         "heading": "The incident",
-        "body": "Paytrix's AuthorizationService is experiencing sustained elevated response latency in the NA-East authorization path. The normal p95 latency is approximately 95–150 ms; current readings are approximately 500–700 ms. Normal timeout rate is below 0.3%. The service continues responding, but some transactions are delayed or time out."
+        "body": "Paytrix's AuthorizationService is experiencing sustained elevated response latency in the NA-East authorization path. The normal p95 latency is approximately 95–150 ms; current readings are approximately 500–700 ms. Normal timeout rate is below 0.3%. The service continues responding, but some transactions are delayed or time out.",
+        "diagram": {
+          "kind": "flow",
+          "caption": "Observed authorization path and incident evidence. This diagram does not identify the underlying cause.",
+          "lanes": [
+            {
+              "label": "Affected NA-East authorization path",
+              "steps": [
+                "Merchant authorization requests",
+                "AuthService — NA-East",
+                "Sustained p95 500–700 ms",
+                "Delayed or timed-out payments"
+              ]
+            },
+            {
+              "label": "Comparison and evidence",
+              "steps": [
+                "NA-West and EU regional paths",
+                "Datadog latency and timeout metrics",
+                "Merchant alerts and incident records"
+              ]
+            }
+          ]
+        }
       },
       {
         "heading": "How the problem was detected",

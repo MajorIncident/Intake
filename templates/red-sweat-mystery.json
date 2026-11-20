@@ -372,7 +372,37 @@
       },
       {
         "heading": "Who is and is not reporting it",
-        "body": "The affected people are working flight attendants. Lead flight attendants, pilots and passengers on the same flights have not reported the same condition. These distinctions matter even though the same aircraft environment may be shared by several groups."
+        "body": "The affected people are working flight attendants. Lead flight attendants, pilots and passengers on the same flights have not reported the same condition. These distinctions matter even though the same aircraft environment may be shared by several groups.",
+        "diagram": {
+          "kind": "flow",
+          "caption": "Comparison of reported and unreported groups. These are reported observations, not a causal explanation.",
+          "lanes": [
+            {
+              "label": "Reported affected",
+              "steps": [
+                "Eastern flight attendants",
+                "Red or pink staining reported in flight"
+              ]
+            },
+            {
+              "label": "On the same affected flights",
+              "steps": [
+                "Lead flight attendants",
+                "Pilots",
+                "Passengers",
+                "No corresponding reports"
+              ]
+            },
+            {
+              "label": "Other operations",
+              "steps": [
+                "Eastern DC9 flights",
+                "Other airlines",
+                "No corresponding reports"
+              ]
+            }
+          ]
+        }
       },
       {
         "heading": "Aircraft, routes and timing",

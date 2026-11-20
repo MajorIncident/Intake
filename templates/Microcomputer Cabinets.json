@@ -444,7 +444,33 @@
       },
       {
         "heading": "How the lines operate",
-        "body": "Line 1 and Line 2 use separate wash tanks supplied from a common central solution source. The wash solution is routinely changed every 30 minutes. After washing, the cabinets go to electrostatic painting and drying. The two manufacturing lines use broadly similar operations, so differences in product, handling, wash conditions and throughput can be investigated."
+        "body": "Line 1 and Line 2 use separate wash tanks supplied from a common central solution source. The wash solution is routinely changed every 30 minutes. After washing, the cabinets go to electrostatic painting and drying. The two manufacturing lines use broadly similar operations, so differences in product, handling, wash conditions and throughput can be investigated.",
+        "diagram": {
+          "kind": "flow",
+          "caption": "Two parallel factory flows. The line wash tanks are separate, but both use the central solution supply.",
+          "lanes": [
+            {
+              "label": "Line 1 · model 1025",
+              "steps": [
+                "Line 1 wash tank",
+                "Electrostatic painting",
+                "Drying",
+                "Assembly",
+                "Final Inspection"
+              ]
+            },
+            {
+              "label": "Line 2 · models 1035 and 1045",
+              "steps": [
+                "Line 2 wash tank",
+                "Electrostatic painting",
+                "Drying",
+                "Assembly",
+                "Final Inspection"
+              ]
+            }
+          ]
+        }
       },
       {
         "heading": "What Final Inspection is seeing",

@@ -1060,6 +1060,16 @@ body.templates-drawer-open{overflow:hidden;}
 .case-library__reader-section{padding-top:12px;border-top:1px solid var(--line);}
 .case-library__reader-section h4{margin:0 0 6px;font-size:14px;color:var(--ink-strong);}
 .case-library__reader-section p,.case-library__sections>p{margin:0;font-size:14px;line-height:1.7;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;}
+/* Accessible original case schematics are semantic lists, not copied workbook images. */
+.case-library__diagram{min-width:0;max-width:100%;margin:14px 0 0;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel-muted);}
+.case-library__diagram figcaption{margin:0 0 12px;color:var(--muted);font-size:12px;line-height:1.5;}
+.case-library__diagram-lane{min-width:0;padding-top:10px;}
+.case-library__diagram-lane+.case-library__diagram-lane{margin-top:12px;border-top:1px solid var(--line);}
+.case-library__diagram-lane h5{margin:0 0 8px;color:var(--ink-strong);font-size:13px;font-weight:700;}
+.case-library__diagram-steps{counter-reset:case-step;display:flex;flex-wrap:wrap;gap:8px;min-width:0;padding:0;margin:0;list-style:none;}
+.case-library__diagram-steps li{counter-increment:case-step;display:flex;gap:8px;align-items:center;flex:1 1 116px;min-width:0;min-height:44px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-size:12px;line-height:1.4;color:var(--ink);overflow-wrap:anywhere;}
+.case-library__diagram-steps li::before{content:counter(case-step);flex:0 0 auto;display:grid;place-items:center;min-width:21px;height:21px;border-radius:50%;background:color-mix(in srgb,var(--accent) 12%,var(--panel));color:var(--ink-strong);font-size:11px;font-weight:750;}
+@media (max-width:450px){.case-library__diagram{padding:10px;}.case-library__diagram-steps li{flex-basis:100%;}}
 .case-library__reader-actions{display:flex;justify-content:flex-start;gap:12px;margin-top:22px;padding-top:16px;border-top:1px solid var(--line);}
 .case-library__reader-actions button{min-height:44px;}
 .case-library__back{appearance:none;padding:8px 0;margin:0 0 14px;border:0;background:transparent;color:var(--accent);font-weight:650;cursor:pointer;text-align:left;}

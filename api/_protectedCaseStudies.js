@@ -55,7 +55,17 @@ function catalog(manifest, { includeLaterProblem = false } = {}) {
           .map(section => ({
             heading: section.heading,
             body: section.body,
-            ...(section.reveal === true ? { reveal: true } : {})
+            ...(section.reveal === true ? { reveal: true } : {}),
+            ...(section.diagram ? {
+              diagram: {
+                kind: 'flow',
+                caption: section.diagram.caption,
+                lanes: section.diagram.lanes.map(lane => ({
+                  label: lane.label,
+                  steps: [...lane.steps]
+                }))
+              }
+            } : {})
           }))
       }
     })

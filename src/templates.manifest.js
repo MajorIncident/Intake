@@ -340,7 +340,33 @@ const manifest = [
         },
         {
           "heading": "How the lines operate",
-          "body": "Line 1 and Line 2 use separate wash tanks supplied from a common central solution source. The wash solution is routinely changed every 30 minutes. After washing, the cabinets go to electrostatic painting and drying. The two manufacturing lines use broadly similar operations, so differences in product, handling, wash conditions and throughput can be investigated."
+          "body": "Line 1 and Line 2 use separate wash tanks supplied from a common central solution source. The wash solution is routinely changed every 30 minutes. After washing, the cabinets go to electrostatic painting and drying. The two manufacturing lines use broadly similar operations, so differences in product, handling, wash conditions and throughput can be investigated.",
+          "diagram": {
+            "kind": "flow",
+            "caption": "Two parallel factory flows. The line wash tanks are separate, but both use the central solution supply.",
+            "lanes": [
+              {
+                "label": "Line 1 · model 1025",
+                "steps": [
+                  "Line 1 wash tank",
+                  "Electrostatic painting",
+                  "Drying",
+                  "Assembly",
+                  "Final Inspection"
+                ]
+              },
+              {
+                "label": "Line 2 · models 1035 and 1045",
+                "steps": [
+                  "Line 2 wash tank",
+                  "Electrostatic painting",
+                  "Drying",
+                  "Assembly",
+                  "Final Inspection"
+                ]
+              }
+            ]
+          }
         },
         {
           "heading": "What Final Inspection is seeing",
@@ -803,7 +829,30 @@ const manifest = [
       "sections": [
         {
           "heading": "The incident",
-          "body": "Paytrix's AuthorizationService is experiencing sustained elevated response latency in the NA-East authorization path. The normal p95 latency is approximately 95–150 ms; current readings are approximately 500–700 ms. Normal timeout rate is below 0.3%. The service continues responding, but some transactions are delayed or time out."
+          "body": "Paytrix's AuthorizationService is experiencing sustained elevated response latency in the NA-East authorization path. The normal p95 latency is approximately 95–150 ms; current readings are approximately 500–700 ms. Normal timeout rate is below 0.3%. The service continues responding, but some transactions are delayed or time out.",
+          "diagram": {
+            "kind": "flow",
+            "caption": "Observed authorization path and incident evidence. This diagram does not identify the underlying cause.",
+            "lanes": [
+              {
+                "label": "Affected NA-East authorization path",
+                "steps": [
+                  "Merchant authorization requests",
+                  "AuthService — NA-East",
+                  "Sustained p95 500–700 ms",
+                  "Delayed or timed-out payments"
+                ]
+              },
+              {
+                "label": "Comparison and evidence",
+                "steps": [
+                  "NA-West and EU regional paths",
+                  "Datadog latency and timeout metrics",
+                  "Merchant alerts and incident records"
+                ]
+              }
+            ]
+          }
         },
         {
           "heading": "How the problem was detected",
@@ -1641,7 +1690,24 @@ const manifest = [
         },
         {
           "heading": "The production process",
-          "body": "Dough travels through equipment for forming and proofing, moves through cutters and edge controls, and eventually passes through cooking, finishing and Quality Control. The factory has different product lines, including a sugar-donut line. Understanding where each operation occurs helps you decide which people, equipment and product to observe."
+          "body": "Dough travels through equipment for forming and proofing, moves through cutters and edge controls, and eventually passes through cooking, finishing and Quality Control. The factory has different product lines, including a sugar-donut line. Understanding where each operation occurs helps you decide which people, equipment and product to observe.",
+          "diagram": {
+            "kind": "flow",
+            "caption": "Simplified orientation of the sugar-donut production path, from dough through Quality Control. This drawing is new, not an original workbook exhibit.",
+            "lanes": [
+              {
+                "label": "Sugar-donut line",
+                "steps": [
+                  "Dough strip",
+                  "Proofing and edge control",
+                  "Cutting",
+                  "Hot-oil cooking",
+                  "Sugaring",
+                  "Quality Control"
+                ]
+              }
+            ]
+          }
         },
         {
           "heading": "Equipment you can investigate",
@@ -2285,7 +2351,37 @@ const manifest = [
         },
         {
           "heading": "Film formats and packaging",
-          "body": "The film formats have different handling and packaging arrangements. Sheet film is separated using interleaf paper, unlike the roll and film-pack formats. Tamworth has also introduced a newer zip-top package. Packaging changes and supplier changes are among several events that investigators have been asked to consider, but their significance is not yet established."
+          "body": "The film formats have different handling and packaging arrangements. Sheet film is separated using interleaf paper, unlike the roll and film-pack formats. Tamworth has also introduced a newer zip-top package. Packaging changes and supplier changes are among several events that investigators have been asked to consider, but their significance is not yet established.",
+          "diagram": {
+            "kind": "flow",
+            "caption": "Format comparison based on the participant material. Follow the three products to see which handles sheet-separating paper.",
+            "lanes": [
+              {
+                "label": "Sheet film",
+                "steps": [
+                  "Hi-Grade 202 sheet film",
+                  "Interleaf paper between sheets",
+                  "Boxed film supplied to dealers"
+                ]
+              },
+              {
+                "label": "Roll film",
+                "steps": [
+                  "Hi-Grade 202 roll film",
+                  "Film on rolls",
+                  "Supplied to dealers"
+                ]
+              },
+              {
+                "label": "Film-pack",
+                "steps": [
+                  "Hi-Grade 202 film-pack",
+                  "Film-pack format",
+                  "Supplied to dealers"
+                ]
+              }
+            ]
+          }
         },
         {
           "heading": "Manufacturing and supplier history",
@@ -2882,7 +2978,37 @@ const manifest = [
         },
         {
           "heading": "Who is and is not reporting it",
-          "body": "The affected people are working flight attendants. Lead flight attendants, pilots and passengers on the same flights have not reported the same condition. These distinctions matter even though the same aircraft environment may be shared by several groups."
+          "body": "The affected people are working flight attendants. Lead flight attendants, pilots and passengers on the same flights have not reported the same condition. These distinctions matter even though the same aircraft environment may be shared by several groups.",
+          "diagram": {
+            "kind": "flow",
+            "caption": "Comparison of reported and unreported groups. These are reported observations, not a causal explanation.",
+            "lanes": [
+              {
+                "label": "Reported affected",
+                "steps": [
+                  "Eastern flight attendants",
+                  "Red or pink staining reported in flight"
+                ]
+              },
+              {
+                "label": "On the same affected flights",
+                "steps": [
+                  "Lead flight attendants",
+                  "Pilots",
+                  "Passengers",
+                  "No corresponding reports"
+                ]
+              },
+              {
+                "label": "Other operations",
+                "steps": [
+                  "Eastern DC9 flights",
+                  "Other airlines",
+                  "No corresponding reports"
+                ]
+              }
+            ]
+          }
         },
         {
           "heading": "Aircraft, routes and timing",

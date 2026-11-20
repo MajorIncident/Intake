@@ -75,6 +75,43 @@ function validateParticipantCase(value, errors) {
     if (isRecord(section) && section.reveal !== undefined && typeof section.reveal !== 'boolean') {
       errors.push(`participantCase.sections[${index}].reveal must be a boolean`);
     }
+    // Original author-drawn flow maps are accessible HTML text, never stored
+    // as copied workbook figure bytes or remote URLs. Bound the structure to
+    // prevent unexpected rich content in public and Classroom catalogs.
+    if (isRecord(section) && section.diagram !== undefined) {
+      const diagram = section.diagram;
+      if (!isRecord(diagram)
+        || diagram.kind !== 'flow'
+        || typeof diagram.caption !== 'string'
+        || !diagram.caption.trim()
+        || diagram.caption.length > 250
+        || !Array.isArray(diagram.lanes)
+        || diagram.lanes.length < 1
+        || diagram.lanes.length > 4) {
+        errors.push(`participantCase.sections[${index}].diagram must be a flow with caption and 1-4 lanes`);
+      } else {
+        // The public Standalone manifest embeds authored reader metadata. Reject
+        // unknown keys at build time, not only at the protected API projection,
+        // so accidental URLs, source-file paths or HTML cannot be shipped.
+        if (Object.keys(diagram).some(key => !['kind', 'caption', 'lanes'].includes(key))) {
+          errors.push(`participantCase.sections[${index}].diagram contains unsupported fields`);
+        }
+        diagram.lanes.forEach((lane, laneIndex) => {
+          if (!isRecord(lane)
+            || typeof lane.label !== 'string'
+            || !lane.label.trim()
+            || lane.label.length > 120
+            || !Array.isArray(lane.steps)
+            || lane.steps.length < 2
+            || lane.steps.length > 7
+            || lane.steps.some(step => typeof step !== 'string' || !step.trim() || step.length > 120)) {
+            errors.push(`participantCase.sections[${index}].diagram.lanes[${laneIndex}] needs a label and 2-7 short text steps`);
+          } else if (Object.keys(lane).some(key => !['label', 'steps'].includes(key))) {
+            errors.push(`participantCase.sections[${index}].diagram.lanes[${laneIndex}] contains unsupported fields`);
+          }
+        });
+      }
+    }
   });
 }
 
