@@ -9,6 +9,8 @@ import { JSDOM } from 'jsdom';
 import {
   STUDENT_EXERCISE_ASSET_ENDPOINT,
   STUDENT_EXERCISE_ENDPOINT,
+  STUDENT_EXERCISE_IDLE_POLL_MS,
+  STUDENT_EXERCISE_POLL_MS,
   STUDENT_EXERCISE_READY_ENDPOINT,
   createStudentExerciseReferenceController
 } from '../src/classroomExerciseStudent.js';
@@ -589,5 +591,25 @@ test('a refused asset shows a non-revealing message and retries a bounded number
     await settleAssets();
   }
   assert.equal(assetCalls, 3, 'stops after three attempts');
+  controller.destroy();
+});
+
+test('the reference polls every 5 s during an exercise and every 10 s when the class has none (pilot blocker 6)', async () => {
+  dom = new JSDOM(INDEX_HTML, { url: 'https://intake.test/' });
+  const delays = [];
+  let body = { class: { id: 'class-1', title: 'PSDM Class' }, participant: { id: 'participant-1', displayName: 'Alex' }, assignment: null, exercise: null };
+  const controller = createStudentExerciseReferenceController({
+    fetchImpl: async () => response(200, body),
+    documentRef: dom.window.document,
+    windowRef: dom.window,
+    setTimeoutImpl: (_callback, delay) => { delays.push(delay); return delays.length; },
+    clearTimeoutImpl: () => {}
+  });
+  await controller.connectStudent(TOKEN);
+  assert.equal(delays.at(-1), STUDENT_EXERCISE_IDLE_POLL_MS);
+  body = payload();
+  await controller.refresh();
+  assert.equal(delays.at(-1), STUDENT_EXERCISE_POLL_MS);
+  assert.deepEqual([STUDENT_EXERCISE_POLL_MS, STUDENT_EXERCISE_IDLE_POLL_MS], [5000, 10000]);
   controller.destroy();
 });

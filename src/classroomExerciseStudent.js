@@ -17,7 +17,10 @@ import {
 export const STUDENT_EXERCISE_ENDPOINT = '/api/classes/exercise/student';
 export const STUDENT_EXERCISE_READY_ENDPOINT = '/api/classes/exercise/student/ready';
 export const STUDENT_EXERCISE_ASSET_ENDPOINT = '/api/classes/exercise/student/asset';
-export const STUDENT_EXERCISE_POLL_MS = 2500;
+/** Staged-exercise refresh while the class has an exercise (pilot blocker 6 load budget). */
+export const STUDENT_EXERCISE_POLL_MS = 5000;
+/** Refresh while the class has no staged exercise at all; most classes never start one. */
+export const STUDENT_EXERCISE_IDLE_POLL_MS = 10000;
 const ASSET_RETRY_LIMIT = 3;
 
 const CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
@@ -134,6 +137,7 @@ export function createStudentExerciseReferenceController({
   clearTimeoutImpl = globalThis.clearTimeout?.bind(globalThis),
   AbortControllerImpl = globalThis.AbortController,
   pollMs = STUDENT_EXERCISE_POLL_MS,
+  idlePollMs = STUDENT_EXERCISE_IDLE_POLL_MS,
   createObjectURL = blob => windowRef?.URL?.createObjectURL?.(blob) || null,
   revokeObjectURL = url => windowRef?.URL?.revokeObjectURL?.(url)
 } = {}) {
@@ -255,7 +259,7 @@ export function createStudentExerciseReferenceController({
     timer = setTimeoutImpl(() => {
       timer = null;
       void refresh(localEpoch);
-    }, pollMs);
+    }, exercise ? pollMs : idlePollMs);
   };
 
   const renderExpansion = () => {

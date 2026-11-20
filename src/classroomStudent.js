@@ -27,7 +27,8 @@ export const STUDENT_ACCESS_ENDPOINT = '/api/classes/student/access';
 const CAPABILITY_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const JOIN_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{8}$/;
 const DISPLAY_NAME_MAX_LENGTH = 60;
-const LIVE_STATUS_POLL_MS = 2500;
+// Assignment changes are rare; 5 s keeps reassignment prompt while halving load (pilot blocker 6).
+const LIVE_STATUS_POLL_MS = 5000;
 
 /**
  * Normalize a required Student display name for client-side validation.

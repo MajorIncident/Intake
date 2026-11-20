@@ -9,8 +9,14 @@ export const RECOVERY_STORAGE_KEY = 'kt-collaboration-recovery-v1';
 export const PROFILE_STORAGE_KEY = 'kt-collaboration-profile-v1';
 export const SYNC_STATES = Object.freeze(['Local only', 'Connecting', 'Saving', 'Synced', 'Offline', 'Retrying', 'Conflict']);
 export const SAVE_DELAY_MS = 300;
+/** Revision poll while someone in the workspace is active (this browser or a teammate). */
 export const POLL_DELAY_MS = 900;
-export const PRESENCE_DELAY_MS = 2000;
+/** Revision poll once nobody has been active for ACTIVE_WINDOW_MS (pilot blocker 6 load budget). */
+export const IDLE_POLL_DELAY_MS = 3000;
+/** How long local typing/focus, a received change, or a teammate's reported activity keeps the fast poll. */
+export const ACTIVE_WINDOW_MS = 15000;
+/** Periodic presence refresh; activity changes are still sent immediately. Server presence window is 30 s. */
+export const PRESENCE_DELAY_MS = 5000;
 export const TYPING_IDLE_DELAY_MS = 1500;
 export const PARTICIPANT_IDLE_DELAY_MS = 30000;
 const ROSTER_VISIBLE_LIMIT = 6;
@@ -39,6 +45,7 @@ export function createCollaborationController({
   let editingField = ''; let activityState = 'active'; let activitySequence = 0; let desiredPresence = null; let acknowledgedPresenceSequence = -1;
   let presenceTimer = null; let typingTimer = null; let idleTimer = null; let inFlightPresence = null; let dialogMode = null; let dialogReturnFocus = null; let dialogFocusTimer = null;
   let rosterExpanded = false; let lastAnnouncedCollision = '';
+  let activeUntil = 0;
   const mobileWorkspaceQuery = windowRef?.matchMedia?.('(max-width: 700px)') || null;
   let workspaceExpanded = !mobileWorkspaceQuery?.matches;
   let workspacePreferenceTouched = false;
@@ -185,6 +192,7 @@ export function createCollaborationController({
     teamName = body.teamName || teamName || 'Shared intake';
     if (body.self) { self = body.self; profile = { participantId: body.self.id, displayName: body.self.displayName }; saveProfile(); }
     if (Array.isArray(body.participants)) participants = body.participants;
+    if (participants.some(participant => participant?.id !== self?.id && ['editing', 'focused'].includes(participant?.activityState))) markActive();
     renderPresence();
   };
   const updateActions = () => {
@@ -200,10 +208,21 @@ export function createCollaborationController({
   const authorizationHeaders = extra => ({ ...extra, Authorization: `Bearer ${token}` });
   const markSuccess = () => { terminalStatus = null; lastSuccessfulSync = now(); retryDelay = POLL_DELAY_MS; retrying = false; renderStatus('Synced'); };
   const markRetry = offline => { retrying = true; retryDelay = Math.min(MAX_BACKOFF_MS, Math.max(POLL_DELAY_MS * 2, retryDelay * 2)); renderStatus(offline ? 'Offline' : 'Retrying'); };
+  const pollDelay = () => (retrying ? retryDelay : now() < activeUntil ? POLL_DELAY_MS : IDLE_POLL_DELAY_MS);
   const schedulePoll = () => {
     cancelTimeout(pollTimer);
     if (destroyed || !token || conflicted || pollingStopped || documentRef?.hidden || !online()) return;
-    pollTimer = scheduleTimeout(poll, retrying ? retryDelay : POLL_DELAY_MS);
+    pollTimer = scheduleTimeout(poll, pollDelay());
+  };
+  /**
+   * Keeps the fast revision poll for ACTIVE_WINDOW_MS. When the workspace was
+   * idle, a pending slow poll is rescheduled so new activity is seen promptly.
+   * @returns {void}
+   */
+  const markActive = () => {
+    const wasIdle = now() >= activeUntil;
+    activeUntil = now() + ACTIVE_WINDOW_MS;
+    if (wasIdle && pollTimer && !inFlightGet && !retrying) schedulePoll();
   };
   const schedulePresence = () => {
     cancelTimeout(presenceTimer);
@@ -282,6 +301,7 @@ export function createCollaborationController({
     applyingRemote = true;
     try { apply(workspace.snapshot); saveLocal(workspace.snapshot); revision = workspace.revision; lastSnapshot = workspace.snapshot; }
     finally { applyingRemote = false; }
+    markActive();
     return true;
   };
   /** Polls once, coalescing concurrent callers and ignoring stale completions. @returns {Promise<boolean>} Whether a newer snapshot was applied. */
@@ -338,12 +358,13 @@ export function createCollaborationController({
   const notifyLocalChange = (snapshot, { immediate = false, fieldId = '' } = {}) => {
     if (token) { if (documentRef?.title !== lastCollaborationTitle) baseDocumentTitle = documentRef.title; renderPresence({ stale: !online(), snapshot }); }
     if (!token || applyingRemote || conflicted || pollingStopped) return;
+    markActive();
     pendingSave = { snapshot, expectedRevision: revision, changedSections: changedSections(snapshot) }; cancelTimeout(saveTimer); renderStatus('Saving');
     if (fieldId && (fieldId !== editingField || activityState !== 'editing')) { editingField = fieldId; activityState = 'editing'; heartbeat(profile.displayName, editingField, activityState); }
     if (!inFlightSave) saveTimer = scheduleTimeout(flushSave, immediate ? 0 : SAVE_DELAY_MS);
   };
   const loadNewest = async () => { terminalStatus = null; conflicted = false; pollingStopped = false; updateActions(); return poll(); };
-  const activate = async () => { if (!token) return false; const checked = await poll(); await flushSave(); if (joinedPresence) await heartbeat(); schedulePoll(); return checked; };
+  const activate = async () => { if (!token) return false; markActive(); const checked = await poll(); await flushSave(); if (joinedPresence) await heartbeat(); schedulePoll(); return checked; };
   const syncNow = async () => { await flushSave(); const checked = await poll(); if (joinedPresence) await heartbeat(); return checked; };
   const start = async ({ requestedTeamName = '', requestedDisplayName = profile.displayName } = {}) => {
     const epoch = ++sessionEpoch; terminalStatus = null; sessionKind = 'standalone'; linkSharingEnabled = true; legacyLeaveEnabled = true; renderStatus('Connecting'); const snapshot = collect(); const started = now();
@@ -351,7 +372,7 @@ export function createCollaborationController({
       saveProfile();
       const { response, body } = await request('/api/workspaces', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ snapshot, teamName: requestedTeamName, participant: { id: profile.participantId, displayName: requestedDisplayName } }) });
       if (epoch !== sessionEpoch) return false; if (!response.ok) { unavailable(response.status); return false; }
-      token = body.token; revision = body.revision; lastSnapshot = snapshot; pollingStopped = false;
+      token = body.token; revision = body.revision; lastSnapshot = snapshot; pollingStopped = false; activeUntil = now() + ACTIVE_WINDOW_MS;
       joinedPresence = true; acceptPresence(body);
       const url = new URL(activeLocation.href); url.searchParams.set('workspace', token); activeHistory.replaceState({}, '', url);
       markSuccess(); updateActions(); schedulePoll(); schedulePresence(); toast('Shared session started. Keep the link secret.'); return true;
@@ -378,7 +399,7 @@ export function createCollaborationController({
     if (typeof workspaceToken !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(workspaceToken)) {
       return false;
     }
-    sessionEpoch += 1; terminalStatus = null; token = workspaceToken; revision = 0; lastSnapshot = null;
+    sessionEpoch += 1; terminalStatus = null; token = workspaceToken; revision = 0; lastSnapshot = null; activeUntil = now() + ACTIVE_WINDOW_MS;
     conflicted = false; pollingStopped = false; retrying = false; joinedPresence = false;
     sessionKind = classroom ? 'classroom' : 'standalone';
     linkSharingEnabled = !classroom; legacyLeaveEnabled = !classroom;
@@ -394,7 +415,7 @@ export function createCollaborationController({
 
   const joinFromUrl = async () => {
     const candidate = new URL(activeLocation.href).searchParams.get('workspace'); if (!candidate) { updateActions(); return false; }
-    sessionEpoch += 1; terminalStatus = null; token = candidate; pollingStopped = false;
+    sessionEpoch += 1; terminalStatus = null; token = candidate; pollingStopped = false; activeUntil = now() + ACTIVE_WINDOW_MS;
     sessionKind = 'standalone'; linkSharingEnabled = true; legacyLeaveEnabled = true; updateActions();
     const loaded = await poll();
     if (token && !pollingStopped) openDialog('join');
@@ -422,6 +443,7 @@ export function createCollaborationController({
   const publishActivity = (field, state) => {
     if (!token || !joinedPresence) return;
     editingField = field || ''; activityState = state;
+    if (state !== 'idle') markActive();
     cancelTimeout(idleTimer); if (state !== 'idle') idleTimer = scheduleTimeout(() => publishActivity(editingField, 'idle'), PARTICIPANT_IDLE_DELAY_MS);
     heartbeat(profile.displayName, editingField, activityState);
   };
