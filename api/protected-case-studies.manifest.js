@@ -1365,6 +1365,358 @@ const manifest = [
     }
   },
   {
+    "id": "distributor-complaints",
+    "name": "Distributor Complaints",
+    "description": "Soter protective-shoe discoloration: PSDM discovery and full instructor-guided PA demonstration.",
+    "supportedModes": [
+      "intake",
+      "is-is-not",
+      "dc",
+      "full"
+    ],
+    "templateKind": "case-study",
+    "libraryGroup": "psdm",
+    "participantCase": {
+      "title": "Distributor Complaints — Soter Safety participant case",
+      "sections": [
+        {
+          "heading": "Your assignment",
+          "body": "Soter Safety makes protective footwear for industrial customers. Its distributors have begun complaining that some shoes have smudges or mottled blue-gray areas. Work initially as a discovery team: identify what you would investigate, discuss alternative explanations, and agree on three questions whose answers would materially help identify the cause. The later KT analysis should test those ideas against the actual affected and unaffected products."
+        },
+        {
+          "heading": "Affected footwear",
+          "body": "Returns include Soter Medi-Lite and ESD-Shade shoes. The marks appear in light-colored rubber components and seem to be part of the rubber rather than removable dirt on the surface. T-Shield and Capper products have not produced the same reports. The expected appearance is clean, uniformly colored rubber."
+        },
+        {
+          "heading": "Where the complaints are arising",
+          "body": "The first complaints came from nearby distributors; subsequent reports extended to more distant and international distributors. The problem is not confined to one delivery distance. Quality Control reports that normal production-line samples and inspected finished-goods inventory still appear acceptable, so the difference between inspection and later distributor observation matters."
+        },
+        {
+          "heading": "When reports increased",
+          "body": "The first distributor complaint was recorded on 18 May. Reports continued and escalated after that date. The total number of affected shoes, proportion of shipments and magnitude of each discoloration are not established in the participant information; do not invent those measurements."
+        },
+        {
+          "heading": "Equipment and material events to consider",
+          "body": "On 1 May, some HVAC air filters were installed incorrectly and dark dust became visible in the plant. On 7 May, a severe storm caused a power outage and temporarily affected equipment conditions, including temperature in a Fractionator. Certain incoming natural-latex lots used around 7–8 May and 15–18 May showed purple discoloration or under-curing. These events are investigation clues, not identified causes."
+        },
+        {
+          "heading": "Open questions",
+          "body": "Production, Maintenance, Engineering, Quality Control, Sales and R&D have each supplied observations or competing explanations. R&D has not yet resolved the mechanism. Identify which production lots and compounds entered the affected models, why inspection differs from distributor observations, and what would disprove competing contamination, supplier-material and shipping explanations."
+        },
+        {
+          "heading": "Work with the evidence",
+          "body": "Specify WHAT, WHERE, WHEN and EXTENT with close factual IS NOT comparisons. Look for a feature genuinely unique to each IS, any dated Change, and a possible cause that explains both the affected and unaffected cases. Record what further evidence you need before deciding on a cause and how your leading hypothesis could be checked."
+        }
+      ]
+    },
+    "state": {
+      "meta": {
+        "version": 3,
+        "savedAt": null,
+        "intakeMode": "general"
+      },
+      "pre": {
+        "oneLine": "Soter protective shoes have smudges.",
+        "objectPrefill": "Soter protective shoes (Medi-Lite and ESD-Shade products)",
+        "healthy": "Light-colored rubber components should have a clean, uniform appearance.",
+        "now": "Affected shoes returned by distributors show mottled blue-gray discoloration within their light-colored rubber components.",
+        "proof": "Distributors returned affected Medi-Lite and ESD-Shade shoes with blue-gray mottling that appears included in the rubber rather than being removable surface dirt. T-Shields and Cappers have no comparable reports. The first recorded distributor complaint was 18 May; complaints spread to more distant and overseas outlets. Quality Control reported that normal production-line samples and inspected finished inventory appeared visually acceptable. A 7 May storm affected plant power and Fractionator temperature; incorrectly installed air filters and discolored natural-latex lots were also reported. These observations do not establish the cause."
+      },
+      "impact": {
+        "now": "Distributors are returning visibly discolored Medi-Lite and ESD-Shade shoes, while Soter handles increasing complaints. No count of affected units or confirmed inability to fulfill orders is provided.",
+        "future": "More distributors may report affected stock as shipments already in circulation are inspected or used, increasing returns and pressure to isolate any implicated production lots.",
+        "time": "Before further potentially affected stock ships or additional distributor complaints escalate is the practical next decision point. The case gives no contractual resolution deadline."
+      },
+      "ops": {
+        "bridgeOpenedUtc": "",
+        "icName": "",
+        "bcName": "",
+        "semOpsName": "",
+        "severity": "",
+        "detectMonitoring": false,
+        "detectUserReport": true,
+        "detectAutomation": false,
+        "detectOther": false,
+        "evScreenshot": false,
+        "evLogs": false,
+        "evMetrics": false,
+        "evRepro": false,
+        "evOther": true,
+        "containStatus": "",
+        "containDesc": "",
+        "commCadence": "",
+        "commLog": [],
+        "commNextDueIso": "",
+        "commNextUpdateTime": "",
+        "tableFocusMode": "comprehensive"
+      },
+      "table": [
+        {
+          "band": "WHAT"
+        },
+        {
+          "questionId": "what-object",
+          "is": "Medi-Lite and ESD-Shade Soter protective shoes reported by distributors.",
+          "no": "Soter T-Shield and Capper protective shoes without reported discoloration.",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "questionId": "what-deviation",
+          "is": "Mottled blue-gray smudges appear within the light-colored rubber, not as removable surface dirt.",
+          "no": "",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "band": "WHERE"
+        },
+        {
+          "questionId": "where-location",
+          "is": "Complaints from nearby, distant and international distributors after the shoes entered distribution.",
+          "no": "Production-line samples and inspected finished-goods inventory reported visually normal.",
+          "di": "Distributor-held shoes have passed through shipping and post-production holding; the line samples inspected by QC have not had the same distribution lifecycle.",
+          "ch": "On 7 May, the Fractionator's temperature dropped during the storm/power outage. Whether rubber in the affected distributor returns came from compound processed under that condition remains unverified."
+        },
+        {
+          "questionId": "where-on-object",
+          "is": "Light-colored rubber components on the affected footwear; discoloration appears embedded rather than sitting on the surface.",
+          "no": "",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "band": "WHEN"
+        },
+        {
+          "questionId": "when-first-observed",
+          "is": "First distributor report on 18 May; complaint volume increased afterward.",
+          "no": "",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "questionId": "when-pattern",
+          "is": "Continuing, escalating complaints rather than one isolated return.",
+          "no": "",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "questionId": "when-description",
+          "is": "Discoloration is detected at distributor/return inspection after manufacture and distribution.",
+          "no": "Visually normal samples and finished inventory during routine in-plant inspection.",
+          "di": "Distributors observe product farther along its post-manufacturing life than routine production samples; whether a time-dependent reaction is involved has not been confirmed.",
+          "ch": ""
+        },
+        {
+          "band": "EXTENT"
+        },
+        {
+          "questionId": "extent-population",
+          "is": "Multiple affected shoes from at least two named product types; exact unit count, batch count and fraction of output not supplied.",
+          "no": "",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "questionId": "extent-size",
+          "is": "Mottled blue-gray areas within light-colored rubber; area, intensity and trend are not quantified.",
+          "no": "",
+          "di": "",
+          "ch": ""
+        },
+        {
+          "questionId": "extent-count",
+          "is": "Number of smudges per shoe and frequency by shipment are not provided.",
+          "no": "",
+          "di": "",
+          "ch": ""
+        }
+      ],
+      "causes": [
+        {
+          "id": "cause-distributor-fractionator-residue",
+          "suspect": "Fractionator residue after 7 May power outage",
+          "accusation": "Temporary lower process temperature prevented normal removal of contaminants from rubber compound",
+          "impact": "Residue mixed into material used for susceptible footwear; blue-gray discoloration developed later in shipped shoes",
+          "summaryText": "A 7 May Fractionator temperature drop allowed retained contaminants into compound subsequently used in light-colored shoe rubber; later discoloration generated distributor returns.",
+          "confidence": "high",
+          "evidence": "Official instructor-guided Most Probable Cause, not a confirmed True Cause. The mechanism explains the onset following 7 May and potentially the apparent delay until distributor detection, but the participant material does not prove implicated batch allocation, contamination chemistry or successful corrective action. Confirm by testing residue/discoloration over time, checking older warehouse stock and reproducing Fractionator temperature/residue conditions.",
+          "findings": {
+            "what-object": {
+              "mode": "assumption",
+              "note": "Impacted rubber compound must have entered Medi-Lite and ESD-Shade light-colored components but not the comparable parts of T-Shield or Capper stock. Compare recipes, mixing and batch allocation."
+            },
+            "where-location": {
+              "mode": "assumption",
+              "note": "Discoloration must emerge after processing/holding rather than at line inspection; confirm the mechanism using affected versus retained/inventory samples at matched ages."
+            },
+            "when-description": {
+              "mode": "assumption",
+              "note": "A delayed reaction, exposure or aging period must explain why returned shoes show embedded discoloration while freshly inspected units looked normal. Verify experimentally."
+            }
+          },
+          "editing": false,
+          "testingOpen": true
+        },
+        {
+          "id": "cause-distributor-hvac-dust",
+          "suspect": "Incorrectly installed HVAC filters (1 May)",
+          "accusation": "Dark dust deposited on finished shoes while inside the plant",
+          "impact": "Dust was mistaken for blue-gray stains at distributor inspection",
+          "summaryText": "Dark plant dust settled on shoe surfaces and became noticeable to distributors after shipment.",
+          "confidence": "low",
+          "evidence": "Known 1 May filter installation error and visible dust justify a hypothesis, but a surface deposit does not explain discoloration included within the rubber. Revise the hypothesis only with new evidence for compound-level contamination; do not silently treat an unsupported mechanism as established.",
+          "findings": {
+            "what-object": {
+              "mode": "assumption",
+              "note": "Dust exposure would need to affect only Medi-Lite and ESD-Shade products while leaving T-Shields and Cappers without complaints; product-specific exposure is unverified."
+            },
+            "where-location": {
+              "mode": "fail",
+              "note": "The hypothesized surface dust should sit on or wipe from the rubber, whereas returned discoloration is included within the rubber material. This mechanism fails the documented appearance."
+            },
+            "when-description": {
+              "mode": "assumption",
+              "note": "If dust was present during production, normal in-plant QC would need to miss it or the mark would need to appear only afterward; neither condition is demonstrated."
+            }
+          },
+          "editing": false,
+          "testingOpen": true
+        },
+        {
+          "id": "cause-distributor-latex-material",
+          "suspect": "Natural-latex lots with purple under-curing",
+          "accusation": "Supplier-material variation or incomplete cure altered rubber color during later processing or aging",
+          "impact": "Only footwear components incorporating those lots developed the reported blue-gray discoloration",
+          "summaryText": "Certain latex lots reported around 7–8 and 15–18 May yielded off-color compounds that later mottled in susceptible finished shoes.",
+          "confidence": "medium",
+          "evidence": "The material reports are participant evidence, not a proved link to the returned shoe batches. The cause requires exact lot-to-product traceability, proof of embedded discoloration and a distribution/onset match. Compare suspect and normal-lot specimens before designating it the MPC.",
+          "findings": {
+            "what-object": {
+              "mode": "assumption",
+              "note": "The discolored latex lots must have entered the light-colored rubber of affected shoes but not the unaffected footwear; recipes, receipts and lot usage are unverified."
+            },
+            "where-location": {
+              "mode": "assumption",
+              "note": "A delayed color change would need to explain clean factory QC versus marked distributor returns, across delivery distances."
+            },
+            "when-description": {
+              "mode": "assumption",
+              "note": "The hypothesized curing or aging effect would have to become visible only after shipment; run controlled lot and cure comparisons."
+            }
+          },
+          "editing": false,
+          "testingOpen": true
+        },
+        {
+          "id": "cause-distributor-shipping-mark",
+          "suspect": "Contamination during shipment/handling",
+          "accusation": "Packaging or transport contact deposited colored residue on finished shoe surfaces",
+          "impact": "Shoe rubber arrived with visible stains after distribution despite clean in-plant inspection",
+          "summaryText": "A transit/handling exposure marked the shoes between in-plant QC and distributor receipt.",
+          "confidence": "low",
+          "evidence": "Timing and normal in-plant appearance suggest checking distribution, but surface residue would not account for pigment embedded in rubber. Widespread geographic complaints also require an unproved common packaging or distribution exposure.",
+          "findings": {
+            "what-object": {
+              "mode": "assumption",
+              "note": "Common transport or packaging exposure would need to affect Medi-Lites and ESD-Shades but not T-Shields/Cappers shipped through similar channels."
+            },
+            "where-location": {
+              "mode": "fail",
+              "note": "A post-production surface deposit is inconsistent with blue-gray discoloration included within the rubber; geographical spread lacks a known single route."
+            },
+            "when-description": {
+              "mode": "assumption",
+              "note": "Shipping-only contact can explain observation after manufacture, but not the embedded material without a verified absorption/chemical mechanism."
+            }
+          },
+          "editing": false,
+          "testingOpen": true
+        }
+      ],
+      "likelyCauseId": "cause-distributor-fractionator-residue",
+      "steps": {
+        "items": [],
+        "drawerOpen": false
+      },
+      "actions": {
+        "analysisId": "distributor-complaints",
+        "items": []
+      },
+      "appearance": {
+        "theme": "light"
+      },
+      "decisionAnalysis": {
+        "decision": "",
+        "options": "",
+        "selectedOption": "",
+        "ownerRole": "",
+        "delegatedOwner": "",
+        "rationale": "",
+        "timestamp": ""
+      },
+      "potentialProblemAnalysis": {
+        "owner": {
+          "name": "",
+          "category": "",
+          "subOwner": "",
+          "notes": "",
+          "lastAssignedBy": "",
+          "lastAssignedAt": "",
+          "source": "Manual"
+        },
+        "risk": {
+          "level": "None",
+          "impactIfFails": "",
+          "prevent": "",
+          "ifHappens": ""
+        },
+        "changeControl": {
+          "required": false,
+          "rollbackPlan": ""
+        },
+        "verification": {
+          "required": false,
+          "result": ""
+        }
+      },
+      "handover": {
+        "current-state": [
+          "Distributor complaints about blue-gray mottling in Soter Medi-Lite and ESD-Shade rubber remain unexplained by a confirmed True Cause. The instructor demonstration selects the Fractionator-residue mechanism as Most Probable Cause."
+        ],
+        "what-changed": [
+          "1 May HVAC-filter installation error; 7 May storm/power outage with temporary Fractionator temperature reduction; latex lots showing off-color/under-curing around 7–8 and 15–18 May. Their causal roles are not established."
+        ],
+        "remaining-risks": [
+          "The wrong source could be pursued without correlating affected product, compound, lot and first-complaint chronology; further distributor returns may continue."
+        ],
+        "must-watch-metrics": [
+          "Distributor complaint and return counts by product, lot and production date; results from aged/retained material samples."
+        ],
+        "whats-next": [
+          "Reconcile affected/distributor shoe batch and shipping dates to Fractionator processing records and the 7 May outage.",
+          "Test whether suspected residue generates the reported blue-gray embedded mottling over time; compare retained warehouse stock and normal lots.",
+          "Inspect Fractionator temperature/residue behavior under relevant controlled conditions before declaring the True Cause."
+        ]
+      },
+      "notesWorkspace": {
+        "open": false,
+        "notes": [
+          {
+            "id": "distributor-official-mpc",
+            "text": "Official PSDM Instructor Reference (2022), Distributor Complaints pp. 295–316: recommended Most Probable Cause is a Fractionator outage/temperature drop that allowed contaminants into rubber compound. The training demonstration emphasizes factual distinctions, dated changes, assumptions and destructive testing; it does not report a verified post-correction True Cause."
+          },
+          {
+            "id": "distributor-discovery-boundary",
+            "text": "Participant PSDM Workbook pp. 57–69 presents a pre-teach discovery exercise with competing clues (dust, latex, shipping, Fractionator event), then asks learners for their proposed causes and three questions. Do not give the instructor's Fractionator mechanism during the participant reading. Confirmation options remain proposed experiments, not executed evidence."
+          }
+        ]
+      }
+    }
+  },
+  {
     "id": "red-sweat-mystery",
     "name": "Red Sweat Mystery",
     "description": "Eastern Airlines flight attendants have red sweat: complete KT Problem Analysis.",
