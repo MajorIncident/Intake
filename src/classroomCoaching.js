@@ -10,7 +10,8 @@ import { listResolvedCoachableTargets, resolveCoachableTarget } from './coachabl
 
 export const INSTRUCTOR_COACHING_ENDPOINT = '/api/classes/coaching';
 export const STUDENT_COACHING_ENDPOINT = '/api/classes/coaching/student';
-export const STUDENT_COACHING_POLL_MS = 2500;
+/** Student coaching refresh; feedback changes rarely (pilot blocker 6 load budget). */
+export const STUDENT_COACHING_POLL_MS = 5000;
 
 function statusLabel(status) {
   return status === 'meets-standard' ? 'Meets standard' : 'Needs improvement';
