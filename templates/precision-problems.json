@@ -1,0 +1,354 @@
+{
+  "id": "precision-problems",
+  "name": "Precision Problems",
+  "description": "Hi-Torque fuel-valve machining defects at ERI: PSDM participant case and complete instructor-guided Problem Analysis.",
+  "templateKind": "case-study",
+  "supportedModes": [
+    "intake",
+    "is-is-not",
+    "dc",
+    "full"
+  ],
+  "libraryGroup": "psdm",
+  "participantCase": {
+    "title": "Precision Problems — Engine-Ready, Inc. (ERI)",
+    "sections": [
+      {
+        "heading": "Your assignment",
+        "body": "Individually read the problem. Then work as a team to solve it using KT process questions and record the analysis. The evidence concerns recurring precision-machining defects, not a general shutdown. Identify the most useful factual comparisons before choosing a cause."
+      },
+      {
+        "heading": "The manufacturing operation",
+        "body": "Engine-Ready, Inc. (ERI) manufactures precision brass and aluminum engine parts. Line 1 makes Power-Pull carburetor needle assemblies and Hi-Torque fuel-valve assemblies using related brass inputs. Hi-Torque valves require closer tolerances. The valve-seat face and hole are formed during the same machining operation."
+      },
+      {
+        "heading": "Product and contract expectations",
+        "body": "ERI began Hi-Torque production for a short-term contract calling for 1,000 units per day. The apertures in finished fuel valves should meet their specified seat-face and hole-roundness tolerances. Both observed defects concern the same aperture-making operation; determine whether they represent one causal problem."
+      },
+      {
+        "heading": "The first sharp rise in rejects",
+        "body": "On 26 June, the Hi-Torque reject rate increased from below 1% to approximately 13%. Rejected valves had uneven seat facings and out-of-round holes. The problem is not a permanently elevated reject rate: results later returned to normal and rose sharply again."
+      },
+      {
+        "heading": "The changing defect pattern",
+        "body": "Rejects repeatedly rise and fall across the production chronology through 10 July, with normal-output periods between spikes. Compare the recurrence with material delivery, material-use, machine-operation and staffing records. The case includes a dated reject-history/calendar exhibit; use its evidence rather than guessing at missing daily values."
+      },
+      {
+        "heading": "Changes around the operation",
+        "body": "In May ERI installed 15 new high-speed CNC machines. On 17 June it added three local brass suppliers because Diconora could no longer supply sufficient material. Operators have also reported machine vibration. Adjustments and other intuitive machine/tool interventions did not permanently eliminate the recurring reject pattern. Those observations are clues, not proof of any particular cause."
+      },
+      {
+        "heading": "Material records and questions",
+        "body": "The original case includes a brass-receipt table with dates, suppliers, diameters and quantities. Establish which material lots entered Hi-Torque machining on bad versus normal days, and compare the tolerances of the two products. The dates and individual table rows are not reproduced here; do not infer a particular supplier or lot from the summary alone."
+      }
+    ]
+  },
+  "state": {
+    "meta": {
+      "version": 3,
+      "savedAt": null,
+      "intakeMode": "general"
+    },
+    "pre": {
+      "oneLine": "Hi-Torque fuel valves have uneven seat face and out-of-round hole.",
+      "objectPrefill": "Hi-Torque fuel-valve assemblies produced by Engine-Ready, Inc. on Line 1",
+      "healthy": "Finished Hi-Torque valve apertures should have even seat facings and round holes meeting the specified close tolerances; rejects should remain below the prior low rate.",
+      "now": "Some Hi-Torque valves show uneven valve-seat facings and out-of-round holes, with rejection spikes recurring after intervening normal periods.",
+      "proof": "ERI Line 1 manufactures Hi-Torque fuel valves and Power-Pull carburetor needle assemblies. On 26 June, Hi-Torque rejects jumped from below 1% to approximately 13%; both observed aperture defects arise in the same machining operation. Reject levels fell back toward normal and rose again in a roughly recurring pattern through early July. ERI installed 15 high-speed CNC machines in May, and three new local brass suppliers began supplying material on 17 June after Diconora capacity became insufficient. Operators reported CNC vibration and machine/tool interventions did not permanently eliminate the recurring defect. The participant case provides a dated brass-receipt table for supplier/material correlation."
+    },
+    "impact": {
+      "now": "ERI is rejecting elevated proportions of Hi-Torque fuel valves during defect spikes (about 13% on 26 June versus below 1% previously), reducing usable production. Whether the daily contract commitment was actually missed is not stated.",
+      "future": "Repeated rejection spikes could reduce accepted output and jeopardize the short-term commitment of 1,000 Hi-Torque valves per day unless the variation is isolated.",
+      "time": "The next production and shipment requirements under the 1,000-valves-per-day contract provide the relevant operational decision point. The case does not give a separate deadline for finding the cause."
+    },
+    "ops": {
+      "bridgeOpenedUtc": "",
+      "icName": "",
+      "bcName": "",
+      "semOpsName": "",
+      "severity": "",
+      "detectMonitoring": true,
+      "detectUserReport": false,
+      "detectAutomation": false,
+      "detectOther": false,
+      "evScreenshot": false,
+      "evLogs": false,
+      "evMetrics": true,
+      "evRepro": false,
+      "evOther": true,
+      "containStatus": "",
+      "containDesc": "",
+      "commCadence": "",
+      "commLog": [],
+      "commNextDueIso": "",
+      "commNextUpdateTime": "",
+      "tableFocusMode": "comprehensive"
+    },
+    "table": [
+      {
+        "band": "WHAT"
+      },
+      {
+        "questionId": "what-object",
+        "is": "Hi-Torque fuel-valve assemblies produced on ERI Line 1. A close comparison to Power-Pull stock requires confirmation of its actual defect results.",
+        "no": "",
+        "di": "",
+        "ch": ""
+      },
+      {
+        "questionId": "what-deviation",
+        "is": "Uneven valve-seat facing and an out-of-round hole on rejected valves; both features arise in one aperture-forming machining operation.",
+        "no": "",
+        "di": "",
+        "ch": ""
+      },
+      {
+        "band": "WHERE"
+      },
+      {
+        "questionId": "where-location",
+        "is": "Hi-Torque valve-seat/hole machining on ERI Line 1; no independently verified unaffected machine or location is specified.",
+        "no": "",
+        "di": "",
+        "ch": ""
+      },
+      {
+        "questionId": "where-on-object",
+        "is": "The valve aperture: seat face and hole geometry.",
+        "no": "",
+        "di": "",
+        "ch": ""
+      },
+      {
+        "band": "WHEN"
+      },
+      {
+        "questionId": "when-first-observed",
+        "is": "26 June: the Hi-Torque reject rate rose to approximately 13%.",
+        "no": "Prior Hi-Torque production had a reject rate below 1%.",
+        "di": "",
+        "ch": ""
+      },
+      {
+        "questionId": "when-pattern",
+        "is": "Reject spikes recur at roughly three-day intervals after onset.",
+        "no": "Hi-Torque output between spikes returned to normal rejection levels.",
+        "di": "",
+        "ch": ""
+      },
+      {
+        "questionId": "when-description",
+        "is": "The deviation is created in the valve-seat/hole machining operation and detected as rejected finished parts.",
+        "no": "",
+        "di": "",
+        "ch": ""
+      },
+      {
+        "band": "EXTENT"
+      },
+      {
+        "questionId": "extent-population",
+        "is": "Hi-Torque parts in the reject spikes; exact daily rejected unit counts and number of affected lots are not provided.",
+        "no": "",
+        "di": "",
+        "ch": ""
+      },
+      {
+        "questionId": "extent-size",
+        "is": "Approximately 13% of Hi-Torque valves rejected on the first major spike (26 June).",
+        "no": "Below 1% rejected in normal production before the spike.",
+        "di": "",
+        "ch": ""
+      },
+      {
+        "questionId": "extent-count",
+        "is": "Both seat-face unevenness and out-of-round hole are observed together on rejected apertures; exact defective features per assembly not quantified.",
+        "no": "",
+        "di": "",
+        "ch": ""
+      }
+    ],
+    "causes": [
+      {
+        "id": "cause-precision-supplier-brass",
+        "suspect": "New-supplier brass used for Hi-Torque valves",
+        "accusation": "Some brass from the added suppliers did not meet the material/physical requirements of close-tolerance valve machining",
+        "impact": "Unsuitable brass behaves differently during the aperture machining operation, producing uneven seat faces and out-of-round holes on affected production days",
+        "summaryText": "A new supplier's brass lacks adequate characteristics for the close-tolerance Hi-Torque operation and produces bad apertures when those specific lots are machined.",
+        "confidence": "high",
+        "evidence": "Official PSDM Instructor Reference Most Probable Cause: brass from a new supplier was not satisfactory for the close-tolerance work. This remains an MPC to confirm, not a reported executed supplier correction or historically proven True Cause. Compare precise material receipts and use days against reject spikes; test suspect brass against material specifications; compare an unaffected brass lot on the same machining setup; correct the verified source and monitor successive lots.",
+        "findings": {
+          "when-first-observed": {
+            "mode": "assumption",
+            "note": "For this cause to explain the 26 June onset, material from the new supplier must have entered affected Hi-Torque machining by that date; the 17 June supplier addition alone does not prove which lot was used."
+          },
+          "when-pattern": {
+            "mode": "assumption",
+            "note": "Three-day reject peaks must coincide with intermittent machining of suspect supplier lots while normal periods use compliant material. Check dated receipts and work orders before treating this timing match as fact."
+          },
+          "extent-size": {
+            "mode": "assumption",
+            "note": "Suspect brass must explain the roughly 13% rejects on bad days and below 1% on normal days by varying its share of consumed production lots or causing a comparable lot-specific effect."
+          }
+        },
+        "editing": false,
+        "testingOpen": true
+      },
+      {
+        "id": "cause-precision-cnc-vibration",
+        "suspect": "New high-speed CNC machines and observed vibration",
+        "accusation": "Machine vibration or rigidity problems alter tool position during close-tolerance valve-seat/hole cutting",
+        "impact": "Apertures become uneven or out-of-round on affected machining runs",
+        "summaryText": "Vibration on some high-speed CNC machining runs shifts aperture geometry outside Hi-Torque tolerances.",
+        "confidence": "medium",
+        "evidence": "CNC installations in May and operator-reported vibration are case facts, but no correlation with bad dates or machines is established. Investigate only after mapping actual machine assignments, vibration and tool geometry to the normal/reject chronology; avoid treating the observed vibration as the proven cause.",
+        "findings": {
+          "when-first-observed": {
+            "mode": "assumption",
+            "note": "The machines were installed in May, before the 26 June spike; the specific vibration or machine-use condition would need to begin or become material on/near 26 June rather than explaining an uninterrupted May-onward defect."
+          },
+          "when-pattern": {
+            "mode": "assumption",
+            "note": "The same high-vibration machines or operating conditions would need to recur on approximately three-day intervals and be absent or controlled on normal days. That scheduling/condition match is not documented."
+          },
+          "extent-size": {
+            "mode": "assumption",
+            "note": "Vibration severity, affected machine share, or specific cutting settings must change enough to explain ~13% rejected valves on bad days versus below 1% on normal days."
+          }
+        },
+        "editing": false,
+        "testingOpen": true
+      },
+      {
+        "id": "cause-precision-fixed-tool-alignment",
+        "suspect": "Valve-aperture cutting tool/alignment",
+        "accusation": "A fixed, incorrect tool setup or worn cutter produces consistently misaligned seat faces and out-of-round holes",
+        "impact": "Machined Hi-Torque apertures fail their geometry limits",
+        "summaryText": "A persistently misaligned or worn cutting tool creates defective apertures whenever the relevant tooling is used.",
+        "confidence": "low",
+        "evidence": "Tool/setup hypotheses are natural alternatives in a machining case, but a truly persistent wrong setup does not explain spontaneous returns to normal without additional change or switching evidence. The participant account reports that intuitive machine/tool interventions did not permanently eliminate the pattern.",
+        "findings": {
+          "when-first-observed": {
+            "mode": "assumption",
+            "note": "The fixed incorrect setting or tool defect must have begun on 26 June rather than being present throughout earlier lower-reject production."
+          },
+          "when-pattern": {
+            "mode": "fail",
+            "note": "A fixed misalignment continuously present on the same machining path predicts persistent defects, whereas the documented reject rate returns toward normal between roughly three-day spikes. An intermittent tool swap would be a different, unverified mechanism."
+          },
+          "extent-size": {
+            "mode": "assumption",
+            "note": "The wrong tool must be used for only enough production to raise rejects to ~13% and be absent on normal output days; no such use-by-day evidence is supplied."
+          }
+        },
+        "editing": false,
+        "testingOpen": true
+      },
+      {
+        "id": "cause-precision-operator-setups",
+        "suspect": "Operator setup/calibration variation",
+        "accusation": "Some operator setups or machining adjustments incorrectly position valve-cutting tools",
+        "impact": "The valve-seat faces and holes exceed close-tolerance geometry limits on those runs",
+        "summaryText": "An intermittent setup or operator-configuration difference causes periodic defective Hi-Torque apertures.",
+        "confidence": "low",
+        "evidence": "The instructor material identifies intuitive operator/machine explanations for disciplined comparison; it does not report a training problem or a recurring shift roster. Operator scheduling, setup records and material lot controls are missing and must be verified before attributing causation.",
+        "findings": {
+          "when-first-observed": {
+            "mode": "assumption",
+            "note": "A new or different setup/assignment would need to first create bad apertures on 26 June, despite lower rejects in prior Hi-Torque production. No date-matched setup change is documented."
+          },
+          "when-pattern": {
+            "mode": "assumption",
+            "note": "Operator or setup patterns would have to repeat at approximately three-day intervals, with no comparable incorrect setups in the intervening normal periods. Shift and setup logs would need to confirm it."
+          },
+          "extent-size": {
+            "mode": "assumption",
+            "note": "The misconfiguration must affect enough Hi-Torque work to produce ~13% rejected apertures on bad days while normal setup periods remain below 1%; compare production share and rejection measurements."
+          }
+        },
+        "editing": false,
+        "testingOpen": true
+      }
+    ],
+    "likelyCauseId": "cause-precision-supplier-brass",
+    "steps": {
+      "items": [],
+      "drawerOpen": false
+    },
+    "actions": {
+      "analysisId": "precision-problems",
+      "items": []
+    },
+    "appearance": {
+      "theme": "light"
+    },
+    "decisionAnalysis": {
+      "decision": "",
+      "options": "",
+      "selectedOption": "",
+      "ownerRole": "",
+      "delegatedOwner": "",
+      "rationale": "",
+      "timestamp": ""
+    },
+    "potentialProblemAnalysis": {
+      "owner": {
+        "name": "",
+        "category": "",
+        "subOwner": "",
+        "notes": "",
+        "lastAssignedBy": "",
+        "lastAssignedAt": "",
+        "source": "Manual"
+      },
+      "risk": {
+        "level": "None",
+        "impactIfFails": "",
+        "prevent": "",
+        "ifHappens": ""
+      },
+      "changeControl": {
+        "required": false,
+        "rollbackPlan": ""
+      },
+      "verification": {
+        "required": false,
+        "result": ""
+      }
+    },
+    "handover": {
+      "current-state": [
+        "Hi-Torque valve-seat and hole machining defects produce intermittent high rejects after 26 June; the instructor's Most Probable Cause is brass from a new supplier unsuitable for close-tolerance machining. It still requires confirmation."
+      ],
+      "what-changed": [
+        "ERI installed 15 high-speed CNC machines in May.",
+        "Brass purchasing expanded from Diconora to three additional local suppliers effective 17 June."
+      ],
+      "remaining-risks": [
+        "Prematurely attributing the pattern to a CNC or operator issue could miss material-specific bad lots; recurring rejects could pressure the daily Hi-Torque delivery commitment."
+      ],
+      "must-watch-metrics": [
+        "Hi-Torque reject percentages by day, machine and brass lot; supplier/diameter/quantity receipt and actual consumption records.",
+        "Measured material properties and aperture geometry for suspect versus comparison brass lots."
+      ],
+      "whats-next": [
+        "Correlate actual material-use dates with the roughly three-day reject spikes, verifying supplier, material lot, diameter and quantity on bad and normal days.",
+        "Use the least costly adequate confirmation first: test suspect brass against documented close-tolerance requirements and compare acceptable material on the same equipment.",
+        "Only after results isolate the cause, modify supplier/material acceptance and monitor reject rate back toward the prior below-1% level."
+      ]
+    },
+    "notesWorkspace": {
+      "open": false,
+      "notes": [
+        {
+          "id": "precision-instructor-mpc",
+          "text": "PSDM Instructor Reference Version H (2022), Precision Problems, pp. 321–330: preferred wording is 'Hi-Torque fuel valves have uneven seat face and out-of-round hole.' Both properties arise in one aperture machining operation; official sample MPC is new-supplier brass unsuitable for close-tolerance work, not evidence of an executed correction."
+        },
+        {
+          "id": "precision-comparison-gaps",
+          "text": "Dated supplier/diameter/quantity receipt table and exact day-by-day reject chronology are not transcribed in this adapted reader. The 17 June supplier change and ~three-day rejection pattern are known, but matching particular lots to defective versus normal output requires those records. No extra factual WHAT/WHERE IS NOT or Distinction/Change is asserted without confirmation; the source-backed changes remain in preface and handover until a proper paired boundary is established."
+        }
+      ]
+    }
+  }
+}
