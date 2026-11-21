@@ -1,6 +1,6 @@
-# KT Intake – AI-Optimized Incident Analysis Template
+# KT Intake: structured incident analysis and case practice
 
-KT Intake is a browser-first Kepner–Tregoe (KT) incident workbook designed for rapid bridge facilitation, AI-assisted summaries, resilient state restoration, and optional shared collaboration. The primary UI is delivered from `index.html` and ES modules; collaboration is backed by Vercel Functions under `api/` with Neon persistence, while normal local intake use remains browser-resident.
+KT Intake is a browser-first Kepner-Tregoe (KT) incident workbook with General, IT, Pharma and Major Incident modes, AI-assisted summaries, resilient state restoration and a classroom for case practice. The primary UI is delivered from `index.html` and ES modules. Optional shared collaboration runs on Vercel Functions under `api/` with Neon Postgres; normal local use stays in the browser.
 
 ## Quickstart
 - Clone or download this repository.
