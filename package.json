@@ -28,9 +28,9 @@
     "@neondatabase/serverless": "1.2.0"
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.13.0",
-    "@electric-sql/pglite": "0.5.13",
-    "@playwright/test": "1.63.0",
+    "@axe-core/playwright": "4.14.0",
+    "@electric-sql/pglite": "0.5.17",
+    "@playwright/test": "1.65.1",
     "eslint": "^8.57.1",
     "eslint-plugin-jsdoc": "^61.1.12",
     "jsdom": "^27.1.0"
